@@ -27,15 +27,18 @@ function esActivoMes(c) {
 
 
 function esNuevoMes(c) {
+  // Preferir flag del ciclo (primera factura en el mes en curso)
   if (c.es_nuevo_mes === true || c.es_nuevo_mes === 1 || c.es_nuevo_mes === 'true') return true
-  // heurística: primera compra reciente + historial ≈ mtd
-  const u = String(c.ultima_compra || '')
-  if (!(u.startsWith('2026-07') || u.startsWith('2026-08'))) return false
-  const hist = Number(c.venta_historica) || 0
   const mtd = Number(c.venta_mtd) || 0
   if (mtd <= 0) return false
-  if (hist > 0 && hist <= mtd * 1.4) return true
-  if (/NUNCA/i.test(c.estado_fuga || '') && mtd > 0) return true
+  // Mes del snapshot (fecha_snapshot) — no hardcode julio/agosto
+  const snap = String(c.fecha_snapshot || '').slice(0, 7) // YYYY-MM
+  const u = String(c.ultima_compra || '').slice(0, 10)
+  if (!snap || !u.startsWith(snap)) return false
+  // Nuevo = no tenía historial previo relevante (hist ≈ solo este mes)
+  const hist = Number(c.venta_historica) || 0
+  if (hist > 0 && hist <= mtd * 1.15) return true
+  if (/NUNCA/i.test(c.estado_fuga || '')) return true
   return false
 }
 
