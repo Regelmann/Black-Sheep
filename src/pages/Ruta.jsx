@@ -18,12 +18,7 @@ function saludoHora() {
 
 const KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 let mapsPromise = null
-let mapsPromiseKey = null  // clave para detectar si hay que reiniciar
-
-function loadMaps(forceReset = false) {
-  if (forceReset) {
-    mapsPromise = null
-  }
+function loadMaps() {
   if (window.google?.maps) return Promise.resolve(window.google.maps)
   if (mapsPromise) return mapsPromise
   if (!KEY) return Promise.reject(new Error('NO_KEY'))
@@ -209,9 +204,6 @@ export default function Ruta({ session }) {
     setLoading(true)
     setLoadError(null)
     setSelected(null)
-    // Resetear estado del mapa para forzar reinit limpio al cambiar zona
-    setMapReady(false)
-    fittedFecha.current = null
     try {
       let { data: rutas, error: er } = await supabase
         .from('rutas')
@@ -409,7 +401,7 @@ export default function Ruta({ session }) {
   }
 
 
-  // Init mapa: recrear cuando cambia uid (zona) o cuando termina loading
+  // Init mapa: recrear si el div se desmontó (cambio de zona / loading)
   useEffect(() => {
     if (loading) return
     let cancelled = false
@@ -418,19 +410,10 @@ export default function Ruta({ session }) {
       try {
         const maps = await loadMaps()
         if (cancelled || !mapRef.current) return
-
-        // Siempre destruir marcadores anteriores al reiniciar
-        markersRef.current.forEach(m => { try { m.setMap(null) } catch {} })
-        markersRef.current = []
-        if (meMarkerRef.current) {
-          try { meMarkerRef.current.setMap(null) } catch {}
-          meMarkerRef.current = null
-        }
-
-        // Crear mapa nuevo — siempre recrear si el div cambió o no hay instancia
-        const divConectado = mapInstance.current?.getDiv?.()
-        const needNew = !mapInstance.current || !divConectado || !mapRef.current.contains(divConectado)
-
+        // Si el div es nuevo (cambio zona), hay que crear otro Map
+        const needNew =
+          !mapInstance.current ||
+          mapInstance.current.getDiv?.() !== mapRef.current
         if (needNew) {
           mapInstance.current = new maps.Map(mapRef.current, {
             zoom: 12,
@@ -446,14 +429,18 @@ export default function Ruta({ session }) {
           })
           fittedFecha.current = null
         } else {
-          try { maps.event.trigger(mapInstance.current, 'resize') } catch {}
+          try {
+            maps.event.trigger(mapInstance.current, 'resize')
+          } catch (_) {}
         }
         setMapReady(true)
       } catch {
         setMapReady(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [loading, uid])
 
   // GPS en vivo: punto azul que sigue al ejecutivo
@@ -1216,22 +1203,10 @@ export default function Ruta({ session }) {
               </div>
             ))}
             {linkNavegar && visitas.length >= 1 && (
-              <a
-                href={linkNavegar}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  marginTop: 12, padding: '13px 16px', borderRadius: 14,
-                  background: '#1a1614', color: '#fff',
-                  fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
-                  textDecoration: 'none', width: '100%',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                </svg>
-                Navegar recorrido en Maps
+              <a href={linkNavegar} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                <button type="button" className="btn btn-primary" style={{ marginTop: 8 }}>
+                  Navegar recorrido
+                </button>
               </a>
             )}
           </div>

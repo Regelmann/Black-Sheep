@@ -221,31 +221,31 @@ export default function Visita({ session }) {
         style={{
           background: 'linear-gradient(165deg,#ea580c 0%,#c2410c 40%,#1c1917 100%)',
           color: '#fff',
-          padding: '12px 16px 22px',
-          borderRadius: '0 0 24px 24px',
+          padding: '14px 16px 28px',
+          borderRadius: '0 0 28px 28px',
         }}
       >
         <button
           type="button"
           onClick={() => nav('/')}
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
-            borderRadius: 999, padding: '6px 10px', fontWeight: 600, fontSize: 12,
-            cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'rgba(255,255,255,0.18)', border: 'none', color: '#fff',
+            borderRadius: 999, padding: '8px 12px', fontWeight: 700, fontSize: 13,
+            cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12,
           }}
         >
-          ← Volver
+          ← Detalle de Visita
         </button>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <h1 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25, flex: 1 }}>
-            {visita.nombre_local}
-          </h1>
+        <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.85, marginBottom: 4 }}>Detalle de Visita</div>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+          {visita.nombre_local}
+        </h1>
+        <div style={{ marginTop: 10 }}>
           <span style={{
-            flexShrink: 0,
-            background: yaLlego ? '#fef3c7' : 'rgba(255,255,255,0.2)',
+            display: 'inline-block', background: yaLlego ? '#fef3c7' : 'rgba(255,255,255,0.2)',
             color: yaLlego ? '#92400e' : '#fff',
-            fontWeight: 800, fontSize: 11, padding: '4px 10px', borderRadius: 999,
+            fontWeight: 800, fontSize: 12, padding: '5px 12px', borderRadius: 999,
           }}>
             {visita.estado === 'visitada' ? 'Completada' : yaLlego ? 'En progreso' : 'Pendiente'}
           </span>
@@ -260,8 +260,8 @@ export default function Visita({ session }) {
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em' }}>DIRECCIÓN</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 3, lineHeight: 1.3 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em' }}>DIRECCIÓN</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 4, lineHeight: 1.35 }}>
                 {dir || visita.comuna || '—'}
               </div>
             </div>
@@ -297,7 +297,7 @@ export default function Visita({ session }) {
               marginTop: 14, paddingTop: 12, borderTop: '1px solid #f1f5f9',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.04em' }}>VENTA</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>★ SCORE / VENTA</span>
               <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                 {Number(cliente?.venta_mtd) > 0 ? money(cliente.venta_mtd) + ' mes' : money(cliente.venta_mensual) + ' prom'}
               </span>
@@ -310,7 +310,7 @@ export default function Visita({ session }) {
           background: '#fff', borderRadius: 20, padding: 16,
           boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
         }}>
-          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6, color: '#0f172a' }}>Productos sugeridos</div>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8 }}>Productos sugeridos</div>
           {(cliente?.oferta_real || aReponer.length > 0) && (
             <div style={{ fontSize: 12, color: '#15803d', fontWeight: 700, marginBottom: 10 }}>
               Potencial · {aReponer.length > 0 ? `${aReponer.length} a reponer` : 'oferta del día'}
@@ -342,13 +342,13 @@ export default function Visita({ session }) {
             }
             return items.slice(0, 8).map((it, i) => (
               <div key={i} style={{
-                display: 'flex', gap: 8, alignItems: 'center',
-                padding: '8px 0', borderBottom: i < items.length - 1 ? '1px solid #f8fafc' : 'none',
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none',
               }}>
-                <span style={{ color: '#22c55e', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>✓</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</span>
-                  <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 6 }}>{it.tag}</span>
+                <span style={{ color: '#22c55e', fontWeight: 800, marginTop: 2 }}>✓</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{it.tag}</div>
                 </div>
               </div>
             ))
@@ -357,10 +357,10 @@ export default function Visita({ session }) {
 
         {/* Check-in */}
         <div style={{
-          background: '#fff', borderRadius: 16, padding: '12px 14px',
-          boxShadow: '0 2px 8px rgba(15,23,42,0.04)', marginBottom: 10,
+          background: '#fff', borderRadius: 20, padding: 16,
+          boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
         }}>
-          {msg && <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>{msg}</div>}
+          {msg && <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>{msg}</div>}
           {yaLlego ? (
             <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
               Check-in{' '}
@@ -461,10 +461,10 @@ export default function Visita({ session }) {
             await terminar(yaLlego ? 'completada' : 'sin_checkin')
           }}
           style={{
-            width: '100%', padding: '14px', borderRadius: 14, border: 'none',
-            background: '#c2410c', color: '#fff',
-            fontWeight: 800, fontSize: 15, fontFamily: 'inherit', cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(194,65,12,0.25)', marginBottom: 8,
+            width: '100%', padding: '16px', borderRadius: 999, border: 'none',
+            background: 'linear-gradient(180deg,#ea580c,#c2410c)', color: '#fff',
+            fontWeight: 800, fontSize: 16, fontFamily: 'inherit', cursor: 'pointer',
+            boxShadow: '0 8px 24px rgba(22,163,74,0.3)', marginBottom: 10,
           }}
         >
           Completar visita
@@ -481,15 +481,17 @@ export default function Visita({ session }) {
           Omitir cliente por hoy
         </button>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          {telefono && (
-            <a href={'tel:' + telefono} style={{ flex: 1, textAlign: 'center', padding: '11px 8px', borderRadius: 12, background: '#1a1614', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: 13, fontFamily: 'inherit' }}>Llamar</a>
-          )}
-          {wsp && (
-            <a href={wsp} target="_blank" rel="noreferrer" style={{ flex: 1, textAlign: 'center', padding: '11px 8px', borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13, fontFamily: 'inherit' }}>WhatsApp</a>
-          )}
-          <button type="button" onClick={() => setPedidoOpen(true)} style={{ flex: 1, padding: '11px 8px', borderRadius: 12, border: 'none', background: '#c2410c', color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}>Pedido</button>
-        </div>
+        {(wsp || telefono) && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            {telefono && (
+              <a href={'tel:' + telefono} style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 12, background: '#0f172a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: 13 }}>Llamar</a>
+            )}
+            {wsp && (
+              <a href={wsp} target="_blank" rel="noreferrer" style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13 }}>WhatsApp</a>
+            )}
+            <button type="button" onClick={() => setPedidoOpen(true)} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: 'inherit' }}>Pedido</button>
+          </div>
+        )}
       </div>
     </div>
 

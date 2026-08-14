@@ -2,6 +2,7 @@ import { useEffect, useState, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login.jsx'
+import Hoy from './pages/Hoy.jsx'
 import Ruta from './pages/Ruta.jsx'
 import Visita from './pages/Visita.jsx'
 import Cartera from './pages/Cartera.jsx'
@@ -11,7 +12,7 @@ import Gerencia from './pages/Gerencia.jsx'
 import { NavBar } from './components.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-LEAN-026'
+export const BUILD_STAMP = 'v-UX-V17'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
@@ -164,8 +165,6 @@ export default function App() {
     if (!ej) return
     setZonaVista(zona)
     setEidVista(ej.id)
-    // Scroll al tope al cambiar zona para evitar que la UI quede rota
-    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   if (session === undefined) return <div className="spinner">Cargando...</div>
@@ -200,7 +199,8 @@ export default function App() {
         padding: '4px 10px', borderRadius: 8, pointerEvents: 'none',
       }}>{BUILD_STAMP}</div>
         <Routes>
-          <Route path="/" element={<Ruta session={session} />} />
+          <Route path="/" element={<Hoy />} />
+          <Route path="/mapa" element={<Ruta session={session} />} />
           <Route path="/visita/:id" element={<Visita session={session} />} />
           <Route path="/cartera" element={<Cartera session={session} />} />
           <Route path="/metas" element={<Metas session={session} />} />

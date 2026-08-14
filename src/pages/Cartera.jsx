@@ -26,33 +26,19 @@ function esActivoMes(c) {
 }
 
 
-// NUEVO: compró este mes Y no tenía compras en los 3 meses anteriores
-// RECUPERADO: compró este mes Y no había comprado en los últimos 3 meses (pero sí antes)
 function esNuevoMes(c) {
-  // Flag explícito del ciclo (primera factura histórica en el sistema)
+  // Preferir flag del ciclo (primera factura en el mes en curso)
   if (c.es_nuevo_mes === true || c.es_nuevo_mes === 1 || c.es_nuevo_mes === 'true') return true
-  // Tiene que tener venta este mes
   const mtd = Number(c.venta_mtd) || 0
   if (mtd <= 0) return false
-  // Estado NUNCA = nunca había comprado antes
-  if (/NUNCA/i.test(c.estado_fuga || '')) return true
-  // Sin historial previo relevante
+  // Mes del snapshot (fecha_snapshot) — no hardcode julio/agosto
+  const snap = String(c.fecha_snapshot || '').slice(0, 7) // YYYY-MM
+  const u = String(c.ultima_compra || '').slice(0, 10)
+  if (!snap || !u.startsWith(snap)) return false
+  // Nuevo = no tenía historial previo relevante (hist ≈ solo este mes)
   const hist = Number(c.venta_historica) || 0
-  if (hist <= 0 || (hist > 0 && hist <= mtd * 1.1)) return true
-  return false
-}
-
-function esRecuperadoMes(c) {
-  // Compró este mes pero estaba dormido/fugado (sin compra 3+ meses)
-  const mtd = Number(c.venta_mtd) || 0
-  if (mtd <= 0) return false
-  if (esNuevoMes(c)) return false // los nuevos no son recuperados
-  const estado = String(c.estado_fuga || '').toUpperCase()
-  // DORMIDO = sin compra 45-90d, FUGADO = 90d+, RIESGO con compra reciente = recuperado
-  if (/DORMIDO|FUGADO/.test(estado)) return true
-  // Fallback: si dias_sin_comprar era alto y ahora compró
-  const dias = Number(c.dias_sin_comprar) || 0
-  if (dias === 0 && /RIESGO|ENFRI/.test(estado)) return true
+  if (hist > 0 && hist <= mtd * 1.15) return true
+  if (/NUNCA/i.test(c.estado_fuga || '')) return true
   return false
 }
 
@@ -241,12 +227,7 @@ export default function Cartera({ session }) {
   }
 
   useEffect(() => {
-    if (eje?.eidVista) {
-      setShow(PAGE)  // resetear paginación al cambiar zona
-      setFiltro('Todos')
-      setQ('')
-      cargar()
-    }
+    if (eje?.eidVista) cargar()
   }, [eje?.eidVista])
 
   async function bloquear(cliente, motivo) {
@@ -284,8 +265,7 @@ export default function Cartera({ session }) {
   }, [clientes])
 
   const estadosOrd = Object.keys(resumen).sort((a, b) => orden.indexOf(a) - orden.indexOf(b))
-  const nNuevos    = clientes.filter(esNuevoMes).length
-  const nRecuperados = clientes.filter(esRecuperadoMes).length
+  const nNuevos = clientes.filter(esNuevoMes).length
   const nActivosMes = clientes.filter(c => Number(c.venta_mtd) > 0).length
   const nSinVentaMes = clientes.filter(c => !(Number(c.venta_mtd) > 0)).length
 
@@ -316,7 +296,6 @@ export default function Cartera({ session }) {
     let rows = clientes
     if (filtro === 'Bloqueados') rows = rows.filter(c => c.es_bloqueado)
     else if (filtro === 'Nuevos') rows = rows.filter(c => esNuevoMes(c))
-    else if (filtro === 'Recuperados') rows = rows.filter(c => esRecuperadoMes(c))
     else if (filtro === 'ActivosMes') rows = rows.filter(c => Number(c.venta_mtd) > 0)
     else if (filtro === 'SinVentaMes') rows = rows.filter(c => !(Number(c.venta_mtd) > 0))
     else if (filtro === 'ReponerHoy') rows = rows.filter(c => clienteTocaReponer(c))
@@ -415,9 +394,9 @@ export default function Cartera({ session }) {
         <div style={{
             fontSize: 11, fontWeight: 800, letterSpacing: '0.08em',
             textTransform: 'uppercase', color: '#fdba74', marginBottom: 8,
-          }}>Cartera</div>
+          }}>Clientes</div>
         <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 8 }}>
-          Tus clientes
+          Mi cartera
         </h1>
         <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.62)', fontWeight: 500, lineHeight: 1.4 }}>
           {clientes.length} en zona · {nActivosMes} con venta este mes · {nNuevos} nuevos
@@ -502,15 +481,12 @@ export default function Cartera({ session }) {
           </button>
           <button
             className={'filter-btn' + (filtro === 'Nuevos' ? ' active' : '')}
-            onClick={() => { setFiltro('Nuevos'); setShow(PAGE) }}
+            onClick={() => {
+              setFiltro('Nuevos')
+              setShow(PAGE)
+            }}
           >
-            Nuevos ({nNuevos})
-          </button>
-          <button
-            className={'filter-btn' + (filtro === 'Recuperados' ? ' active' : '')}
-            onClick={() => { setFiltro('Recuperados'); setShow(PAGE) }}
-          >
-            Recuperados ({nRecuperados})
+            Nuevos mes ({nNuevos})
           </button>
           <button
             className={'filter-btn' + (filtro === 'ReponerHoy' ? ' active' : '')}

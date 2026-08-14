@@ -736,14 +736,14 @@ def load_config_csv(globs: List[str]) -> Optional[pd.DataFrame]:
         return None
 
 
-def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], Dict[str, str], Dict[str, float]]:
+def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], Dict[str, str]]:
     """
     Lee Excel de configuración mensual (hojas METAS, FOCOS_MES, FOCO_SKU).
     Devuelve (metas_rows, focos_rows, foco_sku_map) listos para Supabase.
     """
     metas, focos = [], []
     if not path or not path.exists():
-        return metas, focos, {}, {}
+        return metas, focos, {}
     xl = pd.ExcelFile(path, engine="openpyxl")
     sheets = {s.upper(): s for s in xl.sheet_names}
     print(f"  config mensual: {path.name} hojas={list(xl.sheet_names)}")
@@ -818,9 +818,8 @@ def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], D
                 }
             )
 
-    # --- FOCO_SKU (sku → nombre de foco + factor KG opcional) ---
+    # --- FOCO_SKU (sku → nombre de foco) ---
     foco_skus: Dict[str, str] = {}
-    foco_sku_kg: Dict[str, float] = {}  # factor kg por unidad definido en el archivo de metas
     sdf = sheet("FOCO_SKU", "FOCOS_SKU", "SKU_FOCO")
     if sdf is not None and not sdf.empty:
         sdf.columns = [str(c).strip() for c in sdf.columns]
@@ -830,24 +829,18 @@ def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], D
                 if _norm_col(o) in colmap:
                     return colmap[_norm_col(o)]
             return None
-        c_sku   = sc("sku_canon", "sku", "codigo", "codigo_sku")
-        c_foco  = sc("foco", "nombre_foco", "producto_foco")
-        c_kg    = sc("factor_kg_equivalente_por_unidad", "kg_unidad", "factor_kg", "kg_por_unidad", "kilos_unidad", "factor_meta_por_unidad", "kg")
+        c_sku = sc("sku_canon", "sku", "codigo", "codigo_sku")
+        c_foco = sc("foco", "nombre_foco", "producto_foco")
         if c_sku:
             for _, r in sdf.iterrows():
                 sk = normalize_sku(r[c_sku])
                 fo = _s(r[c_foco]) if c_foco else None
                 if sk and fo:
                     foco_skus[sk] = fo
-                # Guardar factor KG si está definido en la hoja
-                if sk and c_kg:
-                    factor = _f(r[c_kg])
-                    if factor and factor > 0:
-                        foco_sku_kg[sk] = float(factor)
-        print(f"  config FOCO_SKU: {len(foco_skus)} skus, {len(foco_sku_kg)} con factor KG explícito")
+        print(f"  config FOCO_SKU: {len(foco_skus)} skus")
 
     print(f"  config metas={len(metas)} focos={len(focos)}")
-    return metas, focos, foco_skus, foco_sku_kg
+    return metas, focos, foco_skus
 
 
 # ---------------------------------------------------------------------------
@@ -1764,95 +1757,73 @@ PLACES_TYPES_NEARBY = [
 ]
 BBOX_PLACES = {
     "NOR-ORIENTE": [
-        {"name": "Las Condes",   "lat": -33.408, "lng": -70.565, "r": 4500},
-        {"name": "Vitacura",     "lat": -33.385, "lng": -70.590, "r": 3500},
+        {"name": "Las Condes", "lat": -33.408, "lng": -70.565, "r": 4500},
+        {"name": "Vitacura", "lat": -33.385, "lng": -70.590, "r": 3500},
         {"name": "Lo Barnechea", "lat": -33.350, "lng": -70.515, "r": 5000},
-        {"name": "La Reina",     "lat": -33.445, "lng": -70.545, "r": 3000},
-        {"name": "Peñalolén",    "lat": -33.487, "lng": -70.535, "r": 3500},
-        {"name": "Ñuñoa",        "lat": -33.458, "lng": -70.600, "r": 2500},
-        {"name": "Providencia",  "lat": -33.432, "lng": -70.618, "r": 2500},
-        # Ampliación solicitada: Puente Alto y San Bernardo
-        {"name": "Puente Alto",  "lat": -33.610, "lng": -70.575, "r": 4000},
-        {"name": "San Bernardo", "lat": -33.600, "lng": -70.700, "r": 4000},
+        {"name": "La Reina", "lat": -33.445, "lng": -70.545, "r": 3000},
+        {"name": "Peñalolén", "lat": -33.487, "lng": -70.535, "r": 3500},
+        {"name": "Ñuñoa", "lat": -33.458, "lng": -70.600, "r": 2500},
+        {"name": "Providencia", "lat": -33.432, "lng": -70.618, "r": 2500},
     ],
     "NOR-PONIENTE": [
         {"name": "Santiago Centro", "lat": -33.450, "lng": -70.665, "r": 3000},
-        {"name": "Recoleta",        "lat": -33.405, "lng": -70.645, "r": 2500},
-        {"name": "Independencia",   "lat": -33.420, "lng": -70.665, "r": 2000},
-        {"name": "Quinta Normal",   "lat": -33.435, "lng": -70.693, "r": 2500},
-        {"name": "Renca",           "lat": -33.405, "lng": -70.715, "r": 3000},
-        {"name": "Pudahuel",        "lat": -33.440, "lng": -70.762, "r": 4000},
-        {"name": "Cerro Navia",     "lat": -33.430, "lng": -70.742, "r": 2500},
-        {"name": "Quilicura",       "lat": -33.360, "lng": -70.728, "r": 3500},
-        {"name": "Huechuraba",      "lat": -33.365, "lng": -70.650, "r": 3000},
-        {"name": "Providencia",     "lat": -33.432, "lng": -70.618, "r": 2500},
+        {"name": "Recoleta", "lat": -33.405, "lng": -70.645, "r": 2500},
+        {"name": "Independencia", "lat": -33.420, "lng": -70.665, "r": 2000},
+        {"name": "Quinta Normal", "lat": -33.435, "lng": -70.693, "r": 2500},
+        {"name": "Renca", "lat": -33.405, "lng": -70.715, "r": 3000},
+        {"name": "Pudahuel", "lat": -33.440, "lng": -70.762, "r": 4000},
+        {"name": "Cerro Navia", "lat": -33.430, "lng": -70.742, "r": 2500},
+        {"name": "Quilicura", "lat": -33.360, "lng": -70.728, "r": 3500},
+        {"name": "Huechuraba", "lat": -33.365, "lng": -70.650, "r": 3000},
+        {"name": "Providencia", "lat": -33.432, "lng": -70.618, "r": 2500},
     ],
     "ZONA SUR": [
-        {"name": "Maipú",        "lat": -33.513, "lng": -70.762, "r": 4500},
+        {"name": "Maipú", "lat": -33.513, "lng": -70.762, "r": 4500},
         {"name": "San Bernardo", "lat": -33.600, "lng": -70.700, "r": 4000},
-        {"name": "Puente Alto",  "lat": -33.610, "lng": -70.575, "r": 4000},
-        {"name": "La Florida",   "lat": -33.531, "lng": -70.567, "r": 3500},
-        {"name": "San Miguel",   "lat": -33.497, "lng": -70.652, "r": 2500},
-        {"name": "La Cisterna",  "lat": -33.530, "lng": -70.664, "r": 2000},
-        {"name": "El Bosque",    "lat": -33.562, "lng": -70.675, "r": 2500},
-        {"name": "Macul",        "lat": -33.497, "lng": -70.595, "r": 2500},
+        {"name": "Puente Alto", "lat": -33.610, "lng": -70.575, "r": 4000},
+        {"name": "La Florida", "lat": -33.531, "lng": -70.567, "r": 3500},
+        {"name": "San Miguel", "lat": -33.497, "lng": -70.652, "r": 2500},
+        {"name": "La Cisterna", "lat": -33.530, "lng": -70.664, "r": 2000},
+        {"name": "El Bosque", "lat": -33.562, "lng": -70.675, "r": 2500},
+        {"name": "Macul", "lat": -33.497, "lng": -70.595, "r": 2500},
     ],
 }
 MAX_PROSPECTOS_POR_ZONA = int(os.environ.get("KF_MAX_PROSPECTOS_ZONA", "5000") or 5000)
 
 
 def _product_place_keywords(focos: List[dict], focos_skus: Optional[List[str]] = None) -> List[str]:
-    """
-    Keywords de búsqueda alineados con los SKU foco reales del archivo de configuración.
-    La lógica es: ¿qué tipo de local compra este producto? → buscar ese local.
-    Prioriza los nombres de producto del FOCO_SKU sobre tipos genéricos.
-    """
+    """Keywords de Places a partir de productos foco (portable a otras empresas)."""
     raw = []
     for f in focos or []:
-        for k in ("producto_nombre", "foco", "places_keyword", "nombre"):
+        for k in ("places_keyword", "foco", "sku_canon", "nombre"):
             v = f.get(k)
             if v:
                 raw.append(str(v))
     for s in focos_skus or []:
         raw.append(str(s))
     text = " ".join(raw).upper()
-
-    # Mapeo directo: qué producto → qué tipo de cliente lo compra
-    # Esto define QUÉ locales visitar, no qué poner en el mapa
+    # tokens de negocio foodservice relevantes
     mapping = [
-        # Pollo → restaurantes, pollerías, casino, delivery
-        (r"POLLO|PECHUGA|ALITA|TRUTRO|NUGGET|MUSLO",
-         ["pollo a la plancha restaurant", "pollería", "pollo frito restaurant",
-          "casino empresa", "restaurant comida casera"]),
-        # Salsas Hanks → burger, sandwich, fast food, hotdog
-        (r"HANKS|KETCHUP|SALSA BBQ|SALSA CHEDDAR|MAYO|HONEY MUSTARD|BACON JAM",
-         ["hamburguesa restaurant", "sandwich shop", "comida rapida",
-          "hot dog", "completo fuente de soda"]),
-        # Papas fritas → fast food, burger
-        (r"PAPA|SURECRISP|ONEFRY|FAST FOOD",
-         ["papas fritas restaurant", "hamburguesa fast food", "snack bar"]),
-        # Aceites → cualquier restaurante con frituras
-        (r"ACEITE|PROFRY|FRY",
-         ["restaurant frituras", "fuente de soda", "comida rapida"]),
-        # Carnes → restaurantes, parrillas, casino
-        (r"HAMBUR|BURGER|VACUNO|LOMO|ENTRAÑA|COSTILLA|TOCINO",
-         ["parrilla restaurant", "hamburguesa artesanal", "steakhouse"]),
-        # Quesos / apanados → pizzerías, sandwicherías
-        (r"QUESO|MOZZA|CHEDDAR|APANADO|BASTÓN",
-         ["pizzeria", "sandwich artesanal", "restaurant italiano"]),
+        (r"POLLO|PECHUGA|ALITAS|NUGGET", "pollo restaurant"),
+        (r"HAMBUR|BURGER|VACUNO|CARNE|ENTRA", "hamburguesa restaurant"),
+        (r"PAPA|FRITA|SURECRISP|ONEFRY", "papas fritas restaurant"),
+        (r"SALSA|KETCHUP|HANKS|MAYO", "sandwich salsa"),
+        (r"PAN|BAGEL|HAWAII", "bakery sandwich"),
+        (r"QUESO|MOZZA|CHEDDAR", "pizzeria restaurant"),
+        (r"ACEITE|FRY", "restaurant"),
     ]
-
-    kws_out = []
-    for pat, kws in mapping:
+    kws = []
+    for pat, kw in mapping:
         if re.search(pat, text):
-            for kw in kws:
-                if kw not in kws_out:
-                    kws_out.append(kw)
-
-    if not kws_out:
-        kws_out = ["restaurant", "comida rapida", "casino empresa"]
-
-    return kws_out
+            kws.append(kw)
+    if not kws:
+        kws = ["restaurant", "comida rapida"]
+    # únicos preservando orden
+    out = []
+    for k in kws:
+        if k not in out:
+            out.append(k)
+    return out
 
 
 def run_places(
@@ -2552,7 +2523,7 @@ def main():
     except Exception as e:
         raise SystemExit(f"No se pudo cargar stock: {e}") from e
     precios = load_precios(p_precios)
-    metas_cfg, focos_cfg_mes, foco_sku_map, foco_sku_kg_config = load_config_mensual(p_config)
+    metas_cfg, focos_cfg_mes, foco_sku_map = load_config_mensual(p_config)
 
     print(f"  ventas Excel filas={len(ventas_excel)} | {ventas_excel['fecha_d'].min()} → {ventas_excel['fecha_d'].max()}")
     print(f"  maestra clientes={len(maestra)} | zonas={maestra['zona'].value_counts().to_dict()}")
@@ -2665,72 +2636,22 @@ def main():
     for _, mr in maestra.iterrows():
         zona_por_ck[str(mr.get("cliente_key"))] = mr.get("zona") or "OTROS"
 
-    # Mapa SKU → kg por unidad de venta
-    # Prioridad: FOCO_SKU config > stock (kg/cajas) > ventas (kilos_neto/cantidad) > precios
+    # Mapa SKU → kg por unidad de venta (desde lista de precios)
     kg_por_sku = {}
-
-    # Fuente 0: archivo de metas hoja FOCO_SKU (columna KG_UNIDAD)
-    for sk, factor in foco_sku_kg_config.items():
-        kg_por_sku[sk] = factor
-
-    # Fuente 1: stock con cajas (formato detalle)
-    if stock is not None and not stock.empty and 'stock_cajas' in stock.columns:
-        for _, sr in stock.iterrows():
-            sk = str(sr.get('sku_canon') or '').strip()
-            if not sk or sk in kg_por_sku:
-                continue
-            s_kg  = _f(sr.get('stock_kg'))
-            s_caj = _f(sr.get('stock_cajas'))
-            if s_kg and s_kg > 0 and s_caj and s_caj > 0:
-                factor = s_kg / s_caj
-                if 0.05 <= factor <= 200:
-                    kg_por_sku[sk] = round(factor, 3)
-
-    # Fuente 2: ventas — kilos_neto / cantidad por SKU (el dato más real)
-    # Si la tabla de ventas tiene kilos_neto, es la fuente más confiable
-    _vcols = {_norm_col(c): c for c in ventas.columns} if not ventas.empty else {}
-    def _find_vcol(*cands):
-        for c in cands:
-            hit = _vcols.get(_norm_col(c))
-            if hit: return hit
-        return None
-    col_kg_v   = _find_vcol('kilos_neto', 'kg_neto', 'kg', 'kilos') if not ventas.empty else None
-    col_cant_v = _find_vcol('cantidad', 'cantidad_unidad', 'qty') if not ventas.empty else None
-    if col_kg_v and col_cant_v and not ventas.empty:
-        v_kg = ventas[['sku_canon', col_kg_v, col_cant_v]].copy()
-        v_kg.columns = ['sku', 'kg', 'cant']
-        v_kg['kg']   = v_kg['kg'].apply(_f).fillna(0).astype(float)
-        v_kg['cant'] = v_kg['cant'].apply(_f).fillna(0).astype(float)
-        v_kg = v_kg[(v_kg['kg'] > 0) & (v_kg['cant'] > 0)]
-        for sk, g in v_kg.groupby('sku'):
-            sk = str(sk).strip()
-            if not sk or sk in kg_por_sku:
-                continue
-            tot_kg   = g['kg'].sum()
-            tot_cant = g['cant'].sum()
-            if tot_kg > 0 and tot_cant > 0:
-                factor = tot_kg / tot_cant
-                if 0.05 <= factor <= 200:
-                    kg_por_sku[sk] = round(factor, 3)
-
-    # Fuente 3: lista de precios (fallback)
     if precios is not None and not precios.empty:
         for _, pr in precios.iterrows():
-            sk = str(pr.get('sku_canon') or '').strip()
-            if not sk or sk in kg_por_sku:
+            sk = str(pr.get("sku_canon") or "").strip()
+            if not sk:
                 continue
-            kg_u  = _f(pr.get('kg_unidad'))
-            kg_c  = _f(pr.get('kg_caja'))
-            u_caja = _f(pr.get('unidades_caja')) or 0
+            kg_u = _f(pr.get("kg_unidad"))
+            kg_c = _f(pr.get("kg_caja"))
+            u_caja = _f(pr.get("unidades_caja")) or 0
             if kg_u and kg_u > 0:
                 kg_por_sku[sk] = float(kg_u)
             elif kg_c and kg_c > 0 and u_caja > 0:
-                kg_por_sku[sk] = round(float(kg_c) / float(u_caja), 3)
+                kg_por_sku[sk] = float(kg_c) / float(u_caja)
             elif kg_c and kg_c > 0:
-                kg_por_sku[sk] = float(kg_c)
-
-    n0 = len(foco_sku_kg_config)
-    print(f'  kg_por_sku: {len(kg_por_sku)} SKUs (config={n0}, stock+ventas+precios={len(kg_por_sku)-n0})')
+                kg_por_sku[sk] = float(kg_c)  # cantidad ya en cajas
 
     def _skus_for_foco(foco_name: str):
         fn = _norm_col(foco_name)
