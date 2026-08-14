@@ -301,13 +301,15 @@ export default function Cartera({ session }) {
     else if (filtro === 'ReponerHoy') rows = rows.filter(c => clienteTocaReponer(c))
     else if (filtro !== 'Todos') rows = rows.filter(c => c.estado_fuga === filtro)
     if (q) {
-      const qq = q.toLowerCase()
-      rows = rows.filter(
-        c =>
-          (c.nombre_cliente || '').toLowerCase().includes(qq) ||
-          (c.comuna || '').toLowerCase().includes(qq) ||
-          (c.cliente_key || '').toLowerCase().includes(qq)
-      )
+      const qq = q.toLowerCase().trim()
+      const tokens = qq.split(/\s+/).filter(Boolean)
+      rows = rows.filter(c => {
+        const hay = [
+          c.nombre_cliente, c.comuna, c.cliente_key, c.direccion,
+          c.razon_social, c.segmento, c.oferta_real,
+        ].map(x => String(x || '').toLowerCase()).join(' ')
+        return tokens.every(t => hay.includes(t))
+      })
     }
     return [...rows].sort((a, b) => {
       const va = Number(a.venta_mtd) || 0

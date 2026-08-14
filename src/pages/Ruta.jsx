@@ -278,30 +278,31 @@ export default function Ruta({ session }) {
       const zonaNom = eje?.zonaVista || eje?.zona || ''
       let pros = null
       let ep = null
-      // 1) por ejecutivo_id
-      {
-        const r1 = await supabase
-          .from('prospectos')
-          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
-          .eq('ejecutivo_id', uid)
-          .limit(1500)
-        ep = r1.error
-        pros = r1.data
-      }
-      // 2) si 0 filas, por zona (Places guarda zona; RLS a veces bloquea eid ajeno)
-      if ((!pros || !pros.length) && zonaNom) {
+      // 1) por zona (preferido: ~3.5k por zona de Places) — luego por eid
+      if (zonaNom) {
         const r2 = await supabase
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .eq('zona', zonaNom)
-          .limit(1500)
+          .limit(4000)
         if (!r2.error && r2.data?.length) {
           pros = r2.data
           ep = null
           console.log('prospectos por zona', zonaNom, pros.length)
         } else if (r2.error) {
           console.warn('prospectos zona', r2.error.message)
+          ep = r2.error
         }
+      }
+      // 2) fallback por ejecutivo_id
+      if ((!pros || !pros.length) && uid) {
+        const r1 = await supabase
+          .from('prospectos')
+          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
+          .eq('ejecutivo_id', uid)
+          .limit(4000)
+        ep = r1.error
+        pros = r1.data
       }
       if (ep) console.warn('prospectos', ep.message)
       let nPros = 0, nSkipGeo = 0
@@ -463,40 +464,40 @@ export default function Ruta({ session }) {
     const maps = window.google.maps
     const pos = { lat: Number(myPos.lat), lng: Number(myPos.lng) }
     if (isNaN(pos.lat) || isNaN(pos.lng)) return
-    // No dibujar si accuracy sigue siendo mala
-    if (myPos.accuracy != null && myPos.accuracy > 1200) return
-
+    // Dibujar siempre si hay coords (aunque accuracy sea media); el círculo refleja la precisión
     if (!meMarkerRef.current) {
       meMarkerRef.current = new maps.Marker({
         position: pos,
         map: mapInstance.current,
-        zIndex: 999,
+        zIndex: 9999,
         title: 'Tu ubicación',
         icon: {
           path: maps.SymbolPath.CIRCLE,
-          scale: 9,
-          fillColor: '#c2410c',
+          scale: 12,
+          fillColor: '#2563eb',
           fillOpacity: 1,
           strokeColor: '#ffffff',
-          strokeWeight: 3,
+          strokeWeight: 4,
         },
       })
       meAccRef.current = new maps.Circle({
         map: mapInstance.current,
         center: pos,
-        radius: Math.min(Number(myPos.accuracy) || 40, 80),
-        fillColor: '#fb923c',
-        fillOpacity: 0.15,
-        strokeColor: '#c2410c',
-        strokeOpacity: 0.4,
-        strokeWeight: 1,
-        zIndex: 998,
+        radius: Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200),
+        fillColor: '#3b82f6',
+        fillOpacity: 0.18,
+        strokeColor: '#2563eb',
+        strokeOpacity: 0.5,
+        strokeWeight: 2,
+        zIndex: 9998,
       })
     } else {
       meMarkerRef.current.setPosition(pos)
+      meMarkerRef.current.setMap(mapInstance.current)
       if (meAccRef.current) {
         meAccRef.current.setCenter(pos)
-        meAccRef.current.setRadius(Math.min(Number(myPos.accuracy) || 40, 80))
+        meAccRef.current.setMap(mapInstance.current)
+        meAccRef.current.setRadius(Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200))
       }
     }
   }, [mapReady, myPos])

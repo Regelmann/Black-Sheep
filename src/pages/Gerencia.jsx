@@ -354,6 +354,137 @@ export default function Gerencia({ esGerente }) {
           )}
         </div>
 
+        {/* Tendencia ARRIBA — tocá un mes para ver detalle */}
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="card-label">Tendencia mensual · últimos 12</div>
+          <p className="muted" style={{ fontSize: 11, marginBottom: 8 }}>
+            Tocá una barra para ver el detalle del mes · Año visible: {money(anioVenta)}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 140, paddingTop: 8 }}>
+            {tendencia12.map(t => {
+              const val = Number(t.venta_clp) || 0
+              const hPx = Math.max(6, Math.round((val / maxMes) * 110))
+              const active = mesSel === t.mes
+              const isBest = val > 0 && val === maxMes
+              const minPos = Math.min(...tendencia12.map(x => Number(x.venta_clp) || 0).filter(v => v > 0))
+              const isWorst = val > 0 && val === minPos && tendencia12.filter(x => Number(x.venta_clp) > 0).length > 1
+              let barBg = '#93c5fd'
+              if (active) barBg = '#1e3a5f'
+              else if (isBest) barBg = '#16a34a'
+              else if (isWorst) barBg = '#ef4444'
+              else if (!val) barBg = '#e2e8f0'
+              return (
+                <button
+                  key={String(t.mes)}
+                  type="button"
+                  onClick={() => setMesSel(t.mes === mesSel ? null : t.mes)}
+                  style={{
+                    flex: 1,
+                    height: 140,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: 4,
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '100%',
+                      height: hPx,
+                      background: barBg,
+                      borderRadius: 4,
+                      minHeight: 4,
+                    }}
+                  />
+                  <span style={{ fontSize: 9, color: isBest ? '#16a34a' : isWorst ? '#ef4444' : '#64748b', fontWeight: isBest || isWorst ? 700 : 400 }}>
+                    {mesLabel(t.mes).split(' ')[0]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {!tendencia.length && (
+            <p className="muted" style={{ fontSize: 12 }}>Sin tendencia. Corré la bajada (tabla tendencia).</p>
+          )}
+        </div>
+
+        {/* Popup mes seleccionado */}
+        {mesSelRow && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 400,
+              background: 'rgba(28,25,23,0.45)',
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            }}
+            onClick={() => setMesSel(null)}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%', maxWidth: 480, margin: 0, borderRadius: '20px 20px 0 0',
+                maxHeight: '78vh', overflowY: 'auto', paddingBottom: 28,
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div>
+                  <div className="card-label">Detalle del mes</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>{mesLabel(mesSelRow.mes)}</div>
+                </div>
+                <button type="button" className="btn btn-soft" style={{ padding: '8px 14px' }} onClick={() => setMesSel(null)}>
+                  Cerrar
+                </button>
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#1e3a5f', marginBottom: 4 }}>
+                {money(mesSelRow.venta_clp)}
+              </div>
+              {mesSelRow.clientes_activos != null && (
+                <div className="muted" style={{ fontSize: 13, marginBottom: 14 }}>
+                  {mesSelRow.clientes_activos} clientes activos en el mes
+                </div>
+              )}
+              {/* Si es el mes actual (o el más reciente), mostrar peso por ejecutivo */}
+              {String(mesSelRow.mes).slice(0, 7) === String(tendencia12[tendencia12.length - 1]?.mes || '').slice(0, 7) ? (
+                <>
+                  <div className="card-label" style={{ marginTop: 8 }}>Contribución por ejecutivo / canal (mes en curso)</div>
+                  {participacion.slice(0, 12).map(p => (
+                    <div key={p.ejecutivo} style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ fontWeight: 700 }}>
+                          {p.ejecutivo}
+                          {p.terreno && <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>terreno</span>}
+                        </span>
+                        <span><b>{p.pct}%</b> · {money(p.venta)}</span>
+                      </div>
+                      <div className="progress-bg" style={{ marginTop: 4 }}>
+                        <div
+                          className="progress-fill"
+                          style={{
+                            width: Math.min(p.pct, 100) + '%',
+                            background: p.terreno ? '#2563eb' : esSinAsignar(p.ejecutivo) ? '#f59e0b' : '#94a3b8',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <p className="muted" style={{ fontSize: 11, marginTop: 12 }}>
+                    Histórico por ejecutivo mes a mes requiere tabla de ventas por canal por mes. Hoy el desglose está disponible para el mes en curso.
+                  </p>
+                </>
+              ) : (
+                <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+                  Total compañía del mes. El desglose por ejecutivo está disponible al seleccionar el mes en curso.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, margin: '12px 0', overflowX: 'auto' }}>
           {[
@@ -755,141 +886,104 @@ export default function Gerencia({ esGerente }) {
 
         {tab === 'productos' && (
           <div className="card">
-            <div className="card-label">Foco / productos prioritarios del mes</div>
-            <p className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-              Desde stock con foco o con venta del mes. Para ranking real por margen hace falta columna de
-              margen en gold.
-            </p>
+            <div className="card-label">Qué empujar este mes (foco + stock disponible)</div>
+            <div style={{
+              background: '#eff6ff', borderRadius: 12, padding: '10px 12px', marginBottom: 12,
+              fontSize: 12, color: '#1e3a5f', lineHeight: 1.45,
+            }}>
+              <b>Acción gerencial:</b> estos SKU son prioridad de venta. En ruta, ofrécelos a clientes con
+              ciclo de recompra vencido. Si cobertura &lt; 15 días → proteger stock. Si cobertura &gt; 60 días →
+              empujar con oferta comercial.
+            </div>
             {!topProd.length && (
               <p className="muted">Sin datos de productos. Corré bajada con stock/focos.</p>
             )}
-            {topProd.map((s, i) => (
-              <div
-                key={s.sku_canon || s.id || i}
-                style={{
-                  padding: '10px 0',
-                  borderBottom: '1px solid #f1f5f9',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>
-                    {s.producto_nombre || s.sku_canon || 'SKU'}
+            {topProd.map((s, i) => {
+              const cob = Number(s.cobertura_dias)
+              let accion = 'Ofrecer en visitas del día'
+              let tone = '#0f766e'
+              if (!isNaN(cob) && cob < 15) { accion = 'Proteger · stock bajo'; tone = '#b91c1c' }
+              else if (!isNaN(cob) && cob >= 60) { accion = 'Empujar con oferta'; tone = '#c2410c' }
+              else if (s.es_foco || /foco/i.test(String(s.decision || ''))) { accion = 'FOCO del mes · priorizar'; tone = '#1e3a5f' }
+              return (
+                <div
+                  key={s.sku_canon || s.id || i}
+                  style={{
+                    padding: '12px 0',
+                    borderBottom: '1px solid #f1f5f9',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>
+                        {s.producto_nombre || s.sku_canon || 'SKU'}
+                      </div>
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {s.sku_canon}
+                        {(s.es_foco || /foco/i.test(s.decision || '')) ? ' · FOCO' : ''}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 12, whiteSpace: 'nowrap' }}>
+                      <div>Stock <b>{fmtStock(s.stock_operativo ?? s.stock)}</b></div>
+                      <div className="muted">
+                        Cob. {s.cobertura_dias != null ? `${fmtStock(s.cobertura_dias)}d` : '—'}
+                      </div>
+                    </div>
                   </div>
-                  <div className="muted" style={{ fontSize: 11 }}>
-                    {s.sku_canon}
-                    {s.es_foco || /foco/i.test(s.decision || '') ? ' · FOCO' : ''}
+                  <div style={{
+                    marginTop: 6, fontSize: 11, fontWeight: 700, color: tone,
+                    background: '#f8fafc', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
+                  }}>
+                    → {accion}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: 12, whiteSpace: 'nowrap' }}>
-                  <div>
-                    Stock <b>{fmtStock(s.stock_operativo ?? s.stock)}</b>
-                  </div>
-                  <div className="muted">
-                    Cobertura {s.cobertura_dias != null ? `${fmtStock(s.cobertura_dias)}d` : '—'}
-                  </div>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
         {tab === 'stock' && (
           <div className="card">
-            <div className="card-label">Stock lento / sobrestock → candidatos a oferta</div>
-            <p className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-              Alta cobertura o decisión de exceso. Ideal para empujar en ruta y cartera.
-            </p>
+            <div className="card-label">Sobrestock → candidatos a oferta / liquidación</div>
+            <div style={{
+              background: '#fff7ed', borderRadius: 12, padding: '10px 12px', marginBottom: 12,
+              fontSize: 12, color: '#9a3412', lineHeight: 1.45,
+            }}>
+              <b>Qué hacer:</b> alta cobertura = capital parado. Pedí a cada ejecutivo que los ofrezca en
+              las próximas 5 visitas (descuento o combo). Priorizá los de cobertura &gt; 30 días.
+              Si decisión = “sin decisión”, definí oferta esta semana.
+            </div>
             {!stockLento.length && (
               <p className="muted">No hay candidatos claros a sobrestock. Si cobertura_dias viene vacía en stock, la bajada debe llenarla desde looker_04.</p>
             )}
-            {stockLento.map((s, i) => (
-              <div
-                key={s.sku_canon || i}
-                style={{
-                  padding: '10px 0',
-                  borderBottom: '1px solid #f1f5f9',
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: 13 }}>{s.producto_nombre || s.sku_canon}</div>
-                <div className="muted" style={{ fontSize: 12 }}>
-                  Stock {fmtStock(s.stock_operativo)} · Cobertura{' '}
-                  {s.cobertura_dias != null ? `${fmtStock(s.cobertura_dias)} días` : '—'} ·{' '}
-                  {s.decision || 'sin decisión'}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tendencia */}
-        <div className="card" style={{ marginTop: 12 }}>
-          <div className="card-label">Tendencia mensual</div>
-          <p className="muted" style={{ fontSize: 11, marginBottom: 8 }}>
-            Tocá un mes · Año visible: {money(anioVenta)}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 140, paddingTop: 8 }}>
-            {tendencia12.map(t => {
-              const val = Number(t.venta_clp) || 0
-              const hPx = Math.max(6, Math.round((val / maxMes) * 110))
-              const active = mesSel === t.mes
-              const isBest = val > 0 && val === maxMes
-              const minPos = Math.min(...tendencia12.map(x => Number(x.venta_clp) || 0).filter(v => v > 0))
-              const isWorst = val > 0 && val === minPos && tendencia12.filter(x => Number(x.venta_clp) > 0).length > 1
-              let barBg = '#93c5fd'
-              if (active) barBg = '#1e3a5f'
-              else if (isBest) barBg = '#16a34a'
-              else if (isWorst) barBg = '#ef4444'
-              else if (!val) barBg = '#e2e8f0'
+            {stockLento.map((s, i) => {
+              const cob = Number(s.cobertura_dias)
+              const urg = !isNaN(cob) && cob >= 60 ? 'URGENTE oferta' : !isNaN(cob) && cob >= 30 ? 'Oferta esta semana' : 'Empujar en ruta'
               return (
-                <button
-                  key={String(t.mes)}
-                  type="button"
-                  onClick={() => setMesSel(t.mes === mesSel ? null : t.mes)}
+                <div
+                  key={s.sku_canon || i}
                   style={{
-                    flex: 1,
-                    height: 140,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    gap: 4,
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
+                    padding: '12px 0',
+                    borderBottom: '1px solid #f1f5f9',
                   }}
                 >
-                  <div
-                    style={{
-                      width: '100%',
-                      height: hPx,
-                      background: barBg,
-                      borderRadius: 4,
-                      minHeight: 4,
-                    }}
-                  />
-                  <span style={{ fontSize: 9, color: isBest ? '#16a34a' : isWorst ? '#ef4444' : '#64748b', fontWeight: isBest || isWorst ? 700 : 400 }}>
-                    {mesLabel(t.mes).split(' ')[0]}
-                  </span>
-                </button>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{s.producto_nombre || s.sku_canon}</div>
+                  <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                    Stock {fmtStock(s.stock_operativo)} · Cobertura{' '}
+                    {s.cobertura_dias != null ? `${fmtStock(s.cobertura_dias)} días` : '—'} ·{' '}
+                    {s.decision || 'sin decisión'}
+                  </div>
+                  <div style={{
+                    marginTop: 6, fontSize: 11, fontWeight: 700, color: '#c2410c',
+                    background: '#fff7ed', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
+                  }}>
+                    → {urg}
+                  </div>
+                </div>
               )
             })}
           </div>
-          {!tendencia.length && (
-            <p className="muted" style={{ fontSize: 12 }}>Sin tendencia. Corré la bajada (tabla tendencia).</p>
-          )}
-          {mesSelRow && (
-            <div style={{ marginTop: 12, fontSize: 13 }}>
-              <b>{mesLabel(mesSelRow.mes)}</b>: {money(mesSelRow.venta_clp)}
-              {mesSelRow.clientes_activos != null && (
-                <span className="muted"> · {mesSelRow.clientes_activos} clientes activos</span>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )

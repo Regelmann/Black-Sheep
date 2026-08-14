@@ -97,7 +97,13 @@ export default function Hoy() {
   }).length
   const ventaRiesgo = cartera
     .filter(c => /RIESGO|ENFRI|FUGADO|DORMIDO/i.test(c.estado_fuga || ''))
-    .reduce((s, c) => s + (Number(c.venta_mensual) || Number(c.venta_historica) / 12 || 0), 0)
+    .reduce((s, c) => {
+      const men = Number(c.venta_mensual) || 0
+      if (men > 0) return s + men
+      // fallback suave: historico/12 solo si no hay mensual
+      const hist = Number(c.venta_historica) || 0
+      return s + (hist > 0 ? hist / 12 : 0)
+    }, 0)
 
   const prioridades = useMemo(() => {
     return [...cartera]
@@ -307,9 +313,17 @@ export default function Hoy() {
                 <button
                   type="button"
                   className="pa-primary"
+                  onClick={() => nav(`/visita/${encodeURIComponent(c.cliente_key || c.id || '')}`)}
+                >
+                  Abrir ficha
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-soft"
+                  style={{ padding: '8px 12px', fontSize: 12 }}
                   onClick={() => nav('/mapa')}
                 >
-                  Visitar
+                  Mapa
                 </button>
               </div>
             </div>

@@ -164,8 +164,8 @@ export default function Stock() {
         </div>
 
         <p style={{ fontSize: 11, color: '#78716c', marginBottom: 10 }}>
-          Cantidad = stock en <b>unidad de origen</b> (si el SKU es al peso → kg; salsas → lt; cajas → ud).
-          Cobertura = días de venta al ritmo actual. Fuente: looker_04_stock_decision_final.
+          Stock en kg (API Flint). Cobertura = días al ritmo actual.
+          <b> Acción:</b> crítico → no vender agresivo; sobrestock → ofrecer en visitas.
         </p>
 
         {lista.slice(0, 150).map(s => {
@@ -174,6 +174,11 @@ export default function Stock() {
           const cob = Number(s.cobertura_dias)
           const crit = val < 0 || (!isNaN(cob) && cob < 7)
           const alto = !isNaN(cob) && cob >= 30
+          let accion = null
+          if (val < 0 || /VENCID/i.test(s.estado_stock || '')) accion = { t: 'No ofrecer · revisar inventario', c: '#b91c1c' }
+          else if (crit) accion = { t: 'Proteger stock · solo clientes clave', c: '#b91c1c' }
+          else if (alto) accion = { t: 'Empujar en ruta con oferta', c: '#c2410c' }
+          else if (s.es_foco_mes) accion = { t: 'FOCO · priorizar en visitas', c: '#1e3a5f' }
           return (
             <div
               key={s.id || s.sku_canon}
@@ -183,48 +188,44 @@ export default function Stock() {
                 borderRadius: 14,
                 padding: 14,
                 marginBottom: 8,
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 12,
-                alignItems: 'flex-start',
               }}
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1917' }}>
-                  {s.producto_nombre || s.sku_canon}
-                </div>
-                <div style={{ fontSize: 12, color: '#78716c', marginTop: 3 }}>
-                  {s.sku_canon}
-                  {s.subfamilia ? ` · ${s.subfamilia}` : ''}
-                  {s.es_foco_mes ? ' · FOCO' : ''}
-                </div>
-                {s.estado_stock && (
-                  <div style={{ fontSize: 11, color: '#a8a29e', marginTop: 2 }}>{s.estado_stock}</div>
-                )}
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div
-                  style={{
-                    fontWeight: 800,
-                    fontSize: 16,
-                    color: val < 0 ? '#dc2626' : '#1c1917',
-                  }}
-                >
-                  {fmtNum(s.stock_operativo)} <span style={{ fontSize: 12, fontWeight: 600, color: '#78716c' }}>{u}</span>
-                </div>
-                {s.cobertura_dias != null && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      marginTop: 2,
-                      color: crit ? '#dc2626' : alto ? '#d97706' : '#3f6212',
-                    }}
-                  >
-                    {fmtNum(s.cobertura_dias)} días cob.
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1917' }}>
+                    {s.producto_nombre || s.sku_canon}
                   </div>
-                )}
+                  <div style={{ fontSize: 12, color: '#78716c', marginTop: 3 }}>
+                    {s.sku_canon}
+                    {s.subfamilia ? ` · ${s.subfamilia}` : ''}
+                    {s.es_foco_mes ? ' · FOCO' : ''}
+                  </div>
+                  {s.estado_stock && (
+                    <div style={{ fontSize: 11, color: '#a8a29e', marginTop: 2 }}>{s.estado_stock}</div>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: val < 0 ? '#dc2626' : '#1c1917' }}>
+                    {fmtNum(s.stock_operativo)} <span style={{ fontSize: 12, fontWeight: 600, color: '#78716c' }}>{u}</span>
+                  </div>
+                  {s.cobertura_dias != null && (
+                    <div style={{
+                      fontSize: 11, fontWeight: 600, marginTop: 2,
+                      color: crit ? '#dc2626' : alto ? '#d97706' : '#3f6212',
+                    }}>
+                      {fmtNum(s.cobertura_dias)} días cob.
+                    </div>
+                  )}
+                </div>
               </div>
+              {accion && (
+                <div style={{
+                  marginTop: 8, fontSize: 11, fontWeight: 700, color: accion.c,
+                  background: '#fafaf9', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
+                }}>
+                  → {accion.t}
+                </div>
+              )}
             </div>
           )
         })}
