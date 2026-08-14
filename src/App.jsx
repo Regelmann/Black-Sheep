@@ -11,7 +11,7 @@ import Gerencia from './pages/Gerencia.jsx'
 import { NavBar } from './components.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = '2026-08-14-ok'
+export const BUILD_STAMP = '2026-08-14-v333'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
