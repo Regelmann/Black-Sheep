@@ -193,6 +193,7 @@ export default function Cartera({ session }) {
   const [q, setQ] = useState('')
   const [notaDe, setNotaDe] = useState(null)
   const [pedidoCliente, setPedidoCliente] = useState(null)
+  const [exportOpen, setExportOpen] = useState(false)
   const [expandido, setExpandido] = useState(null)
   const [show, setShow] = useState(PAGE)
   const [skuOpen, setSkuOpen] = useState({})
@@ -494,18 +495,64 @@ export default function Cartera({ session }) {
           >
             Reponer hoy ({reponerHoy.length})
           </button>
-          <button className="filter-btn" onClick={() => exportarCSV('todo')}>
-            Excel todo
-          </button>
-          <button className="filter-btn" onClick={() => exportarCSV('bloqueados')}>
-            Excel bloqueados
-          </button>
-          <button className="filter-btn" onClick={() => exportarCSV('fugados')}>
-            Excel riesgo
-          </button>
-          <button className="filter-btn" onClick={() => exportarCSV('reponer')}>
-            Excel reponer
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className={'filter-btn' + (exportOpen ? ' active' : '')}
+              onClick={() => setExportOpen(o => !o)}
+            >
+              Exportar ▾
+            </button>
+            {exportOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: 6,
+                  background: '#fff',
+                  border: '1px solid #ebe6df',
+                  borderRadius: 14,
+                  boxShadow: '0 12px 32px rgba(26,22,20,0.12)',
+                  zIndex: 50,
+                  minWidth: 200,
+                  overflow: 'hidden',
+                }}
+              >
+                {[
+                  ['todo', 'Toda la cartera'],
+                  ['bloqueados', 'Bloqueados'],
+                  ['fugados', 'Riesgo / fugados'],
+                  ['reponer', 'A reponer'],
+                ].map(([modo, label]) => (
+                  <button
+                    key={modo}
+                    type="button"
+                    onClick={() => {
+                      exportarCSV(modo)
+                      setExportOpen(false)
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '12px 16px',
+                      border: 'none',
+                      borderBottom: '1px solid #f5f5f4',
+                      background: '#fff',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#1a1614',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{
@@ -853,10 +900,9 @@ export default function Cartera({ session }) {
                         </div>
                       )}
 
-                      {skus.length > 0 ? (
-                        skus.slice(0, 6).map((s, i) => {
-                          const p =
-                            s.promClp > 0 ? Math.round((s.clpMtd / s.promClp) * 100) : s.clpMtd > 0 ? 100 : 0
+                      {skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).length > 0 ? (
+                        skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).slice(0, 6).map((s, i) => {
+                          const p = pctRitmo(s.udMtd, s.promUd)
                           return (
                             <div
                               key={i}
@@ -884,8 +930,8 @@ export default function Cartera({ session }) {
                                   prom {Number(s.promUd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud · {money(s.promClp)}
                                   {s.falta > 0 ? ` · falta ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })}` : ''}
                                 </span>
-                                <span style={{ fontWeight: 700, color: p >= 100 ? '#15803d' : '#b45309', whiteSpace: 'nowrap' }}>
-                                  {p}%
+                                <span style={{ fontWeight: 700, color: p == null ? '#a8a29e' : p >= 100 ? '#3f6f4a' : p >= 50 ? '#b45309' : '#c2410c', whiteSpace: 'nowrap' }}>
+                                  {p != null ? p + '%' : '—'}
                                 </span>
                               </div>
                               {(s.estadoRecompra || s.cicloDias) && (
@@ -936,8 +982,29 @@ export default function Cartera({ session }) {
         )}
 
         {!lista.length && (
-          <div className="card center">
-            <p className="muted">Sin clientes en este filtro</p>
+          <div
+            style={{
+              background: '#fff',
+              border: '1px solid #ebe6df',
+              borderRadius: 16,
+              padding: '28px 20px',
+              textAlign: 'center',
+              marginTop: 8,
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1614', marginBottom: 6 }}>
+              Nada en este filtro
+            </div>
+            <p style={{ fontSize: 13, color: '#78716c', margin: '0 0 14px', lineHeight: 1.45 }}>
+              Probá &quot;Todos&quot; o buscá por nombre / comuna.
+            </p>
+            <button
+              type="button"
+              className="filter-btn active"
+              onClick={() => { setFiltro('Todos'); setShow(PAGE); setQ('') }}
+            >
+              Ver toda la cartera
+            </button>
           </div>
         )}
       </div>

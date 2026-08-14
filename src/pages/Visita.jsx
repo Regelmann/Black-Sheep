@@ -462,7 +462,7 @@ export default function Visita({ session }) {
           }}
           style={{
             width: '100%', padding: '16px', borderRadius: 999, border: 'none',
-            background: 'linear-gradient(180deg,#22c55e,#16a34a)', color: '#fff',
+            background: 'linear-gradient(180deg,#ea580c,#c2410c)', color: '#fff',
             fontWeight: 800, fontSize: 16, fontFamily: 'inherit', cursor: 'pointer',
             boxShadow: '0 8px 24px rgba(22,163,74,0.3)', marginBottom: 10,
           }}
@@ -843,7 +843,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
               fontSize: 16,
               fontFamily: 'inherit',
               cursor: puedeCerrar && !busy ? 'pointer' : 'not-allowed',
-              boxShadow: puedeCerrar ? '0 8px 24px rgba(37,99,235,0.3)' : 'none',
+              boxShadow: puedeCerrar ? '0 8px 24px rgba(194,65,12,0.35)' : 'none',
             }}
           >
             {busy ? 'Guardando…' : 'Completar visita'}

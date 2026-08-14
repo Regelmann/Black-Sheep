@@ -1,6 +1,28 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+const fieldStyle = {
+  width: '100%',
+  padding: '14px 16px',
+  borderRadius: 12,
+  border: '1.5px solid #e7e5e4',
+  fontSize: 15,
+  marginBottom: 14,
+  boxSizing: 'border-box',
+  fontFamily: 'inherit',
+  background: '#fafaf9',
+  color: '#1a1614',
+}
+
+const labelStyle = {
+  display: 'block',
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  color: '#78716c',
+  marginBottom: 6,
+}
+
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -16,9 +38,13 @@ export default function Login() {
       password,
     })
     setLoading(false)
-    if (err) setError(err.message === 'Invalid login credentials'
-      ? 'Correo o contraseña incorrectos'
-      : (err.message || 'No se pudo iniciar sesión'))
+    if (err) {
+      setError(
+        err.message === 'Invalid login credentials'
+          ? 'Correo o contraseña incorrectos'
+          : err.message || 'No se pudo iniciar sesión'
+      )
+    }
   }
 
   return (
@@ -30,7 +56,7 @@ export default function Login() {
         justifyContent: 'center',
         padding: '28px 20px',
         background: '#f3efe9',
-        fontFamily: "'DM Sans', system-ui, sans-serif",
+        fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif",
       }}
     >
       <div style={{ maxWidth: 400, width: '100%', margin: '0 auto' }}>
@@ -79,18 +105,7 @@ export default function Login() {
             boxShadow: '0 8px 32px rgba(26,22,20,0.06)',
           }}
         >
-          <label
-            style={{
-              display: 'block',
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              color: '#a8a29e',
-              marginBottom: 6,
-            }}
-          >
-            CORREO
-          </label>
+          <label style={labelStyle}>CORREO</label>
           <input
             type="email"
             autoComplete="username"
@@ -98,30 +113,9 @@ export default function Login() {
             onChange={e => setEmail(e.target.value)}
             placeholder="tu@keyfoods.cl"
             required
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              border: '1.5px solid #e7e5e4',
-              fontSize: 15,
-              marginBottom: 14,
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-              background: '#fafaf9',
-            }}
+            style={fieldStyle}
           />
-          <label
-            style={{
-              display: 'block',
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              color: '#a8a29e',
-              marginBottom: 6,
-            }}
-          >
-            CONTRASEÑA
-          </label>
+          <label style={labelStyle}>CONTRASEÑA</label>
           <input
             type="password"
             autoComplete="current-password"
@@ -129,17 +123,7 @@ export default function Login() {
             onChange={e => setPassword(e.target.value)}
             placeholder="••••••••"
             required
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              border: '1.5px solid #e7e5e4',
-              fontSize: 15,
-              marginBottom: 16,
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-              background: '#fafaf9',
-            }}
+            style={fieldStyle}
           />
           {error && (
             <div
@@ -176,7 +160,6 @@ export default function Login() {
             {loading ? 'Ingresando…' : 'Entrar'}
           </button>
         </form>
-
         <p
           style={{
             textAlign: 'center',
