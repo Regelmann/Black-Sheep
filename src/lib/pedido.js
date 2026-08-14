@@ -6,6 +6,17 @@
 import { supabase } from './supabase'
 import { parseSkuDetalle } from './coach'
 
+/** Quita pipes/basura de nombres de producto (sku_detalle crudo) */
+export function sanitizeNombreProducto(n) {
+  if (!n) return ''
+  let s = String(n).trim()
+  if (s.includes('|') || s.includes('｜')) s = s.split(/[|｜]/)[0].trim()
+  if (s.length < 3) return ''
+  if (/^\d+([.,]\d+)?\s*(kg|lt|l|un|ud|mm)?$/i.test(s)) return ''
+  if (/^(OK|HOY|MIX|null|undefined)$/i.test(s)) return ''
+  return s
+}
+
 export function buildWhatsAppPedido({ cliente, lineas, ejecutivoNombre }) {
   const nom = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
   const lines = (lineas || [])
@@ -176,9 +187,8 @@ export function sugerirLineasDesdeCliente(cliente, aReponer = []) {
   }
 
   const build = (s, motivo) => {
-    const nombre = String(s.nombre || '').trim()
-    if (!nombre || nombre.length < 2) return null
-    if (/^\d+([.,]\d+)?\s*(kg|lt|l|un|ud|mm)?$/i.test(nombre)) return null
+    const nombre = sanitizeNombreProducto(s.nombre)
+    if (!nombre) return null
     const precio = precioUnitarioDesdeSku(s)
     const cantidad = cantidadSugeridaDesdeSku(s)
     return {
