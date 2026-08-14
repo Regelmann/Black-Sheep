@@ -449,9 +449,21 @@ export default function Gerencia({ esGerente }) {
                       <div className="progress-fill" style={{ width: Math.min(p, 100) + '%', background: color }} />
                     </div>
                   </button>
-                  {g.accion && (
-                    <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{g.accion}</div>
-                  )}
+                  {g.accion && (() => {
+                    const partes = String(g.accion).split(' · ')
+                    const top = partes.find(p => p.startsWith('TOP:'))
+                    const resto = partes.filter(p => !p.startsWith('TOP:')).join(' · ')
+                    return (
+                      <div style={{ marginTop: 8 }}>
+                        {resto && <div className="muted" style={{ fontSize: 12 }}>{resto}</div>}
+                        {top && (
+                          <div style={{ fontSize: 11, color: '#78716c', marginTop: 4, lineHeight: 1.5 }}>
+                            <b>Top SKU:</b> {top.replace('TOP: ', '').split(' | ').slice(0, 3).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {open && (
                     <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 8 }}>
@@ -604,11 +616,21 @@ export default function Gerencia({ esGerente }) {
                       {money(venta)}
                     </div>
                   </button>
-                  {g.accion && (
-                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                      {g.accion}
-                    </div>
-                  )}
+                  {g.accion && (() => {
+                    const partes = String(g.accion).split(' · ')
+                    const top = partes.find(p => p.startsWith('TOP:'))
+                    const resto = partes.filter(p => !p.startsWith('TOP:')).join(' · ')
+                    return (
+                      <div style={{ marginTop: 6 }}>
+                        {resto && <div className="muted" style={{ fontSize: 12 }}>{resto}</div>}
+                        {top && (
+                          <div style={{ fontSize: 11, color: '#78716c', marginTop: 4, lineHeight: 1.5 }}>
+                            <b>Top SKU:</b> {top.replace('TOP: ', '').split(' | ').slice(0, 3).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {open && (
                     <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
                       <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>

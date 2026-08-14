@@ -11,7 +11,7 @@ import Gerencia from './pages/Gerencia.jsx'
 import { NavBar } from './components.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-LEAN-022'
+export const BUILD_STAMP = 'v-LEAN-023'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
@@ -164,6 +164,8 @@ export default function App() {
     if (!ej) return
     setZonaVista(zona)
     setEidVista(ej.id)
+    // Scroll al tope al cambiar zona para evitar que la UI quede rota
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   if (session === undefined) return <div className="spinner">Cargando...</div>
