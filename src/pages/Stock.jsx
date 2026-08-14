@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { DataAsOfBanner } from '../components.jsx'
 
 function fmtNum(n) {
   if (n == null || n === '') return '—'
@@ -18,13 +19,16 @@ export default function Stock() {
   const [loading, setLoading] = useState(true)
   const [stock, setStock] = useState([])
   const [q, setQ] = useState('')
-  const [filtro, setFiltro] = useState('Todos') // Todos | Foco | Critico | Alto
+  const [filtro, setFiltro] = useState('Todos')
+  const [dataAsOf, setDataAsOf] = useState(null)
 
   useEffect(() => {
     ;(async () => {
       setLoading(true)
       const { data } = await supabase.from('stock').select('*').order('es_foco_mes', { ascending: false })
       setStock(data || [])
+      const snap = (data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
+      if (snap) setDataAsOf(snap)
       setLoading(false)
     })()
   }, [])
@@ -97,6 +101,7 @@ export default function Stock() {
       </div>
 
       <div style={{ padding: 14 }}>
+        {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${stock.length} SKU`} />}
         <div
           style={{
             display: 'grid',

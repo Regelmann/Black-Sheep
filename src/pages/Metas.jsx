@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { money, pctNum } from '../components.jsx'
+import { money, pctNum, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 
 const limpiaEstado = e => String(e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')
@@ -83,6 +83,7 @@ export default function Metas({ session }) {
   const [clientesMes, setClientesMes] = useState([])
   const [showCli, setShowCli] = useState(true)
   const [expandido, setExpandido] = useState(null)
+  const [dataAsOf, setDataAsOf] = useState(null)
 
   useEffect(() => {
     ;(async () => {
@@ -108,6 +109,7 @@ export default function Metas({ session }) {
         m = m2?.[0] || null
       }
       setMeta(m)
+      if (m?.fecha_snapshot) setDataAsOf(m.fecha_snapshot)
 
       let f = []
       const { data: f1 } = await supabase.from('focos').select('*').eq('ejecutivo_id', uid)
@@ -181,6 +183,7 @@ export default function Metas({ session }) {
       </div>
 
       <div style={{ padding: 14 }}>
+        {dataAsOf && <DataAsOfBanner fecha={dataAsOf} />}
         {/* Meta principal */}
         <div
           style={{
