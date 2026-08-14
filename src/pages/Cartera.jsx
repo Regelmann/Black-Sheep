@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { parseSkuDetalle, pctRitmo } from '../lib/coach'
+import {
+  esActivoMes,
+  esNuevoMes,
+  cicloReposicion,
+  skusAReponer,
+  clienteTocaReponer,
+  computeConsistentMetrics,
+} from '../lib/metrics'
 
 function estadoInfo(estado) {
   const e = (estado || '').toLowerCase()
@@ -20,28 +29,6 @@ function estadoInfo(estado) {
 const limpiaEstado = e => (e || 's/estado').replace(/^\d+_?/, '').replace(/_/g, ' ')
 const limpiaOferta = t => (t ? String(t).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() : '')
 
-/** Activo del mes = tiene venta_mtd > 0 (mes en curso de la bajada) */
-function esActivoMes(c) {
-  return Number(c.venta_mtd) > 0
-}
-
-
-function esNuevoMes(c) {
-  // Preferir flag del ciclo (primera factura en el mes en curso)
-  if (c.es_nuevo_mes === true || c.es_nuevo_mes === 1 || c.es_nuevo_mes === 'true') return true
-  const mtd = Number(c.venta_mtd) || 0
-  if (mtd <= 0) return false
-  // Mes del snapshot (fecha_snapshot) — no hardcode julio/agosto
-  const snap = String(c.fecha_snapshot || '').slice(0, 7) // YYYY-MM
-  const u = String(c.ultima_compra || '').slice(0, 10)
-  if (!snap || !u.startsWith(snap)) return false
-  // Nuevo = no tenía historial previo relevante (hist ≈ solo este mes)
-  const hist = Number(c.venta_historica) || 0
-  if (hist > 0 && hist <= mtd * 1.15) return true
-  if (/NUNCA/i.test(c.estado_fuga || '')) return true
-  return false
-}
-
 
 function nombreCliente(c) {
   return (
@@ -56,74 +43,6 @@ function nombreCliente(c) {
 
 
 
-
-/**
- * Ciclo de reposición REAL:
- * - Preferir s.cicloDias = mediana de días entre compras (viene de la bajada V1.4)
- * - NO inventar frecuencia desde unidades/mes
- * - Si no hay ciclo pero hay última fecha → solo "sin compra hace Xd"
- */
-function cicloReposicion(s) {
-  let diasUltima = null
-  if (s.ultima) {
-    const d = new Date(String(s.ultima).slice(0, 10) + 'T12:00:00')
-    if (!isNaN(d.getTime())) {
-      diasUltima = Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000))
-    }
-  }
-  // Solo ciclo medido (mediana de gaps). Nunca inventar desde promUd.
-  const cicloEst =
-    s.cicloDias != null && !isNaN(Number(s.cicloDias)) && Number(s.cicloDias) > 0
-      ? Math.round(Number(s.cicloDias))
-      : null
-
-  let recompra = null
-  if (diasUltima != null && cicloEst != null) {
-    const delta = diasUltima - cicloEst
-    if (delta >= 3) recompra = { label: `Debería comprar ya · atrasa ${delta}d`, tone: 'bad' }
-    else if (delta >= 0) recompra = { label: 'Hoy debería reponer', tone: 'warn' }
-    else if (delta === -1) recompra = { label: 'Mañana debería reponer', tone: 'ok' }
-    else recompra = { label: `Próxima reposición en ~${Math.abs(delta)}d`, tone: 'muted' }
-  } else if (diasUltima != null) {
-    recompra = {
-      label: `Sin compra hace ${diasUltima}d` + (s.nCompras === 1 ? ' · 1 sola compra' : ''),
-      tone: diasUltima >= 21 ? 'bad' : 'warn',
-    }
-  } else if (s.promUd > 0) {
-    // Sin fechas: solo volumen, sin pretender ciclo
-    recompra = { label: `Volumen ~${Math.round(s.promUd)} ud/mes (sin historial de fechas)`, tone: 'muted' }
-  }
-  return { diasUltima, cicloEst, recompra }
-}
-
-
-/** SKUs que tocan reponer hoy (ciclo real vencido o por vencer) */
-function skusAReponer(c) {
-  try {
-    const skus = parseSkuDetalle(c?.sku_detalle)
-    const out = []
-    for (const s of skus) {
-      const { diasUltima, cicloEst, recompra } = cicloReposicion(s)
-      if (!recompra) continue
-      if (recompra.tone === 'bad' || recompra.tone === 'warn') {
-        out.push({
-          nombre: s.nombre,
-          diasUltima,
-          cicloEst,
-          label: recompra.label,
-          tone: recompra.tone,
-        })
-      }
-    }
-    return out
-  } catch {
-    return []
-  }
-}
-
-function clienteTocaReponer(c) {
-  return skusAReponer(c).length > 0
-}
 
 function mapsUrl(c) {
   if (c.lat != null && c.lng != null)
@@ -189,10 +108,17 @@ const PAGE = 40
 
 export default function Cartera({ session }) {
   const eje = useEjecutivo()
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [clientes, setClientes] = useState([])
   const [dataAsOf, setDataAsOf] = useState(null)
-  const [filtro, setFiltro] = useState('Todos')
+  const [filtro, setFiltro] = useState(() => {
+    const f = searchParams.get('filtro')
+    if (!f) return 'Todos'
+    if (f === 'Riesgo') return 'RIESGO'
+    if (f === 'Enfri') return 'ENFRI'
+    return f
+  })
   const [q, setQ] = useState('')
   const [notaDe, setNotaDe] = useState(null)
   const [pedidoCliente, setPedidoCliente] = useState(null)
@@ -299,6 +225,8 @@ export default function Cartera({ session }) {
     else if (filtro === 'ActivosMes') rows = rows.filter(c => Number(c.venta_mtd) > 0)
     else if (filtro === 'SinVentaMes') rows = rows.filter(c => !(Number(c.venta_mtd) > 0))
     else if (filtro === 'ReponerHoy') rows = rows.filter(c => clienteTocaReponer(c))
+    else if (filtro === 'RIESGO') rows = rows.filter(c => /RIESGO/i.test(c.estado_fuga || ''))
+    else if (filtro === 'ENFRI') rows = rows.filter(c => /ENFRI/i.test(c.estado_fuga || ''))
     else if (filtro !== 'Todos') rows = rows.filter(c => c.estado_fuga === filtro)
     if (q) {
       const qq = q.toLowerCase().trim()

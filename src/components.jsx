@@ -17,6 +17,7 @@ export function pctNum(x) {
 export function NavBar({ esGerente, onLogout }) {
   const nav = useNavigate()
   const loc = useLocation()
+  // Hoy | Mapa | Clientes | Stock | Gerencia (Metas integrada en Hoy)
   const items = [
     {
       to: '/',
@@ -32,11 +33,6 @@ export function NavBar({ esGerente, onLogout }) {
       to: '/cartera',
       label: 'Clientes',
       icon: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1a4 4 0 100-8 4 4 0 000 8z',
-    },
-    {
-      to: '/metas',
-      label: 'Metas',
-      icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
     },
     {
       to: '/stock',

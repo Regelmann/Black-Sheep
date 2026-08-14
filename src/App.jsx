@@ -6,13 +6,12 @@ import Hoy from './pages/Hoy.jsx'
 import Ruta from './pages/Ruta.jsx'
 import Visita from './pages/Visita.jsx'
 import Cartera from './pages/Cartera.jsx'
-import Metas from './pages/Metas.jsx'
 import Stock from './pages/Stock.jsx'
 import Gerencia from './pages/Gerencia.jsx'
 import { NavBar } from './components.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-UX-V18'
+export const BUILD_STAMP = 'v-UX-V19'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
@@ -203,7 +202,7 @@ export default function App() {
           <Route path="/mapa" element={<Ruta session={session} />} />
           <Route path="/visita/:id" element={<Visita session={session} />} />
           <Route path="/cartera" element={<Cartera session={session} />} />
-          <Route path="/metas" element={<Metas session={session} />} />
+          <Route path="/metas" element={<Navigate to="/" replace />} />
           <Route path="/stock" element={<Stock session={session} />} />
           <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
