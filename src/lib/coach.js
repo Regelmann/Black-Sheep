@@ -1,37 +1,123 @@
 /**
- * Coach del día + scoring de visitas (KeyFoods Field)
- * Ciclo real desde sku_detalle V1.4: nombre||prom||mtd||clp||clp_mtd||ultima||ciclo||n
+ * Coach KeyFoods Field — parse sku_detalle robusto + scoring
+ * Formatos soportados (ciclo):
+ *  A) nombre|prom|mtd|promClp|clpMtd|ultima|ciclo|n
+ *  B) nombre|prom|mtd|falta|promClp|clpMtd|ultima|ciclo|n|estado|dias
+ * Separadores de producto: salto de línea o  ·  o ||
  */
 
 import { haversineM } from './geo'
 
+function isGarbageName(n) {
+  if (!n || n.length < 3) return true
+  if (/^\d+([.,]\d+)?$/.test(n)) return true
+  if (/^\d+([.,]\d+)?\s*(kg|lt|l|un|ud|mm)$/i.test(n)) return true
+  if (/^(OK|HOY|ATRASA|MIX|null|undefined)$/i.test(n)) return true
+  return false
+}
+
+function num(v) {
+  if (v == null || v === '') return 0
+  const n = Number(String(v).replace(',', '.'))
+  return isNaN(n) ? 0 : n
+}
+
+function parseOneBlock(block) {
+  const p = String(block)
+    .split(/[|｜¦]/)
+    .map(s => s.trim())
+    .filter((s, i) => !(i > 0 && s === ''))
+  if (!p.length) return null
+
+  let row
+  if (p.length >= 10) {
+    row = {
+      nombre: p[0],
+      promUd: num(p[1]),
+      udMtd: num(p[2]),
+      falta: num(p[3]),
+      promClp: num(p[4]),
+      clpMtd: num(p[5]),
+      ultima: p[6] || null,
+      cicloDias: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
+      nCompras: p[8] !== '' && !isNaN(Number(p[8])) ? Number(p[8]) : null,
+      estadoRecompra: p[9] || null,
+    }
+  } else if (p.length >= 5) {
+    row = {
+      nombre: p[0],
+      promUd: num(p[1]),
+      udMtd: num(p[2]),
+      falta: Math.max(0, num(p[1]) - num(p[2])),
+      promClp: num(p[3]),
+      clpMtd: num(p[4]),
+      ultima: p[5] || null,
+      cicloDias: p[6] !== '' && !isNaN(Number(p[6])) ? Number(p[6]) : null,
+      nCompras: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
+      estadoRecompra: null,
+    }
+  } else {
+    return null
+  }
+
+  if (isGarbageName(row.nombre)) return null
+  // Sanear $ ridículos (campo corrido)
+  if (row.promClp > 0 && row.promClp < 500 && row.promUd > 10) {
+    // probablemente promClp no es plata
+    row.promClp = 0
+  }
+  return row
+}
+
 export function parseSkuDetalle(text) {
   if (!text) return []
-  return String(text)
-    .split(/\n/)
-    .map(l => l.trim())
-    .filter(Boolean)
-    .map(line => {
-      const p = line.split('||')
-      if (p.length >= 5) {
-        const cicloRaw = p[6]
-        return {
-          nombre: p[0],
-          promUd: Number(p[1]) || 0,
-          udMtd: Number(p[2]) || 0,
-          promClp: Number(p[3]) || 0,
-          clpMtd: Number(p[4]) || 0,
-          ultima: p[5] || null,
-          cicloDias:
-            cicloRaw !== undefined && cicloRaw !== '' && !isNaN(Number(cicloRaw))
-              ? Number(cicloRaw)
-              : null,
-          nCompras: p[7] !== undefined && p[7] !== '' ? Number(p[7]) || 0 : null,
-        }
+  const raw = String(text).trim()
+  if (!raw) return []
+
+  let blocks
+  if (raw.includes('\n')) {
+    blocks = raw.split(/\n+/).map(s => s.trim()).filter(Boolean)
+  } else if (raw.includes('||')) {
+    blocks = raw.split('||').map(s => s.trim()).filter(Boolean)
+  } else if (raw.includes(' · ')) {
+    // no partir tamaños 1X2,5 — los productos suelen venir por || o \n
+    blocks = [raw]
+  } else {
+    blocks = [raw]
+  }
+
+  // Si un "block" sigue sin pipes y es corto, descartar
+  const out = []
+  for (const b of blocks) {
+    if (!b.includes('|') && !b.includes('｜')) {
+      // puede ser solo nombre
+      if (!isGarbageName(b)) {
+        out.push({
+          nombre: b,
+          promUd: 0,
+          udMtd: 0,
+          falta: 0,
+          promClp: 0,
+          clpMtd: 0,
+          ultima: null,
+          cicloDias: null,
+          nCompras: null,
+        })
       }
-      return null
-    })
-    .filter(Boolean)
+      continue
+    }
+    const row = parseOneBlock(b)
+    if (row) out.push(row)
+  }
+  return out
+}
+
+export function pctRitmo(udMtd, promUd) {
+  if (!promUd || promUd <= 0) return null
+  const p = Math.round((udMtd / promUd) * 100)
+  if (p > 300) return 300 // cap visual
+  if (p < 0) return 0
+  return p
 }
 
 export function cicloReposicion(s) {
@@ -71,7 +157,6 @@ export function skusAReponer(c) {
   }
 }
 
-/** Score 0–100: ciclo vencido + valor + cercanía + riesgo */
 export function scoreVisita(item, myPos) {
   let score = 0
   const skus = skusAReponer(item)
@@ -101,7 +186,6 @@ export function scoreVisita(item, myPos) {
   return Math.min(100, score)
 }
 
-/** Nearest-neighbor order from origin (myPos or first stop) */
 export function ordenarPorDistancia(paradas, origin) {
   const withGeo = paradas.filter(p => p.lat != null && p.lng != null)
   const without = paradas.filter(p => p.lat == null || p.lng == null)
@@ -118,7 +202,6 @@ export function ordenarPorDistancia(paradas, origin) {
   const ordered = []
   let curLat = originLat
   let curLng = originLng
-
   while (remaining.length) {
     let bestI = 0
     let bestD = Infinity
@@ -135,54 +218,4 @@ export function ordenarPorDistancia(paradas, origin) {
     curLng = Number(next.lng)
   }
   return [...ordered, ...without]
-}
-
-export function buildCoach(territorio, visitas, myPos) {
-  const clientes = (territorio || []).filter(t => t._tipo === 'cliente')
-  const reponer = clientes
-    .map(c => {
-      const skus = skusAReponer(c)
-      if (!skus.length) return null
-      return {
-        ...c,
-        _skus: skus,
-        _score: scoreVisita({ ...c, _tipo: 'cliente' }, myPos),
-        _urgencia: skus.some(s => s.recompra?.tone === 'bad') ? 2 : 1,
-      }
-    })
-    .filter(Boolean)
-    .sort((a, b) => b._urgencia - a._urgencia || b._score - a._score)
-    .slice(0, 8)
-
-  const riesgo = clientes
-    .filter(c => {
-      const e = String(c.estado_fuga || '')
-      return e.includes('RIESGO') || e.includes('ENFRI') || e.includes('DORMIDO')
-    })
-    .map(c => ({
-      ...c,
-      _score: scoreVisita(c, myPos),
-      _dist:
-        myPos?.lat != null && c.lat != null
-          ? haversineM(myPos.lat, myPos.lng, c.lat, c.lng)
-          : null,
-    }))
-    .sort((a, b) => (a._dist ?? 9e9) - (b._dist ?? 9e9) || b._score - a._score)
-    .slice(0, 5)
-
-  const enRuta = new Set(
-    (visitas || []).map(v => String(v.punto_id_bq || v.cliente_key || '')).filter(Boolean)
-  )
-  const cercanos = clientes
-    .filter(c => c.lat != null && myPos?.lat != null && !enRuta.has(String(c.cliente_key)))
-    .map(c => ({
-      ...c,
-      _dist: haversineM(myPos.lat, myPos.lng, c.lat, c.lng),
-      _score: scoreVisita(c, myPos),
-    }))
-    .filter(c => c._dist != null && c._dist <= 2500)
-    .sort((a, b) => a._dist - b._dist)
-    .slice(0, 5)
-
-  return { reponer, riesgo, cercanos }
 }
