@@ -181,7 +181,7 @@ export default function Login() {
             letterSpacing: '0.06em',
           }}
         >
-          v-LEAN-023
+          v-LEAN-022
         </div>
       </div>
     </div>

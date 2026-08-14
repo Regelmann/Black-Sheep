@@ -227,7 +227,12 @@ export default function Cartera({ session }) {
   }
 
   useEffect(() => {
-    if (eje?.eidVista) cargar()
+    if (eje?.eidVista) {
+      setShow(PAGE)  // resetear paginación al cambiar zona
+      setFiltro('Todos')
+      setQ('')
+      cargar()
+    }
   }, [eje?.eidVista])
 
   async function bloquear(cliente, motivo) {
