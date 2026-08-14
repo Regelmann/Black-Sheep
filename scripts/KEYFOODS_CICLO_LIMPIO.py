@@ -832,7 +832,7 @@ def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], D
             return None
         c_sku   = sc("sku_canon", "sku", "codigo", "codigo_sku")
         c_foco  = sc("foco", "nombre_foco", "producto_foco")
-        c_kg    = sc("kg_unidad", "factor_kg", "kg_por_unidad", "kilos_unidad", "kg")
+        c_kg    = sc("factor_kg_equivalente_por_unidad", "kg_unidad", "factor_kg", "kg_por_unidad", "kilos_unidad", "factor_meta_por_unidad", "kg")
         if c_sku:
             for _, r in sdf.iterrows():
                 sk = normalize_sku(r[c_sku])
@@ -2666,8 +2666,14 @@ def main():
 
     # Fuente 2: ventas — kilos_neto / cantidad por SKU (el dato más real)
     # Si la tabla de ventas tiene kilos_neto, es la fuente más confiable
-    col_kg_v   = pick_col(ventas, 'kilos_neto', 'kg_neto', 'kg', 'kilos') if not ventas.empty else None
-    col_cant_v = pick_col(ventas, 'cantidad', 'cantidad_unidad', 'qty') if not ventas.empty else None
+    _vcols = {_norm_col(c): c for c in ventas.columns} if not ventas.empty else {}
+    def _find_vcol(*cands):
+        for c in cands:
+            hit = _vcols.get(_norm_col(c))
+            if hit: return hit
+        return None
+    col_kg_v   = _find_vcol('kilos_neto', 'kg_neto', 'kg', 'kilos') if not ventas.empty else None
+    col_cant_v = _find_vcol('cantidad', 'cantidad_unidad', 'qty') if not ventas.empty else None
     if col_kg_v and col_cant_v and not ventas.empty:
         v_kg = ventas[['sku_canon', col_kg_v, col_cant_v]].copy()
         v_kg.columns = ['sku', 'kg', 'cant']
