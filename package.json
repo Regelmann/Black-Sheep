@@ -1,7 +1,7 @@
 {
   "name": "keyfoods-field",
   "private": true,
-  "version": "0.3.1-precio",
+  "version": "0.3.2",
   "type": "module",
   "engines": {
     "node": "24.x"

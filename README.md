@@ -1,65 +1,97 @@
 # KeyFoods Field
 
-App PWA de terreno (React + Vite + Supabase).  
-Versión limpia: **0.3.1-precio** · sello en UI: `2026-08-14-precio`
+App PWA de terreno para ejecutivos comerciales KeyFoods.
 
-## Qué incluye
-- Ruta (mapa + cerca de mí)
-- Cartera (reponer, mix, pedido con precio del cliente)
-- Visita (check-in, encuesta, pedido)
-- Metas, Stock, Gerencia
-- Colores marca (terracota), no el tema azul viejo
+- **Stack:** React 18 + Vite + Supabase + Google Maps
+- **Deploy:** Vercel
+- **Datos:** BigQuery (gold) → script de bajada → Supabase
 
-## Variables (`.env`)
+## Pantallas
+
+| Ruta | Descripción |
+|------|-------------|
+| `/` | Ruta del día + mapa (clientes / prospectos / paradas) |
+| `/visita/:id` | Detalle de visita, check-in, navegar |
+| `/cartera` | Cartera del ejecutivo (MTD, estados, oferta, SKUs) |
+| `/metas` | Meta mensual + focos del ejecutivo |
+| `/stock` | Stock operativo (unidad origen + cobertura días) |
+| `/gerencia` | Vista global (solo superadmin / gerente) |
+
+## Variables de entorno (Vercel / `.env`)
+
 ```
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_GOOGLE_MAPS_API_KEY=
+VITE_SUPABASE_URL=https://ihhnfouwviuyycltgafc.supabase.co
+VITE_SUPABASE_ANON_KEY=tu_anon_key
+VITE_GOOGLE_MAPS_API_KEY=tu_maps_key
 ```
 
-## Local
+Copiá `.env.example` → `.env` en local. En Vercel: Project → Settings → Environment Variables.
+
+**Nunca** subas la `service_role` de Supabase al front.
+
+## Desarrollo local
+
 ```bash
-cp .env.example .env
-npm install --legacy-peer-deps
+npm install
 npm run dev
 ```
 
-## GitHub nuevo + Vercel (desde cero)
+Build de producción:
 
-### A) GitHub
-1. github.com → **New repository** (vacío, sin README)
-2. Nombre sugerido: `keyfoods-field`
-3. Subí **todo** este proyecto a la **raíz** del repo (no dentro de una carpeta extra)
-
-Con GitHub Desktop / web “Upload files”, o:
 ```bash
-git init
-git add .
-git commit -m "KeyFoods Field 0.3.1-precio — repo limpio"
-git branch -M main
-git remote add origin https://github.com/TU_USUARIO/keyfoods-field.git
-git push -u origin main
+npm run build
+npm run preview
 ```
 
-### B) Vercel
-1. vercel.com → **Add New Project** → importá `keyfoods-field`
-2. Framework: **Vite**
-3. Node: **24.x** (Project Settings → General)
-4. Install: `npm install --legacy-peer-deps` (ya está en vercel.json)
-5. Environment Variables (Production + Preview):
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_GOOGLE_MAPS_API_KEY`
-6. Deploy
+## Deploy a Vercel (GitHub)
 
-### C) Verificar
-En el celular, abajo a la derecha debe verse: **`2026-08-14-precio`**  
-Visita = header **naranja**, no azul. Si no: el dominio viejo o caché.
+1. Subí este repo a GitHub (sin `node_modules`, sin `.env`).
+2. En Vercel → New Project → Import del repo.
+3. Framework: Vite (auto).
+4. Cargá las 3 variables `VITE_*`.
+5. Deploy. Si no ves cambios: Deployments → Promote to Production + hard refresh en el celular.
 
-Podés desconectar el proyecto Vercel anterior y apuntar el dominio `keyfoods-field.vercel.app` al proyecto nuevo (Settings → Domains).
+## Bajada de datos (Colab)
 
-## Supabase (SQL una vez)
-`scripts/SUPABASE_FIX_GERENCIA_Y_PEDIDOS.sql` en el SQL Editor.
+Script canónico: `scripts/KEYFOODS_FIELD_BAJADA.py` (v8.13b).
 
-## Datos
-Colab: `KEYFOODS_CICLO_LIMPIO` → Supabase. La app solo lee tablas.
+```python
+# Secrets Colab (Notebook access ON):
+#   SUPABASE_SERVICE_KEY
+%run ".../scripts/KEYFOODS_FIELD_BAJADA.py"
+```
+
+No toca: `notas_cliente`, `pedidos`, `checkins`, `auth`.
+
+## RLS prospectos (una sola vez en Supabase SQL)
+
+```sql
+-- scripts/SUPABASE_FIX_PROSPECTOS_RLS.sql
+```
+
+## Multi-ejecutivo
+
+- Cada usuario Auth de Supabase está en tabla `ejecutivos` (id, email, zona, nombre).
+- Superadmin ve selector de zona (NOR-ORIENTE / NOR-PONIENTE / ZONA SUR).
+- El resto solo ve su zona (`eidVista` / `zonaVista` vía contexto).
+
+## Estructura
+
+```
+src/
+  App.jsx              # auth, contexto ejecutivo, rutas
+  components.jsx       # NavBar, money, pctNum
+  index.css            # design system KeyFoods
+  main.jsx
+  lib/
+    supabase.js
+    geo.js
+    places.js
+    ui.js
+  pages/
+    Ruta.jsx  Cartera.jsx  Metas.jsx
+    Stock.jsx Gerencia.jsx Visita.jsx Login.jsx
+scripts/
+  KEYFOODS_FIELD_BAJADA.py
+  SUPABASE_FIX_PROSPECTOS_RLS.sql
+```
