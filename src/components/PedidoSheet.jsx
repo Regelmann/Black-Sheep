@@ -6,6 +6,7 @@ import {
   sugerirLineasDesdeCliente,
   enriquecerPreciosDesdeVentas,
   unidadDesdeNombre,
+  sanitizeNombreProducto,
 } from '../lib/pedido'
 
 const money = n => {
@@ -342,7 +343,7 @@ export default function PedidoSheet({
                       lineHeight: 1.25,
                     }}
                   >
-                    {l.nombre || l.sku}
+                    {sanitizeNombreProducto(l.nombre) || l.sku || l.nombre}
                   </div>
                   <div style={{ fontSize: 11, color: '#a8a29e', marginTop: 3 }}>
                     {l.motivo || 'línea'}
