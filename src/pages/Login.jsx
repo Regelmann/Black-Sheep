@@ -171,6 +171,18 @@ export default function Login() {
         >
           Acceso ejecutivos KeyFoods
         </p>
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: 12,
+            fontSize: 11,
+            fontWeight: 800,
+            color: '#c2410c',
+            letterSpacing: '0.06em',
+          }}
+        >
+          v-FORCE-0814
+        </div>
       </div>
     </div>
   )

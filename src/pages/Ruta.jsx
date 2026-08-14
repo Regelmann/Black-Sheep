@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEjecutivo } from '../App.jsx'
-import { watchPosition, getPositionPrecise, haversineM } from '../lib/geo'
+import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo'
 import { ordenarPorDistancia } from '../lib/coach'
 import { money } from '../components.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
@@ -175,18 +175,25 @@ export default function Ruta({ session }) {
   async function forzarGps() {
     if (gpsBusy) return
     setGpsBusy(true)
-    tip('Buscando GPS preciso… dejá el celular al aire libre')
+    tip('Buscando ubicación… aceptá el permiso si el celular lo pide')
     try {
-      const pos = await getPositionPrecise({ targetAccM: 50, maxWaitMs: 20000, enableHighAccuracy: true })
+      const pos = await getPositionPrecise({ targetAccM: 80, maxWaitMs: 28000 })
       if (pos?.lat != null && pos?.lng != null) {
-        setMyPos(pos)
-        tip(pos.accuracy != null && pos.accuracy > 100
-          ? `GPS ±${Math.round(pos.accuracy)} m (impreciso — salí al exterior)`
-          : `GPS OK ±${Math.round(pos.accuracy || 0)} m`)
+        setMyPos({ ...pos, pending: false })
+        const acc = pos.accuracy != null ? Math.round(pos.accuracy) : null
+        tip(acc != null && acc > 150
+          ? `Ubicación ±${acc} m (aproximada). Mejor al aire libre`
+          : `GPS OK${acc != null ? ` ±${acc} m` : ''}`)
+        // Centrar mapa en el usuario
+        try {
+          if (mapInstance.current && window.google?.maps) {
+            mapInstance.current.panTo({ lat: Number(pos.lat), lng: Number(pos.lng) })
+            const z = mapInstance.current.getZoom?.() || 12
+            if (z < 14) mapInstance.current.setZoom(15)
+          }
+        } catch (_) {}
       } else {
-        tip(pos?.error === 'denied'
-          ? 'Permiso de ubicación denegado'
-          : 'No se pudo fijar GPS. Activá ubicación precisa del celular.')
+        tip(geoErrorMessage(pos?.error || 'unavailable'))
       }
     } finally {
       setGpsBusy(false)
@@ -446,7 +453,7 @@ export default function Ruta({ session }) {
         // Mantener null coords pero guardar accuracy para el chip
         setMyPos(prev => prev?.lat != null ? prev : { lat: null, lng: null, accuracy: pos.accuracy, pending: true })
       }
-    }, { enableHighAccuracy: true, acceptAccM: 80, hardRejectM: 400, minMoveM: 6 })
+    }, { enableHighAccuracy: true, acceptAccM: 250, hardRejectM: 2500, minMoveM: 8 })
     return () => { try { stop() } catch {} }
   }, [])
 
@@ -457,7 +464,7 @@ export default function Ruta({ session }) {
     const pos = { lat: Number(myPos.lat), lng: Number(myPos.lng) }
     if (isNaN(pos.lat) || isNaN(pos.lng)) return
     // No dibujar si accuracy sigue siendo mala
-    if (myPos.accuracy != null && myPos.accuracy > 250) return
+    if (myPos.accuracy != null && myPos.accuracy > 1200) return
 
     if (!meMarkerRef.current) {
       meMarkerRef.current = new maps.Marker({
