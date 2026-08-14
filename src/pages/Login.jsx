@@ -16,51 +16,135 @@ export default function Login() {
       password,
     })
     setLoading(false)
-    if (err) setError(err.message || 'No se pudo iniciar sesión')
+    if (err) setError(err.message === 'Invalid login credentials'
+      ? 'Correo o contraseña incorrectos'
+      : (err.message || 'No se pudo iniciar sesión'))
   }
 
   return (
-    <div className="login-page">
-      <div className="login-brand">
-        <div className="logo-mark">KF</div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 6 }}>
-          KeyFoods Field
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15, fontWeight: 500 }}>
-          Tu día de terreno, ordenado
-        </p>
-      </div>
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        padding: '28px 20px',
+        background: '#f3efe9',
+        fontFamily: "'DM Sans', system-ui, sans-serif",
+      }}
+    >
+      <div style={{ maxWidth: 400, width: '100%', margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              margin: '0 auto 14px',
+              borderRadius: 14,
+              background: 'linear-gradient(145deg, #ea580c, #c2410c)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: 18,
+              boxShadow: '0 8px 24px rgba(194,65,12,0.28)',
+            }}
+          >
+            KF
+          </div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 24,
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              color: '#1a1614',
+            }}
+          >
+            KeyFoods Field
+          </h1>
+          <p style={{ margin: '8px 0 0', fontSize: 14, color: '#78716c', fontWeight: 500 }}>
+            Cartera, ruta y pedidos en terreno
+          </p>
+        </div>
 
-      <div className="login-card">
-        <form onSubmit={entrar}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>
+        <form
+          onSubmit={entrar}
+          style={{
+            background: '#fff',
+            borderRadius: 20,
+            padding: 22,
+            border: '1px solid #ebe6df',
+            boxShadow: '0 8px 32px rgba(26,22,20,0.06)',
+          }}
+        >
+          <label
+            style={{
+              display: 'block',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              color: '#a8a29e',
+              marginBottom: 6,
+            }}
+          >
             CORREO
           </label>
           <input
-            className="field"
             type="email"
             autoComplete="username"
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="tu@keyfoods.cl"
             required
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: 12,
+              border: '1.5px solid #e7e5e4',
+              fontSize: 15,
+              marginBottom: 14,
+              boxSizing: 'border-box',
+              fontFamily: 'inherit',
+              background: '#fafaf9',
+            }}
           />
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.45)', marginBottom: 6, marginTop: 4 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              color: '#a8a29e',
+              marginBottom: 6,
+            }}
+          >
             CONTRASEÑA
           </label>
           <input
-            className="field"
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="••••••••"
             required
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: 12,
+              border: '1.5px solid #e7e5e4',
+              fontSize: 15,
+              marginBottom: 16,
+              boxSizing: 'border-box',
+              fontFamily: 'inherit',
+              background: '#fafaf9',
+            }}
           />
           {error && (
             <div
               style={{
-                background: 'rgba(254,242,242,0.95)',
+                background: '#fef2f2',
                 color: '#b91c1c',
                 padding: '12px 14px',
                 borderRadius: 12,
@@ -73,19 +157,38 @@ export default function Login() {
             </div>
           )}
           <button
-            className="btn btn-primary"
             type="submit"
             disabled={loading}
-            style={{ width: '100%', padding: 16, fontSize: 16, marginTop: 4 }}
+            style={{
+              width: '100%',
+              padding: 15,
+              borderRadius: 12,
+              border: 'none',
+              background: loading ? '#d6d3d1' : 'linear-gradient(180deg,#ea580c,#c2410c)',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: 15,
+              cursor: loading ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+              boxShadow: loading ? 'none' : '0 4px 14px rgba(194,65,12,0.35)',
+            }}
           >
-            {loading ? 'Entrando…' : 'Entrar al terreno'}
+            {loading ? 'Ingresando…' : 'Entrar'}
           </button>
         </form>
-      </div>
 
-      <p style={{ textAlign: 'center', marginTop: 28, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-        KeyFoods · fuerza de ventas
-      </p>
+        <p
+          style={{
+            textAlign: 'center',
+            marginTop: 20,
+            fontSize: 12,
+            color: '#a8a29e',
+            fontWeight: 500,
+          }}
+        >
+          Acceso ejecutivos KeyFoods
+        </p>
+      </div>
     </div>
   )
 }

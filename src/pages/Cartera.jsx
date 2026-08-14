@@ -4,6 +4,7 @@ import PedidoSheet from '../components/PedidoSheet.jsx'
 import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
+import { parseSkuDetalle, pctRitmo } from '../lib/coach'
 
 function estadoInfo(estado) {
   const e = (estado || '').toLowerCase()
@@ -38,69 +39,6 @@ function esNuevoMes(c) {
   return false
 }
 
-
-function parseSkuDetalle(text) {
-  if (!text) return []
-  const raw = String(text).trim()
-  if (!raw) return []
-  const nl = String.fromCharCode(10)
-  const blocks = raw.includes('||')
-    ? raw.split('||').map(s => s.trim()).filter(Boolean)
-    : raw.split(nl).map(s => s.trim()).filter(Boolean)
-  return blocks.map(block => {
-    const p = block.split(/[|｜¦]/).map(s => s.trim())
-    if (p.length >= 10) {
-      return {
-        nombre: p[0],
-        promUd: Number(p[1]) || 0,
-        udMtd: Number(p[2]) || 0,
-        falta: Number(p[3]) || 0,
-        promClp: Number(p[4]) || 0,
-        clpMtd: Number(p[5]) || 0,
-        ultima: p[6] || null,
-        cicloDias: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
-        nCompras: p[8] !== '' && !isNaN(Number(p[8])) ? Number(p[8]) : null,
-        estadoRecompra: p[9] || null,
-        diasPara: p[10] !== undefined && p[10] !== '' && !isNaN(Number(p[10])) ? Number(p[10]) : null,
-      }
-    }
-    if (p.length >= 8) {
-      return {
-        nombre: p[0],
-        promUd: Number(p[1]) || 0,
-        udMtd: Number(p[2]) || 0,
-        falta: Math.max(0, (Number(p[1]) || 0) - (Number(p[2]) || 0)),
-        promClp: Number(p[3]) || 0,
-        clpMtd: Number(p[4]) || 0,
-        ultima: p[5] || null,
-        cicloDias: p[6] !== '' && !isNaN(Number(p[6])) ? Number(p[6]) : null,
-        nCompras: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
-        estadoRecompra: null,
-        diasPara: null,
-      }
-    }
-    if (p.length >= 5) {
-      return {
-        nombre: p[0],
-        promUd: Number(p[1]) || 0,
-        udMtd: Number(p[2]) || 0,
-        falta: Math.max(0, (Number(p[1]) || 0) - (Number(p[2]) || 0)),
-        promClp: Number(p[3]) || 0,
-        clpMtd: Number(p[4]) || 0,
-        ultima: p[5] || null,
-        cicloDias: p[6] !== '' && !isNaN(Number(p[6])) ? Number(p[6]) : null,
-        nCompras: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
-        estadoRecompra: null,
-        diasPara: null,
-      }
-    }
-    return {
-      nombre: p[0] || block,
-      promUd: 0, udMtd: 0, falta: 0, promClp: 0, clpMtd: 0,
-      ultima: null, cicloDias: null, nCompras: null, estadoRecompra: null, diasPara: null,
-    }
-  })
-}
 
 function nombreCliente(c) {
   return (
@@ -602,7 +540,7 @@ export default function Cartera({ session }) {
           const aReponer = skusAReponer(c)
           const mtd = Number(c.venta_mtd) || 0
           const prom = Number(c.venta_mensual) || 0
-          const pct = prom > 0 ? Math.round((mtd / prom) * 100) : null
+          const pct = pctRitmo(mtd, prom)
           const pctBar = pct != null ? Math.min(100, Math.max(0, pct)) : 0
           const ofertaTxt = limpiaOferta(c.oferta_real)
           const topReponer = aReponer.slice(0, 2)

@@ -330,9 +330,11 @@ export default function Visita({ session }) {
               }
             })
             if (cliente?.productos_top) {
-              String(cliente.productos_top).split(/[·|,;]/).slice(0, 4).forEach(s => {
+              String(cliente.productos_top).split(/\s*[·|]\s*/).slice(0, 6).forEach(s => {
                 const n = limpiaOferta(s)
-                if (n && !items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Compraba' })
+                if (!n || n.length < 3) return
+                if (/^\d+([.,]\d+)?\s*(kg|lt|l|un|ud)?$/i.test(n)) return
+                if (!items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Compraba' })
               })
             }
             if (!items.length) {
