@@ -23,7 +23,7 @@
   --navy: #1a1614;
   --navy-2: #2a2421;
 
-  --green: #15803d;
+  --green: #3f6f4a;
   --green-soft: #ecfdf3;
   --amber: #d97706;
   --amber-soft: #fffbeb;
@@ -31,7 +31,7 @@
   --red-soft: #fef2f2;
   --blue: #2563eb;
   --blue-soft: #eff6ff;
-  --wsp: #16a34a;
+  --wsp: #3d7a4a;
 
   --radius: 18px;
   --radius-sm: 12px;
@@ -238,12 +238,11 @@ a { color: inherit; }
 
 .filter-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding-bottom: 4px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
 }
 .filter-row::-webkit-scrollbar { display: none; }
 
@@ -269,9 +268,9 @@ a { color: inherit; }
 /* ── Estado grid (KPIs) ─────────────────────────────────── */
 .estado-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
 }
 .estado-card {
   background: var(--surface);
