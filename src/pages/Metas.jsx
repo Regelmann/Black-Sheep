@@ -248,61 +248,40 @@ export default function Metas({ session }) {
         )}
         {focos.map((f, i) => {
           const vendido = Number(f.vendido_unidad ?? f.vendido_unidad_mtd ?? 0)
-          const metaU   = Number(f.meta_unidad   ?? f.meta_unidad_mes   ?? 0)
-          // pct desde BQ si existe, sino calculado — BQ es más confiable
-          const pct = f.pct_avance != null && Number(f.pct_avance) > 0
-            ? pctNum(f.pct_avance)
-            : metaU > 0 ? Math.round((vendido / metaU) * 100) : 0
+          const metaU = Number(f.meta_unidad ?? f.meta_unidad_mes ?? 0)
+          const pct = metaU ? Math.round((vendido / metaU) * 100) : pctNum(f.pct_avance)
           const bar = pctBar(pct)
-          // Unidad: KG, LT, ud etc
-          const unidad = (f.unidad_meta || 'ud').toUpperCase()
-          // Ritmo legible
-          const ritmo = f.estado_ritmo
-            ? String(f.estado_ritmo).replace(/_/g, ' ').toUpperCase()
-            : null
-          const ritmoColor = ritmo === 'LOGRADO' ? '#16a34a'
-            : ritmo === 'EN RITMO' ? '#2563eb'
-            : ritmo === 'ACELERAR' ? '#f59e0b'
-            : '#ef4444'
           return (
             <div
               key={f.id || i}
               style={{
                 background: '#fff',
                 border: '1px solid #e7e0d8',
-                borderRadius: 16,
-                padding: '14px 16px',
-                marginBottom: 10,
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                borderRadius: 14,
+                padding: 14,
+                marginBottom: 8,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#1c1917' }}>
-                  {f.foco || f.nombre || 'Foco'}
-                </div>
-                <div style={{ fontWeight: 900, fontSize: 18, color: bar.background }}>{pct}%</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>{f.foco || f.nombre || 'Foco'}</div>
+                <div style={{ fontWeight: 800, color: bar.background }}>{pct}%</div>
               </div>
-              <div style={{ fontSize: 13, color: '#78716c', marginTop: 4 }}>
-                <b style={{ color: '#1c1917' }}>{vendido.toLocaleString('es-CL')}</b>
-                {' de '}
-                <b style={{ color: '#1c1917' }}>{metaU.toLocaleString('es-CL')} {unidad}</b>
+              <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+                {vendido.toLocaleString('es-CL')} de {metaU.toLocaleString('es-CL')}{' '}
+                {f.unidad_meta || 'ud'}
+                {f.estado_ritmo ? ` · ${String(f.estado_ritmo).replace(/_/g, ' ')}` : ''}
               </div>
               <div
                 style={{
-                  height: 8, background: '#f5f5f4', borderRadius: 999,
-                  marginTop: 10, overflow: 'hidden',
+                  height: 8,
+                  background: '#f5f5f4',
+                  borderRadius: 999,
+                  marginTop: 8,
+                  overflow: 'hidden',
                 }}
               >
-                <div style={{ height: '100%', width: bar.width, background: bar.background, borderRadius: 999 }} />
+                <div style={{ height: '100%', width: bar.width, background: bar.background }} />
               </div>
-              {ritmo && (
-                <div style={{
-                  marginTop: 8, fontSize: 11, fontWeight: 800,
-                  color: ritmoColor, letterSpacing: '0.06em',
-                }}>
-                  {ritmo}
-                </div>
-              )}
             </div>
           )
         })}

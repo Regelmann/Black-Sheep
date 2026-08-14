@@ -238,9 +238,16 @@ export default function Gerencia({ esGerente }) {
       .sort((a, b) => b.venta - a.venta)
   }, [gerencia, totalVenta])
 
-  const maxMes = useMemo(() => Math.max(1, ...tendencia.map(t => Number(t.venta_clp) || 0)), [tendencia])
-  const anioVenta = useMemo(() => tendencia.reduce((s, t) => s + (Number(t.venta_clp) || 0), 0), [tendencia])
-  const mesSelRow = tendencia.find(x => x.mes === mesSel)
+  // Solo últimos 12 meses (evita “año” inflado con histórico largo)
+  const tendencia12 = useMemo(() => {
+    const rows = [...(tendencia || [])]
+    const key = (m) => String(m?.mes || m?.mes_texto || '')
+    rows.sort((a, b) => key(a).localeCompare(key(b)))
+    return rows.slice(-12)
+  }, [tendencia])
+  const maxMes = useMemo(() => Math.max(1, ...tendencia12.map(t => Number(t.venta_clp) || 0)), [tendencia12])
+  const anioVenta = useMemo(() => tendencia12.reduce((s, t) => s + (Number(t.venta_clp) || 0), 0), [tendencia12])
+  const mesSelRow = tendencia12.find(x => x.mes === mesSel) || tendencia.find(x => x.mes === mesSel)
 
 
   async function cargarSkuCliente(clienteKey) {
@@ -449,21 +456,26 @@ export default function Gerencia({ esGerente }) {
                       <div className="progress-fill" style={{ width: Math.min(p, 100) + '%', background: color }} />
                     </div>
                   </button>
-                  {g.accion && (() => {
-                    const partes = String(g.accion).split(' · ')
-                    const top = partes.find(p => p.startsWith('TOP:'))
-                    const resto = partes.filter(p => !p.startsWith('TOP:')).join(' · ')
-                    return (
-                      <div style={{ marginTop: 8 }}>
-                        {resto && <div className="muted" style={{ fontSize: 12 }}>{resto}</div>}
-                        {top && (
-                          <div style={{ fontSize: 11, color: '#78716c', marginTop: 4, lineHeight: 1.5 }}>
-                            <b>Top SKU:</b> {top.replace('TOP: ', '').split(' | ').slice(0, 3).join(' · ')}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
+                  {g.accion && (
+                    <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.35 }}>
+                      {(() => {
+                        const a = String(g.accion)
+                        const topIdx = a.indexOf('TOP:')
+                        const head = (topIdx >= 0 ? a.slice(0, topIdx) : a).trim()
+                        const top = topIdx >= 0 ? a.slice(topIdx + 4).trim() : ''
+                        return (
+                          <>
+                            <div>{head}</div>
+                            {open && top && (
+                              <div style={{ marginTop: 6, fontSize: 11 }}>
+                                <b>Top:</b> {top.split('|').slice(0, 5).map(s => s.trim()).filter(Boolean).join(' · ')}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  )}
                   {open && (
                     <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 8 }}>
@@ -616,21 +628,30 @@ export default function Gerencia({ esGerente }) {
                       {money(venta)}
                     </div>
                   </button>
-                  {g.accion && (() => {
-                    const partes = String(g.accion).split(' · ')
-                    const top = partes.find(p => p.startsWith('TOP:'))
-                    const resto = partes.filter(p => !p.startsWith('TOP:')).join(' · ')
-                    return (
-                      <div style={{ marginTop: 6 }}>
-                        {resto && <div className="muted" style={{ fontSize: 12 }}>{resto}</div>}
-                        {top && (
-                          <div style={{ fontSize: 11, color: '#78716c', marginTop: 4, lineHeight: 1.5 }}>
-                            <b>Top SKU:</b> {top.replace('TOP: ', '').split(' | ').slice(0, 3).join(' · ')}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
+                  {g.accion && (
+                    <div className="muted" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.35 }}>
+                      {(() => {
+                        const a = String(g.accion)
+                        const topIdx = a.indexOf('TOP:')
+                        const head = topIdx >= 0 ? a.slice(0, topIdx).trim() : a
+                        const top = topIdx >= 0 ? a.slice(topIdx + 4).trim() : ''
+                        return (
+                          <>
+                            <div>{head || 'Canal sin meta de terreno'}</div>
+                            {open && top && (
+                              <div style={{ marginTop: 6, fontSize: 11, color: '#78716c' }}>
+                                <b style={{ color: '#57534e' }}>Top mes:</b>{' '}
+                                {top.split('|').slice(0, 5).map(s => s.trim()).filter(Boolean).join(' · ')}
+                              </div>
+                            )}
+                            {!open && top && (
+                              <div style={{ marginTop: 2, fontSize: 11, opacity: 0.85 }}>Tocá para ver top productos</div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  )}
                   {open && (
                     <div style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
                       <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>
@@ -810,13 +831,13 @@ export default function Gerencia({ esGerente }) {
             Tocá un mes · Año visible: {money(anioVenta)}
           </p>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 140, paddingTop: 8 }}>
-            {tendencia.map(t => {
+            {tendencia12.map(t => {
               const val = Number(t.venta_clp) || 0
               const hPx = Math.max(6, Math.round((val / maxMes) * 110))
               const active = mesSel === t.mes
               const isBest = val > 0 && val === maxMes
-              const minPos = Math.min(...tendencia.map(x => Number(x.venta_clp) || 0).filter(v => v > 0))
-              const isWorst = val > 0 && val === minPos && tendencia.filter(x => Number(x.venta_clp) > 0).length > 1
+              const minPos = Math.min(...tendencia12.map(x => Number(x.venta_clp) || 0).filter(v => v > 0))
+              const isWorst = val > 0 && val === minPos && tendencia12.filter(x => Number(x.venta_clp) > 0).length > 1
               let barBg = '#93c5fd'
               if (active) barBg = '#1e3a5f'
               else if (isBest) barBg = '#16a34a'
