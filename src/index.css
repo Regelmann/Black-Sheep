@@ -81,7 +81,7 @@ img { max-width: 100%; display: block; }
 @layer components {
   /* Layout */
   .app-body {
-    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
     min-height: 100dvh;
   }
   .wrap { @apply px-4 pt-4 pb-6; }

@@ -2644,47 +2644,65 @@ def main():
         zona_por_ck[str(mr.get("cliente_key"))] = mr.get("zona") or "OTROS"
 
     # Mapa SKU → kg por unidad de venta
-    # Fuente 0: hoja FOCO_SKU del archivo de metas (máxima prioridad — vos la controlás)
-    # Fuente 1: stock (stock_kg / stock_cajas) — datos reales de stock
-    # Fuente 2: lista de precios (kg_unidad) — fallback
+    # Prioridad: FOCO_SKU config > stock (kg/cajas) > ventas (kilos_neto/cantidad) > precios
     kg_por_sku = {}
 
-    # Fuente 0: desde archivo de metas (columna KG_UNIDAD en hoja FOCO_SKU)
+    # Fuente 0: archivo de metas hoja FOCO_SKU (columna KG_UNIDAD)
     for sk, factor in foco_sku_kg_config.items():
         kg_por_sku[sk] = factor
-    if foco_sku_kg_config:
-        print(f"  kg_por_sku fuente 0 (metas/FOCO_SKU): {len(foco_sku_kg_config)} SKUs")
 
-    # Fuente 1: derivar factor desde stock (solo si no viene del archivo de metas)
-    if stock is not None and not stock.empty:
+    # Fuente 1: stock con cajas (formato detalle)
+    if stock is not None and not stock.empty and 'stock_cajas' in stock.columns:
         for _, sr in stock.iterrows():
-            sk = str(sr.get("sku_canon") or "").strip()
-            if not sk or sk in kg_por_sku:  # no pisar fuente 0
+            sk = str(sr.get('sku_canon') or '').strip()
+            if not sk or sk in kg_por_sku:
                 continue
-            s_kg   = _f(sr.get("stock_kg"))
-            s_caj  = _f(sr.get("stock_cajas")) or _f(sr.get("stock_total"))
+            s_kg  = _f(sr.get('stock_kg'))
+            s_caj = _f(sr.get('stock_cajas'))
             if s_kg and s_kg > 0 and s_caj and s_caj > 0:
                 factor = s_kg / s_caj
-                if 0.1 <= factor <= 100:
-                    kg_por_sku[sk] = factor
+                if 0.05 <= factor <= 200:
+                    kg_por_sku[sk] = round(factor, 3)
 
-    # Fuente 2: lista de precios como fallback
+    # Fuente 2: ventas — kilos_neto / cantidad por SKU (el dato más real)
+    # Si la tabla de ventas tiene kilos_neto, es la fuente más confiable
+    col_kg_v   = pick_col(ventas, 'kilos_neto', 'kg_neto', 'kg', 'kilos') if not ventas.empty else None
+    col_cant_v = pick_col(ventas, 'cantidad', 'cantidad_unidad', 'qty') if not ventas.empty else None
+    if col_kg_v and col_cant_v and not ventas.empty:
+        v_kg = ventas[['sku_canon', col_kg_v, col_cant_v]].copy()
+        v_kg.columns = ['sku', 'kg', 'cant']
+        v_kg['kg']   = v_kg['kg'].apply(_f).fillna(0).astype(float)
+        v_kg['cant'] = v_kg['cant'].apply(_f).fillna(0).astype(float)
+        v_kg = v_kg[(v_kg['kg'] > 0) & (v_kg['cant'] > 0)]
+        for sk, g in v_kg.groupby('sku'):
+            sk = str(sk).strip()
+            if not sk or sk in kg_por_sku:
+                continue
+            tot_kg   = g['kg'].sum()
+            tot_cant = g['cant'].sum()
+            if tot_kg > 0 and tot_cant > 0:
+                factor = tot_kg / tot_cant
+                if 0.05 <= factor <= 200:
+                    kg_por_sku[sk] = round(factor, 3)
+
+    # Fuente 3: lista de precios (fallback)
     if precios is not None and not precios.empty:
         for _, pr in precios.iterrows():
-            sk = str(pr.get("sku_canon") or "").strip()
-            if not sk or sk in kg_por_sku:  # no pisar fuentes anteriores
+            sk = str(pr.get('sku_canon') or '').strip()
+            if not sk or sk in kg_por_sku:
                 continue
-            kg_u  = _f(pr.get("kg_unidad"))
-            kg_c  = _f(pr.get("kg_caja"))
-            u_caja = _f(pr.get("unidades_caja")) or 0
+            kg_u  = _f(pr.get('kg_unidad'))
+            kg_c  = _f(pr.get('kg_caja'))
+            u_caja = _f(pr.get('unidades_caja')) or 0
             if kg_u and kg_u > 0:
                 kg_por_sku[sk] = float(kg_u)
             elif kg_c and kg_c > 0 and u_caja > 0:
-                kg_por_sku[sk] = float(kg_c) / float(u_caja)
+                kg_por_sku[sk] = round(float(kg_c) / float(u_caja), 3)
             elif kg_c and kg_c > 0:
                 kg_por_sku[sk] = float(kg_c)
 
-    print(f"  kg_por_sku: {len(kg_por_sku)} SKUs con factor de conversión KG")
+    n0 = len(foco_sku_kg_config)
+    print(f'  kg_por_sku: {len(kg_por_sku)} SKUs (config={n0}, stock+ventas+precios={len(kg_por_sku)-n0})')
 
     def _skus_for_foco(foco_name: str):
         fn = _norm_col(foco_name)
