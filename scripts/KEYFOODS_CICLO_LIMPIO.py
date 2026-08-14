@@ -1764,73 +1764,95 @@ PLACES_TYPES_NEARBY = [
 ]
 BBOX_PLACES = {
     "NOR-ORIENTE": [
-        {"name": "Las Condes", "lat": -33.408, "lng": -70.565, "r": 4500},
-        {"name": "Vitacura", "lat": -33.385, "lng": -70.590, "r": 3500},
+        {"name": "Las Condes",   "lat": -33.408, "lng": -70.565, "r": 4500},
+        {"name": "Vitacura",     "lat": -33.385, "lng": -70.590, "r": 3500},
         {"name": "Lo Barnechea", "lat": -33.350, "lng": -70.515, "r": 5000},
-        {"name": "La Reina", "lat": -33.445, "lng": -70.545, "r": 3000},
-        {"name": "Peñalolén", "lat": -33.487, "lng": -70.535, "r": 3500},
-        {"name": "Ñuñoa", "lat": -33.458, "lng": -70.600, "r": 2500},
-        {"name": "Providencia", "lat": -33.432, "lng": -70.618, "r": 2500},
+        {"name": "La Reina",     "lat": -33.445, "lng": -70.545, "r": 3000},
+        {"name": "Peñalolén",    "lat": -33.487, "lng": -70.535, "r": 3500},
+        {"name": "Ñuñoa",        "lat": -33.458, "lng": -70.600, "r": 2500},
+        {"name": "Providencia",  "lat": -33.432, "lng": -70.618, "r": 2500},
+        # Ampliación solicitada: Puente Alto y San Bernardo
+        {"name": "Puente Alto",  "lat": -33.610, "lng": -70.575, "r": 4000},
+        {"name": "San Bernardo", "lat": -33.600, "lng": -70.700, "r": 4000},
     ],
     "NOR-PONIENTE": [
         {"name": "Santiago Centro", "lat": -33.450, "lng": -70.665, "r": 3000},
-        {"name": "Recoleta", "lat": -33.405, "lng": -70.645, "r": 2500},
-        {"name": "Independencia", "lat": -33.420, "lng": -70.665, "r": 2000},
-        {"name": "Quinta Normal", "lat": -33.435, "lng": -70.693, "r": 2500},
-        {"name": "Renca", "lat": -33.405, "lng": -70.715, "r": 3000},
-        {"name": "Pudahuel", "lat": -33.440, "lng": -70.762, "r": 4000},
-        {"name": "Cerro Navia", "lat": -33.430, "lng": -70.742, "r": 2500},
-        {"name": "Quilicura", "lat": -33.360, "lng": -70.728, "r": 3500},
-        {"name": "Huechuraba", "lat": -33.365, "lng": -70.650, "r": 3000},
-        {"name": "Providencia", "lat": -33.432, "lng": -70.618, "r": 2500},
+        {"name": "Recoleta",        "lat": -33.405, "lng": -70.645, "r": 2500},
+        {"name": "Independencia",   "lat": -33.420, "lng": -70.665, "r": 2000},
+        {"name": "Quinta Normal",   "lat": -33.435, "lng": -70.693, "r": 2500},
+        {"name": "Renca",           "lat": -33.405, "lng": -70.715, "r": 3000},
+        {"name": "Pudahuel",        "lat": -33.440, "lng": -70.762, "r": 4000},
+        {"name": "Cerro Navia",     "lat": -33.430, "lng": -70.742, "r": 2500},
+        {"name": "Quilicura",       "lat": -33.360, "lng": -70.728, "r": 3500},
+        {"name": "Huechuraba",      "lat": -33.365, "lng": -70.650, "r": 3000},
+        {"name": "Providencia",     "lat": -33.432, "lng": -70.618, "r": 2500},
     ],
     "ZONA SUR": [
-        {"name": "Maipú", "lat": -33.513, "lng": -70.762, "r": 4500},
+        {"name": "Maipú",        "lat": -33.513, "lng": -70.762, "r": 4500},
         {"name": "San Bernardo", "lat": -33.600, "lng": -70.700, "r": 4000},
-        {"name": "Puente Alto", "lat": -33.610, "lng": -70.575, "r": 4000},
-        {"name": "La Florida", "lat": -33.531, "lng": -70.567, "r": 3500},
-        {"name": "San Miguel", "lat": -33.497, "lng": -70.652, "r": 2500},
-        {"name": "La Cisterna", "lat": -33.530, "lng": -70.664, "r": 2000},
-        {"name": "El Bosque", "lat": -33.562, "lng": -70.675, "r": 2500},
-        {"name": "Macul", "lat": -33.497, "lng": -70.595, "r": 2500},
+        {"name": "Puente Alto",  "lat": -33.610, "lng": -70.575, "r": 4000},
+        {"name": "La Florida",   "lat": -33.531, "lng": -70.567, "r": 3500},
+        {"name": "San Miguel",   "lat": -33.497, "lng": -70.652, "r": 2500},
+        {"name": "La Cisterna",  "lat": -33.530, "lng": -70.664, "r": 2000},
+        {"name": "El Bosque",    "lat": -33.562, "lng": -70.675, "r": 2500},
+        {"name": "Macul",        "lat": -33.497, "lng": -70.595, "r": 2500},
     ],
 }
 MAX_PROSPECTOS_POR_ZONA = int(os.environ.get("KF_MAX_PROSPECTOS_ZONA", "5000") or 5000)
 
 
 def _product_place_keywords(focos: List[dict], focos_skus: Optional[List[str]] = None) -> List[str]:
-    """Keywords de Places a partir de productos foco (portable a otras empresas)."""
+    """
+    Keywords de búsqueda alineados con los SKU foco reales del archivo de configuración.
+    La lógica es: ¿qué tipo de local compra este producto? → buscar ese local.
+    Prioriza los nombres de producto del FOCO_SKU sobre tipos genéricos.
+    """
     raw = []
     for f in focos or []:
-        for k in ("places_keyword", "foco", "sku_canon", "nombre"):
+        for k in ("producto_nombre", "foco", "places_keyword", "nombre"):
             v = f.get(k)
             if v:
                 raw.append(str(v))
     for s in focos_skus or []:
         raw.append(str(s))
     text = " ".join(raw).upper()
-    # tokens de negocio foodservice relevantes
+
+    # Mapeo directo: qué producto → qué tipo de cliente lo compra
+    # Esto define QUÉ locales visitar, no qué poner en el mapa
     mapping = [
-        (r"POLLO|PECHUGA|ALITAS|NUGGET", "pollo restaurant"),
-        (r"HAMBUR|BURGER|VACUNO|CARNE|ENTRA", "hamburguesa restaurant"),
-        (r"PAPA|FRITA|SURECRISP|ONEFRY", "papas fritas restaurant"),
-        (r"SALSA|KETCHUP|HANKS|MAYO", "sandwich salsa"),
-        (r"PAN|BAGEL|HAWAII", "bakery sandwich"),
-        (r"QUESO|MOZZA|CHEDDAR", "pizzeria restaurant"),
-        (r"ACEITE|FRY", "restaurant"),
+        # Pollo → restaurantes, pollerías, casino, delivery
+        (r"POLLO|PECHUGA|ALITA|TRUTRO|NUGGET|MUSLO",
+         ["pollo a la plancha restaurant", "pollería", "pollo frito restaurant",
+          "casino empresa", "restaurant comida casera"]),
+        # Salsas Hanks → burger, sandwich, fast food, hotdog
+        (r"HANKS|KETCHUP|SALSA BBQ|SALSA CHEDDAR|MAYO|HONEY MUSTARD|BACON JAM",
+         ["hamburguesa restaurant", "sandwich shop", "comida rapida",
+          "hot dog", "completo fuente de soda"]),
+        # Papas fritas → fast food, burger
+        (r"PAPA|SURECRISP|ONEFRY|FAST FOOD",
+         ["papas fritas restaurant", "hamburguesa fast food", "snack bar"]),
+        # Aceites → cualquier restaurante con frituras
+        (r"ACEITE|PROFRY|FRY",
+         ["restaurant frituras", "fuente de soda", "comida rapida"]),
+        # Carnes → restaurantes, parrillas, casino
+        (r"HAMBUR|BURGER|VACUNO|LOMO|ENTRAÑA|COSTILLA|TOCINO",
+         ["parrilla restaurant", "hamburguesa artesanal", "steakhouse"]),
+        # Quesos / apanados → pizzerías, sandwicherías
+        (r"QUESO|MOZZA|CHEDDAR|APANADO|BASTÓN",
+         ["pizzeria", "sandwich artesanal", "restaurant italiano"]),
     ]
-    kws = []
-    for pat, kw in mapping:
+
+    kws_out = []
+    for pat, kws in mapping:
         if re.search(pat, text):
-            kws.append(kw)
-    if not kws:
-        kws = ["restaurant", "comida rapida"]
-    # únicos preservando orden
-    out = []
-    for k in kws:
-        if k not in out:
-            out.append(k)
-    return out
+            for kw in kws:
+                if kw not in kws_out:
+                    kws_out.append(kw)
+
+    if not kws_out:
+        kws_out = ["restaurant", "comida rapida", "casino empresa"]
+
+    return kws_out
 
 
 def run_places(
