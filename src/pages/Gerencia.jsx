@@ -287,18 +287,15 @@ export default function Gerencia({ esGerente }) {
   return (
     <div>
       <div style={{
-          background: 'linear-gradient(145deg, #1c1917 0%, #292524 70%, #44403c 100%)',
+          background: 'linear-gradient(145deg, #1c1917 0%, #292524 100%)',
           color: '#fff',
-          padding: '26px 20px 28px',
-          borderRadius: '0 0 24px 24px',
-          boxShadow: '0 8px 24px rgba(28,25,23,0.25)', borderBottom: '3px solid #c2410c',
+          padding: '20px 18px 22px',
+          borderRadius: '0 0 22px 22px',
+          borderBottom: '3px solid #c2410c',
         }}>
-        <div style={{
-            fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
-            textTransform: 'uppercase', color: '#fdba74', marginBottom: 6,
-          }}>Vista gerencial</div>
-        <h1>Resultado del mes</h1>
-        <p>Venta total · terreno · canales</p>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#fdba74', textTransform: 'uppercase', marginBottom: 5 }}>Vista Gerencial</div>
+        <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>Resultado del mes</div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>Venta total · terreno · canales</div>
       </div>
       <div className="wrap">
         {error && (
@@ -308,25 +305,22 @@ export default function Gerencia({ esGerente }) {
         )}
 
         {/* KPI global */}
-        <div className="card">
-          <div className="card-label">Mes en curso · venta total compañía</div>
-          <div style={{ marginTop: 8 }}>
-            <div className="muted" style={{ fontSize: 10, fontWeight: 700 }}>VENDIDO TOTAL (todos los canales)</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#2563eb' }}>{money(totalVenta)}</div>
-          </div>
-          <div style={{ marginTop: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 12 }}>
-            <div className="muted" style={{ fontSize: 10, fontWeight: 700 }}>Solo terreno (3 zonas con meta)</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13 }}>
-              <span>
-                <b>{money(ventaTerreno)}</b> / {money(totalMetaTerreno)} · {pctTerreno}%
-              </span>
-              <span className="muted">brecha terreno {money(Math.max(0, totalMetaTerreno - ventaTerreno))}</span>
+        <div style={{ background: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, border: '1px solid #ebe6df' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Venta total del mes</div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#2563eb', marginTop: 4, letterSpacing: '-0.02em' }}>{money(totalVenta)}</div>
+          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e' }}>TERRENO ({pctTerreno}%)</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#1c1917', marginTop: 2 }}>{money(ventaTerreno)}</div>
+              <div style={{ fontSize: 11, color: '#78716c', marginTop: 1 }}>meta {money(totalMetaTerreno)}</div>
+              <div style={{ height: 4, background: '#e7e5e4', borderRadius: 999, marginTop: 6, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: Math.min(pctTerreno, 100) + '%', background: barColor(pctTerreno), borderRadius: 999 }} />
+              </div>
             </div>
-            <div className="progress-bg" style={{ marginTop: 8 }}>
-              <div
-                className="progress-fill"
-                style={{ width: Math.min(pctTerreno, 100) + '%', background: barColor(pctTerreno) }}
-              />
+            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e' }}>BRECHA TERRENO</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#dc2626', marginTop: 2 }}>{money(Math.max(0, totalMetaTerreno - ventaTerreno))}</div>
+              <div style={{ fontSize: 11, color: '#78716c', marginTop: 1 }}>para cerrar el mes</div>
             </div>
           </div>
           {noAsignado > 0 && (
@@ -348,26 +342,25 @@ export default function Gerencia({ esGerente }) {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, margin: '12px 0', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 6, margin: '12px 0 14px', background: '#ebe6df', borderRadius: 12, padding: 4 }}>
           {[
-            { id: 'zonas', label: 'Zonas / canales' },
-            { id: 'productos', label: 'Top productos' },
+            { id: 'zonas', label: 'Zonas' },
+            { id: 'productos', label: 'Top SKU' },
             { id: 'stock', label: 'Stock lento' },
           ].map(t => (
             <button
               key={t.id}
               type="button"
-              className={'chip' + (tab === t.id ? ' active' : '')}
               onClick={() => setTab(t.id)}
               style={{
-                padding: '8px 14px',
-                borderRadius: 20,
-                border: tab === t.id ? '2px solid #1e3a5f' : '1px solid #e2e8f0',
-                background: tab === t.id ? '#1e3a5f' : '#fff',
-                color: tab === t.id ? '#fff' : '#475569',
-                fontWeight: 700,
-                fontSize: 12,
-                whiteSpace: 'nowrap',
+                flex: 1, padding: '8px 4px', borderRadius: 9,
+                border: 'none',
+                background: tab === t.id ? '#fff' : 'transparent',
+                color: tab === t.id ? '#1c1917' : '#78716c',
+                fontWeight: tab === t.id ? 800 : 600,
+                fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: tab === t.id ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.15s',
               }}
             >
               {t.label}
@@ -431,22 +424,22 @@ export default function Gerencia({ esGerente }) {
                       <b>{g.ejecutivo}</b>
                       <span style={{ color, fontWeight: 800 }}>{p}% {open ? '▲' : '▼'}</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8, fontSize: 12 }}>
-                      <div>
-                        <div className="muted">Venta</div>
-                        <div style={{ fontWeight: 700 }}>{money(venta)}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: 8, fontSize: 12 }}>
+                      <div style={{ background: '#f8fafc', borderRadius: 8, padding: '6px 8px' }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>Venta</div>
+                        <div style={{ fontWeight: 800, fontSize: 13, marginTop: 1 }}>{money(venta)}</div>
                       </div>
-                      <div>
-                        <div className="muted">Meta</div>
-                        <div style={{ fontWeight: 700 }}>{money(meta)}</div>
+                      <div style={{ background: '#f8fafc', borderRadius: 8, padding: '6px 8px' }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>Meta</div>
+                        <div style={{ fontWeight: 800, fontSize: 13, marginTop: 1 }}>{money(meta)}</div>
                       </div>
-                      <div>
-                        <div className="muted">Clientes MTD</div>
-                        <div style={{ fontWeight: 700 }}>{cliZona.length || '—'}</div>
+                      <div style={{ background: '#f8fafc', borderRadius: 8, padding: '6px 8px' }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>Clientes</div>
+                        <div style={{ fontWeight: 800, fontSize: 13, marginTop: 1 }}>{cliZona.length || '—'}</div>
                       </div>
                     </div>
-                    <div className="progress-bg" style={{ marginTop: 8 }}>
-                      <div className="progress-fill" style={{ width: Math.min(p, 100) + '%', background: color }} />
+                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 999, marginTop: 10, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: Math.min(p, 100) + '%', background: color, borderRadius: 999 }} />
                     </div>
                   </button>
                   {g.accion && (() => {

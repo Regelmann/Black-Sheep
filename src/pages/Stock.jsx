@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { DataAsOfBanner } from '../components.jsx'
+import { useEjecutivo } from '../App.jsx'
 
 function fmtNum(n) {
   if (n == null || n === '') return '—'
@@ -21,6 +22,9 @@ export default function Stock() {
   const [q, setQ] = useState('')
   const [filtro, setFiltro] = useState('Todos')
   const [dataAsOf, setDataAsOf] = useState(null)
+  const [skuSel, setSkuSel] = useState(null)
+  const [skuClientes, setSkuClientes] = useState({})
+  const eje = useEjecutivo()
 
   useEffect(() => {
     ;(async () => {
@@ -32,6 +36,27 @@ export default function Stock() {
       setLoading(false)
     })()
   }, [])
+
+  async function cargarClientesSku(skuCanon) {
+    if (skuSel === skuCanon) { setSkuSel(null); return }
+    setSkuSel(skuCanon)
+    if (skuClientes[skuCanon]) return
+    setSkuClientes(prev => ({ ...prev, [skuCanon]: { loading: true, clientes: [] } }))
+    const eid = eje?.eidVista
+    try {
+      // Buscar en cartera clientes que tienen ese SKU en sus productos_top o sku_detalle
+      let q = supabase.from('cartera').select('nombre_cliente,comuna,venta_mtd,sku_detalle,productos_top,cliente_key').limit(300)
+      if (eid) q = q.eq('ejecutivo_id', eid)
+      const { data } = await q
+      const clientes = (data || []).filter(c => {
+        const det = (c.sku_detalle || '') + ' ' + (c.productos_top || '')
+        return det.includes(skuCanon)
+      }).sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0)).slice(0, 20)
+      setSkuClientes(prev => ({ ...prev, [skuCanon]: { loading: false, clientes } }))
+    } catch {
+      setSkuClientes(prev => ({ ...prev, [skuCanon]: { loading: false, clientes: [] } }))
+    }
+  }
 
   const stats = useMemo(() => {
     const focos = stock.filter(s => s.es_foco_mes).length
@@ -190,17 +215,46 @@ export default function Stock() {
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1917' }}>
-                  {s.producto_nombre || s.sku_canon}
-                </div>
-                <div style={{ fontSize: 12, color: '#78716c', marginTop: 3 }}>
-                  {s.sku_canon}
-                  {s.subfamilia ? ` · ${s.subfamilia}` : ''}
-                  {s.es_foco_mes ? ' · FOCO' : ''}
-                </div>
-                {s.estado_stock && (
-                  <div style={{ fontSize: 11, color: '#a8a29e', marginTop: 2 }}>{s.estado_stock}</div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => cargarClientesSku(s.sku_canon)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1917', lineHeight: 1.3 }}>
+                    {s.producto_nombre && s.producto_nombre !== s.sku_canon
+                      ? s.producto_nombre
+                      : <span style={{ color: '#a8a29e', fontStyle: 'italic' }}>{s.sku_canon}</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#78716c', marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span>{s.sku_canon}</span>
+                    {s.subfamilia && <span>· {s.subfamilia}</span>}
+                    {s.es_foco_mes && <span style={{ color: '#c2410c', fontWeight: 700 }}>· FOCO</span>}
+                    {s.estado_stock && !/^OK$/i.test(s.estado_stock) && <span style={{ color: '#dc2626' }}>· {s.estado_stock}</span>}
+                    <span style={{ color: '#c2410c', fontWeight: 600 }}>· Ver clientes {skuSel === s.sku_canon ? '▲' : '▼'}</span>
+                  </div>
+                </button>
+                {skuSel === s.sku_canon && (() => {
+                  const det = skuClientes[s.sku_canon]
+                  return (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f5f5f4' }}>
+                      {det?.loading && <div style={{ fontSize: 12, color: '#a8a29e' }}>Cargando clientes…</div>}
+                      {det && !det.loading && det.clientes.length === 0 && (
+                        <div style={{ fontSize: 12, color: '#a8a29e' }}>Sin clientes en cartera que hayan comprado este SKU.</div>
+                      )}
+                      {(det?.clientes || []).map((c, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '4px 0', borderBottom: i < det.clientes.length - 1 ? '1px solid #f9f9f8' : 'none' }}>
+                          <div>
+                            <span style={{ fontWeight: 600, color: '#1c1917' }}>{c.nombre_cliente}</span>
+                            {c.comuna && <span style={{ color: '#a8a29e', marginLeft: 5 }}>{c.comuna}</span>}
+                          </div>
+                          <span style={{ fontWeight: 700, color: '#c2410c', flexShrink: 0 }}>
+                            {c.venta_mtd ? '$' + Number(c.venta_mtd).toLocaleString('es-CL', { maximumFractionDigits: 0 }) : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div
