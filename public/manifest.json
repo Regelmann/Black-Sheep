@@ -1,0 +1,11 @@
+{
+  "name": "KeyFoods Field",
+  "short_name": "KeyFoods",
+  "description": "Tu día de terreno: ruta, cartera, reposición y metas",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c1917",
+  "theme_color": "#c2410c",
+  "lang": "es-CL"
+}
