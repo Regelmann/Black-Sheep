@@ -11,7 +11,7 @@ import Gerencia from './pages/Gerencia.jsx'
 import { NavBar } from './components.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-FORCE-0814'
+export const BUILD_STAMP = 'v-LEAN-020'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
@@ -193,15 +193,9 @@ export default function App() {
       <div className="app-body">
       <div className="build-stamp" style={{
         position: 'fixed', bottom: 64, right: 8, zIndex: 50,
-        fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
-        color: '#a8a29e', background: 'rgba(255,255,255,0.85)',
-        padding: '2px 6px', borderRadius: 6, pointerEvents: 'none',
-      background: '#c2410c',
-        color: '#fff',
-        padding: '4px 10px',
-        borderRadius: 8,
-        fontWeight: 800,
-        letterSpacing: '0.04em',
+        fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
+        color: '#fff', background: '#c2410c',
+        padding: '4px 10px', borderRadius: 8, pointerEvents: 'none',
       }}>{BUILD_STAMP}</div>
         <Routes>
           <Route path="/" element={<Ruta session={session} />} />

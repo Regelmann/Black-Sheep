@@ -1,36 +1,16 @@
-# Deploy KeyFoods Field (para que el celular vea los cambios)
+# Deploy lean (el lock que te funcionaba)
 
-## Problema actual
-Producción (`keyfoods-field.vercel.app`) todavía sirve un JS con headers **azules** en Visita.
-El código nuevo es **naranja/terracota** y muestra el sello `2026-08-14-precio` abajo a la derecha.
+## Por qué
+El lock con Tailwind/postcss colgaba npm en Vercel ~8 min.
+Este paquete usa **tu package-lock 0.2.0** (solo react + vite + supabase) = ~75 paquetes, install ~5s.
 
-Si en el celular NO ves ese sello → **no subió el deploy**.
+## Pasos
+1. Subí TODO a la raíz de Black-Sheep (package.json + package-lock.json + src/).
+2. Vercel → Redeploy **sin** Use existing Build Cache.
+3. Node 24.x · Root Directory vacío.
+4. Login debe mostrar **v-LEAN-020**.
 
-## Pasos (GitHub → Vercel)
-
-1. Bajá el zip `keyfoods-field-PRECIO-UX.zip`
-2. En el repo de GitHub (branch `main`):
-   - Borrá el contenido viejo de `src/` (o reemplazá archivo por archivo)
-   - Subí TODO el contenido del zip en la **raíz** del repo
-   - Tiene que existir: `package.json` con `"version": "0.3.1-precio"`
-3. Commit message: `precio dinamico + visita terracota 2026-08-14`
-4. Push a `main`
-5. En Vercel → Deployments:
-   - Esperá el build **Ready** (Node 24)
-   - Si el de arriba no es Production: ⋯ → **Promote to Production**
-6. En el celular:
-   - Cerrá todas las pestañas del sitio
-   - Chrome: candado → permisos → restablecer ubicación si estaba bloqueado
-   - Abrí de nuevo `https://keyfoods-field.vercel.app`
-   - Buscá el texto chico **`2026-08-14-precio`** abajo a la derecha
-   - Visita debe verse **naranja**, no azul
-
-## GPS solo en PC, no en celular
-1. Tiene que ser **HTTPS** (Vercel ya lo es)
-2. En Android Chrome: Permisos del sitio → Ubicación → Permitir
-3. En iPhone Safari: Ajustes → Safari → Ubicación → Permitir / Preguntar
-4. Si antes tocaste “Bloquear”, hay que resetear el permiso del sitio
-5. El GPS del browser en iOS es más débil que una app nativa; para precisión de calle a futuro: Capacitor
-
-## SQL una vez (pedidos / gerencia)
-Correr en Supabase SQL Editor el archivo `SUPABASE_FIX_GERENCIA_Y_PEDIDOS.sql`
+Env en Vercel (si hace falta):
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- VITE_GOOGLE_MAPS_API_KEY (opcional)
