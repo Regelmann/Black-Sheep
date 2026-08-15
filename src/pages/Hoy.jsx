@@ -488,71 +488,84 @@ export default function Hoy() {
         )}
         {m.actionQueue.map((item, idx) => {
           const metaT = TYPE_META[item.type] || TYPE_META.visita
-          const isFirst = idx === 0
           const res = hoyRes[item.clientId] || hoyRes[item.id]
           const done = res?.resultado
           const doneLabel =
-            done === 'pedido' ? 'Pedido hoy' :
+            done === 'pedido' ? 'Pedido' :
             done === 'no_venta' ? 'No compró' :
-            done === 'checkin' || done === 'visitado' ? 'Visitado' : null
+            done === 'checkin' || done === 'visitado' ? 'OK' : null
           const doneColor =
             done === 'pedido' ? '#0d9488' :
             done === 'no_venta' ? '#78716c' :
             done ? '#2563eb' : null
           return (
-            <div key={item.id || idx} style={{
-              background: done ? '#fafaf9' : '#fff',
-              borderRadius: 12,
-              border: `1px solid ${metaT.color}28`,
-              borderLeft: `3px solid ${doneColor || metaT.color}`,
-              marginBottom: 6,
-              overflow: 'hidden',
-              opacity: done === 'pedido' || done === 'no_venta' ? 0.8 : 1,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{
-                      fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
-                      color: metaT.color, textTransform: 'uppercase',
-                      background: metaT.color + '14', padding: '2px 6px', borderRadius: 4,
-                    }}>
-                      {metaT.badge}
-                    </span>
-                    {doneLabel && (
-                      <span style={{ fontSize: 9, fontWeight: 700, color: doneColor }}>✓ {doneLabel}</span>
-                    )}
-                    {item.amount > 0 && (
-                      <span style={{ fontSize: 12, fontWeight: 800, color: '#1c1917', marginLeft: 'auto' }}>
-                        {money(item.amount)}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{
-                    fontSize: 14, fontWeight: 800, color: '#1c1917', lineHeight: 1.2,
-                    marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            <div
+              key={item.id || idx}
+              style={{
+                background: done ? '#fafaf9' : '#fff',
+                borderRadius: 10,
+                border: `1px solid ${metaT.color}22`,
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 8px 8px 10px',
+                opacity: done === 'pedido' || done === 'no_venta' ? 0.78 : 1,
+              }}
+            >
+              <div
+                style={{
+                  width: 3,
+                  alignSelf: 'stretch',
+                  borderRadius: 2,
+                  background: doneColor || metaT.color,
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, letterSpacing: '0.03em',
+                    color: metaT.color, textTransform: 'uppercase',
+                    background: metaT.color + '12', padding: '1px 5px', borderRadius: 4,
                   }}>
-                    {item.title}
-                  </div>
-                  {item.subtitle && (
-                    <div style={{
-                      fontSize: 11, color: '#a8a29e', marginTop: 2,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>
-                      {item.subtitle}
-                    </div>
+                    {metaT.badge}
+                  </span>
+                  {doneLabel && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: doneColor }}>✓ {doneLabel}</span>
+                  )}
+                  {item.amount > 0 && (
+                    <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: '#1c1917', flexShrink: 0 }}>
+                      {money(item.amount)}
+                    </span>
                   )}
                 </div>
+                <div style={{
+                  fontSize: 13, fontWeight: 800, color: '#1c1917', lineHeight: 1.25,
+                  marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {item.title}
+                </div>
+                {item.subtitle && (
+                  <div style={{
+                    fontSize: 10, color: '#a8a29e', marginTop: 1,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {item.subtitle}
+                  </div>
+                )}
               </div>
-              <div style={{ display: 'flex', borderTop: '1px solid #f5f5f4' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 {item.telefono && (
                   <a href={`tel:${item.telefono}`}
                     style={{
-                      width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '8px', textDecoration: 'none', color: '#57534e',
-                      borderRight: '1px solid #f5f5f4', flexShrink: 0,
-                    }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      width: 34, height: 34, borderRadius: 8,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: '#f5f5f4', color: '#57534e', textDecoration: 'none',
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                     </svg>
                   </a>
@@ -560,31 +573,44 @@ export default function Hoy() {
                 {item.whatsapp && (
                   <a href={item.whatsapp} target="_blank" rel="noreferrer"
                     style={{
-                      width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '8px', textDecoration: 'none',
-                      borderRight: '1px solid #f5f5f4', flexShrink: 0,
-                    }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#15803d">
+                      width: 34, height: 34, borderRadius: 8,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: '#ecfdf5', textDecoration: 'none',
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="#15803d">
                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                       <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.552 4.106 1.515 5.828L0 24l6.338-1.476A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm.029 21.818a9.833 9.833 0 0 1-5.019-1.374l-.36-.214-3.732.979 1.003-3.647-.234-.374A9.862 9.862 0 0 1 2.182 12c0-5.42 4.41-9.818 9.847-9.818 5.437 0 9.847 4.398 9.847 9.818 0 5.42-4.41 9.818-9.847 9.818z"/>
                     </svg>
                   </a>
                 )}
-                <button type="button"
+                <button
+                  type="button"
                   onClick={() => openPrep(item)}
                   style={{
-                    flex: 1, padding: '8px', border: 'none',
-                    background: done ? '#57534e' : metaT.color, color: '#fff',
-                    fontSize: 13, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
-                  }}>
-                  {done ? 'Ver' : item.ctaLabel} →
+                    border: 'none',
+                    background: done ? '#57534e' : metaT.color,
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    whiteSpace: 'nowrap',
+                    minHeight: 34,
+                  }}
+                >
+                  {done ? 'Ver' : (item.ctaLabel || 'Ir')}
                 </button>
               </div>
             </div>
           )
         })}
 
-        <div style={{ height: 8 }} />
+        {/* Espacio para navbar fijo + safe area (evita que la última card se corte) */}
+        <div style={{ height: 'calc(72px + env(safe-area-inset-bottom, 0px))' }} />
       </div>
 
       {/* Prep de visita 10 s — bottom sheet */}

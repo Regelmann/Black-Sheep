@@ -122,8 +122,18 @@ function esSinAsignar(nombre) {
   return n.includes('NO_ASIGN') || n.includes('SIN ASIGN') || n.includes('SIN_ASIGN')
 }
 
+function normCanal(s) {
+  return String(s || '')
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/NOR\s+PONIENTE/g, 'NOR-PONIENTE')
+    .replace(/NOR\s+ORIENTE/g, 'NOR-ORIENTE')
+    .replace(/ZONA\s+SUR/g, 'ZONA SUR')
+}
+
 function canalDeCliente(d) {
-  return String(d?.ejecutivo || d?.canal || d?.zona || d?.zona_canal || '').toUpperCase().trim()
+  return normCanal(d?.ejecutivo || d?.canal || d?.zona || d?.zona_canal || d?.zona_vendedor)
 }
 
 export default function Gerencia({ esGerente }) {
@@ -293,6 +303,54 @@ export default function Gerencia({ esGerente }) {
       }
     })()
   }, [eidVista, todosEjecutivos.map(e => e.id).join("|")])
+
+  /** Clientes del canal: gerencia_clientes + fallback cartera de terreno (mix/SKU) */
+  const clientesDelCanal = useMemo(() => {
+    const byCanal = {}
+    const push = (canal, row) => {
+      const k = normCanal(canal)
+      if (!k) return
+      if (!byCanal[k]) byCanal[k] = []
+      byCanal[k].push(row)
+    }
+    for (const d of detalleCli || []) {
+      push(canalDeCliente(d), {
+        ...d,
+        nombre_cliente: d.nombre_cliente || d.nombre || d.cliente_key,
+        venta_mtd: Number(d.venta_mtd) || 0,
+        pct_zona: d.pct_zona,
+        _src: 'gerencia_clientes',
+      })
+    }
+    // Fallback: si un canal terreno no tiene filas, armar desde carteraCache
+    for (const c of carteraCache || []) {
+      const z = normCanal(c.zona || c.ejecutivo)
+      if (!z || !esTerreno(z)) continue
+      const list = byCanal[z] || []
+      const exists = list.some(
+        x => x.cliente_key && c.cliente_key && String(x.cliente_key) === String(c.cliente_key)
+      )
+      if (exists) continue
+      // Solo agregar si el canal está vacío o como complemento con sku
+      if (!list.length || (c.sku_detalle && !list.find(x => x.cliente_key === c.cliente_key))) {
+        push(z, {
+          cliente_key: c.cliente_key,
+          nombre_cliente: c.nombre_cliente || c.razon_social || c.cliente_key,
+          comuna: c.comuna,
+          venta_mtd: Number(c.venta_mtd) || 0,
+          pct_zona: null,
+          sku_detalle: c.sku_detalle,
+          oferta_real: c.oferta_real,
+          productos_top: c.productos_top,
+          _src: 'cartera',
+        })
+      }
+    }
+    for (const k of Object.keys(byCanal)) {
+      byCanal[k].sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
+    }
+    return byCanal
+  }, [detalleCli, carteraCache])
 
   const terreno = useMemo(() => gerencia.filter(g => esTerreno(g.ejecutivo)), [gerencia])
   const otros = useMemo(() => gerencia.filter(g => !esTerreno(g.ejecutivo)), [gerencia])
@@ -512,7 +570,7 @@ export default function Gerencia({ esGerente }) {
       return
     }
 
-let skus = parseSkuDetalle(fromGer?.sku_detalle)
+    let skus = parseSkuDetalle(fromGer?.sku_detalle)
     let oferta = fromGer?.oferta_real || fromGer?.oferta || null
     let productos_top = fromGer?.productos_top || null
     const nomBuscar = (
@@ -999,9 +1057,7 @@ let skus = parseSkuDetalle(fromGer?.sku_detalle)
               const p = meta ? Math.round((venta / meta) * 100) : 0
               const color = barColor(p)
               const open = canalSel === g.ejecutivo
-              const cliZona = detalleCli.filter(
-                d => canalDeCliente(d) === String(g.ejecutivo).toUpperCase().trim()
-              )
+              const cliZona = (clientesDelCanal[normCanal(g.ejecutivo)] || [])
               return (
                 <div key={g.ejecutivo || g.id} className="card">
                   <button
@@ -1244,8 +1300,7 @@ let skus = parseSkuDetalle(fromGer?.sku_detalle)
                       <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>
                         Clientes (para actualizar maestra) · toca canal de nuevo para cerrar
                       </div>
-                      {detalleCli
-                        .filter(d => canalDeCliente(d) === String(g.ejecutivo).toUpperCase().trim())
+                      {(clientesDelCanal[normCanal(g.ejecutivo)] || [])
                         .slice(0, 40)
                         .map(d => (
                           <div
@@ -1335,7 +1390,7 @@ let skus = parseSkuDetalle(fromGer?.sku_detalle)
                             )}
                           </div>
                         ))}
-                      {!detalleCli.filter(d => canalDeCliente(d) === String(g.ejecutivo).toUpperCase().trim()).length && (
+                      {!(clientesDelCanal[normCanal(g.ejecutivo)] || []).length && (
                         <p className="muted" style={{ fontSize: 12 }}>
                           Sin clientes en este canal. Si acabás de subir el ciclo, verificá columna ejecutivo en gerencia_clientes.
                         </p>
