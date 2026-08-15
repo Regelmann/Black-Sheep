@@ -176,7 +176,9 @@ export function computeConsistentMetrics(cartera, metaRow) {
       return s + (hist > 0 ? hist / 12 : 0)
     }, 0)
 
+  // Bloqueados NO van a Hoy: están cerrados/deuda a propósito
   const actionQueue = [...rows]
+    .filter(c => !c.es_bloqueado)
     .map(c => {
       const skus  = skusAReponer(c)
       const score = scorePrioridad(c)
@@ -217,9 +219,9 @@ export function computeConsistentMetrics(cartera, metaRow) {
         raw:      c,
       }
     })
-    .filter(a => a.priority > 0) // mostrar todos con alguna prioridad
+    .filter(a => a.priority > 0)
     .sort((a, b) => b.priority - a.priority)
-    .slice(0, 10) // hasta 10 en vez de 8
+    .slice(0, 10)
 
   return {
     ventaMtd,
