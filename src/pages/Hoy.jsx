@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics'
+import { listarPedidosHoy } from '../lib/pedido'
+import { loadActionQueue, flushActionQueue, isProbablyOffline } from '../lib/offline'
 
 function limpiaEstado(e) {
   return (e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')
@@ -27,9 +29,56 @@ export default function Hoy() {
   const [loading, setLoading] = useState(true)
   const [dataAsOf, setDataAsOf] = useState(null)
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && !navigator.onLine)
+  const [actividadHoy, setActividadHoy] = useState({
+    visitas: 0,
+    pedidos: 0,
+    totalPedidos: 0,
+    colaOffline: 0,
+  })
 
   useEffect(() => {
-    const on = () => setOffline(false)
+    const on = async () => {
+      setOffline(false)
+      // Drenar cola offline al recuperar red
+      try {
+        await flushActionQueue({
+          checkin: async item => {
+            const { error } = await supabase.from('checkins').insert({
+              visita_id: item.payload?.visita_id,
+              hora_llegada: item.payload?.hora_llegada,
+              lat_real: item.payload?.lat_real,
+              lng_real: item.payload?.lng_real,
+            })
+            return !error
+          },
+          completar: async item => {
+            if (item.payload?.checkin_id && !String(item.payload.checkin_id).startsWith('offline_')) {
+              await supabase
+                .from('checkins')
+                .update({
+                  hora_fin: item.payload.hora_fin,
+                  resultado: item.payload.resultado,
+                })
+                .eq('id', item.payload.checkin_id)
+            }
+            if (item.payload?.visita_id) {
+              await supabase
+                .from('visitas')
+                .update({ estado: 'visitada' })
+                .eq('id', item.payload.visita_id)
+            }
+            return true
+          },
+          nota: async item => {
+            const { error } = await supabase.from('notas_cliente').insert(item.payload || {})
+            return !error
+          },
+          pedido: async () => true, // pedidos ya reintentan en PedidoSheet
+        })
+      } catch {
+        /* silent */
+      }
+    }
     const off = () => setOffline(true)
     window.addEventListener('online', on)
     window.addEventListener('offline', off)
@@ -45,10 +94,18 @@ export default function Hoy() {
     ;(async () => {
       setLoading(true)
       try {
-        const [cRes, mRes, fRes] = await Promise.all([
+        const start = new Date()
+        start.setHours(0, 0, 0, 0)
+        const [cRes, mRes, fRes, pRes, chRes] = await Promise.all([
           supabase.from('cartera').select('*').eq('ejecutivo_id', eidVista),
           supabase.from('metas').select('*').eq('ejecutivo_id', eidVista).order('mes', { ascending: false }).limit(1),
           supabase.from('focos').select('*').eq('ejecutivo_id', eidVista),
+          listarPedidosHoy(eidVista),
+          supabase
+            .from('checkins')
+            .select('id,resultado,hora_llegada')
+            .gte('hora_llegada', start.toISOString())
+            .limit(100),
         ])
         if (cancelled) return
         const rows = cRes.data || []
@@ -57,6 +114,22 @@ export default function Hoy() {
         setFocos(fRes.data || [])
         const snap = rows.map(r => r.fecha_snapshot).filter(Boolean).sort().pop()
         setDataAsOf(snap || mRes.data?.[0]?.fecha_snapshot || null)
+
+        const pedidos = pRes?.data || []
+        let totalPedidos = 0
+        for (const p of pedidos) {
+          const lineas = Array.isArray(p.lineas) ? p.lineas : []
+          for (const l of lineas) {
+            totalPedidos += (Number(l.precio) || 0) * (Number(l.cantidad) || 0)
+          }
+        }
+        const checkins = chRes?.data || []
+        setActividadHoy({
+          visitas: checkins.length,
+          pedidos: pedidos.length,
+          totalPedidos: Math.round(totalPedidos),
+          colaOffline: loadActionQueue().length,
+        })
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -172,6 +245,32 @@ export default function Hoy() {
             </div>
           </div>
         )}
+
+        {/* Actividad de terreno hoy — loop cerrado */}
+        <div className="card" style={{ padding: '14px 16px' }}>
+          <div className="card-label" style={{ marginBottom: 8 }}>
+            Hoy en terreno
+            {actividadHoy.colaOffline > 0 && (
+              <span style={{ marginLeft: 8, color: '#92400e', fontWeight: 700 }}>
+                · {actividadHoy.colaOffline} en cola offline
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>{actividadHoy.visitas}</div>
+              <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Check-ins</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--brand)' }}>{actividadHoy.pedidos}</div>
+              <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Pedidos</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>{money(actividadHoy.totalPedidos)}</div>
+              <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Capturado</div>
+            </div>
+          </div>
+        </div>
 
         {/* Focos del mes (ex-Metas) */}
         {focos.length > 0 && (

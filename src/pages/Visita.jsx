@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { getPositionPrecise, haversineM, formatDist, isNearClient } from '../lib/geo'
+import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
+import { enqueueAction, isProbablyOffline } from '../lib/offline'
 
 const money = n => {
   const v = Number(n)
@@ -62,6 +63,10 @@ export default function Visita({ session }) {
   const [fotoPreview, setFotoPreview] = useState(null)
   const [fotoName, setFotoName] = useState('')
   const [lastCheckinCoords, setLastCheckinCoords] = useState(null)
+  const [resultado, setResultado] = useState(null) // pedido | no_venta | completada
+  const [showNoVenta, setShowNoVenta] = useState(false)
+  const [noVentaMotivo, setNoVentaMotivo] = useState('')
+  const [pedidoOk, setPedidoOk] = useState(false)
 
   async function cargar() {
     setLoading(true)
@@ -158,11 +163,31 @@ export default function Visita({ session }) {
       verificado = dist != null && dist <= 150
     }
 
+    const payload = {
+      visita_id: id,
+      cliente_key: visita?.cliente_key || null,
+      hora_llegada: new Date().toISOString(),
+      lat_real: lat,
+      lng_real: lng,
+      accuracy_m: accuracy != null ? Math.round(accuracy) : null,
+      dist_m: dist != null ? Math.round(dist) : null,
+      verificado: !!verificado,
+    }
+
+    if (isProbablyOffline()) {
+      enqueueAction({ type: 'checkin', payload })
+      setCheckin({ ...payload, id: 'offline_' + Date.now(), _offline: true })
+      setLastCheckinCoords({ lat, lng, accuracy, dist, verificado })
+      setMsg('Check-in guardado offline · se sincroniza al recuperar red')
+      setBusy(false)
+      return
+    }
+
     const { data, error } = await supabase
       .from('checkins')
       .insert({
         visita_id: id,
-        hora_llegada: new Date().toISOString(),
+        hora_llegada: payload.hora_llegada,
         lat_real: lat,
         lng_real: lng,
       })
@@ -170,7 +195,10 @@ export default function Visita({ session }) {
       .maybeSingle()
     setBusy(false)
     if (error) {
-      setMsg('No se pudo registrar el check-in.')
+      enqueueAction({ type: 'checkin', payload })
+      setCheckin({ ...payload, id: 'offline_' + Date.now(), _offline: true })
+      setLastCheckinCoords({ lat, lng, accuracy, dist, verificado })
+      setMsg('Check-in en cola offline (error de red). Seguís operando.')
       return
     }
     setCheckin(data)
@@ -182,29 +210,81 @@ export default function Visita({ session }) {
     } else {
       setMsg('Check-in registrado (sin coords del local para verificar).')
     }
-    await supabase.from('visitas').update({ estado: 'en_curso' }).eq('id', id)
-    // Encuesta guiada justo después del check-in
-    setShowEncuesta(true)
+    if (!visita?._sinRuta) {
+      await supabase.from('visitas').update({ estado: 'en_curso' }).eq('id', id)
+    }
   }
 
-  async function terminar(resultado) {
+  async function terminar(res) {
     setBusy(true)
-    if (checkin) {
+    const finalRes = res || resultado || (pedidoOk ? 'pedido' : 'completada')
+    const fin = new Date().toISOString()
+
+    if (isProbablyOffline()) {
+      enqueueAction({
+        type: 'completar',
+        payload: {
+          visita_id: id,
+          checkin_id: checkin?.id,
+          cliente_key: visita?.cliente_key,
+          resultado: finalRes,
+          hora_fin: fin,
+          motivo: noVentaMotivo || null,
+        },
+      })
+      setBusy(false)
+      nav('/')
+      return
+    }
+
+    if (checkin?.id && !String(checkin.id).startsWith('offline_')) {
       await supabase
         .from('checkins')
-        .update({ hora_fin: new Date().toISOString(), resultado })
+        .update({ hora_fin: fin, resultado: finalRes })
         .eq('id', checkin.id)
     }
-    await supabase.from('visitas').update({ estado: 'visitada' }).eq('id', id)
+    if (!visita?._sinRuta) {
+      await supabase.from('visitas').update({ estado: 'visitada' }).eq('id', id)
+    }
+    // Nota de resultado para gerencia / timeline
+    try {
+      await supabase.from('notas_cliente').insert({
+        ejecutivo_id: session.user.id,
+        cliente_key: visita?.cliente_key || cliente?.cliente_key,
+        nombre_local: visita?.nombre_local,
+        tipo: 'resultado_visita',
+        texto: [
+          `Resultado: ${finalRes}`,
+          noVentaMotivo ? `Motivo: ${noVentaMotivo}` : null,
+          pedidoOk ? 'Pedido capturado' : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })
+    } catch {
+      /* tabla opcional */
+    }
     setBusy(false)
     nav('/')
   }
 
   async function omitir() {
     setBusy(true)
-    await supabase.from('visitas').update({ estado: 'omitida' }).eq('id', id)
+    if (!visita?._sinRuta) {
+      await supabase.from('visitas').update({ estado: 'omitida' }).eq('id', id)
+    }
     setBusy(false)
     nav('/')
+  }
+
+  async function registrarNoVenta() {
+    if (!noVentaMotivo.trim()) {
+      setMsg('Elegí un motivo de no venta')
+      return
+    }
+    setResultado('no_venta')
+    setShowNoVenta(false)
+    await terminar('no_venta')
   }
 
   if (loading) return <div className="spinner">Cargando visita...</div>
@@ -370,19 +450,56 @@ export default function Visita({ session }) {
             if (!items.length) {
               return <div style={{ fontSize: 13, color: '#94a3b8' }}>Sin sugerencias cargadas para este cliente.</div>
             }
-            return items.slice(0, 8).map((it, i) => (
-              <div key={i} style={{
-                display: 'flex', gap: 10, alignItems: 'flex-start',
-                padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none',
-              }}>
-                <span style={{ color: '#22c55e', fontWeight: 800, marginTop: 2 }}>✓</span>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{it.tag}</div>
-                </div>
-              </div>
-            ))
+            return (
+              <>
+                {items.slice(0, 8).map((it, i) => (
+                  <div key={i} style={{
+                    display: 'flex', gap: 10, alignItems: 'flex-start',
+                    padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none',
+                  }}>
+                    <span style={{ color: '#22c55e', fontWeight: 800, marginTop: 2 }}>✓</span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{it.tag}</div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPedidoOpen(true)}
+                  style={{
+                    width: '100%', marginTop: 12, minHeight: 48, borderRadius: 14, border: 'none',
+                    background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
+                    fontFamily: 'inherit', cursor: 'pointer',
+                  }}
+                >
+                  Armar pedido sugerido
+                </button>
+              </>
+            )
           })()}
+        </div>
+
+        {/* Pasos del flujo */}
+        <div style={{
+          display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2,
+        }}>
+          {[
+            { n: 1, label: 'Contexto', done: true },
+            { n: 2, label: 'Check-in', done: !!yaLlego },
+            { n: 3, label: 'Acción', done: !!pedidoOk || resultado === 'no_venta' },
+            { n: 4, label: 'Cerrar', done: false },
+          ].map(s => (
+            <div key={s.n} style={{
+              flex: '1 1 0', minWidth: 72, textAlign: 'center', padding: '8px 4px',
+              borderRadius: 12, fontSize: 11, fontWeight: 700,
+              background: s.done ? '#ecfdf5' : '#fff',
+              color: s.done ? '#15803d' : '#78716c',
+              border: `1.5px solid ${s.done ? '#86efac' : '#e7e5e4'}`,
+            }}>
+              {s.done ? '✓' : s.n} {s.label}
+            </div>
+          ))}
         </div>
 
         {/* Check-in */}
@@ -390,15 +507,19 @@ export default function Visita({ session }) {
           background: '#fff', borderRadius: 20, padding: 16,
           boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
         }}>
+          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>2 · Check-in</div>
           {msg && <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>{msg}</div>}
           {yaLlego ? (
             <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-              Check-in{' '}
+              ✓ Llegaste{' '}
               {new Date(checkin.hora_llegada).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
               {lastCheckinCoords?.dist != null && (
                 <span style={{ color: '#64748b', fontWeight: 500 }}>
                   {' '}· {Math.round(lastCheckinCoords.dist)} m del pin
                 </span>
+              )}
+              {checkin?._offline && (
+                <span style={{ marginLeft: 6, fontSize: 11, color: '#92400e', fontWeight: 700 }}>offline</span>
               )}
             </div>
           ) : (
@@ -407,7 +528,7 @@ export default function Visita({ session }) {
               onClick={hacerCheckin}
               disabled={busy}
               style={{
-                width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                width: '100%', minHeight: 48, padding: '14px', borderRadius: 14, border: 'none',
                 background: 'linear-gradient(180deg,#c2410c,#9a3412)', color: '#fff',
                 fontWeight: 800, fontSize: 15, fontFamily: 'inherit',
                 cursor: busy ? 'wait' : 'pointer',
@@ -418,32 +539,85 @@ export default function Visita({ session }) {
           )}
         </div>
 
-        {/* Formularios */}
+        {/* 3 · Acción comercial */}
         <div style={{
           background: '#fff', borderRadius: 20, padding: 16,
           boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
         }}>
-          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>Formularios</div>
-          <button
-            type="button"
-            onClick={() => {
-              if (!yaLlego) {
-                setMsg('Primero hacé check-in para registrar dónde estás')
-                return
-              }
-              setShowEncuesta(true)
-            }}
-            style={{
-              width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-              background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
-              fontFamily: 'inherit', cursor: 'pointer',
-            }}
-          >
-            Llenar Encuesta en Terreno
-          </button>
+          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>3 · Acción comercial</div>
+          {pedidoOk && (
+            <div style={{
+              marginBottom: 10, padding: '10px 12px', borderRadius: 12,
+              background: '#ecfdf5', color: '#15803d', fontWeight: 700, fontSize: 13,
+            }}>
+              ✓ Pedido capturado · listo para cerrar
+            </div>
+          )}
+          {resultado === 'no_venta' && (
+            <div style={{
+              marginBottom: 10, padding: '10px 12px', borderRadius: 12,
+              background: '#fff7ed', color: '#9a3412', fontWeight: 700, fontSize: 13,
+            }}>
+              No compró · {noVentaMotivo || 'sin motivo'}
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setPedidoOpen(true)}
+              style={{
+                minHeight: 48, borderRadius: 14, border: 'none',
+                background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
+                fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >
+              Tomar pedido
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNoVenta(true)}
+              style={{
+                minHeight: 48, borderRadius: 14, border: '1.5px solid #e7e5e4',
+                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 14,
+                fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >
+              No compró
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            {telefono && (
+              <a href={'tel:' + telefono} style={{
+                flex: 1, textAlign: 'center', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 12, background: '#0f172a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: 13,
+              }}>Llamar</a>
+            )}
+            {wsp && (
+              <a href={wsp} target="_blank" rel="noreferrer" style={{
+                flex: 1, textAlign: 'center', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13,
+              }}>WhatsApp</a>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (!yaLlego) {
+                  setMsg('Primero hacé check-in')
+                  return
+                }
+                setShowEncuesta(true)
+              }}
+              style={{
+                flex: 1, minHeight: 44, borderRadius: 12, border: '1.5px solid #e7e5e4',
+                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >
+              Encuesta
+            </button>
+          </div>
         </div>
 
-        {/* Foto */}
+        {/* Foto opcional */}
         <label style={{
           display: 'block', background: '#fff', borderRadius: 20, padding: 16,
           border: '1.5px dashed #cbd5e1', marginBottom: 12, cursor: 'pointer', textAlign: 'center',
@@ -469,59 +643,67 @@ export default function Visita({ session }) {
             </div>
           ) : (
             <div style={{ padding: '12px 0', color: '#64748b', fontWeight: 600, fontSize: 14 }}>
-              Tomar foto
+              Foto opcional
             </div>
           )}
         </label>
 
-        {/* Acciones finales */}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={async () => {
-            if (fotoPreview) {
-              await supabase.from('notas_cliente').insert({
-                ejecutivo_id: session.user.id,
-                cliente_key: visita.cliente_key || cliente?.cliente_key,
-                nombre_local: visita.nombre_local,
-                tipo: 'foto_visita',
-                texto: `Foto en visita${fotoName ? ': ' + fotoName : ''} · ${new Date().toISOString()}`,
-              })
-            }
-            await terminar(yaLlego ? 'completada' : 'sin_checkin')
-          }}
-          style={{
-            width: '100%', padding: '16px', borderRadius: 999, border: 'none',
-            background: 'linear-gradient(180deg,#ea580c,#c2410c)', color: '#fff',
-            fontWeight: 800, fontSize: 16, fontFamily: 'inherit', cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(22,163,74,0.3)', marginBottom: 10,
-          }}
-        >
-          Completar visita
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={omitir}
-          style={{
-            width: '100%', padding: '12px', border: 'none', background: 'transparent',
-            color: '#64748b', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
-          }}
-        >
-          Omitir cliente por hoy
-        </button>
-
-        {(wsp || telefono) && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            {telefono && (
-              <a href={'tel:' + telefono} style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 12, background: '#0f172a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: 13 }}>Llamar</a>
-            )}
-            {wsp && (
-              <a href={wsp} target="_blank" rel="noreferrer" style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13 }}>WhatsApp</a>
-            )}
-            <button type="button" onClick={() => setPedidoOpen(true)} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: 'inherit' }}>Pedido</button>
-          </div>
-        )}
+        {/* 4 · Cerrar */}
+        <div style={{
+          background: '#fff', borderRadius: 20, padding: 16,
+          boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>4 · Cerrar visita</div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              if (fotoPreview) {
+                try {
+                  await supabase.from('notas_cliente').insert({
+                    ejecutivo_id: session.user.id,
+                    cliente_key: visita.cliente_key || cliente?.cliente_key,
+                    nombre_local: visita.nombre_local,
+                    tipo: 'foto_visita',
+                    texto: `Foto en visita${fotoName ? ': ' + fotoName : ''} · ${new Date().toISOString()}`,
+                  })
+                } catch {
+                  enqueueAction({
+                    type: 'nota',
+                    payload: {
+                      ejecutivo_id: session.user.id,
+                      cliente_key: visita.cliente_key || cliente?.cliente_key,
+                      tipo: 'foto_visita',
+                      texto: `Foto visita ${fotoName || ''}`.trim(),
+                    },
+                  })
+                }
+              }
+              await terminar(
+                pedidoOk ? 'pedido' : resultado === 'no_venta' ? 'no_venta' : yaLlego ? 'completada' : 'sin_checkin'
+              )
+            }}
+            style={{
+              width: '100%', minHeight: 52, padding: '16px', borderRadius: 999, border: 'none',
+              background: 'linear-gradient(180deg,#ea580c,#c2410c)', color: '#fff',
+              fontWeight: 800, fontSize: 16, fontFamily: 'inherit', cursor: busy ? 'wait' : 'pointer',
+              boxShadow: '0 8px 24px rgba(194,65,12,0.3)', marginBottom: 8,
+            }}
+          >
+            {pedidoOk ? 'Completar con pedido' : resultado === 'no_venta' ? 'Cerrar · no compró' : 'Completar visita'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={omitir}
+            style={{
+              width: '100%', minHeight: 44, padding: '12px', border: 'none', background: 'transparent',
+              color: '#64748b', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+            }}
+          >
+            Omitir cliente por hoy
+          </button>
+        </div>
       </div>
     </div>
 
@@ -547,7 +729,87 @@ export default function Visita({ session }) {
           ejecutivoId={eje?.eidVista || session?.user?.id}
           ejecutivoNombre={eje?.nombre || eje?.zona}
           onClose={() => setPedidoOpen(false)}
+          onSaved={() => {
+            setPedidoOk(true)
+            setResultado('pedido')
+            setPedidoOpen(false)
+            setMsg('Pedido guardado · cerrá la visita cuando termines')
+          }}
         />
+      )}
+
+      {showNoVenta && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Motivo de no venta"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'rgba(28,25,23,0.45)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+          onClick={() => setShowNoVenta(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480, background: '#fff',
+              borderRadius: '24px 24px 0 0', padding: '20px 18px calc(20px + env(safe-area-inset-bottom))',
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>¿Por qué no compró?</div>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#78716c' }}>
+              Queda registrado para gerencia y mejora la próxima visita.
+            </p>
+            {[
+              'Sin stock / no necesitaba',
+              'Precio / competencia',
+              'Cerrado / sin encargado',
+              'Solo cotizó',
+              'Volver otro día',
+              'Otro',
+            ].map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setNoVentaMotivo(m)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  minHeight: 48, padding: '12px 14px', marginBottom: 8,
+                  borderRadius: 14, fontFamily: 'inherit', fontWeight: 650, fontSize: 14,
+                  border: noVentaMotivo === m ? '2px solid #c2410c' : '1.5px solid #e7e5e4',
+                  background: noVentaMotivo === m ? '#fff7ed' : '#fff',
+                  color: '#1c1917', cursor: 'pointer',
+                }}
+              >
+                {m}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={busy || !noVentaMotivo}
+              onClick={registrarNoVenta}
+              style={{
+                width: '100%', minHeight: 52, marginTop: 8, borderRadius: 14, border: 'none',
+                background: noVentaMotivo ? '#c2410c' : '#d6d3d1', color: '#fff',
+                fontWeight: 800, fontSize: 15, fontFamily: 'inherit',
+                cursor: noVentaMotivo ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Confirmar y cerrar visita
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNoVenta(false)}
+              style={{
+                width: '100%', minHeight: 44, marginTop: 8, border: 'none', background: 'transparent',
+                color: '#78716c', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
     </>
   )
