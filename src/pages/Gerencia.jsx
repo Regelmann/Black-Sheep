@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { money , DataAsOfBanner} from '../components.jsx'
+import { money, DataAsOfBanner } from '../components.jsx'
+import { useEjecutivo } from '../App.jsx'
 
 function fmtStock(n) {
   if (n == null || n === '') return '—'
@@ -126,6 +127,10 @@ function canalDeCliente(d) {
 }
 
 export default function Gerencia({ esGerente }) {
+  const eje = useEjecutivo() || {}
+  const todosEjecutivos = eje.todosEjecutivos || []
+  const eidVista = eje.eidVista
+
   const [dataAsOf, setDataAsOf] = useState(null)
   const [loading, setLoading] = useState(true)
   const [gerencia, setGerencia] = useState([])
@@ -140,6 +145,7 @@ export default function Gerencia({ esGerente }) {
   const [cliSel, setCliSel] = useState(null) // cliente_key expandido
   const [cliSku, setCliSku] = useState({}) // { [cliente_key]: { skus, oferta, loading } }
   const [bloqueados, setBloqueados] = useState([]) // cartera.es_bloqueado para decisión gerencial
+  const [carteraCache, setCarteraCache] = useState([]) // mix + bloqueos por zona de terreno
   const [actividad, setActividad] = useState(null) // { loading, rango, checkins, pedidos, notas, stats }
   const [actRango, setActRango] = useState('hoy') // hoy | 7d
 
@@ -148,54 +154,87 @@ export default function Gerencia({ esGerente }) {
       setLoading(true)
       setError(null)
       try {
-        const [{ data: g }, { data: t }, { data: stock }, { data: det }, { data: carAll }, { data: notasBlq }] =
+        // IDs de terreno: todos los ejecutivos de zona (gerente) o el actual
+        const eids = (todosEjecutivos.length ? todosEjecutivos.map(e => e.id) : [eidVista]).filter(Boolean)
+
+        const carPromises = eids.length
+          ? eids.map(id =>
+              supabase
+                .from('cartera')
+                .select(
+                  'cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
+                )
+                .eq('ejecutivo_id', id)
+                .limit(800)
+            )
+          : [
+              supabase
+                .from('cartera')
+                .select(
+                  'cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
+                )
+                .limit(2000),
+            ]
+
+        const [{ data: g }, { data: t }, { data: stock }, { data: det }, carResults, { data: notasBlq }] =
           await Promise.all([
             supabase.from('gerencia').select('*'),
             supabase.from('tendencia').select('*'),
             supabase.from('stock').select('*').limit(500),
             supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(800),
-            // Traer cartera visible (RLS) y filtrar bloqueados en cliente — eq boolean a veces falla por tipo
-            supabase
-              .from('cartera')
-              .select(
-                'cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado'
-              )
-              .limit(2000),
+            Promise.all(carPromises),
             supabase
               .from('notas_cliente')
               .select('cliente_key,nombre_local,tipo,texto,created_at,creado_en')
-              .ilike('tipo', '%bloqueo%')
-              .limit(100),
+              .or('tipo.ilike.%bloqueo%,tipo.ilike.%bloqueo_cerrado%,tipo.ilike.%bloqueo_deuda%')
+              .limit(150),
           ])
+
+        const carAll = []
+        const seenKey = new Set()
+        for (const r of carResults || []) {
+          for (const row of r?.data || []) {
+            const k = row.cliente_key || row.nombre_cliente
+            if (k && seenKey.has(k)) continue
+            if (k) seenKey.add(k)
+            carAll.push(row)
+          }
+        }
+        setCarteraCache(carAll)
+
         const isBlq = c =>
           c?.es_bloqueado === true ||
           c?.es_bloqueado === 'true' ||
           c?.es_bloqueado === 1 ||
           c?.es_bloqueado === '1' ||
           String(c?.es_bloqueado || '').toUpperCase() === 'SI' ||
-          String(c?.es_bloqueado || '').toUpperCase() === 'S'
-        let blq = (carAll || []).filter(isBlq)
-        // Si RLS no devolvió flag, enriquecer con notas de bloqueo recientes
-        if (!blq.length && (notasBlq || []).length) {
-          const seen = new Set()
-          blq = (notasBlq || [])
-            .map(n => ({
-              cliente_key: n.cliente_key,
-              nombre_cliente: n.nombre_local || n.cliente_key,
-              comuna: null,
-              zona: null,
-              venta_mtd: 0,
-              venta_mensual: 0,
-              es_bloqueado: true,
-              _desde_nota: true,
-              tipo: n.tipo,
-            }))
-            .filter(b => {
-              const k = b.cliente_key || b.nombre_cliente
-              if (!k || seen.has(k)) return false
-              seen.add(k)
-              return true
-            })
+          String(c?.es_bloqueado || '').toUpperCase() === 'S' ||
+          !!c?.es_bloqueado
+        let blq = carAll.filter(isBlq)
+        // Notas de bloqueo como respaldo / complemento
+        if ((notasBlq || []).length) {
+          const have = new Set(blq.map(b => b.cliente_key || b.nombre_cliente))
+          for (const n of notasBlq) {
+            const k = n.cliente_key || n.nombre_local
+            if (!k || have.has(k)) continue
+            have.add(k)
+            const fromCar = carAll.find(
+              c => c.cliente_key === n.cliente_key || c.nombre_cliente === n.nombre_local
+            )
+            blq.push(
+              fromCar || {
+                cliente_key: n.cliente_key,
+                nombre_cliente: n.nombre_local || n.cliente_key,
+                comuna: null,
+                zona: null,
+                venta_mtd: 0,
+                venta_mensual: 0,
+                es_bloqueado: true,
+                _desde_nota: true,
+                tipo: n.tipo,
+              }
+            )
+          }
         }
         setBloqueados(blq)
         const detN = (det || []).map(d => ({
@@ -253,7 +292,7 @@ export default function Gerencia({ esGerente }) {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [eidVista, todosEjecutivos.map(e => e.id).join("|")])
 
   const terreno = useMemo(() => gerencia.filter(g => esTerreno(g.ejecutivo)), [gerencia])
   const otros = useMemo(() => gerencia.filter(g => !esTerreno(g.ejecutivo)), [gerencia])
@@ -311,7 +350,7 @@ export default function Gerencia({ esGerente }) {
       const [chRes, peRes, noRes] = await Promise.all([
         supabase
           .from('checkins')
-          .select('id,visita_id,hora_llegada,hora_fin,resultado,lat_real,lng_real')
+          .select('id,visita_id,hora_llegada,hora_fin,resultado,lat_real,lng_real,cliente_key')
           .gte('hora_llegada', iso)
           .order('hora_llegada', { ascending: false })
           .limit(300),
@@ -329,14 +368,33 @@ export default function Gerencia({ esGerente }) {
       ])
 
       if (cancelled) return
-      const checkins = chRes.data || []
+      let checkins = chRes.data || []
+      const visitaIds = [...new Set(checkins.map(c => c.visita_id).filter(Boolean))]
+      let visitaMap = {}
+      if (visitaIds.length) {
+        const { data: vs } = await supabase
+          .from('visitas')
+          .select('id,cliente_key,nombre_cliente,nombre_local')
+          .in('id', visitaIds.slice(0, 100))
+        for (const v of vs || []) visitaMap[v.id] = v
+      }
+      checkins = checkins.map(c => {
+        const v = visitaMap[c.visita_id]
+        const ck = c.cliente_key || v?.cliente_key
+        const fromCar = carteraCache.find(x => x.cliente_key === ck)
+        return {
+          ...c,
+          cliente_key: ck,
+          nombre_cliente:
+            v?.nombre_cliente || v?.nombre_local || fromCar?.nombre_cliente || ck || 'Cliente',
+        }
+      })
       const pedidos = peRes.data || []
       let notas = noRes.data || []
-      // filtrar notas por fecha si hay campo
       notas = notas.filter(n => {
-        const t = n.created_at || n.creado_en
-        if (!t) return true
-        return new Date(t) >= start
+        const tt = n.created_at || n.creado_en
+        if (!tt) return true
+        return new Date(tt) >= start
       })
 
       let $capturado = 0
@@ -407,7 +465,7 @@ export default function Gerencia({ esGerente }) {
     return () => {
       cancelled = true
     }
-  }, [tab, actRango])
+  }, [tab, actRango, carteraCache])
 
   async function cargarSkuCliente(clienteKey, nombreHint) {
     const key = clienteKey || nombreHint || 'sin-key'
@@ -428,7 +486,33 @@ export default function Gerencia({ esGerente }) {
               .includes(String(nombreHint).toUpperCase().slice(0, 18))
           )
         : null)
-    let skus = parseSkuDetalle(fromGer?.sku_detalle)
+        // Cache de cartera de terreno (incluye sku_detalle de las 3 zonas)
+    const fromCache = carteraCache.find(
+      c =>
+        (clienteKey && String(c.cliente_key) === String(clienteKey)) ||
+        (nombreHint &&
+          (String(c.nombre_cliente || '').toUpperCase() === String(nombreHint).toUpperCase() ||
+            String(c.razon_social || '').toUpperCase() === String(nombreHint).toUpperCase() ||
+            String(c.nombre_cliente || '')
+              .toUpperCase()
+              .includes(String(nombreHint).toUpperCase().slice(0, 16))))
+    )
+    if (fromCache && parseSkuDetalle(fromCache.sku_detalle).length) {
+      setCliSku(prev => ({
+        ...prev,
+        [key]: {
+          loading: false,
+          skus: parseSkuDetalle(fromCache.sku_detalle),
+          oferta: fromCache.oferta_real || null,
+          productos_top: fromCache.productos_top || null,
+          venta_mtd: fromCache.venta_mtd,
+          fuente: 'cartera',
+        },
+      }))
+      return
+    }
+
+let skus = parseSkuDetalle(fromGer?.sku_detalle)
     let oferta = fromGer?.oferta_real || fromGer?.oferta || null
     let productos_top = fromGer?.productos_top || null
     const nomBuscar = (
@@ -1490,21 +1574,33 @@ export default function Gerencia({ esGerente }) {
                           minute: '2-digit',
                         })
                       : '—'
+                    const res = c.resultado || (c.hora_fin ? 'completada' : 'en curso')
+                    const resLabel = String(res).replace(/_/g, ' ')
                     return (
                       <div
                         key={c.id}
                         style={{
-                          padding: '8px 0',
+                          padding: '10px 0',
                           borderBottom: '1px solid #f5f5f4',
                           display: 'flex',
                           justifyContent: 'space-between',
-                          gap: 8,
-                          fontSize: 13,
+                          gap: 10,
+                          alignItems: 'center',
                         }}
                       >
-                        <span className="muted">{hora}</span>
-                        <span style={{ fontWeight: 700 }}>
-                          {c.resultado || (c.hora_fin ? 'completada' : 'en curso')}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>
+                            {c.nombre_cliente || c.cliente_key || 'Cliente'}
+                          </div>
+                          <div className="muted" style={{ fontSize: 11 }}>{hora}</div>
+                        </div>
+                        <span style={{
+                          fontWeight: 800, fontSize: 11, textTransform: 'uppercase',
+                          color: /pedido/i.test(res) ? '#0d9488' : /no.?venta/i.test(res) ? '#78716c' : '#1c1917',
+                          background: /pedido/i.test(res) ? '#ecfdf5' : '#f5f5f4',
+                          padding: '4px 8px', borderRadius: 8, whiteSpace: 'nowrap',
+                        }}>
+                          {resLabel}
                         </span>
                       </div>
                     )

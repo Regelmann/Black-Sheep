@@ -50,6 +50,7 @@ export function NavBar({ esGerente, onLogout }) {
 
   return (
     <nav className="navbar" role="navigation" aria-label="Principal">
+      <div className="navbar-inner">
       {items.map(it => {
         const active = loc.pathname === it.to || (it.to === '/mapa' && loc.pathname.startsWith('/visita'))
         return (
@@ -70,10 +71,9 @@ export function NavBar({ esGerente, onLogout }) {
       {onLogout && (
         <button
           type="button"
-          className="nav-item"
+          className="nav-item nav-logout"
           onClick={onLogout}
           title="Cerrar sesión"
-          style={{ color: '#ef4444' }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path
@@ -85,6 +85,7 @@ export function NavBar({ esGerente, onLogout }) {
           <span>Salir</span>
         </button>
       )}
+      </div>
     </nav>
   )
 }

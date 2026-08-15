@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEjecutivo } from '../App.jsx'
 import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo'
-import { ordenarPorDistancia } from '../lib/coach'
+import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach'
+import { formatDist, formatEta } from '../lib/geo'
 import { money } from '../components.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import MisPedidosHoy from '../components/MisPedidosHoy.jsx'
@@ -147,6 +148,7 @@ export default function Ruta({ session }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const markersRef = useRef([])
+  const polyRef = useRef(null)
   const meMarkerRef = useRef(null)
   const meAccRef = useRef(null)
   const fittedFecha = useRef(null) // fecha para la que ya hicimos fitBounds
@@ -379,13 +381,15 @@ export default function Ruta({ session }) {
   }, [territorio])
 
 
+  const [rutaStats, setRutaStats] = useState(null) // { km, etaMin, stops }
+
   async function optimizarOrdenRuta() {
     if (!visitas.length || busy) return
     setBusy(true)
     try {
       const origin = myPos?.lat != null ? myPos : null
-      const ordered = ordenarPorDistancia(visitas, origin)
-      // Persist new orden
+      // Distancia + prioridad comercial (reponer / riesgo / $)
+      const { ordered, totalM } = ordenarRutaOptima(visitas, origin, { priorityWeight: 40 })
       for (let i = 0; i < ordered.length; i++) {
         const v = ordered[i]
         if (!v.id) continue
@@ -393,9 +397,83 @@ export default function Ruta({ session }) {
         if (Number(v.orden) === nuevo) continue
         await supabase.from('visitas').update({ orden: nuevo }).eq('id', v.id)
       }
-      tip('Ruta optimizada por distancia')
+      const stats = metricasRuta(ordered, origin)
+      setRutaStats(stats)
+      const kmTxt = stats.km > 0 ? ` · ${stats.km} km · ~${stats.etaMin} min` : ''
+      tip(`Ruta optimizada (distancia + prioridad)${kmTxt}`)
       if (ruta?.id) await recargarVisitas(ruta.id)
       else await cargar()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /**
+   * Armar ruta del día desde prioridades de cartera (reponer/riesgo/$ cerca).
+   * Proceso: candidatos score > 0 → top 8 en radio → optimiza orden → inserta visitas.
+   */
+  async function armarRutaDelDia() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const origin = myPos?.lat != null ? myPos : null
+      if (!origin) {
+        tip('Activá GPS para armar la ruta por cercanía')
+        return
+      }
+      const cands = candidatosRutaDia(territorio, origin, { maxStops: 8, radioKm: 15 })
+      if (!cands.length) {
+        tip('No hay candidatos prioritarios con geo en 15 km')
+        return
+      }
+      const rid = await ensureRuta()
+      if (!rid) return
+
+      // Evitar duplicar paradas ya en itinerario
+      const ya = new Set(visitas.map(v => String(v.punto_id_bq || v.cliente_key || '')))
+      const nuevos = cands.filter(c => !ya.has(String(c.cliente_key || c.id)))
+      if (!nuevos.length) {
+        tip('Las prioridades ya están en el itinerario — tocá Optimizar orden')
+        setListaOpen(true)
+        return
+      }
+
+      const { ordered } = ordenarRutaOptima(nuevos, origin, { priorityWeight: 40 })
+      const baseOrden = visitas.reduce((m, v) => Math.max(m, Number(v.orden) || 0), 0)
+      for (let i = 0; i < ordered.length; i++) {
+        const item = ordered[i]
+        await supabase.from('visitas').insert({
+          ruta_id: rid,
+          orden: baseOrden + i + 1,
+          punto_id_bq: item.cliente_key || String(item.id),
+          nombre_local: item.nombre_cliente || item.nombre_local || 'Parada',
+          direccion: item.direccion || item.comuna,
+          comuna: item.comuna,
+          lat: item.lat,
+          lng: item.lng,
+          segmento: limpiaEstado(item.estado_fuga),
+          oferta: limpiaOferta(item.oferta_real || item.oferta || item.productos_top),
+          potencial: Number(item.venta_mensual || item.potencial) || 0,
+          estado: 'pendiente',
+        })
+      }
+      // Re-optimizar todo el itinerario junto
+      const { data: todas } = await supabase
+        .from('visitas')
+        .select('*')
+        .eq('ruta_id', rid)
+        .order('orden')
+      const { ordered: finalOrd } = ordenarRutaOptima(todas || [], origin, { priorityWeight: 40 })
+      for (let i = 0; i < finalOrd.length; i++) {
+        if (finalOrd[i].id) {
+          await supabase.from('visitas').update({ orden: i + 1 }).eq('id', finalOrd[i].id)
+        }
+      }
+      const stats = metricasRuta(finalOrd, origin)
+      setRutaStats(stats)
+      setListaOpen(true)
+      tip(`Ruta del día: ${ordered.length} paradas · ${stats.km} km · ~${stats.etaMin} min`)
+      await recargarVisitas(rid)
     } finally {
       setBusy(false)
     }
@@ -555,6 +633,31 @@ export default function Ruta({ session }) {
       markersRef.current.push(marker)
     })
 
+    // Polyline del itinerario (paradas de ruta ordenadas)
+    if (polyRef.current) {
+      try { polyRef.current.setMap(null) } catch (_) {}
+      polyRef.current = null
+    }
+    const rutaPts = (visitas || [])
+      .filter(v => v.lat != null && v.lng != null)
+      .slice()
+      .sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0))
+      .map(v => ({ lat: Number(v.lat), lng: Number(v.lng) }))
+    if (rutaPts.length >= 2) {
+      const path = myPos?.lat != null
+        ? [{ lat: Number(myPos.lat), lng: Number(myPos.lng) }, ...rutaPts]
+        : rutaPts
+      polyRef.current = new maps.Polyline({
+        path,
+        geodesic: true,
+        strokeColor: '#c2410c',
+        strokeOpacity: 0.85,
+        strokeWeight: 3,
+        map: mapInstance.current,
+        zIndex: 40,
+      })
+    }
+
     // fitBounds UNA sola vez por fecha+zona (evita zoom in/out al redibujar pines)
     const fitKey = fecha + '|' + uid
     if (fittedFecha.current !== fitKey && visible.length) {
@@ -575,7 +678,7 @@ export default function Ruta({ session }) {
         /* ignore */
       }
     }
-  }, [mapReady, visible, fecha, uid])
+  }, [mapReady, visible, fecha, uid, visitas, myPos?.lat, myPos?.lng])
 
   /** Recarga SOLO visitas + actualiza los pines de ruta en territorio (1 query liviana) */
   const recargarVisitas = useCallback(async (rutaId) => {
@@ -1092,20 +1195,50 @@ export default function Ruta({ session }) {
           <span>Itinerario del día ({visitas.length})</span>
           <span style={{ color: '#64748b' }}>{listaOpen ? '▾' : '▸'}</span>
         </button>
-        {listaOpen && visitas.length >= 2 && (
-          <button
-            type="button"
-            onClick={optimizarOrdenRuta}
-            disabled={busy}
-            style={{
-              width: '100%', marginBottom: 8, padding: '10px 12px',
-              borderRadius: 10, border: '1.5px solid #c2410c', background: '#fff7ed',
-              color: '#9a3412', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
-              cursor: busy ? 'wait' : 'pointer',
-            }}
-          >
-            ⚡ Optimizar orden por distancia
-          </button>
+        {listaOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={armarRutaDelDia}
+              disabled={busy}
+              style={{
+                width: '100%', padding: '12px 14px',
+                borderRadius: 12, border: 'none',
+                background: 'linear-gradient(135deg, #c2410c 0%, #9a3412 100%)',
+                color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
+                cursor: busy ? 'wait' : 'pointer',
+                boxShadow: '0 2px 8px rgba(194,65,12,0.25)',
+              }}
+            >
+              {busy ? 'Armando…' : '🎯 Armar ruta del día (prioridades + cerca)'}
+            </button>
+            {visitas.length >= 2 && (
+              <button
+                type="button"
+                onClick={optimizarOrdenRuta}
+                disabled={busy}
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  borderRadius: 10, border: '1.5px solid #c2410c', background: '#fff7ed',
+                  color: '#9a3412', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
+                  cursor: busy ? 'wait' : 'pointer',
+                }}
+              >
+                ⚡ Optimizar orden (distancia + reponer/riesgo)
+              </button>
+            )}
+            {rutaStats && visitas.length > 0 && (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', gap: 8,
+                background: '#fafaf9', borderRadius: 10, padding: '10px 12px',
+                border: '1px solid #e7e5e4', fontSize: 12, fontWeight: 700,
+              }}>
+                <span>{rutaStats.stops} paradas</span>
+                <span style={{ color: '#c2410c' }}>{rutaStats.km} km</span>
+                <span style={{ color: '#0d9488' }}>~{rutaStats.etaMin} min</span>
+              </div>
+            )}
+          </div>
         )}
 
         {listaOpen && (
@@ -1114,7 +1247,7 @@ export default function Ruta({ session }) {
               <div className="card center" style={{ marginTop: 0 }}>
                 <p style={{ fontWeight: 600, marginBottom: 6 }}>Sin paradas aún</p>
                 <p className="muted">
-                  Tocá un pin del mapa (cliente o prospecto) y usá <b>+ A la ruta</b>.
+                  Tocá <b>Armar ruta del día</b> (GPS + prioridades) o un pin y <b>+ A la ruta</b>.
                 </p>
               </div>
             )}

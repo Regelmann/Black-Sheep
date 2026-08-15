@@ -186,36 +186,104 @@ export function scoreVisita(item, myPos) {
   return Math.min(100, score)
 }
 
+/**
+ * Nearest-neighbor clásico (solo distancia).
+ * Preferí ordenarRutaOptima para terreno real (distancia + prioridad comercial).
+ */
 export function ordenarPorDistancia(paradas, origin) {
-  const withGeo = paradas.filter(p => p.lat != null && p.lng != null)
-  const without = paradas.filter(p => p.lat == null || p.lng == null)
-  if (!withGeo.length) return paradas
+  return ordenarRutaOptima(paradas, origin, { priorityWeight: 0 }).ordered
+}
 
-  let originLat = origin?.lat
-  let originLng = origin?.lng
+/**
+ * Ruta óptima para fuerza de ventas:
+ * nearest-neighbor con sesgo de prioridad (reponer / riesgo / $).
+ *
+ * cost = distancia_m - priorityWeight * score(0-100)
+ * → prioriza clientes urgentes cuando están a distancias similares.
+ *
+ * @returns {{ ordered, totalM, legs }}
+ */
+export function ordenarRutaOptima(paradas, origin, opts = {}) {
+  const priorityWeight = opts.priorityWeight != null ? opts.priorityWeight : 35 // metros “ahorrados” por punto de score
+  const withGeo = paradas.filter(p => p.lat != null && p.lng != null && !isNaN(Number(p.lat)))
+  const without = paradas.filter(p => p.lat == null || p.lng == null || isNaN(Number(p.lat)))
+  if (!withGeo.length) return { ordered: [...paradas], totalM: 0, legs: [] }
+
+  let originLat = origin?.lat != null ? Number(origin.lat) : null
+  let originLng = origin?.lng != null ? Number(origin.lng) : null
   if (originLat == null || originLng == null) {
     originLat = Number(withGeo[0].lat)
     originLng = Number(withGeo[0].lng)
   }
 
-  const remaining = [...withGeo]
+  const remaining = withGeo.map(p => ({
+    ...p,
+    _score: scoreVisita(p, { lat: originLat, lng: originLng }),
+  }))
   const ordered = []
+  const legs = []
   let curLat = originLat
   let curLng = originLng
+  let totalM = 0
+
   while (remaining.length) {
     let bestI = 0
+    let bestCost = Infinity
     let bestD = Infinity
     for (let i = 0; i < remaining.length; i++) {
       const d = haversineM(curLat, curLng, remaining[i].lat, remaining[i].lng)
-      if (d != null && d < bestD) {
+      if (d == null) continue
+      const cost = d - priorityWeight * (remaining[i]._score || 0)
+      if (cost < bestCost) {
+        bestCost = cost
         bestD = d
         bestI = i
       }
     }
     const next = remaining.splice(bestI, 1)[0]
+    legs.push({ from: { lat: curLat, lng: curLng }, to: next, m: bestD })
+    totalM += bestD === Infinity ? 0 : bestD
     ordered.push(next)
     curLat = Number(next.lat)
     curLng = Number(next.lng)
   }
-  return [...ordered, ...without]
+
+  return { ordered: [...ordered, ...without], totalM, legs }
+}
+
+/** Resumen legible: km + ETA aprox (25 km/h urbano) */
+export function metricasRuta(ordered, origin) {
+  const { totalM, legs } = ordenarRutaOptima(ordered, origin, { priorityWeight: 0 })
+  const km = totalM / 1000
+  const min = Math.max(ordered.length * 12, Math.round((km / 25) * 60) + ordered.length * 8) // viaje + 8–12 min por parada
+  return {
+    totalM,
+    km: Math.round(km * 10) / 10,
+    etaMin: min,
+    stops: ordered.length,
+    legs,
+  }
+}
+
+/**
+ * Candidatos para “Armar ruta del día”:
+ * top N por scoreVisita, con geo, no bloqueados, opc. radio km.
+ */
+export function candidatosRutaDia(territorio, myPos, opts = {}) {
+  const maxStops = opts.maxStops || 8
+  const radioKm = opts.radioKm != null ? opts.radioKm : 15
+  const rows = (territorio || []).filter(c => {
+    if (c.es_bloqueado) return false
+    if (c.lat == null || c.lng == null) return false
+    if (myPos?.lat != null && radioKm > 0) {
+      const d = haversineM(myPos.lat, myPos.lng, c.lat, c.lng)
+      if (d != null && d > radioKm * 1000) return false
+    }
+    return true
+  })
+  return rows
+    .map(c => ({ ...c, _score: scoreVisita(c, myPos) }))
+    .filter(c => c._score > 0)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, maxStops)
 }

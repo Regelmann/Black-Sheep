@@ -392,69 +392,55 @@ export default function Hoy() {
           </>
         )}
 
-        {/* Day Summary — chips tappable, números consistentes */}
-        <div className="section-title">Resumen del día</div>
-        <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          <button
-            type="button"
-            className="kpi-tile"
-            style={{ textAlign: 'left', border: '1px solid var(--line)', minHeight: 64 }}
-            onClick={() => nav('/cartera?filtro=ReponerHoy')}
-            aria-label={`${m.reponerHoy} a reponer hoy`}
-          >
-            <div className="kpi-n t-brand">{m.reponerHoy}</div>
-            <div className="kpi-l">Reponer hoy</div>
-          </button>
-          <button
-            type="button"
-            className="kpi-tile"
-            style={{ textAlign: 'left', border: '1px solid var(--line)', minHeight: 64 }}
-            onClick={() => nav('/cartera?filtro=Riesgo')}
-            aria-label={`${m.nRiesgo} en riesgo`}
-          >
-            <div className="kpi-n t-amber">{m.nRiesgo}</div>
-            <div className="kpi-l">En riesgo</div>
-          </button>
-          <button
-            type="button"
-            className="kpi-tile"
-            style={{ textAlign: 'left', border: '1px solid var(--line)', minHeight: 64 }}
-            onClick={() => nav('/cartera?filtro=Enfri')}
-            aria-label={`${m.nEnfri} enfriándose`}
-          >
-            <div className="kpi-n t-blue">{m.nEnfri}</div>
-            <div className="kpi-l">Enfriándose</div>
-          </button>
-          <button
-            type="button"
-            className="kpi-tile"
-            style={{ textAlign: 'left', border: '1px solid var(--line)', minHeight: 64 }}
-            onClick={() => nav('/cartera?filtro=ActivosMes')}
-          >
-            <div className="kpi-n" style={{ color: 'var(--green)' }}>
-              {m.nActivos}
-            </div>
-            <div className="kpi-l">Activos mes</div>
-          </button>
-          <button
-            type="button"
-            className="kpi-tile"
-            style={{ textAlign: 'left', border: '1px solid var(--line)', minHeight: 64 }}
-            onClick={() => nav('/cartera?filtro=Nuevos')}
-          >
-            <div className="kpi-n t-blue">{m.nNuevos}</div>
-            <div className="kpi-l">Nuevos mes</div>
-          </button>
-          <div className="kpi-tile" style={{ minHeight: 64 }}>
-            <div className="kpi-n t-red" style={{ fontSize: 14 }}>
-              {money(m.ventaRiesgo)}
-            </div>
-            <div className="kpi-l">Venta en riesgo</div>
-          </div>
+        {/* Day Summary — 6 métricas en 3x2 */}
+        <div className="section-title">Hoy</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+          {[
+            { n: m.reponerHoy,  l: 'Reponer',    color: '#c2410c', route: '/cartera?filtro=ReponerHoy', bg: '#fff4eb' },
+            { n: m.nRiesgo,     l: 'Riesgo',     color: '#dc2626', route: '/cartera?filtro=Riesgo',    bg: '#fef2f2' },
+            { n: m.nEnfri,      l: 'Enfriando',  color: '#d97706', route: '/cartera?filtro=Enfri',     bg: '#fffbeb' },
+            { n: m.nActivos,    l: 'Activos',    color: '#15803d', route: '/cartera?filtro=ActivosMes', bg: '#f0fdf4' },
+            { n: m.nNuevos,     l: 'Nuevos',     color: '#2563eb', route: '/cartera?filtro=Nuevos',    bg: '#eff6ff' },
+            { n: m.totalClientes, l: 'Total',    color: '#57534e', route: '/cartera',                   bg: '#fafaf9' },
+          ].map(({ n, l, color, route, bg }) => (
+            <button key={l} type="button"
+              onClick={() => nav(route)}
+              style={{
+                background: bg, border: `1.5px solid ${color}22`, borderRadius: 14,
+                padding: '12px 8px', textAlign: 'center', cursor: 'pointer',
+                fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
+              }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: '-0.03em' }}>{n}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>{l}</div>
+            </button>
+          ))}
         </div>
 
-        {/* Action Queue — corazón interactivo */}
-        <div className="section-title">Tu día en 30 segundos · Priorizado</div>
+        {/* Action Queue */}
+        <div className="section-title">Cola de acción · priorizado</div>
+        <button
+          type="button"
+          onClick={() => nav('/mapa')}
+          style={{
+            width: '100%', marginBottom: 14,
+            padding: '14px 16px', borderRadius: 16,
+            background: 'linear-gradient(135deg, #1c1917 0%, #c2410c 100%)',
+            border: 'none', color: '#fff',
+            fontWeight: 800, fontSize: 15, fontFamily: 'inherit',
+            cursor: 'pointer', textAlign: 'left',
+            display: 'flex', alignItems: 'center', gap: 12,
+            boxShadow: '0 6px 20px rgba(194,65,12,0.3)',
+          }}
+        >
+          <span style={{ fontSize: 24 }}>🎯</span>
+          <div>
+            <div>Armar ruta del día</div>
+            <div style={{ fontWeight: 500, fontSize: 12, opacity: 0.75, marginTop: 2 }}>
+              GPS + prioridades + km optimizados
+            </div>
+          </div>
+          <span style={{ marginLeft: 'auto', fontSize: 20, opacity: 0.8 }}>→</span>
+        </button>
         {m.actionQueue.length > 0 && (
           <p className="muted" style={{ fontSize: 12, margin: '-4px 0 12px', lineHeight: 1.4 }}>
             Empezá por la primera card. Objetivo: primera acción en &lt; 8 s.
@@ -550,34 +536,38 @@ export default function Hoy() {
                 {item.telefono && (
                   <a href={`tel:${item.telefono}`}
                     style={{
-                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '11px 8px', textDecoration: 'none',
-                      fontSize: 13, fontWeight: 700, color: '#57534e',
-                      borderRight: '1px solid #f5f5f4', gap: 5,
+                      width: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '12px 8px', textDecoration: 'none', color: '#57534e',
+                      borderRight: '1px solid #f5f5f4', flexShrink: 0,
                     }}>
-                    Llamar
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                    </svg>
                   </a>
                 )}
                 {item.whatsapp && (
                   <a href={item.whatsapp} target="_blank" rel="noreferrer"
                     style={{
-                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '11px 8px', textDecoration: 'none',
-                      fontSize: 13, fontWeight: 700, color: '#15803d',
-                      borderRight: '1px solid #f5f5f4', gap: 5,
+                      width: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '12px 8px', textDecoration: 'none',
+                      borderRight: '1px solid #f5f5f4', flexShrink: 0,
                     }}>
-                    WA
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#15803d">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.552 4.106 1.515 5.828L0 24l6.338-1.476A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm.029 21.818a9.833 9.833 0 0 1-5.019-1.374l-.36-.214-3.732.979 1.003-3.647-.234-.374A9.862 9.862 0 0 1 2.182 12c0-5.42 4.41-9.818 9.847-9.818 5.437 0 9.847 4.398 9.847 9.818 0 5.42-4.41 9.818-9.847 9.818z"/>
+                    </svg>
                   </a>
                 )}
                 <button type="button"
                   onClick={() => openPrep(item)}
                   style={{
-                    flex: 2, padding: '11px 8px', border: 'none',
+                    flex: 1, padding: '12px 8px', border: 'none',
                     background: done ? '#57534e' : metaT.color, color: '#fff',
-                    fontSize: 13, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
+                    fontSize: 14, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    borderRadius: '0 0 16px 0',
                   }}>
-                  {done ? 'Ver de nuevo →' : `${item.ctaLabel} →`}
+                  {done ? 'Ver de nuevo' : item.ctaLabel} →
                 </button>
               </div>
             </div>

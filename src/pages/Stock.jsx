@@ -191,63 +191,6 @@ export default function Stock() {
       <div style={{ padding: 14 }}>
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${stock.length} SKU`} />}
 
-        {/* Análisis accionable */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: '#78716c', marginBottom: 8, textTransform: 'uppercase' }}>
-            Análisis · qué hacer hoy
-          </div>
-          {insights.map((ins, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => {
-                if (ins.tipo === 'sobre') setFiltro('Alto')
-                else if (ins.tipo === 'foco') setFiltro('Foco')
-                else if (ins.tipo === 'crit') setFiltro('Critico')
-                else setFiltro('Todos')
-              }}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                background: ins.bg,
-                borderRadius: 14,
-                padding: '12px 14px',
-                marginBottom: 8,
-                border: `1px solid ${ins.border || ins.color + '33'}`,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: ins.color }}>{ins.title}</div>
-                <div style={{
-                  fontSize: 11, fontWeight: 800, color: ins.color,
-                  background: '#fff', padding: '3px 8px', borderRadius: 999,
-                  border: `1px solid ${ins.border || '#e7e5e4'}`,
-                }}>Filtrar</div>
-              </div>
-              {ins.items?.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                  {ins.items.map((it, j) => (
-                    <span key={j} style={{
-                      fontSize: 11, fontWeight: 600, color: '#44403c',
-                      background: '#fff', borderRadius: 8, padding: '4px 8px',
-                      border: '1px solid #e7e5e4', maxWidth: '100%',
-                    }}>{it}</span>
-                  ))}
-                </div>
-              )}
-              {ins.body && !ins.items && (
-                <div style={{ fontSize: 12, color: '#57534e', marginTop: 6, lineHeight: 1.35 }}>{ins.body}</div>
-              )}
-              <div style={{ fontSize: 12, fontWeight: 700, color: ins.color, marginTop: 8 }}>
-                → {ins.accion}
-              </div>
-            </button>
-          ))}
-        </div>
-
         <div
           style={{
             display: 'grid',
@@ -285,6 +228,43 @@ export default function Stock() {
             </button>
           ))}
         </div>
+
+        {/* Alertas compactas — debajo de KPIs */}
+        {insights.length > 0 && (
+          <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {insights.map((ins, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  if (ins.tipo === 'sobre') setFiltro('Alto')
+                  else if (ins.tipo === 'foco') setFiltro('Foco')
+                  else if (ins.tipo === 'crit') setFiltro('Critico')
+                  else setFiltro('Todos')
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  width: '100%', textAlign: 'left',
+                  background: '#fff',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  border: `1px solid ${ins.border || '#e7e5e4'}`,
+                  borderLeft: `4px solid ${ins.color}`,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: ins.color }}>{ins.title}</div>
+                  <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>{ins.accion}</div>
+                </div>
+                <div style={{
+                  fontSize: 11, fontWeight: 800, color: ins.color,
+                  background: ins.bg, padding: '6px 10px', borderRadius: 999, whiteSpace: 'nowrap',
+                }}>Ver →</div>
+              </button>
+            ))}
+          </div>
+        )}
 
         <input
           className="search"
