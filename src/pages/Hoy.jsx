@@ -5,7 +5,13 @@ import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics'
 import { listarPedidosHoy } from '../lib/pedido'
-import { loadActionQueue, flushActionQueue, isProbablyOffline } from '../lib/offline'
+import {
+  loadActionQueue,
+  flushActionQueue,
+  isProbablyOffline,
+  loadHoyResultados,
+} from '../lib/offline'
+import { skusAReponer } from '../lib/coach'
 
 function limpiaEstado(e) {
   return (e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')
@@ -35,6 +41,8 @@ export default function Hoy() {
     totalPedidos: 0,
     colaOffline: 0,
   })
+  const [prep, setPrep] = useState(null) // item de Action Queue para sheet 10s
+  const [hoyRes, setHoyRes] = useState(() => loadHoyResultados())
 
   useEffect(() => {
     const on = async () => {
@@ -141,6 +149,33 @@ export default function Hoy() {
 
   const m = useMemo(() => computeConsistentMetrics(cartera, meta), [cartera, meta])
 
+  // Refrescar resultados locales al volver a Hoy
+  useEffect(() => {
+    setHoyRes(loadHoyResultados())
+    setActividadHoy(a => ({ ...a, colaOffline: loadActionQueue().length }))
+  }, [eidVista, loading])
+
+  function openPrep(item) {
+    const raw = item.raw || cartera.find(c => (c.cliente_key || c.id) === item.clientId) || null
+    const skus = raw ? skusAReponer(raw) : []
+    setPrep({
+      ...item,
+      raw,
+      skusTop: skus.slice(0, 3),
+      dias: raw ? Number(raw.dias_sin_comprar) : null,
+      ultima: raw?.ultima_compra || null,
+      estado: raw?.estado_fuga || null,
+      comuna: raw?.comuna || null,
+      direccion: raw?.direccion || null,
+    })
+  }
+
+  function goVisita(item) {
+    setPrep(null)
+    if (item?.clientId) nav(`/visita/${encodeURIComponent(item.clientId)}`)
+    else nav('/mapa')
+  }
+
   const saludo = () => {
     const h = new Date().getHours()
     if (h < 12) return 'Buenos días'
@@ -160,8 +195,58 @@ export default function Hoy() {
     )
   }
 
+  const colaN = actividadHoy.colaOffline || 0
+  const showOfflineBanner = offline || colaN > 0
+
   return (
     <div>
+      {showOfflineBanner && (
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 40,
+            background: offline ? '#92400e' : '#b45309',
+            color: '#fff',
+            padding: '8px 14px',
+            fontSize: 12,
+            fontWeight: 700,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span>
+            {offline
+              ? `Modo offline · las acciones se guardan en cola`
+              : `${colaN} acción(es) pendientes de sincronizar`}
+          </span>
+          {!offline && colaN > 0 && (
+            <button
+              type="button"
+              onClick={async () => {
+                await flushActionQueue({})
+                setActividadHoy(a => ({ ...a, colaOffline: loadActionQueue().length }))
+              }}
+              style={{
+                border: '1px solid rgba(255,255,255,0.4)',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                borderRadius: 8,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              Reintentar
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="page-hero">
         <div className="eyebrow">KeyFoods · Mi día</div>
         <h1>
@@ -170,21 +255,6 @@ export default function Hoy() {
         <p className="sub">
           {zonaVista || '—'} ·{' '}
           {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'short' })}
-          {offline && (
-            <span
-              style={{
-                marginLeft: 8,
-                fontSize: 11,
-                fontWeight: 700,
-                background: '#fef3c7',
-                color: '#92400e',
-                padding: '2px 8px',
-                borderRadius: 999,
-              }}
-            >
-              Offline
-            </span>
-          )}
         </p>
       </div>
 
@@ -409,26 +479,46 @@ export default function Hoy() {
         {m.actionQueue.map((item, idx) => {
           const metaT = TYPE_META[item.type] || TYPE_META.visita
           const isFirst = idx === 0
+          const res = hoyRes[item.clientId] || hoyRes[item.id]
+          const done = res?.resultado
+          const doneLabel =
+            done === 'pedido' ? 'Pedido hoy' :
+            done === 'no_venta' ? 'No compró' :
+            done === 'checkin' || done === 'visitado' ? 'Visitado' : null
+          const doneColor =
+            done === 'pedido' ? '#0d9488' :
+            done === 'no_venta' ? '#78716c' :
+            done ? '#2563eb' : null
           return (
             <div key={item.id || idx} style={{
-              background: '#fff',
+              background: done ? '#fafaf9' : '#fff',
               borderRadius: 16,
-              border: isFirst ? `2px solid ${metaT.color}` : `1.5px solid ${metaT.color}22`,
-              borderLeft: `4px solid ${metaT.color}`,
+              border: isFirst && !done ? `2px solid ${metaT.color}` : `1.5px solid ${metaT.color}22`,
+              borderLeft: `4px solid ${doneColor || metaT.color}`,
               marginBottom: 10,
               overflow: 'hidden',
-              boxShadow: isFirst ? '0 8px 24px rgba(26,22,20,0.10)' : 'none',
-              transform: isFirst ? 'scale(1.01)' : 'none',
+              boxShadow: isFirst && !done ? '0 8px 24px rgba(26,22,20,0.10)' : 'none',
+              opacity: done === 'pedido' || done === 'no_venta' ? 0.82 : 1,
             }}>
-              {/* Header con badge y monto */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 8px' }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
-                  color: metaT.color, textTransform: 'uppercase',
-                  background: metaT.color + '15', padding: '3px 8px', borderRadius: 6,
-                }}>
-                  {metaT.badge}
-                </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 8px', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+                    color: metaT.color, textTransform: 'uppercase',
+                    background: metaT.color + '15', padding: '3px 8px', borderRadius: 6,
+                  }}>
+                    {metaT.badge}
+                  </span>
+                  {doneLabel && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
+                      color: doneColor, background: doneColor + '18',
+                      padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase',
+                    }}>
+                      ✓ {doneLabel}
+                    </span>
+                  )}
+                </div>
                 {item.amount > 0 && (
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#1c1917' }}>
                     {money(item.amount)}
@@ -436,7 +526,6 @@ export default function Hoy() {
                 )}
               </div>
 
-              {/* Nombre + subtítulo */}
               <div style={{ padding: '0 14px 10px' }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#1c1917', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
                   {item.title}
@@ -446,7 +535,7 @@ export default function Hoy() {
                     {item.subtitle}
                   </div>
                 )}
-                {item.oferta && (
+                {item.oferta && !done && (
                   <div style={{
                     marginTop: 8, padding: '7px 10px', borderRadius: 10,
                     background: '#fff7ed', fontSize: 12, fontWeight: 600, color: '#9a3412',
@@ -457,11 +546,7 @@ export default function Hoy() {
                 )}
               </div>
 
-              {/* Acciones */}
-              <div style={{
-                display: 'flex', gap: 0,
-                borderTop: '1px solid #f5f5f4',
-              }}>
+              <div style={{ display: 'flex', gap: 0, borderTop: '1px solid #f5f5f4' }}>
                 {item.telefono && (
                   <a href={`tel:${item.telefono}`}
                     style={{
@@ -470,9 +555,6 @@ export default function Hoy() {
                       fontSize: 13, fontWeight: 700, color: '#57534e',
                       borderRight: '1px solid #f5f5f4', gap: 5,
                     }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                    </svg>
                     Llamar
                   </a>
                 )}
@@ -484,25 +566,18 @@ export default function Hoy() {
                       fontSize: 13, fontWeight: 700, color: '#15803d',
                       borderRight: '1px solid #f5f5f4', gap: 5,
                     }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#15803d">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.552 4.106 1.515 5.828L0 24l6.338-1.476A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm.029 21.818a9.833 9.833 0 0 1-5.019-1.374l-.36-.214-3.732.979 1.003-3.647-.234-.374A9.862 9.862 0 0 1 2.182 12c0-5.42 4.41-9.818 9.847-9.818 5.437 0 9.847 4.398 9.847 9.818 0 5.42-4.41 9.818-9.847 9.818z"/>
-                    </svg>
                     WA
                   </a>
                 )}
                 <button type="button"
-                  onClick={() => {
-                    if (item.clientId) nav(`/visita/${encodeURIComponent(item.clientId)}`)
-                    else nav('/mapa')
-                  }}
+                  onClick={() => openPrep(item)}
                   style={{
                     flex: 2, padding: '11px 8px', border: 'none',
-                    background: metaT.color, color: '#fff',
+                    background: done ? '#57534e' : metaT.color, color: '#fff',
                     fontSize: 13, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   }}>
-                  {item.ctaLabel} →
+                  {done ? 'Ver de nuevo →' : `${item.ctaLabel} →`}
                 </button>
               </div>
             </div>
@@ -511,6 +586,115 @@ export default function Hoy() {
 
         <div style={{ height: 8 }} />
       </div>
+
+      {/* Prep de visita 10 s — bottom sheet */}
+      {prep && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPrep(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 80,
+            background: 'rgba(28,25,23,0.45)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480,
+              background: '#fff',
+              borderRadius: '20px 20px 0 0',
+              padding: '16px 18px 28px',
+              boxShadow: '0 -12px 40px rgba(0,0,0,0.18)',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 999, background: '#e7e5e4', margin: '0 auto 14px' }} />
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#c2410c', textTransform: 'uppercase' }}>
+              Prep de visita · 10 segundos
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#1c1917', marginTop: 4, letterSpacing: '-0.02em' }}>
+              {prep.title}
+            </div>
+            <div style={{ fontSize: 13, color: '#78716c', marginTop: 4 }}>
+              {[prep.comuna, prep.dias != null && !isNaN(prep.dias) ? `hace ${prep.dias}d` : null, limpiaEstado(prep.estado)]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
+              <div style={{ background: '#fafaf9', borderRadius: 12, padding: '10px 12px', border: '1px solid #f5f5f4' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>Última compra</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#1c1917', marginTop: 2 }}>
+                  {prep.ultima || '—'}
+                </div>
+              </div>
+              <div style={{ background: '#fafaf9', borderRadius: 12, padding: '10px 12px', border: '1px solid #f5f5f4' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>Prom / MTD</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#c2410c', marginTop: 2 }}>
+                  {money(prep.amount || 0)}
+                </div>
+              </div>
+            </div>
+
+            {prep.oferta && (
+              <div style={{
+                marginTop: 12, padding: '10px 12px', borderRadius: 12,
+                background: '#fff7ed', border: '1px solid #fed7aa',
+                fontSize: 13, fontWeight: 600, color: '#9a3412', lineHeight: 1.4,
+              }}>
+                💡 Ofrecé: {prep.oferta}
+              </div>
+            )}
+
+            {prep.skusTop?.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#78716c', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                  A reponer ahora
+                </div>
+                {prep.skusTop.map((s, i) => (
+                  <div key={i} style={{
+                    display: 'flex', gap: 8, alignItems: 'center',
+                    padding: '8px 0', borderBottom: '1px solid #f5f5f4',
+                  }}>
+                    <span style={{
+                      width: 22, height: 22, borderRadius: 7, background: '#fef2f2', color: '#b91c1c',
+                      fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    }}>{i + 1}</span>
+                    <div style={{ fontSize: 13, fontWeight: 650, color: '#1c1917', flex: 1 }}>{s.nombre}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <button
+                type="button"
+                onClick={() => setPrep(null)}
+                style={{
+                  flex: 1, minHeight: 48, borderRadius: 12, border: '1.5px solid #e7e5e4',
+                  background: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+                }}
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => goVisita(prep)}
+                style={{
+                  flex: 2, minHeight: 48, borderRadius: 12, border: 'none',
+                  background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 15,
+                  fontFamily: 'inherit', cursor: 'pointer',
+                }}
+              >
+                Ir a la visita →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

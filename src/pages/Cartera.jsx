@@ -883,64 +883,101 @@ export default function Cartera({ session }) {
                       {aReponer.length > 0 && (
                         <div
                           style={{
-                            background: '#fef2f2',
-                            borderRadius: 12,
-                            padding: '10px 12px',
-                            marginBottom: 10,
+                            background: 'linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%)',
+                            borderRadius: 14,
+                            padding: '12px 14px',
+                            marginBottom: 12,
+                            border: '1px solid #fecaca',
                             fontSize: 12,
-                            color: '#991b1b',
+                            color: '#7f1d1d',
                             lineHeight: 1.45,
                           }}
                         >
-                          <div style={{ fontWeight: 800, marginBottom: 4 }}>Reposición vencida</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{ fontWeight: 800, fontSize: 13, color: '#b91c1c' }}>
+                              ⚠ Reposición vencida · {aReponer.length} SKU
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', background: '#fff', padding: '3px 8px', borderRadius: 999 }}>
+                              Acción hoy
+                            </div>
+                          </div>
                           {aReponer.slice(0, 5).map((s, i) => (
-                            <div key={i}>
-                              · {s.nombre}
-                              {s.recompra?.label ? ` — ${s.recompra.label}` : ''}
+                            <div key={i} style={{
+                              display: 'flex', gap: 8, alignItems: 'flex-start',
+                              padding: '6px 0',
+                              borderTop: i === 0 ? 'none' : '1px solid #fecaca55',
+                            }}>
+                              <span style={{
+                                flexShrink: 0, width: 18, height: 18, borderRadius: 6,
+                                background: '#fee2e2', color: '#b91c1c',
+                                fontSize: 10, fontWeight: 800,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              }}>{i + 1}</span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, color: '#1c1917' }}>{s.nombre}</div>
+                                <div style={{ fontSize: 11, color: '#9a3412', marginTop: 1 }}>
+                                  {s.recompra?.label || (s.estadoRecompra === 'RECOMPRAR_HOY' ? 'Reponer hoy' : 'Atrasado')}
+                                  {s.falta > 0 ? ` · falta ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })}` : ''}
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
                       )}
 
                       {skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).length > 0 ? (
-                        skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).slice(0, 6).map((s, i) => {
+                        skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).slice(0, 8).map((s, i) => {
                           const p = pctRitmo(s.udMtd, s.promUd)
+                          const barPct = p != null ? Math.min(100, Math.max(0, p)) : 0
+                          const barColor = p == null ? '#d6d3d1' : p >= 100 ? '#22c55e' : p >= 50 ? '#f59e0b' : '#ef4444'
                           return (
                             <div
                               key={i}
                               style={{
-                                padding: '10px 0',
+                                padding: '12px 0',
                                 borderBottom: '1px solid #f5f5f4',
                               }}
                             >
-                              <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1614' }}>
-                                {s.nombre}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1614', flex: 1, minWidth: 0 }}>
+                                  {s.nombre}
+                                </div>
+                                <span style={{ fontWeight: 800, fontSize: 13, color: barColor, whiteSpace: 'nowrap' }}>
+                                  {p != null ? p + '%' : '—'}
+                                </span>
+                              </div>
+                              {/* Barra de avance vs promedio */}
+                              <div style={{
+                                marginTop: 6, height: 6, borderRadius: 999, background: '#f5f5f4', overflow: 'hidden',
+                              }}>
+                                <div style={{
+                                  width: barPct + '%', height: '100%', borderRadius: 999,
+                                  background: barColor, transition: 'width .3s ease',
+                                }} />
                               </div>
                               <div
                                 style={{
                                   display: 'flex',
                                   justifyContent: 'space-between',
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: '#78716c',
-                                  marginTop: 4,
+                                  marginTop: 5,
                                   gap: 8,
                                 }}
                               >
                                 <span>
                                   Mes {Number(s.udMtd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud · {money(s.clpMtd)}
-                                  {' · '}
-                                  prom {Number(s.promUd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud · {money(s.promClp)}
-                                  {s.falta > 0 ? ` · falta ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })}` : ''}
                                 </span>
-                                <span style={{ fontWeight: 700, color: p == null ? '#a8a29e' : p >= 100 ? '#3f6f4a' : p >= 50 ? '#b45309' : '#c2410c', whiteSpace: 'nowrap' }}>
-                                  {p != null ? p + '%' : '—'}
+                                <span>
+                                  prom {Number(s.promUd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} · {money(s.promClp)}
                                 </span>
                               </div>
-                              {(s.estadoRecompra || s.cicloDias) && (
-                                <div style={{ fontSize: 11, color: s.estadoRecompra === 'RECOMPRAR_HOY' ? '#b91c1c' : '#a8a29e', marginTop: 2 }}>
+                              {(s.falta > 0 || s.estadoRecompra || s.cicloDias) && (
+                                <div style={{ fontSize: 11, color: s.estadoRecompra === 'RECOMPRAR_HOY' ? '#b91c1c' : '#a8a29e', marginTop: 3, fontWeight: 600 }}>
                                   {s.estadoRecompra === 'RECOMPRAR_HOY' ? 'Reponer hoy' :
                                    s.estadoRecompra === 'RECOMPRAR_PRONTO' ? 'Reponer pronto' :
                                    s.cicloDias ? `Ciclo ~${s.cicloDias}d` : ''}
+                                  {s.falta > 0 ? ` · falta ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })}` : ''}
                                   {s.diasPara != null && s.estadoRecompra === 'OK' ? ` · en ${s.diasPara}d` : ''}
                                 </div>
                               )}

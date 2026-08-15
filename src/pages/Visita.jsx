@@ -5,7 +5,7 @@ import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
-import { enqueueAction, isProbablyOffline } from '../lib/offline'
+import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline'
 
 const money = n => {
   const v = Number(n)
@@ -178,6 +178,7 @@ export default function Visita({ session }) {
       enqueueAction({ type: 'checkin', payload })
       setCheckin({ ...payload, id: 'offline_' + Date.now(), _offline: true })
       setLastCheckinCoords({ lat, lng, accuracy, dist, verificado })
+      if (payload.cliente_key) markHoyResultado(payload.cliente_key, 'checkin')
       setMsg('Check-in guardado offline · se sincroniza al recuperar red')
       setBusy(false)
       return
@@ -203,6 +204,7 @@ export default function Visita({ session }) {
     }
     setCheckin(data)
     setLastCheckinCoords({ lat, lng, accuracy, dist, verificado })
+    if (payload.cliente_key) markHoyResultado(payload.cliente_key, 'checkin')
     if (verificado) {
       setMsg(`Check-in verificado · a ${formatDist(dist)} del local` + (accuracy ? ` (±${Math.round(accuracy)} m)` : ''))
     } else if (dist != null) {
@@ -218,6 +220,11 @@ export default function Visita({ session }) {
   async function terminar(res) {
     setBusy(true)
     const finalRes = res || resultado || (pedidoOk ? 'pedido' : 'completada')
+    const ck = visita?.cliente_key || cliente?.cliente_key
+    if (ck) {
+      const tag = finalRes === 'pedido' || pedidoOk ? 'pedido' : finalRes === 'no_venta' ? 'no_venta' : 'visitado'
+      markHoyResultado(ck, tag, { resultado_detalle: finalRes })
+    }
     const fin = new Date().toISOString()
 
     if (isProbablyOffline()) {
@@ -731,6 +738,10 @@ export default function Visita({ session }) {
           onClose={() => setPedidoOpen(false)}
           onSaved={() => {
             setPedidoOk(true)
+            {
+              const ck = visita?.cliente_key || cliente?.cliente_key
+              if (ck) markHoyResultado(ck, 'pedido')
+            }
             setResultado('pedido')
             setPedidoOpen(false)
             setMsg('Pedido guardado · cerrá la visita cuando termines')

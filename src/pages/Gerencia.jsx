@@ -267,17 +267,38 @@ export default function Gerencia({ esGerente }) {
     if (cliSku[clienteKey]?.skus?.length) return
     setCliSku(prev => ({ ...prev, [clienteKey]: { loading: true, skus: [], oferta: null } }))
 
-    // 1) Datos ya en gerencia_clientes (incluye canales no-terreno)
     const fromGer = detalleCli.find(d => String(d.cliente_key) === String(clienteKey))
     let skus = parseSkuDetalle(fromGer?.sku_detalle)
     let oferta = fromGer?.oferta_real || fromGer?.oferta || null
     let productos_top = fromGer?.productos_top || null
 
-    // 2) Cartera (puede fallar por RLS en otros canales)
+    // Parse productos_top si viene como texto (común en gerencia_clientes)
+    if (!skus.length && productos_top) {
+      const topTxt = typeof productos_top === 'string' ? productos_top : JSON.stringify(productos_top)
+      skus = parseSkuDetalle(topTxt)
+      if (!skus.length) {
+        // "PROD $1.2M · PROD2 $0.8M"
+        skus = topTxt
+          .split(/[·|,;]+/)
+          .map(t => t.trim())
+          .filter(t => t.length > 2)
+          .slice(0, 10)
+          .map(t => {
+            const m = t.match(/^(.+?)\s+\$?([\d.,]+)\s*M?/i)
+            return {
+              nombre: m ? m[1].trim() : t,
+              clpMtd: m ? Number(String(m[2]).replace(/\./g, '').replace(',', '.')) * ( /M/i.test(t) ? 1e6 : 1) : 0,
+              udMtd: 0, promClp: 0, promUd: 0, cicloDias: null, ultima: null,
+            }
+          })
+      }
+    }
+
+    // Cartera por cliente_key
     if (!skus.length) {
       const { data } = await supabase
         .from('cartera')
-        .select('sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra')
+        .select('sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra,cliente_key,nombre_social,nombre_cliente')
         .eq('cliente_key', clienteKey)
         .limit(1)
       const row = data?.[0]
@@ -288,37 +309,59 @@ export default function Gerencia({ esGerente }) {
       }
     }
 
-    // 3) Fallback: top productos desde ventas_lineas del cliente
-    if (!skus.length) {
-      try {
-        const { data: vl } = await supabase
-          .from('ventas_lineas')
-          .select('producto_nombre,sku_canon,venta_neta_clp,cantidad_unidad')
-          .eq('cliente_key', clienteKey)
-          .order('venta_neta_clp', { ascending: false })
-          .limit(80)
-        if (vl?.length) {
-          const agg = {}
-          for (const r of vl) {
-            const n = r.producto_nombre || r.sku_canon
-            if (!n) continue
-            if (!agg[n]) agg[n] = { nombre: n, clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0 }
-            agg[n].clpMtd += Number(r.venta_neta_clp) || 0
-            agg[n].udMtd += Number(r.cantidad_unidad) || 0
-          }
-          skus = Object.values(agg)
-            .sort((a, b) => b.clpMtd - a.clpMtd)
-            .slice(0, 12)
-            .map(s => ({
-              ...s,
-              promClp: s.clpMtd,
-              promUd: s.udMtd,
-              cicloDias: null,
-              ultima: null,
-            }))
+    // Cartera por nombre (canales sin key alineada)
+    if (!skus.length && fromGer) {
+      const nom = fromGer.nombre_cliente || fromGer.razon_social || fromGer.nombre
+      if (nom) {
+        const { data } = await supabase
+          .from('cartera')
+          .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente,razon_social')
+          .ilike('nombre_cliente', `%${String(nom).slice(0, 40)}%`)
+          .limit(3)
+        const row = (data || []).find(r => parseSkuDetalle(r.sku_detalle).length) || data?.[0]
+        if (row) {
+          skus = parseSkuDetalle(row.sku_detalle)
+          oferta = oferta || row.oferta_real
+          productos_top = productos_top || row.productos_top
         }
-      } catch {
-        /* ventas_lineas puede no estar expuesta */
+      }
+    }
+
+    // Fallback ventas_lineas — probar cliente_key y variantes
+    if (!skus.length) {
+      const keys = [clienteKey]
+      if (fromGer?.rut) keys.push(String(fromGer.rut))
+      if (fromGer?.cliente_key && fromGer.cliente_key !== clienteKey) keys.push(String(fromGer.cliente_key))
+      // RUT sin dígito verificador
+      const base = String(clienteKey).replace(/-.*$/, '')
+      if (base && base !== clienteKey) keys.push(base)
+
+      for (const k of keys) {
+        if (skus.length) break
+        try {
+          const { data: vl } = await supabase
+            .from('ventas_lineas')
+            .select('producto_nombre,sku_canon,venta_neta_clp,cantidad_unidad,cliente_key')
+            .eq('cliente_key', k)
+            .order('venta_neta_clp', { ascending: false })
+            .limit(80)
+          if (vl?.length) {
+            const agg = {}
+            for (const r of vl) {
+              const n = r.producto_nombre || r.sku_canon
+              if (!n) continue
+              if (!agg[n]) agg[n] = { nombre: n, clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0 }
+              agg[n].clpMtd += Number(r.venta_neta_clp) || 0
+              agg[n].udMtd += Number(r.cantidad_unidad) || 0
+            }
+            skus = Object.values(agg)
+              .sort((a, b) => b.clpMtd - a.clpMtd)
+              .slice(0, 12)
+              .map(s => ({ ...s, promClp: s.clpMtd, promUd: s.udMtd, cicloDias: null, ultima: null }))
+          }
+        } catch {
+          /* tabla no expuesta / RLS */
+        }
       }
     }
 
@@ -332,6 +375,9 @@ export default function Gerencia({ esGerente }) {
         venta_mtd: fromGer?.venta_mtd,
         dias_sin_comprar: null,
         ultima_compra: null,
+        fuente: skus.length
+          ? (fromGer?.sku_detalle ? 'gerencia' : productos_top ? 'top' : 'ventas')
+          : null,
       },
     }))
   }
@@ -819,9 +865,15 @@ export default function Gerencia({ esGerente }) {
                                   const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']
                                   return (
                                     <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f4' }}>
-                                      <div style={{ fontWeight: 600 }}>{s.nombre}</div>
-                                      <div className="muted" style={{ fontSize: 11 }}>
-                                        Prom {fmtStock(s.promUd)} ud · {money(s.promClp)} → mes {fmtStock(s.udMtd)} ud · {money(s.clpMtd)} ({pct}%)
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                        <div style={{ fontWeight: 600 }}>{s.nombre}</div>
+                                        <div style={{ fontWeight: 800, fontSize: 12, color: pct >= 100 ? '#15803d' : pct >= 50 ? '#b45309' : '#b91c1c' }}>{pct}%</div>
+                                      </div>
+                                      <div style={{ marginTop: 4, height: 5, borderRadius: 999, background: '#f5f5f4', overflow: 'hidden' }}>
+                                        <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
+                                      </div>
+                                      <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                                        Mes {fmtStock(s.udMtd)} ud · {money(s.clpMtd)} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
                                         <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
@@ -838,7 +890,10 @@ export default function Gerencia({ esGerente }) {
                                   )
                                 })}
                                 {!det?.loading && !(det?.skus || []).length && (
-                                  <div className="muted">Sin sku_detalle en cartera para este cliente.</div>
+                                  <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                                    Sin mix disponible (ni en gerencia_clientes, cartera ni ventas_lineas).
+                                    Revisá que el ciclo cargue sku_detalle o productos_top para este canal.
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -969,9 +1024,15 @@ export default function Gerencia({ esGerente }) {
                                   const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']
                                   return (
                                     <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f4' }}>
-                                      <div style={{ fontWeight: 600 }}>{s.nombre}</div>
-                                      <div className="muted" style={{ fontSize: 11 }}>
-                                        Prom {fmtStock(s.promUd)} ud · {money(s.promClp)} → este mes {fmtStock(s.udMtd)} ud · {money(s.clpMtd)} ({pct}%)
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                        <div style={{ fontWeight: 600 }}>{s.nombre}</div>
+                                        <div style={{ fontWeight: 800, fontSize: 12, color: pct >= 100 ? '#15803d' : pct >= 50 ? '#b45309' : '#b91c1c' }}>{pct}%</div>
+                                      </div>
+                                      <div style={{ marginTop: 4, height: 5, borderRadius: 999, background: '#f5f5f4', overflow: 'hidden' }}>
+                                        <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
+                                      </div>
+                                      <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                                        Mes {fmtStock(s.udMtd)} ud · {money(s.clpMtd)} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
                                         <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
@@ -988,7 +1049,10 @@ export default function Gerencia({ esGerente }) {
                                   )
                                 })}
                                 {!cliSku[d.cliente_key]?.loading && !(cliSku[d.cliente_key]?.skus || []).length && (
-                                  <div className="muted">Sin sku_detalle en cartera para este cliente.</div>
+                                  <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                                    Sin mix disponible (ni en gerencia_clientes, cartera ni ventas_lineas).
+                                    Revisá que el ciclo cargue sku_detalle o productos_top para este canal.
+                                  </div>
                                 )}
                               </div>
                             )}
