@@ -257,24 +257,74 @@ export default function Gerencia({ esGerente }) {
       return
     }
     setCliSel(clienteKey)
-    if (cliSku[clienteKey]?.skus) return
+    if (cliSku[clienteKey]?.skus?.length) return
     setCliSku(prev => ({ ...prev, [clienteKey]: { loading: true, skus: [], oferta: null } }))
-    const { data } = await supabase
-      .from('cartera')
-      .select('sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra')
-      .eq('cliente_key', clienteKey)
-      .limit(1)
-    const row = data?.[0]
+
+    // 1) Datos ya en gerencia_clientes (incluye canales no-terreno)
+    const fromGer = detalleCli.find(d => String(d.cliente_key) === String(clienteKey))
+    let skus = parseSkuDetalle(fromGer?.sku_detalle)
+    let oferta = fromGer?.oferta_real || fromGer?.oferta || null
+    let productos_top = fromGer?.productos_top || null
+
+    // 2) Cartera (puede fallar por RLS en otros canales)
+    if (!skus.length) {
+      const { data } = await supabase
+        .from('cartera')
+        .select('sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra')
+        .eq('cliente_key', clienteKey)
+        .limit(1)
+      const row = data?.[0]
+      if (row) {
+        skus = parseSkuDetalle(row.sku_detalle)
+        oferta = oferta || row.oferta_real
+        productos_top = productos_top || row.productos_top
+      }
+    }
+
+    // 3) Fallback: top productos desde ventas_lineas del cliente
+    if (!skus.length) {
+      try {
+        const { data: vl } = await supabase
+          .from('ventas_lineas')
+          .select('producto_nombre,sku_canon,venta_neta_clp,cantidad_unidad')
+          .eq('cliente_key', clienteKey)
+          .order('venta_neta_clp', { ascending: false })
+          .limit(80)
+        if (vl?.length) {
+          const agg = {}
+          for (const r of vl) {
+            const n = r.producto_nombre || r.sku_canon
+            if (!n) continue
+            if (!agg[n]) agg[n] = { nombre: n, clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0 }
+            agg[n].clpMtd += Number(r.venta_neta_clp) || 0
+            agg[n].udMtd += Number(r.cantidad_unidad) || 0
+          }
+          skus = Object.values(agg)
+            .sort((a, b) => b.clpMtd - a.clpMtd)
+            .slice(0, 12)
+            .map(s => ({
+              ...s,
+              promClp: s.clpMtd,
+              promUd: s.udMtd,
+              cicloDias: null,
+              ultima: null,
+            }))
+        }
+      } catch {
+        /* ventas_lineas puede no estar expuesta */
+      }
+    }
+
     setCliSku(prev => ({
       ...prev,
       [clienteKey]: {
         loading: false,
-        skus: parseSkuDetalle(row?.sku_detalle),
-        oferta: row?.oferta_real || null,
-        productos_top: row?.productos_top || null,
-        venta_mtd: row?.venta_mtd,
-        dias_sin_comprar: row?.dias_sin_comprar,
-        ultima_compra: row?.ultima_compra,
+        skus,
+        oferta,
+        productos_top,
+        venta_mtd: fromGer?.venta_mtd,
+        dias_sin_comprar: null,
+        ultima_compra: null,
       },
     }))
   }

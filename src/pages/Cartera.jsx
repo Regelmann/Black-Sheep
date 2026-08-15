@@ -158,20 +158,71 @@ export default function Cartera({ session }) {
   }, [eje?.eidVista])
 
   async function bloquear(cliente, motivo) {
-    await supabase.from('cartera').update({ es_bloqueado: true }).eq('id', cliente.id)
-    await supabase.from('notas_cliente').insert({
-      ejecutivo_id: session.user.id,
-      cliente_key: cliente.cliente_key,
-      nombre_local: cliente.nombre_cliente,
-      tipo: motivo === 'deuda' ? 'bloqueo_deuda' : 'bloqueo_cerrado',
-      texto: motivo === 'deuda' ? 'Bloqueado por deuda' : 'Cerro actividades',
-    })
-    cargar()
+    const key = cliente.cliente_key
+    const id = cliente.id
+    // Optimistic UI — se ve al toque aunque la red tarde
+    setClientes(prev =>
+      prev.map(c =>
+        (id && c.id === id) || (key && c.cliente_key === key)
+          ? { ...c, es_bloqueado: true, bloqueo_motivo: motivo }
+          : c
+      )
+    )
+    let q = supabase.from('cartera').update({ es_bloqueado: true })
+    if (id) q = q.eq('id', id)
+    else if (key) q = q.eq('cliente_key', key)
+    else return
+    const { error } = await q
+    if (error) {
+      // Rollback
+      setClientes(prev =>
+        prev.map(c =>
+          (id && c.id === id) || (key && c.cliente_key === key)
+            ? { ...c, es_bloqueado: false }
+            : c
+        )
+      )
+      alert('No se pudo bloquear: ' + (error.message || 'permiso / red'))
+      return
+    }
+    try {
+      await supabase.from('notas_cliente').insert({
+        ejecutivo_id: session.user.id,
+        cliente_key: key,
+        nombre_local: cliente.nombre_cliente || cliente.razon_social,
+        tipo: motivo === 'deuda' ? 'bloqueo_deuda' : 'bloqueo_cerrado',
+        texto: motivo === 'deuda' ? 'Bloqueado por deuda' : 'Cerrado / sin actividad',
+      })
+    } catch {
+      /* nota opcional */
+    }
   }
 
   async function desbloquear(cliente) {
-    await supabase.from('cartera').update({ es_bloqueado: false }).eq('id', cliente.id)
-    cargar()
+    const key = cliente.cliente_key
+    const id = cliente.id
+    setClientes(prev =>
+      prev.map(c =>
+        (id && c.id === id) || (key && c.cliente_key === key)
+          ? { ...c, es_bloqueado: false, bloqueo_motivo: null }
+          : c
+      )
+    )
+    let q = supabase.from('cartera').update({ es_bloqueado: false })
+    if (id) q = q.eq('id', id)
+    else if (key) q = q.eq('cliente_key', key)
+    else return
+    const { error } = await q
+    if (error) {
+      setClientes(prev =>
+        prev.map(c =>
+          (id && c.id === id) || (key && c.cliente_key === key)
+            ? { ...c, es_bloqueado: true }
+            : c
+        )
+      )
+      alert('No se pudo desbloquear: ' + (error.message || 'permiso / red'))
+    }
   }
 
   const orden = [
@@ -525,10 +576,12 @@ export default function Cartera({ session }) {
 
         {lista.slice(0, show).map(c => {
           const info = estadoInfo(c.estado_fuga)
-          const abierto = expandido === c.id
+          const cardKey = c.id || c.cliente_key
+          const abierto = expandido === cardKey
           const nav = mapsUrl(c)
           const skus = parseSkuDetalle(c.sku_detalle)
           const aReponer = skusAReponer(c)
+          const nSkuMix = skus.length
           const mtd = Number(c.venta_mtd) || 0
           const prom = Number(c.venta_mensual) || 0
           const pct = pctRitmo(mtd, prom)
@@ -557,7 +610,7 @@ export default function Cartera({ session }) {
                   padding: '14px 16px',
                   cursor: 'pointer',
                 }}
-                onClick={() => setExpandido(abierto ? null : c.id)}
+                onClick={() => setExpandido(abierto ? null : cardKey)}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
@@ -592,6 +645,9 @@ export default function Cartera({ session }) {
                       >
                         Reponer {aReponer.length}
                       </span>
+                    )}
+                    {nSkuMix > 0 && (
+                      <span className="badge b-gray">{nSkuMix} SKU</span>
                     )}
                     {c.comuna && (
                       <span style={{ fontSize: 12, color: '#a8a29e', fontWeight: 500 }}>

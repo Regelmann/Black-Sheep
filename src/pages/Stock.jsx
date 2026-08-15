@@ -9,9 +9,7 @@ function fmtNum(n) {
   return v.toLocaleString('es-CL', { maximumFractionDigits: 1 })
 }
 
-/** Intenta detectar unidad a partir del nombre / subfamilia / estado */
-function unidadHint(s) {
-  // Ciclo limpio publica stock_operativo siempre en KG
+function unidadHint() {
   return 'kg'
 }
 
@@ -44,8 +42,101 @@ export default function Stock() {
       const c = Number(s.cobertura_dias)
       return !isNaN(c) && c >= 30
     }).length
-    return { focos, neg, bajo, alto }
+    const kgCritico = stock
+      .filter(s => {
+        const c = Number(s.cobertura_dias)
+        return Number(s.stock_operativo) < 0 || (!isNaN(c) && c < 7)
+      })
+      .reduce((a, s) => a + Math.max(0, Number(s.stock_operativo) || 0), 0)
+    const kgSobre = stock
+      .filter(s => {
+        const c = Number(s.cobertura_dias)
+        return !isNaN(c) && c >= 30
+      })
+      .reduce((a, s) => a + (Number(s.stock_operativo) || 0), 0)
+    return { focos, neg, bajo, alto, kgCritico, kgSobre }
   }, [stock])
+
+  /** Insights accionables para el ejecutivo */
+  const insights = useMemo(() => {
+    const out = []
+    const criticos = stock
+      .filter(s => {
+        const c = Number(s.cobertura_dias)
+        return (
+          Number(s.stock_operativo) < 0 ||
+          (!isNaN(c) && c < 7) ||
+          /VENCID|CRITIC/i.test(s.estado_stock || '')
+        )
+      })
+      .sort((a, b) => (Number(a.cobertura_dias) || 0) - (Number(b.cobertura_dias) || 0))
+      .slice(0, 5)
+
+    const sobres = stock
+      .filter(s => {
+        const c = Number(s.cobertura_dias)
+        return !isNaN(c) && c >= 30
+      })
+      .sort((a, b) => (Number(b.cobertura_dias) || 0) - (Number(a.cobertura_dias) || 0))
+      .slice(0, 5)
+
+    const focosBajos = stock.filter(s => {
+      if (!s.es_foco_mes) return false
+      const c = Number(s.cobertura_dias)
+      return Number(s.stock_operativo) <= 0 || (!isNaN(c) && c < 10)
+    })
+
+    if (focosBajos.length) {
+      out.push({
+        tipo: 'foco',
+        title: `${focosBajos.length} foco(s) con stock bajo`,
+        body: focosBajos
+          .slice(0, 3)
+          .map(s => s.producto_nombre || s.sku_canon)
+          .join(' · '),
+        accion: 'Proteger en visitas prioritarias · no regalar',
+        color: '#b91c1c',
+        bg: '#fef2f2',
+      })
+    }
+    if (sobres.length) {
+      out.push({
+        tipo: 'sobre',
+        title: `${stats.alto} SKU en sobrestock`,
+        body: sobres
+          .slice(0, 3)
+          .map(s => `${(s.producto_nombre || s.sku_canon || '').slice(0, 28)} (${fmtNum(s.cobertura_dias)}d)`)
+          .join(' · '),
+        accion: 'Empujar con oferta en las próximas visitas de Hoy',
+        color: '#c2410c',
+        bg: '#fff7ed',
+      })
+    }
+    if (criticos.length && !focosBajos.length) {
+      out.push({
+        tipo: 'crit',
+        title: `${stats.bajo + stats.neg} SKU críticos`,
+        body: criticos
+          .slice(0, 3)
+          .map(s => s.producto_nombre || s.sku_canon)
+          .join(' · '),
+        accion: 'No vender agresivo · avisar a operaciones',
+        color: '#b91c1c',
+        bg: '#fef2f2',
+      })
+    }
+    if (!out.length) {
+      out.push({
+        tipo: 'ok',
+        title: 'Stock en rango saludable',
+        body: 'Sin focos críticos ni sobrestock extremo detectado.',
+        accion: 'Seguí el plan de Hoy (reponer + riesgo)',
+        color: '#15803d',
+        bg: '#ecfdf5',
+      })
+    }
+    return out
+  }, [stock, stats])
 
   const lista = useMemo(() => {
     let rows = stock
@@ -96,12 +187,38 @@ export default function Stock() {
         </div>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Stock operativo</h1>
         <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-          {stock.length} SKU · stock en kilogramos (API Flint) · vencidos / críticos marcados
+          {stock.length} SKU · kg · qué empujar / qué proteger
         </p>
       </div>
 
       <div style={{ padding: 14 }}>
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${stock.length} SKU`} />}
+
+        {/* Análisis accionable */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: '#78716c', marginBottom: 8, textTransform: 'uppercase' }}>
+            Análisis · qué hacer hoy
+          </div>
+          {insights.map((ins, i) => (
+            <div
+              key={i}
+              style={{
+                background: ins.bg,
+                borderRadius: 14,
+                padding: '12px 14px',
+                marginBottom: 8,
+                border: `1px solid ${ins.color}22`,
+              }}
+            >
+              <div style={{ fontWeight: 800, fontSize: 14, color: ins.color }}>{ins.title}</div>
+              {ins.body && (
+                <div style={{ fontSize: 12, color: '#57534e', marginTop: 4, lineHeight: 1.35 }}>{ins.body}</div>
+              )}
+              <div style={{ fontSize: 12, fontWeight: 700, color: ins.color, marginTop: 6 }}>→ {ins.accion}</div>
+            </div>
+          ))}
+        </div>
+
         <div
           style={{
             display: 'grid',
@@ -116,19 +233,27 @@ export default function Stock() {
             { n: stats.bajo + stats.neg, l: 'Crítico', c: '#dc2626' },
             { n: stats.alto, l: 'Sobrestock', c: '#d97706' },
           ].map(m => (
-            <div
+            <button
               key={m.l}
+              type="button"
+              onClick={() =>
+                setFiltro(
+                  m.l === 'Foco' ? 'Foco' : m.l === 'Crítico' ? 'Critico' : m.l === 'Sobrestock' ? 'Alto' : 'Todos'
+                )
+              }
               style={{
                 background: '#fff',
                 borderRadius: 12,
                 padding: '12px 6px',
                 textAlign: 'center',
                 border: '1px solid #e7e0d8',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
               }}
             >
               <div style={{ fontSize: 18, fontWeight: 800, color: m.c }}>{m.n}</div>
               <div style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>{m.l}</div>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -139,7 +264,7 @@ export default function Stock() {
           onChange={e => setQ(e.target.value)}
         />
 
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 12 }}>
           {['Todos', 'Foco', 'Critico', 'Alto'].map(f => (
             <button
               key={f}
@@ -148,9 +273,10 @@ export default function Stock() {
               style={{
                 flex: '0 0 auto',
                 borderRadius: 999,
-                padding: '8px 13px',
-                fontSize: 12,
+                padding: '6px 11px',
+                fontSize: 11,
                 fontWeight: 700,
+                minHeight: 32,
                 border: '1.5px solid #e7e0d8',
                 background: filtro === f ? '#1c1917' : '#fff',
                 color: filtro === f ? '#fff' : '#57534e',
@@ -163,13 +289,8 @@ export default function Stock() {
           ))}
         </div>
 
-        <p style={{ fontSize: 11, color: '#78716c', marginBottom: 10 }}>
-          Stock en kg (API Flint). Cobertura = días al ritmo actual.
-          <b> Acción:</b> crítico → no vender agresivo; sobrestock → ofrecer en visitas.
-        </p>
-
         {lista.slice(0, 150).map(s => {
-          const u = unidadHint(s)
+          const u = unidadHint()
           const val = Number(s.stock_operativo)
           const cob = Number(s.cobertura_dias)
           const crit = val < 0 || (!isNaN(cob) && cob < 7)
@@ -200,29 +321,39 @@ export default function Stock() {
                     {s.subfamilia ? ` · ${s.subfamilia}` : ''}
                     {s.es_foco_mes ? ' · FOCO' : ''}
                   </div>
-                  {s.estado_stock && (
-                    <div style={{ fontSize: 11, color: '#a8a29e', marginTop: 2 }}>{s.estado_stock}</div>
-                  )}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 16, color: val < 0 ? '#dc2626' : '#1c1917' }}>
-                    {fmtNum(s.stock_operativo)} <span style={{ fontSize: 12, fontWeight: 600, color: '#78716c' }}>{u}</span>
+                    {fmtNum(s.stock_operativo)}{' '}
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#78716c' }}>{u}</span>
                   </div>
                   {s.cobertura_dias != null && (
-                    <div style={{
-                      fontSize: 11, fontWeight: 600, marginTop: 2,
-                      color: crit ? '#dc2626' : alto ? '#d97706' : '#3f6212',
-                    }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginTop: 2,
+                        color: crit ? '#dc2626' : alto ? '#d97706' : '#3f6212',
+                      }}
+                    >
                       {fmtNum(s.cobertura_dias)} días cob.
                     </div>
                   )}
                 </div>
               </div>
               {accion && (
-                <div style={{
-                  marginTop: 8, fontSize: 11, fontWeight: 700, color: accion.c,
-                  background: '#fafaf9', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
-                }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: accion.c,
+                    background: '#fafaf9',
+                    display: 'inline-block',
+                    padding: '4px 8px',
+                    borderRadius: 8,
+                  }}
+                >
                   → {accion.t}
                 </div>
               )}
