@@ -9,6 +9,7 @@ import { parseSkuDetalle, pctRitmo } from '../lib/coach'
 import {
   esActivoMes,
   esNuevoMes,
+  esRecuperadoMes,
   cicloReposicion,
   skusAReponer,
   clienteTocaReponer,
@@ -192,6 +193,7 @@ export default function Cartera({ session }) {
 
   const estadosOrd = Object.keys(resumen).sort((a, b) => orden.indexOf(a) - orden.indexOf(b))
   const nNuevos = clientes.filter(esNuevoMes).length
+  const nRecuperados = clientes.filter(esRecuperadoMes).length
   const nActivosMes = clientes.filter(c => Number(c.venta_mtd) > 0).length
   const nSinVentaMes = clientes.filter(c => !(Number(c.venta_mtd) > 0)).length
 
@@ -222,6 +224,7 @@ export default function Cartera({ session }) {
     let rows = clientes
     if (filtro === 'Bloqueados') rows = rows.filter(c => c.es_bloqueado)
     else if (filtro === 'Nuevos') rows = rows.filter(c => esNuevoMes(c))
+    else if (filtro === 'Recuperados') rows = rows.filter(c => esRecuperadoMes(c))
     else if (filtro === 'ActivosMes') rows = rows.filter(c => Number(c.venta_mtd) > 0)
     else if (filtro === 'SinVentaMes') rows = rows.filter(c => !(Number(c.venta_mtd) > 0))
     else if (filtro === 'ReponerHoy') rows = rows.filter(c => clienteTocaReponer(c))
@@ -418,6 +421,14 @@ export default function Cartera({ session }) {
           >
             Nuevos mes ({nNuevos})
           </button>
+          {nRecuperados > 0 && (
+            <button
+              className={'filter-btn' + (filtro === 'Recuperados' ? ' active' : '')}
+              onClick={() => { setFiltro('Recuperados'); setShow(PAGE) }}
+            >
+              Recuperados ({nRecuperados})
+            </button>
+          )}
           <button
             className={'filter-btn' + (filtro === 'ReponerHoy' ? ' active' : '')}
             onClick={() => {

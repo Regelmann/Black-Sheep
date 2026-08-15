@@ -500,6 +500,14 @@ export default function Ruta({ session }) {
         meAccRef.current.setRadius(Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200))
       }
     }
+    // Centrar en mi ubicación la primera vez que aparece el GPS
+    // (solo si el mapa no ha hecho fitBounds de la ruta todavía)
+    if (!fittedFecha.current && mapInstance.current) {
+      mapInstance.current.panTo(pos)
+      if (myPos.accuracy && myPos.accuracy < 200) {
+        mapInstance.current.setZoom(15)
+      }
+    }
   }, [mapReady, myPos])
 
   // Markers: siempre redibuja cuando hay mapa + visible

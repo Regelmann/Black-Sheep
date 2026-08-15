@@ -179,41 +179,42 @@ export default function Hoy() {
             <div className="section-title">Focos del mes</div>
             {focos.map((f, i) => {
               const vendido = Number(f.vendido_unidad) || 0
-              const metaU = Number(f.meta_unidad) || 0
-              const p = metaU ? Math.round((vendido / metaU) * 100) : 0
-              const unidad = f.unidad_meta || 'KG'
+              const metaU   = Number(f.meta_unidad) || 0
+              const p       = metaU ? Math.round((vendido / metaU) * 100) : 0
+              const unidad  = f.unidad_meta || 'KG'
+              const falta   = Math.max(0, metaU - vendido)
+              const ritmoNecesario = m.diasRestantes > 0
+                ? Math.round(falta / m.diasRestantes * 10) / 10
+                : null
               const atrasado = /ATRAS|SIN/i.test(f.estado_ritmo || '') || (metaU && p < 70)
+              const colorFoco = p >= 100 ? '#15803d' : p >= 70 ? '#2563eb' : p >= 40 ? '#d97706' : '#dc2626'
               return (
                 <div key={i} className="card" style={{ padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <b style={{ fontSize: 15 }}>{f.foco}</b>
-                      <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                        {vendido.toLocaleString('es-CL')} / {metaU.toLocaleString('es-CL')} {unidad}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: '#1c1917' }}>{f.foco}</div>
+                      <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+                        <b style={{ color: '#1c1917' }}>{vendido.toLocaleString('es-CL')}</b>
+                        {' / '}{metaU.toLocaleString('es-CL')} {unidad}
+                        {falta > 0 && <span style={{ color: colorFoco }}> · faltan {falta.toLocaleString('es-CL')} {unidad}</span>}
                       </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div
-                        style={{
-                          fontWeight: 800,
-                          fontSize: 18,
-                          color: atrasado ? 'var(--red)' : 'var(--green)',
-                        }}
-                      >
-                        {p}%
-                      </div>
-                      {atrasado && (
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--red)' }}>ATRASADO</div>
+                      {ritmoNecesario !== null && falta > 0 && (
+                        <div style={{ fontSize: 11, color: atrasado ? '#dc2626' : '#78716c', fontWeight: 600, marginTop: 3 }}>
+                          {atrasado ? '⚡' : '→'} Necesitás {ritmoNecesario.toLocaleString('es-CL')} {unidad}/día ({m.diasRestantes}d hábiles)
+                        </div>
                       )}
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                      <div style={{ fontWeight: 900, fontSize: 20, color: colorFoco, lineHeight: 1 }}>{p}%</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: colorFoco, marginTop: 2 }}>
+                        {p >= 100 ? 'LOGRADO' : atrasado ? 'ATRASADO' : 'EN RITMO'}
+                      </div>
                     </div>
                   </div>
                   <div className="progress-bg" style={{ marginTop: 8 }}>
                     <div
                       className="progress-fill"
-                      style={{
-                        width: Math.min(p, 100) + '%',
-                        background: atrasado ? 'var(--red)' : 'var(--green)',
-                      }}
+                      style={{ width: Math.min(p, 100) + '%', background: colorFoco }}
                     />
                   </div>
                 </div>
@@ -304,82 +305,104 @@ export default function Hoy() {
         {m.actionQueue.map((item, idx) => {
           const metaT = TYPE_META[item.type] || TYPE_META.visita
           return (
-            <div key={item.id || idx} className={`priority-card ${metaT.cls}`}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 800,
-                    letterSpacing: 0.04,
-                    color: metaT.color,
-                  }}
-                >
-                  #{idx + 1} · {metaT.badge}
-                </div>
+            <div key={item.id || idx} style={{
+              background: '#fff',
+              borderRadius: 16,
+              border: `1.5px solid ${metaT.color}22`,
+              borderLeft: `4px solid ${metaT.color}`,
+              marginBottom: 10,
+              overflow: 'hidden',
+            }}>
+              {/* Header con badge y monto */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 8px' }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+                  color: metaT.color, textTransform: 'uppercase',
+                  background: metaT.color + '15', padding: '3px 8px', borderRadius: 6,
+                }}>
+                  {metaT.badge}
+                </span>
                 {item.amount > 0 && (
-                  <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#1c1917' }}>
                     {money(item.amount)}
                   </span>
                 )}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 17, marginTop: 6, letterSpacing: '-0.02em' }}>
-                {item.title}
-              </div>
-              {item.subtitle && (
-                <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                  {item.subtitle}
+
+              {/* Nombre + subtítulo */}
+              <div style={{ padding: '0 14px 10px' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#1c1917', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+                  {item.title}
                 </div>
-              )}
-              {item.oferta && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    padding: '8px 10px',
-                    borderRadius: 12,
-                    background: '#fff7ed',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: '#9a3412',
-                  }}
-                >
-                  Ofrecé: {item.oferta}
-                </div>
-              )}
-              <div className="priority-actions" style={{ marginTop: 12 }}>
-                {item.whatsapp && (
-                  <a href={item.whatsapp} target="_blank" rel="noreferrer" style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
-                    WhatsApp
-                  </a>
+                {item.subtitle && (
+                  <div style={{ fontSize: 12, color: '#78716c', marginTop: 4, lineHeight: 1.4 }}>
+                    {item.subtitle}
+                  </div>
                 )}
+                {item.oferta && (
+                  <div style={{
+                    marginTop: 8, padding: '7px 10px', borderRadius: 10,
+                    background: '#fff7ed', fontSize: 12, fontWeight: 600, color: '#9a3412',
+                    lineHeight: 1.4,
+                  }}>
+                    💡 {item.oferta}
+                  </div>
+                )}
+              </div>
+
+              {/* Acciones */}
+              <div style={{
+                display: 'flex', gap: 0,
+                borderTop: '1px solid #f5f5f4',
+              }}>
                 {item.telefono && (
-                  <a href={`tel:${item.telefono}`} style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
+                  <a href={`tel:${item.telefono}`}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '11px 8px', textDecoration: 'none',
+                      fontSize: 13, fontWeight: 700, color: '#57534e',
+                      borderRight: '1px solid #f5f5f4', gap: 5,
+                    }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                    </svg>
                     Llamar
                   </a>
                 )}
-                <button
-                  type="button"
-                  className="pa-primary"
-                  style={{ minHeight: 44 }}
+                {item.whatsapp && (
+                  <a href={item.whatsapp} target="_blank" rel="noreferrer"
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '11px 8px', textDecoration: 'none',
+                      fontSize: 13, fontWeight: 700, color: '#15803d',
+                      borderRight: '1px solid #f5f5f4', gap: 5,
+                    }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#15803d">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.552 4.106 1.515 5.828L0 24l6.338-1.476A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm.029 21.818a9.833 9.833 0 0 1-5.019-1.374l-.36-.214-3.732.979 1.003-3.647-.234-.374A9.862 9.862 0 0 1 2.182 12c0-5.42 4.41-9.818 9.847-9.818 5.437 0 9.847 4.398 9.847 9.818 0 5.42-4.41 9.818-9.847 9.818z"/>
+                    </svg>
+                    WA
+                  </a>
+                )}
+                <button type="button"
                   onClick={() => {
                     if (item.clientId) nav(`/visita/${encodeURIComponent(item.clientId)}`)
                     else nav('/mapa')
                   }}
-                >
-                  {item.ctaLabel}
+                  style={{
+                    flex: 2, padding: '11px 8px', border: 'none',
+                    background: metaT.color, color: '#fff',
+                    fontSize: 13, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}>
+                  {item.ctaLabel} →
                 </button>
               </div>
             </div>
           )
         })}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8, marginBottom: 24 }}>
-          <button type="button" className="btn btn-soft" style={{ minHeight: 48 }} onClick={() => nav('/cartera')}>
-            Clientes
-          </button>
-          <button type="button" className="btn btn-primary" style={{ minHeight: 48 }} onClick={() => nav('/mapa')}>
-            Mapa / Ruta
-          </button>
-        </div>
+        <div style={{ height: 8 }} />
       </div>
     </div>
   )

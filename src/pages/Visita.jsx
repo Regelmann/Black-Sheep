@@ -65,26 +65,48 @@ export default function Visita({ session }) {
 
   async function cargar() {
     setLoading(true)
+    // Primero intentar buscar como visita_id en tabla visitas
     const { data: v } = await supabase.from('visitas').select('*').eq('id', id).maybeSingle()
-    setVisita(v)
 
-    // Enriquecer con cartera (teléfono, whatsapp, web, última compra)
     if (v) {
-      let q = supabase
-        .from('cartera')
-        .select(
-          'cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,oferta_real,productos_top,sku_detalle'
-        )
+      setVisita(v)
+      // Enriquecer con cartera
+      let q = supabase.from('cartera')
+        .select('cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,oferta_real,productos_top,sku_detalle')
         .limit(1)
-      if (v.cliente_key) {
-        q = q.eq('cliente_key', v.cliente_key)
-      } else if (v.nombre_local) {
-        q = q.ilike('nombre_cliente', v.nombre_local)
-      }
+      if (v.cliente_key) q = q.eq('cliente_key', v.cliente_key)
+      else if (v.nombre_local) q = q.ilike('nombre_cliente', v.nombre_local)
       const { data: cRows } = await q
-      setCliente(cRows && cRows[0] ? cRows[0] : null)
+      setCliente(cRows?.[0] || null)
     } else {
-      setCliente(null)
+      // No hay visita en ruta — navegar desde Hoy con cliente_key directo
+      // Construir visita sintética desde cartera
+      const decodedId = decodeURIComponent(id)
+      const { data: cRows } = await supabase.from('cartera')
+        .select('cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga')
+        .eq('cliente_key', decodedId)
+        .limit(1)
+      const cli = cRows?.[0]
+      if (cli) {
+        // Crear objeto visita sintético para que el template funcione igual
+        setVisita({
+          id: decodedId,
+          nombre_local: cli.nombre_cliente,
+          cliente_key: cli.cliente_key,
+          direccion: cli.direccion,
+          comuna: cli.comuna,
+          lat: cli.lat,
+          lng: cli.lng,
+          estado: 'pendiente',
+          oferta: cli.oferta_real,
+          segmento: cli.estado_fuga,
+          _sinRuta: true, // marca que es visita ad-hoc desde cartera
+        })
+        setCliente(cli)
+      } else {
+        setVisita(null)
+        setCliente(null)
+      }
     }
 
     const { data: c } = await supabase
@@ -189,7 +211,15 @@ export default function Visita({ session }) {
   if (!visita)
     return (
       <div className="wrap">
-        <div className="card">Visita no encontrada.</div>
+        <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#1c1917' }}>Cliente no encontrado</div>
+          <div style={{ fontSize: 13, color: '#78716c', marginTop: 6 }}>Este cliente no está en tu cartera activa.</div>
+          <button type="button" onClick={() => nav(-1)}
+            style={{ marginTop: 16, padding: '10px 20px', borderRadius: 10, border: 'none', background: '#1c1917', color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}>
+            ← Volver
+          </button>
+        </div>
       </div>
     )
 
