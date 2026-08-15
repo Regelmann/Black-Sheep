@@ -751,23 +751,23 @@ export default function Cartera({ session }) {
                     </div>
                   )}
 
-                  {/* Acciones principales */}
-                  <div className="cli-acciones" style={{ marginTop: 0 }}>
-                    {c.telefono && (
+                  {/* Acciones principales — botones separados (no texto pegado) */}
+                  <div className="cli-acciones" onClick={e => e.stopPropagation()}>
+                    {c.telefono ? (
                       <a href={'tel:' + c.telefono} className="acc-btn acc-call">
                         Llamar
                       </a>
-                    )}
-                    {c.link_whatsapp && (
+                    ) : null}
+                    {c.link_whatsapp ? (
                       <a href={c.link_whatsapp} target="_blank" rel="noreferrer" className="acc-btn acc-wsp">
                         WhatsApp
                       </a>
-                    )}
-                    {nav && (
+                    ) : null}
+                    {nav ? (
                       <a href={nav} target="_blank" rel="noreferrer" className="acc-btn acc-nav">
                         Navegar
                       </a>
-                    )}
+                    ) : null}
                     <button type="button" className="acc-btn acc-note" onClick={() => setNotaDe(c)}>
                       Nota
                     </button>
