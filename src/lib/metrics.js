@@ -67,23 +67,21 @@ export function cicloReposicion(s) {
 
 export function skusAReponer(c) {
   try {
-    const skus = parseSkuDetalle(c?.sku_detalle)
-    const out = []
-    for (const s of skus) {
-      const { diasUltima, cicloEst, recompra } = cicloReposicion(s)
-      if (!recompra) continue
-      if (recompra.tone === 'bad' || recompra.tone === 'warn') {
-        out.push({
-          nombre: s.nombre,
-          diasUltima,
-          cicloEst,
-          label: recompra.label,
-          tone: recompra.tone,
-          promClp: s.promClp,
-        })
-      }
-    }
-    return out
+    // Devolver el SKU completo (promUd, promClp, udMtd…) para precio unitario en Pedido
+    return parseSkuDetalle(c?.sku_detalle)
+      .map(s => {
+        const r = cicloReposicion(s)
+        if (!r.recompra || (r.recompra.tone !== 'bad' && r.recompra.tone !== 'warn')) return null
+        return {
+          ...s,
+          diasUltima: r.diasUltima,
+          cicloEst: r.cicloEst,
+          label: r.recompra.label,
+          tone: r.recompra.tone,
+          recompra: r.recompra,
+        }
+      })
+      .filter(Boolean)
   } catch {
     return []
   }

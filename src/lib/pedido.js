@@ -207,7 +207,9 @@ export function sugerirLineasDesdeCliente(cliente, aReponer = []) {
   const seen = new Set()
 
   for (const s of (aReponer || []).slice(0, 8)) {
-    const line = build(s, s.recompra?.label || 'reponer')
+    // Merge con sku_detalle completo si aReponer viene truncado
+    const full = byName[String(s.nombre || '').toLowerCase()] || s
+    const line = build({ ...full, ...s }, s.recompra?.label || s.label || 'reponer')
     if (!line) continue
     const k = line.nombre.toLowerCase()
     if (seen.has(k)) continue
