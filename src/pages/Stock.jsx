@@ -89,40 +89,37 @@ export default function Stock() {
     if (focosBajos.length) {
       out.push({
         tipo: 'foco',
-        title: `${focosBajos.length} foco(s) con stock bajo`,
-        body: focosBajos
-          .slice(0, 3)
-          .map(s => s.producto_nombre || s.sku_canon)
-          .join(' · '),
-        accion: 'Proteger en visitas prioritarias · no regalar',
+        title: `${focosBajos.length} focos con stock bajo`,
+        items: focosBajos.slice(0, 4).map(s => s.producto_nombre || s.sku_canon),
+        accion: 'Proteger · no regalar',
         color: '#b91c1c',
         bg: '#fef2f2',
+        border: '#fecaca',
       })
     }
     if (sobres.length) {
       out.push({
         tipo: 'sobre',
-        title: `${stats.alto} SKU en sobrestock`,
-        body: sobres
-          .slice(0, 3)
-          .map(s => `${(s.producto_nombre || s.sku_canon || '').slice(0, 28)} (${fmtNum(s.cobertura_dias)}d)`)
-          .join(' · '),
-        accion: 'Empujar con oferta en las próximas visitas de Hoy',
+        title: `${stats.alto} en sobrestock`,
+        items: sobres.slice(0, 4).map(s => {
+          const n = (s.producto_nombre || s.sku_canon || '').slice(0, 22)
+          return `${n} · ${fmtNum(s.cobertura_dias)}d`
+        }),
+        accion: 'Empujar con oferta en Hoy',
         color: '#c2410c',
         bg: '#fff7ed',
+        border: '#fed7aa',
       })
     }
     if (criticos.length && !focosBajos.length) {
       out.push({
         tipo: 'crit',
         title: `${stats.bajo + stats.neg} SKU críticos`,
-        body: criticos
-          .slice(0, 3)
-          .map(s => s.producto_nombre || s.sku_canon)
-          .join(' · '),
-        accion: 'No vender agresivo · avisar a operaciones',
+        items: criticos.slice(0, 4).map(s => s.producto_nombre || s.sku_canon),
+        accion: 'No vender agresivo · avisar ops',
         color: '#b91c1c',
         bg: '#fef2f2',
+        border: '#fecaca',
       })
     }
     if (!out.length) {
@@ -217,18 +214,35 @@ export default function Stock() {
                 borderRadius: 14,
                 padding: '12px 14px',
                 marginBottom: 8,
-                border: `1px solid ${ins.color}22`,
+                border: `1px solid ${ins.border || ins.color + '33'}`,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
               }}
             >
-              <div style={{ fontWeight: 800, fontSize: 14, color: ins.color }}>{ins.title}</div>
-              {ins.body && (
-                <div style={{ fontSize: 12, color: '#57534e', marginTop: 4, lineHeight: 1.35 }}>{ins.body}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: ins.color }}>{ins.title}</div>
+                <div style={{
+                  fontSize: 11, fontWeight: 800, color: ins.color,
+                  background: '#fff', padding: '3px 8px', borderRadius: 999,
+                  border: `1px solid ${ins.border || '#e7e5e4'}`,
+                }}>Filtrar</div>
+              </div>
+              {ins.items?.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {ins.items.map((it, j) => (
+                    <span key={j} style={{
+                      fontSize: 11, fontWeight: 600, color: '#44403c',
+                      background: '#fff', borderRadius: 8, padding: '4px 8px',
+                      border: '1px solid #e7e5e4', maxWidth: '100%',
+                    }}>{it}</span>
+                  ))}
+                </div>
               )}
-              <div style={{ fontSize: 12, fontWeight: 700, color: ins.color, marginTop: 6 }}>
+              {ins.body && !ins.items && (
+                <div style={{ fontSize: 12, color: '#57534e', marginTop: 6, lineHeight: 1.35 }}>{ins.body}</div>
+              )}
+              <div style={{ fontSize: 12, fontWeight: 700, color: ins.color, marginTop: 8 }}>
                 → {ins.accion}
-                <span style={{ fontWeight: 600, opacity: 0.75 }}> · tocar para filtrar</span>
               </div>
             </button>
           ))}

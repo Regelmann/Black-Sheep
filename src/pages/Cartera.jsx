@@ -472,7 +472,7 @@ export default function Cartera({ session }) {
               setShow(PAGE)
             }}
           >
-            Nuevos mes ({nNuevos})
+            Nuevos ({nNuevos})
           </button>
           {nRecuperados > 0 && (
             <button
@@ -490,7 +490,7 @@ export default function Cartera({ session }) {
             }}
             style={filtro === 'ReponerHoy' ? { background: '#c2410c', color: '#fff', borderColor: '#c2410c' } : {}}
           >
-            Reponer hoy ({reponerHoy.length})
+            Reponer ({reponerHoy.length})
           </button>
           <div style={{ position: 'relative' }}>
             <button

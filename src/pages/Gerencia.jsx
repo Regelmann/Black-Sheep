@@ -134,30 +134,70 @@ export default function Gerencia({ esGerente }) {
   const [stockLento, setStockLento] = useState([])
   const [mesSel, setMesSel] = useState(null)
   const [error, setError] = useState(null)
-  const [tab, setTab] = useState('zonas') // zonas | productos | stock
+  const [tab, setTab] = useState('zonas') // zonas | productos | stock | actividad
   const [detalleCli, setDetalleCli] = useState([])
   const [canalSel, setCanalSel] = useState(null)
   const [cliSel, setCliSel] = useState(null) // cliente_key expandido
   const [cliSku, setCliSku] = useState({}) // { [cliente_key]: { skus, oferta, loading } }
   const [bloqueados, setBloqueados] = useState([]) // cartera.es_bloqueado para decisión gerencial
+  const [actividad, setActividad] = useState(null) // { loading, rango, checkins, pedidos, notas, stats }
+  const [actRango, setActRango] = useState('hoy') // hoy | 7d
 
   useEffect(() => {
     ;(async () => {
       setLoading(true)
       setError(null)
       try {
-        const [{ data: g }, { data: t }, { data: stock }, { data: det }, { data: blq }] = await Promise.all([
-          supabase.from('gerencia').select('*'),
-          supabase.from('tendencia').select('*'),
-          supabase.from('stock').select('*').limit(500),
-          supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(800),
-          supabase
-            .from('cartera')
-            .select('cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado')
-            .eq('es_bloqueado', true)
-            .limit(200),
-        ])
-        setBloqueados(blq || [])
+        const [{ data: g }, { data: t }, { data: stock }, { data: det }, { data: carAll }, { data: notasBlq }] =
+          await Promise.all([
+            supabase.from('gerencia').select('*'),
+            supabase.from('tendencia').select('*'),
+            supabase.from('stock').select('*').limit(500),
+            supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(800),
+            // Traer cartera visible (RLS) y filtrar bloqueados en cliente — eq boolean a veces falla por tipo
+            supabase
+              .from('cartera')
+              .select(
+                'cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado'
+              )
+              .limit(2000),
+            supabase
+              .from('notas_cliente')
+              .select('cliente_key,nombre_local,tipo,texto,created_at,creado_en')
+              .ilike('tipo', '%bloqueo%')
+              .limit(100),
+          ])
+        const isBlq = c =>
+          c?.es_bloqueado === true ||
+          c?.es_bloqueado === 'true' ||
+          c?.es_bloqueado === 1 ||
+          c?.es_bloqueado === '1' ||
+          String(c?.es_bloqueado || '').toUpperCase() === 'SI' ||
+          String(c?.es_bloqueado || '').toUpperCase() === 'S'
+        let blq = (carAll || []).filter(isBlq)
+        // Si RLS no devolvió flag, enriquecer con notas de bloqueo recientes
+        if (!blq.length && (notasBlq || []).length) {
+          const seen = new Set()
+          blq = (notasBlq || [])
+            .map(n => ({
+              cliente_key: n.cliente_key,
+              nombre_cliente: n.nombre_local || n.cliente_key,
+              comuna: null,
+              zona: null,
+              venta_mtd: 0,
+              venta_mensual: 0,
+              es_bloqueado: true,
+              _desde_nota: true,
+              tipo: n.tipo,
+            }))
+            .filter(b => {
+              const k = b.cliente_key || b.nombre_cliente
+              if (!k || seen.has(k)) return false
+              seen.add(k)
+              return true
+            })
+        }
+        setBloqueados(blq)
         const detN = (det || []).map(d => ({
           ...d,
           ejecutivo: d.ejecutivo || d.canal || d.zona || null,
@@ -257,48 +297,180 @@ export default function Gerencia({ esGerente }) {
   const mesSelRow = tendencia12.find(x => x.mes === mesSel) || tendencia.find(x => x.mes === mesSel)
 
 
-  async function cargarSkuCliente(clienteKey) {
-    if (!clienteKey) return
-    if (cliSel === clienteKey) {
+  // Reportes de terreno: check-ins, pedidos, bloqueos/notas
+  useEffect(() => {
+    if (tab !== 'actividad') return
+    let cancelled = false
+    ;(async () => {
+      setActividad(a => ({ ...(a || {}), loading: true }))
+      const start = new Date()
+      if (actRango === '7d') start.setDate(start.getDate() - 6)
+      start.setHours(0, 0, 0, 0)
+      const iso = start.toISOString()
+
+      const [chRes, peRes, noRes] = await Promise.all([
+        supabase
+          .from('checkins')
+          .select('id,visita_id,hora_llegada,hora_fin,resultado,lat_real,lng_real')
+          .gte('hora_llegada', iso)
+          .order('hora_llegada', { ascending: false })
+          .limit(300),
+        supabase
+          .from('pedidos')
+          .select('id,ejecutivo_id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,total')
+          .gte('creado_en', iso)
+          .order('creado_en', { ascending: false })
+          .limit(300),
+        supabase
+          .from('notas_cliente')
+          .select('id,ejecutivo_id,cliente_key,nombre_local,tipo,texto,created_at,creado_en')
+          .or('tipo.ilike.%bloqueo%,tipo.ilike.%no_venta%,tipo.ilike.%visita%')
+          .limit(200),
+      ])
+
+      if (cancelled) return
+      const checkins = chRes.data || []
+      const pedidos = peRes.data || []
+      let notas = noRes.data || []
+      // filtrar notas por fecha si hay campo
+      notas = notas.filter(n => {
+        const t = n.created_at || n.creado_en
+        if (!t) return true
+        return new Date(t) >= start
+      })
+
+      let $capturado = 0
+      for (const p of pedidos) {
+        if (p.total != null && !isNaN(Number(p.total))) {
+          $capturado += Number(p.total)
+          continue
+        }
+        const lineas = Array.isArray(p.lineas) ? p.lineas : []
+        for (const l of lineas) {
+          $capturado += (Number(l.precio) || 0) * (Number(l.cantidad) || 0)
+        }
+      }
+
+      const conPedido = checkins.filter(c => /pedido/i.test(c.resultado || '')).length
+      const noVenta = checkins.filter(c => /no.?venta|sin.?compra/i.test(c.resultado || '')).length
+      const bloqueos = notas.filter(n => /bloqueo/i.test(n.tipo || '')).length
+
+      // por día
+      const byDay = {}
+      const dayKey = d => {
+        const x = new Date(d)
+        if (isNaN(x.getTime())) return '—'
+        return x.toISOString().slice(0, 10)
+      }
+      for (const c of checkins) {
+        const k = dayKey(c.hora_llegada)
+        if (!byDay[k]) byDay[k] = { day: k, checkins: 0, pedidos: 0, no_venta: 0, $: 0 }
+        byDay[k].checkins++
+        if (/pedido/i.test(c.resultado || '')) byDay[k].pedidos++
+        if (/no.?venta/i.test(c.resultado || '')) byDay[k].no_venta++
+      }
+      for (const p of pedidos) {
+        const k = dayKey(p.creado_en)
+        if (!byDay[k]) byDay[k] = { day: k, checkins: 0, pedidos: 0, no_venta: 0, $: 0 }
+        byDay[k].pedidos++
+        let t = Number(p.total)
+        if (isNaN(t) || !p.total) {
+          t = 0
+          for (const l of Array.isArray(p.lineas) ? p.lineas : []) {
+            t += (Number(l.precio) || 0) * (Number(l.cantidad) || 0)
+          }
+        }
+        byDay[k].$ += t
+      }
+      const dias = Object.values(byDay).sort((a, b) => String(b.day).localeCompare(String(a.day)))
+
+      setActividad({
+        loading: false,
+        rango: actRango,
+        checkins,
+        pedidos,
+        notas,
+        dias,
+        stats: {
+          checkins: checkins.length,
+          pedidos: pedidos.length,
+          capturado: Math.round($capturado),
+          conPedido,
+          noVenta,
+          bloqueos,
+          conversion: checkins.length
+            ? Math.round((Math.max(conPedido, pedidos.length) / checkins.length) * 100)
+            : 0,
+        },
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tab, actRango])
+
+  async function cargarSkuCliente(clienteKey, nombreHint) {
+    const key = clienteKey || nombreHint || 'sin-key'
+    if (cliSel === key) {
       setCliSel(null)
       return
     }
-    setCliSel(clienteKey)
-    if (cliSku[clienteKey]?.skus?.length) return
-    setCliSku(prev => ({ ...prev, [clienteKey]: { loading: true, skus: [], oferta: null } }))
+    setCliSel(key)
+    if (cliSku[key]?.skus?.length) return
+    setCliSku(prev => ({ ...prev, [key]: { loading: true, skus: [], oferta: null } }))
 
-    const fromGer = detalleCli.find(d => String(d.cliente_key) === String(clienteKey))
+    const fromGer =
+      detalleCli.find(d => String(d.cliente_key) === String(clienteKey)) ||
+      (nombreHint
+        ? detalleCli.find(d =>
+            String(d.nombre_cliente || d.nombre || '')
+              .toUpperCase()
+              .includes(String(nombreHint).toUpperCase().slice(0, 18))
+          )
+        : null)
     let skus = parseSkuDetalle(fromGer?.sku_detalle)
     let oferta = fromGer?.oferta_real || fromGer?.oferta || null
     let productos_top = fromGer?.productos_top || null
+    const nomBuscar = (
+      nombreHint ||
+      fromGer?.nombre_cliente ||
+      fromGer?.razon_social ||
+      fromGer?.nombre ||
+      ''
+    ).trim()
 
-    // Parse productos_top si viene como texto (común en gerencia_clientes)
     if (!skus.length && productos_top) {
       const topTxt = typeof productos_top === 'string' ? productos_top : JSON.stringify(productos_top)
       skus = parseSkuDetalle(topTxt)
       if (!skus.length) {
-        // "PROD $1.2M · PROD2 $0.8M"
         skus = topTxt
           .split(/[·|,;]+/)
-          .map(t => t.trim())
-          .filter(t => t.length > 2)
+          .map(x => x.trim())
+          .filter(x => x.length > 2)
           .slice(0, 10)
-          .map(t => {
-            const m = t.match(/^(.+?)\s+\$?([\d.,]+)\s*M?/i)
+          .map(x => {
+            const m = x.match(/^(.+?)\s+\$?([\d.,]+)\s*M?/i)
             return {
-              nombre: m ? m[1].trim() : t,
-              clpMtd: m ? Number(String(m[2]).replace(/\./g, '').replace(',', '.')) * ( /M/i.test(t) ? 1e6 : 1) : 0,
-              udMtd: 0, promClp: 0, promUd: 0, cicloDias: null, ultima: null,
+              nombre: m ? m[1].trim() : x,
+              clpMtd: m
+                ? Number(String(m[2]).replace(/\./g, '').replace(',', '.')) * (/M/i.test(x) ? 1e6 : 1)
+                : 0,
+              udMtd: 0,
+              promClp: 0,
+              promUd: 0,
+              cicloDias: null,
+              ultima: null,
             }
           })
       }
     }
 
-    // Cartera por cliente_key
-    if (!skus.length) {
+    if (!skus.length && clienteKey) {
       const { data } = await supabase
         .from('cartera')
-        .select('sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra,cliente_key,nombre_social,nombre_cliente')
+        .select(
+          'sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra,cliente_key,razon_social,nombre_cliente'
+        )
         .eq('cliente_key', clienteKey)
         .limit(1)
       const row = data?.[0]
@@ -309,34 +481,36 @@ export default function Gerencia({ esGerente }) {
       }
     }
 
-    // Cartera por nombre (canales sin key alineada)
-    if (!skus.length && fromGer) {
-      const nom = fromGer.nombre_cliente || fromGer.razon_social || fromGer.nombre
-      if (nom) {
-        const { data } = await supabase
-          .from('cartera')
-          .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente,razon_social')
-          .ilike('nombre_cliente', `%${String(nom).slice(0, 40)}%`)
-          .limit(3)
-        const row = (data || []).find(r => parseSkuDetalle(r.sku_detalle).length) || data?.[0]
-        if (row) {
-          skus = parseSkuDetalle(row.sku_detalle)
-          oferta = oferta || row.oferta_real
-          productos_top = productos_top || row.productos_top
-        }
+    if (!skus.length && nomBuscar) {
+      const q = String(nomBuscar).slice(0, 48).replace(/%/g, '')
+      const { data } = await supabase
+        .from('cartera')
+        .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente,razon_social')
+        .or(`nombre_cliente.ilike.%${q}%,razon_social.ilike.%${q}%`)
+        .limit(8)
+      const row =
+        (data || []).find(r => parseSkuDetalle(r.sku_detalle).length > 0) ||
+        (data || []).find(
+          r =>
+            String(r.nombre_cliente || '').toUpperCase() === q.toUpperCase() ||
+            String(r.razon_social || '').toUpperCase() === q.toUpperCase()
+        ) ||
+        data?.[0]
+      if (row) {
+        skus = parseSkuDetalle(row.sku_detalle)
+        oferta = oferta || row.oferta_real
+        productos_top = productos_top || row.productos_top
       }
     }
 
-    // Fallback ventas_lineas — probar cliente_key y variantes
     if (!skus.length) {
-      const keys = [clienteKey]
+      const keys = []
+      if (clienteKey) keys.push(String(clienteKey))
       if (fromGer?.rut) keys.push(String(fromGer.rut))
-      if (fromGer?.cliente_key && fromGer.cliente_key !== clienteKey) keys.push(String(fromGer.cliente_key))
-      // RUT sin dígito verificador
-      const base = String(clienteKey).replace(/-.*$/, '')
-      if (base && base !== clienteKey) keys.push(base)
-
-      for (const k of keys) {
+      if (fromGer?.cliente_key) keys.push(String(fromGer.cliente_key))
+      const base = String(clienteKey || '').replace(/-.*$/, '')
+      if (base) keys.push(base)
+      for (const k of [...new Set(keys.filter(Boolean))]) {
         if (skus.length) break
         try {
           const { data: vl } = await supabase
@@ -360,14 +534,14 @@ export default function Gerencia({ esGerente }) {
               .map(s => ({ ...s, promClp: s.clpMtd, promUd: s.udMtd, cicloDias: null, ultima: null }))
           }
         } catch {
-          /* tabla no expuesta / RLS */
+          /* RLS */
         }
       }
     }
 
     setCliSku(prev => ({
       ...prev,
-      [clienteKey]: {
+      [key]: {
         loading: false,
         skus,
         oferta,
@@ -375,12 +549,11 @@ export default function Gerencia({ esGerente }) {
         venta_mtd: fromGer?.venta_mtd,
         dias_sin_comprar: null,
         ultima_compra: null,
-        fuente: skus.length
-          ? (fromGer?.sku_detalle ? 'gerencia' : productos_top ? 'top' : 'ventas')
-          : null,
+        fuente: skus.length ? 'ok' : null,
       },
     }))
   }
+
 
   if (loading) return <div className="spinner">Cargando gerencia…</div>
   if (!esGerente) {
@@ -592,6 +765,7 @@ export default function Gerencia({ esGerente }) {
         <div style={{ display: 'flex', gap: 8, margin: '12px 0', overflowX: 'auto' }}>
           {[
             { id: 'zonas', label: 'Zonas / canales' },
+            { id: 'actividad', label: 'Actividad terreno' },
             { id: 'productos', label: 'Top productos' },
             { id: 'stock', label: 'Stock lento' },
           ].map(t => (
@@ -811,8 +985,9 @@ export default function Gerencia({ esGerente }) {
                       </div>
                       {cliZona.slice(0, 50).map(d => {
                         const pctCli = venta ? Math.round((Number(d.venta_mtd) / venta) * 1000) / 10 : 0
-                        const openCli = cliSel === d.cliente_key
-                        const det = cliSku[d.cliente_key]
+                        const openKey = d.cliente_key || d.nombre_cliente || d.nombre
+                        const openCli = cliSel === openKey || cliSel === d.cliente_key
+                        const det = cliSku[openKey] || cliSku[d.cliente_key]
                         return (
                           <div
                             key={d.cliente_key}
@@ -827,7 +1002,7 @@ export default function Gerencia({ esGerente }) {
                           >
                             <button
                               type="button"
-                              onClick={() => cargarSkuCliente(d.cliente_key)}
+                              onClick={() => cargarSkuCliente(d.cliente_key, d.nombre_cliente || d.nombre)}
                               style={{
                                 width: '100%', display: 'flex', justifyContent: 'space-between', gap: 8,
                                 fontSize: 12, padding: 0, border: 'none', background: 'none',
@@ -983,7 +1158,7 @@ export default function Gerencia({ esGerente }) {
                           >
                             <button
                               type="button"
-                              onClick={() => cargarSkuCliente(d.cliente_key)}
+                              onClick={() => cargarSkuCliente(d.cliente_key, d.nombre_cliente || d.nombre)}
                               style={{
                                 width: '100%',
                                 display: 'flex',
@@ -1126,6 +1301,246 @@ export default function Gerencia({ esGerente }) {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {tab === 'actividad' && (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              {[
+                { id: 'hoy', label: 'Hoy' },
+                { id: '7d', label: '7 días' },
+              ].map(r => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setActRango(r.id)}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: 999,
+                    border: actRango === r.id ? '2px solid #c2410c' : '1px solid #e7e5e4',
+                    background: actRango === r.id ? '#c2410c' : '#fff',
+                    color: actRango === r.id ? '#fff' : '#57534e',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
+            {actividad?.loading && (
+              <div className="card muted" style={{ textAlign: 'center', padding: 24 }}>
+                Cargando actividad de terreno…
+              </div>
+            )}
+
+            {actividad && !actividad.loading && (
+              <>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
+                  {[
+                    { n: actividad.stats.checkins, l: 'Check-ins', c: '#1c1917' },
+                    { n: actividad.stats.pedidos, l: 'Pedidos', c: '#c2410c' },
+                    { n: money(actividad.stats.capturado), l: 'Capturado', c: '#0d9488' },
+                    { n: actividad.stats.noVenta, l: 'No venta', c: '#78716c' },
+                    { n: actividad.stats.bloqueos, l: 'Bloqueos', c: '#b91c1c' },
+                    {
+                      n: (actividad.stats.conversion || 0) + '%',
+                      l: 'Conv. visita',
+                      c: '#2563eb',
+                    },
+                  ].map(k => (
+                    <div
+                      key={k.l}
+                      style={{
+                        background: '#fff',
+                        borderRadius: 12,
+                        padding: '12px 8px',
+                        textAlign: 'center',
+                        border: '1px solid #e7e5e4',
+                      }}
+                    >
+                      <div style={{ fontSize: 16, fontWeight: 800, color: k.c }}>{k.n}</div>
+                      <div
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color: '#a8a29e',
+                          textTransform: 'uppercase',
+                          marginTop: 2,
+                        }}
+                      >
+                        {k.l}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="card" style={{ marginBottom: 12 }}>
+                  <div className="card-label" style={{ marginBottom: 8 }}>
+                    Por día · {actRango === 'hoy' ? 'hoy' : 'últimos 7 días'}
+                  </div>
+                  {!actividad.dias?.length && (
+                    <p className="muted" style={{ fontSize: 13 }}>
+                      Sin check-ins ni pedidos en este período. Cuando el equipo opere en terreno,
+                      acá se ve el ritmo real.
+                    </p>
+                  )}
+                  {actividad.dias?.map(d => (
+                    <div
+                      key={d.day}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 0',
+                        borderBottom: '1px solid #f5f5f4',
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{d.day}</div>
+                        <div className="muted" style={{ fontSize: 11 }}>
+                          {d.checkins} check-ins · {d.pedidos} pedidos
+                          {d.no_venta ? ` · ${d.no_venta} no venta` : ''}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 800, color: '#0d9488', fontSize: 14 }}>
+                        {money(d.$)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="card" style={{ marginBottom: 12 }}>
+                  <div className="card-label" style={{ marginBottom: 8 }}>
+                    Últimos pedidos
+                  </div>
+                  {!actividad.pedidos?.length && (
+                    <p className="muted" style={{ fontSize: 13 }}>Sin pedidos en el período.</p>
+                  )}
+                  {actividad.pedidos.slice(0, 12).map(p => {
+                    let tot = Number(p.total)
+                    if (isNaN(tot) || !p.total) {
+                      tot = 0
+                      for (const l of Array.isArray(p.lineas) ? p.lineas : []) {
+                        tot += (Number(l.precio) || 0) * (Number(l.cantidad) || 0)
+                      }
+                    }
+                    const hora = p.creado_en
+                      ? new Date(p.creado_en).toLocaleString('es-CL', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : '—'
+                    return (
+                      <div
+                        key={p.id}
+                        style={{
+                          padding: '10px 0',
+                          borderBottom: '1px solid #f5f5f4',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>
+                            {p.nombre_cliente || p.cliente_key || 'Cliente'}
+                          </div>
+                          <div className="muted" style={{ fontSize: 11 }}>
+                            {hora}
+                            {p.estado ? ` · ${p.estado}` : ''}
+                            {Array.isArray(p.lineas) ? ` · ${p.lineas.length} líneas` : ''}
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 800, color: '#c2410c', whiteSpace: 'nowrap' }}>
+                          {money(tot)}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="card" style={{ marginBottom: 12 }}>
+                  <div className="card-label" style={{ marginBottom: 8 }}>
+                    Check-ins recientes
+                  </div>
+                  {!actividad.checkins?.length && (
+                    <p className="muted" style={{ fontSize: 13 }}>Sin check-ins en el período.</p>
+                  )}
+                  {actividad.checkins.slice(0, 15).map(c => {
+                    const hora = c.hora_llegada
+                      ? new Date(c.hora_llegada).toLocaleString('es-CL', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : '—'
+                    return (
+                      <div
+                        key={c.id}
+                        style={{
+                          padding: '8px 0',
+                          borderBottom: '1px solid #f5f5f4',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          fontSize: 13,
+                        }}
+                      >
+                        <span className="muted">{hora}</span>
+                        <span style={{ fontWeight: 700 }}>
+                          {c.resultado || (c.hora_fin ? 'completada' : 'en curso')}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {(actividad.notas || []).filter(n => /bloqueo/i.test(n.tipo || '')).length > 0 && (
+                  <div className="card" style={{ border: '1px solid #fecaca', background: '#fef2f2' }}>
+                    <div className="card-label" style={{ marginBottom: 8, color: '#b91c1c' }}>
+                      Bloqueos registrados
+                    </div>
+                    {actividad.notas
+                      .filter(n => /bloqueo/i.test(n.tipo || ''))
+                      .slice(0, 10)
+                      .map(n => (
+                        <div
+                          key={n.id}
+                          style={{
+                            padding: '8px 0',
+                            borderBottom: '1px solid #fecaca55',
+                            fontSize: 13,
+                          }}
+                        >
+                          <div style={{ fontWeight: 700 }}>
+                            {n.nombre_local || n.cliente_key || 'Cliente'}
+                          </div>
+                          <div className="muted" style={{ fontSize: 11 }}>
+                            {n.tipo}
+                            {n.texto ? ` · ${n.texto}` : ''}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
