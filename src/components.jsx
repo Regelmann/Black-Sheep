@@ -132,30 +132,35 @@ export function AlertasDia() {
 }
 
 
-/** Banner sticky: última fecha de datos (fecha_snapshot de la bajada) */
+/** Chip compacto: fecha de datos (esquina, no banner grande) */
 export function DataAsOfBanner({ fecha, extra }) {
   if (!fecha && !extra) return null
   const f = fecha ? String(fecha).slice(0, 10) : null
   return (
     <div
       style={{
-        margin: '0 0 10px',
-        padding: '8px 12px',
-        borderRadius: 12,
-        background: 'linear-gradient(90deg, #fff7ed, #fafaf9)',
-        border: '1px solid #fed7aa',
+        margin: '0 0 8px',
         display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        fontSize: 12,
-        color: '#9a3412',
-        fontWeight: 600,
+        justifyContent: 'flex-end',
       }}
     >
-      <span style={{ fontSize: 14 }}>📅</span>
-      <span style={{ flex: 1 }}>
-        {f ? <>Datos al <b>{f}</b></> : 'Datos de la última bajada'}
-        {extra ? <> · {extra}</> : null}
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '3px 8px',
+          borderRadius: 999,
+          background: '#fafaf9',
+          border: '1px solid #e7e5e4',
+          fontSize: 10,
+          fontWeight: 650,
+          color: '#78716c',
+          lineHeight: 1.2,
+        }}
+      >
+        {f ? f : 'datos'}
+        {extra ? ` · ${extra}` : ''}
       </span>
     </div>
   )

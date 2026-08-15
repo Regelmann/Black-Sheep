@@ -152,6 +152,7 @@ export default function Ruta({ session }) {
   const meMarkerRef = useRef(null)
   const meAccRef = useRef(null)
   const fittedFecha = useRef(null) // fecha para la que ya hicimos fitBounds
+  const userCentered = useRef(false) // ya centramos en GPS del vendedor
 
 
   const cercanos = (() => {
@@ -338,7 +339,8 @@ export default function Ruta({ session }) {
       setTerritorio([])
       setVisitas([])
     } finally {
-      fittedFecha.current = null
+      fittedFecha.current = null; userCentered.current = false
+      userCentered.current = false
       setLoading(false)
     }
   }, [uid, fecha])
@@ -507,7 +509,7 @@ export default function Ruta({ session }) {
               { featureType: 'transit', stylers: [{ visibility: 'off' }] },
             ],
           })
-          fittedFecha.current = null
+          fittedFecha.current = null; userCentered.current = false
         } else {
           try {
             maps.event.trigger(mapInstance.current, 'resize')
@@ -579,13 +581,11 @@ export default function Ruta({ session }) {
         meAccRef.current.setRadius(Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200))
       }
     }
-    // Centrar en mi ubicación la primera vez que aparece el GPS
-    // (solo si el mapa no ha hecho fitBounds de la ruta todavía)
-    if (!fittedFecha.current && mapInstance.current) {
+    // Prioridad: centrar en el vendedor (zoom local para ver clientes/prospectos cerca)
+    if (!userCentered.current && mapInstance.current) {
+      userCentered.current = true
       mapInstance.current.panTo(pos)
-      if (myPos.accuracy && myPos.accuracy < 200) {
-        mapInstance.current.setZoom(15)
-      }
+      mapInstance.current.setZoom(14)
     }
   }, [mapReady, myPos])
 
@@ -661,7 +661,7 @@ export default function Ruta({ session }) {
 
     // fitBounds UNA sola vez por fecha+zona (evita zoom in/out al redibujar pines)
     const fitKey = fecha + '|' + uid
-    if (fittedFecha.current !== fitKey && visible.length) {
+    if (!userCentered.current && fittedFecha.current !== fitKey && visible.length) {
       fittedFecha.current = fitKey
       try {
         maps.event.trigger(mapInstance.current, 'resize')

@@ -120,7 +120,7 @@ export default function Cartera({ session }) {
     if (f === 'Enfri') return 'ENFRI'
     return f
   })
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => searchParams.get('q') || '')
   const [notaDe, setNotaDe] = useState(null)
   const [pedidoCliente, setPedidoCliente] = useState(null)
   const [exportOpen, setExportOpen] = useState(false)
@@ -282,25 +282,70 @@ export default function Cartera({ session }) {
     else if (filtro === 'ReponerHoy') rows = rows.filter(c => clienteTocaReponer(c))
     else if (filtro === 'RIESGO') rows = rows.filter(c => /RIESGO/i.test(c.estado_fuga || ''))
     else if (filtro === 'ENFRI') rows = rows.filter(c => /ENFRI/i.test(c.estado_fuga || ''))
-    else if (filtro !== 'Todos') rows = rows.filter(c => c.estado_fuga === filtro)
-    if (q) {
+    else if (filtro === 'CerrarMeta') {
+      // Clientes para sobrepasar meta: reponer + riesgo/enfri + altos $ sin venta mes
+      rows = rows.filter(c => {
+        if (c.es_bloqueado) return false
+        if (clienteTocaReponer(c)) return true
+        if (/RIESGO|ENFRI|FUGA|DORMIDO/i.test(c.estado_fuga || '')) return true
+        const mtd = Number(c.venta_mtd) || 0
+        const prom = Number(c.venta_mensual) || 0
+        if (prom >= 200000 && mtd < prom * 0.5) return true
+        return false
+      })
+    } else if (filtro === 'Foco') {
+      // Clientes que alguna vez compraron / tienen el foco en mix
+      const focoQ = (q || searchParams.get('q') || '').toLowerCase().trim()
+      if (focoQ) {
+        const tokens = focoQ.split(/\s+/).filter(t => t.length > 2)
+        rows = rows.filter(c => {
+          const hay = [
+            c.sku_detalle, c.oferta_real, c.productos_top, c.nombre_cliente,
+          ].map(x => String(x || '').toLowerCase()).join(' ')
+          // match al menos 1 token fuerte del foco (ej. POLLO, HANKS)
+          return tokens.some(t => hay.includes(t))
+        })
+      }
+    } else if (filtro !== 'Todos') rows = rows.filter(c => c.estado_fuga === filtro)
+    if (q && filtro !== 'Foco') {
       const qq = q.toLowerCase().trim()
       const tokens = qq.split(/\s+/).filter(Boolean)
       rows = rows.filter(c => {
         const hay = [
           c.nombre_cliente, c.comuna, c.cliente_key, c.direccion,
-          c.razon_social, c.segmento, c.oferta_real,
+          c.razon_social, c.segmento, c.oferta_real, c.sku_detalle,
         ].map(x => String(x || '').toLowerCase()).join(' ')
         return tokens.every(t => hay.includes(t))
       })
     }
     return [...rows].sort((a, b) => {
+      if (filtro === 'Foco' || filtro === 'CerrarMeta') {
+        const score = c => {
+          let s = 0
+          if (clienteTocaReponer(c)) s += 50
+          if (/RIESGO/i.test(c.estado_fuga || '')) s += 30
+          if (/ENFRI/i.test(c.estado_fuga || '')) s += 20
+          if (/FUGA|DORMIDO/i.test(c.estado_fuga || '')) s += 15
+          const mtd = Number(c.venta_mtd) || 0
+          const prom = Number(c.venta_mensual) || 0
+          if (prom > 0 && mtd < prom * 0.5) s += 25
+          s += Math.min(30, Math.log10(Math.max(prom, 1)) * 5)
+          if (filtro === 'Foco' && q) {
+            const toks = q.toLowerCase().split(/\s+/).filter(t => t.length > 2)
+            const det = String(c.sku_detalle || '').toLowerCase()
+            if (toks.some(tok => det.includes(tok))) s += 20
+          }
+          return s
+        }
+        const d = score(b) - score(a)
+        if (d) return d
+      }
       const va = Number(a.venta_mtd) || 0
       const vb = Number(b.venta_mtd) || 0
       if (vb !== va) return vb - va
       return (Number(b.venta_mensual) || 0) - (Number(a.venta_mensual) || 0)
     })
-  }, [clientes, filtro, q])
+  }, [clientes, filtro, q, searchParams])
 
   function exportarCSV(modo) {
     // modo: 'todo' | 'bloqueados' | 'fugados' | 'reponer'
@@ -559,6 +604,8 @@ export default function Cartera({ session }) {
           <div style={{ fontSize: 12, color: '#78716c', fontWeight: 600 }}>
             {Math.min(show, lista.length)} de {lista.length}
             {filtro === 'ReponerHoy' ? ' · reposición vencida' : ''}
+            {filtro === 'CerrarMeta' ? ' · para cerrar / superar meta' : ''}
+            {filtro === 'Foco' && q ? ` · foco: ${q}` : ''}
           </div>
           {reponerHoy.length > 0 && filtro !== 'ReponerHoy' && (
             <button
@@ -597,10 +644,10 @@ export default function Cartera({ session }) {
               style={{
                 background: '#fff',
                 border: c.es_bloqueado ? '1.5px solid #fecaca' : '1px solid #ebe6e0',
-                borderRadius: 16,
-                marginBottom: 10,
+                borderRadius: 12,
+                marginBottom: 6,
                 overflow: 'hidden',
-                boxShadow: abierto ? '0 8px 28px rgba(26,22,20,0.08)' : '0 1px 2px rgba(26,22,20,0.04)',
+                boxShadow: abierto ? '0 6px 20px rgba(26,22,20,0.08)' : '0 1px 2px rgba(26,22,20,0.04)',
               }}
             >
               {/* ── Cabecera compacta ── */}
@@ -609,7 +656,7 @@ export default function Cartera({ session }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  padding: '14px 16px',
+                  padding: '10px 12px',
                   cursor: 'pointer',
                 }}
                 onClick={() => setExpandido(abierto ? null : cardKey)}
@@ -618,7 +665,7 @@ export default function Cartera({ session }) {
                   <div
                     style={{
                       fontWeight: 700,
-                      fontSize: 15,
+                      fontSize: 14,
                       color: '#1a1614',
                       letterSpacing: '-0.01em',
                       whiteSpace: 'nowrap',
@@ -630,10 +677,10 @@ export default function Cartera({ session }) {
                   </div>
                   <div
                     style={{
-                      marginTop: 6,
+                      marginTop: 4,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
+                      gap: 5,
                       flexWrap: 'wrap',
                     }}
                   >
@@ -926,7 +973,7 @@ export default function Cartera({ session }) {
                       )}
 
                       {skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).length > 0 ? (
-                        skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).slice(0, 8).map((s, i) => {
+                        skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).map((s, i) => {
                           const p = pctRitmo(s.udMtd, s.promUd)
                           const barPct = p != null ? Math.min(100, Math.max(0, p)) : 0
                           const barColor = p == null ? '#d6d3d1' : p >= 100 ? '#22c55e' : p >= 50 ? '#f59e0b' : '#ef4444'
