@@ -325,3 +325,54 @@ a { color: inherit; text-decoration: none; }
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ── Client action bar (Cartera) ─────────────────────────────────────────── */
+.cli-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: stretch;
+}
+.acc-btn {
+  flex: 1 1 auto;
+  min-width: 72px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  text-decoration: none;
+  border: 1.5px solid #e7e5e4;
+  background: #fff;
+  color: #1c1917;
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.acc-btn:active { transform: scale(0.98); }
+.acc-call {
+  background: #1c1917;
+  border-color: #1c1917;
+  color: #fff;
+}
+.acc-wsp {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+.acc-nav {
+  background: #f5f5f4;
+  border-color: #e7e5e4;
+  color: #44403c;
+}
+.acc-note {
+  background: #fff;
+  border-color: #e7e5e4;
+  color: #57534e;
+}
