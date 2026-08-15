@@ -385,6 +385,11 @@ export default function Hoy() {
 
         {/* Action Queue — corazón interactivo */}
         <div className="section-title">Tu día en 30 segundos · Priorizado</div>
+        {m.actionQueue.length > 0 && (
+          <p className="muted" style={{ fontSize: 12, margin: '-4px 0 12px', lineHeight: 1.4 }}>
+            Empezá por la primera card. Objetivo: primera acción en &lt; 8 s.
+          </p>
+        )}
         {m.actionQueue.length === 0 && (
           <div className="empty-state card">
             <div className="empty-title">Sin urgencias fuertes</div>
@@ -403,14 +408,17 @@ export default function Hoy() {
         )}
         {m.actionQueue.map((item, idx) => {
           const metaT = TYPE_META[item.type] || TYPE_META.visita
+          const isFirst = idx === 0
           return (
             <div key={item.id || idx} style={{
               background: '#fff',
               borderRadius: 16,
-              border: `1.5px solid ${metaT.color}22`,
+              border: isFirst ? `2px solid ${metaT.color}` : `1.5px solid ${metaT.color}22`,
               borderLeft: `4px solid ${metaT.color}`,
               marginBottom: 10,
               overflow: 'hidden',
+              boxShadow: isFirst ? '0 8px 24px rgba(26,22,20,0.10)' : 'none',
+              transform: isFirst ? 'scale(1.01)' : 'none',
             }}>
               {/* Header con badge y monto */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 8px' }}>

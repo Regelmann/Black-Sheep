@@ -247,6 +247,7 @@ export default function Cartera({ session }) {
   const nRecuperados = clientes.filter(esRecuperadoMes).length
   const nActivosMes = clientes.filter(c => Number(c.venta_mtd) > 0).length
   const nSinVentaMes = clientes.filter(c => !(Number(c.venta_mtd) > 0)).length
+  const nBloqueados = clientes.filter(c => c.es_bloqueado).length
 
   const reponerHoy = useMemo(() => {
     try {
@@ -460,8 +461,9 @@ export default function Cartera({ session }) {
               setFiltro('Bloqueados')
               setShow(PAGE)
             }}
+            style={filtro === 'Bloqueados' ? { background: '#b91c1c', color: '#fff', borderColor: '#b91c1c' } : (nBloqueados > 0 ? { borderColor: '#fecaca', color: '#b91c1c' } : {})}
           >
-            Bloqueados
+            Bloqueados{nBloqueados > 0 ? ` (${nBloqueados})` : ''}
           </button>
           <button
             className={'filter-btn' + (filtro === 'Nuevos' ? ' active' : '')}

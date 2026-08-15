@@ -200,22 +200,37 @@ export default function Stock() {
             Análisis · qué hacer hoy
           </div>
           {insights.map((ins, i) => (
-            <div
+            <button
               key={i}
+              type="button"
+              onClick={() => {
+                if (ins.tipo === 'sobre') setFiltro('Alto')
+                else if (ins.tipo === 'foco') setFiltro('Foco')
+                else if (ins.tipo === 'crit') setFiltro('Critico')
+                else setFiltro('Todos')
+              }}
               style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
                 background: ins.bg,
                 borderRadius: 14,
                 padding: '12px 14px',
                 marginBottom: 8,
                 border: `1px solid ${ins.color}22`,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
               }}
             >
               <div style={{ fontWeight: 800, fontSize: 14, color: ins.color }}>{ins.title}</div>
               {ins.body && (
                 <div style={{ fontSize: 12, color: '#57534e', marginTop: 4, lineHeight: 1.35 }}>{ins.body}</div>
               )}
-              <div style={{ fontSize: 12, fontWeight: 700, color: ins.color, marginTop: 6 }}>→ {ins.accion}</div>
-            </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: ins.color, marginTop: 6 }}>
+                → {ins.accion}
+                <span style={{ fontWeight: 600, opacity: 0.75 }}> · tocar para filtrar</span>
+              </div>
+            </button>
           ))}
         </div>
 

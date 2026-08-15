@@ -139,18 +139,25 @@ export default function Gerencia({ esGerente }) {
   const [canalSel, setCanalSel] = useState(null)
   const [cliSel, setCliSel] = useState(null) // cliente_key expandido
   const [cliSku, setCliSku] = useState({}) // { [cliente_key]: { skus, oferta, loading } }
+  const [bloqueados, setBloqueados] = useState([]) // cartera.es_bloqueado para decisión gerencial
 
   useEffect(() => {
     ;(async () => {
       setLoading(true)
       setError(null)
       try {
-        const [{ data: g }, { data: t }, { data: stock }, { data: det }] = await Promise.all([
+        const [{ data: g }, { data: t }, { data: stock }, { data: det }, { data: blq }] = await Promise.all([
           supabase.from('gerencia').select('*'),
           supabase.from('tendencia').select('*'),
           supabase.from('stock').select('*').limit(500),
           supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(800),
+          supabase
+            .from('cartera')
+            .select('cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado')
+            .eq('es_bloqueado', true)
+            .limit(200),
         ])
+        setBloqueados(blq || [])
         const detN = (det || []).map(d => ({
           ...d,
           ejecutivo: d.ejecutivo || d.canal || d.zona || null,
@@ -593,6 +600,72 @@ export default function Gerencia({ esGerente }) {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Bloqueados — señal de decisión (cerrado / deuda en terreno) */}
+            <div
+              className="card"
+              style={{
+                marginBottom: 14,
+                border: bloqueados.length ? '1.5px solid #fecaca' : '1px solid #e7e5e4',
+                background: bloqueados.length ? '#fef2f2' : '#fff',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: '#b91c1c', textTransform: 'uppercase' }}>
+                    Clientes bloqueados
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: bloqueados.length ? '#b91c1c' : '#1c1917', marginTop: 2 }}>
+                    {bloqueados.length}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+                    {bloqueados.length
+                      ? 'Marcados en terreno (cerrado / deuda). No empujar venta hasta desbloquear.'
+                      : 'Ningún cliente bloqueado en cartera visible.'}
+                  </div>
+                </div>
+              </div>
+              {bloqueados.length > 0 && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {bloqueados.slice(0, 8).map(b => (
+                    <div
+                      key={b.cliente_key || b.nombre_cliente}
+                      style={{
+                        background: '#fff',
+                        borderRadius: 10,
+                        padding: '8px 10px',
+                        border: '1px solid #fecaca',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#1c1917', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {b.nombre_cliente || b.razon_social || b.cliente_key}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#78716c' }}>
+                          {(b.comuna || '—') + (b.zona ? ` · ${b.zona}` : '')}
+                          {b.dias_sin_comprar != null ? ` · ${b.dias_sin_comprar}d` : ''}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#b91c1c' }}>
+                          {money(Number(b.venta_mtd) || Number(b.venta_mensual) || 0)}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#a8a29e' }}>prom / mtd</div>
+                      </div>
+                    </div>
+                  ))}
+                  {bloqueados.length > 8 && (
+                    <div style={{ fontSize: 11, color: '#78716c', textAlign: 'center' }}>
+                      +{bloqueados.length - 8} más (filtro Bloqueados en Clientes por zona)
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <h3 className="section-title">Terreno (con meta)</h3>
