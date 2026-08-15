@@ -421,9 +421,9 @@ export default function Ruta({ session }) {
         tip('Activá GPS para armar la ruta por cercanía')
         return
       }
-      const cands = candidatosRutaDia(territorio, origin, { maxStops: 8, radioKm: 15 })
+      const cands = candidatosRutaDia(territorio, origin, { maxStops: 10, radioKm: 15, maxProspect: 3 })
       if (!cands.length) {
-        tip('No hay candidatos prioritarios con geo en 15 km')
+        tip('No hay candidatos con geo en 15 km. Verificá GPS o coordenadas de cartera.')
         return
       }
       const rid = await ensureRuta()
@@ -442,6 +442,7 @@ export default function Ruta({ session }) {
       const baseOrden = visitas.reduce((m, v) => Math.max(m, Number(v.orden) || 0), 0)
       for (let i = 0; i < ordered.length; i++) {
         const item = ordered[i]
+        const esProspecto = item._tipo === 'prospecto'
         await supabase.from('visitas').insert({
           ruta_id: rid,
           orden: baseOrden + i + 1,
@@ -451,7 +452,7 @@ export default function Ruta({ session }) {
           comuna: item.comuna,
           lat: item.lat,
           lng: item.lng,
-          segmento: limpiaEstado(item.estado_fuga),
+          segmento: esProspecto ? 'PROSPECTO' : limpiaEstado(item.estado_fuga),
           oferta: limpiaOferta(item.oferta_real || item.oferta || item.productos_top),
           potencial: Number(item.venta_mensual || item.potencial) || 0,
           estado: 'pendiente',

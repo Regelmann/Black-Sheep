@@ -269,10 +269,20 @@ export function metricasRuta(ordered, origin) {
  * Candidatos para “Armar ruta del día”:
  * top N por scoreVisita, con geo, no bloqueados, opc. radio km.
  */
+/**
+ * Candidatos para la ruta del día:
+ * - Clientes priorizados por score (reponer / riesgo / $)
+ * - Prospectos cercanos con geo, mezclados para maximizar oportunidades
+ *
+ * Filosofía: la ruta no es solo recuperar clientes — es también prospectar.
+ * Si hay prospectos cerca que coinciden con los focos, entran en la ruta.
+ */
 export function candidatosRutaDia(territorio, myPos, opts = {}) {
-  const maxStops = opts.maxStops || 8
-  const radioKm = opts.radioKm != null ? opts.radioKm : 15
-  const rows = (territorio || []).filter(c => {
+  const maxStops    = opts.maxStops    || 10
+  const radioKm     = opts.radioKm    != null ? opts.radioKm : 15
+  const maxProspect = opts.maxProspect != null ? opts.maxProspect : 3 // máx prospectos en la ruta
+
+  const withGeo = (territorio || []).filter(c => {
     if (c.es_bloqueado) return false
     if (c.lat == null || c.lng == null) return false
     if (myPos?.lat != null && radioKm > 0) {
@@ -281,9 +291,57 @@ export function candidatosRutaDia(territorio, myPos, opts = {}) {
     }
     return true
   })
-  return rows
+
+  // Separar clientes y prospectos
+  const clientes   = withGeo.filter(c => c._tipo !== 'prospecto')
+  const prospectos = withGeo.filter(c => c._tipo === 'prospecto')
+
+  // Score clientes (score real comercial)
+  const clientesCon = clientes
     .map(c => ({ ...c, _score: scoreVisita(c, myPos) }))
     .filter(c => c._score > 0)
     .sort((a, b) => b._score - a._score)
-    .slice(0, maxStops)
+    .slice(0, maxStops - maxProspect)
+
+  // Score prospectos: garantizar score mínimo 5 si tienen geo
+  // Priorizamos por: cercanía + rating Google (score) + potencial
+  const prospectosCon = prospectos
+    .map(p => {
+      let s = 5 // base garantida
+      const rating = Number(p.score || 0)
+      if (rating >= 4.5) s += 20
+      else if (rating >= 4.0) s += 12
+      else if (rating >= 3.5) s += 6
+      if (myPos?.lat != null && p.lat != null) {
+        const d = haversineM(myPos.lat, myPos.lng, p.lat, p.lng)
+        if (d != null) {
+          if (d <= 500)  s += 25
+          else if (d <= 1000) s += 18
+          else if (d <= 2000) s += 10
+          else if (d <= 4000) s += 4
+        }
+      }
+      // Bonus si tiene oferta alineada con focos
+      if (p.oferta || p.productos_top) s += 8
+      return { ...p, _score: Math.min(100, s) }
+    })
+    .sort((a, b) => b._score - a._score)
+    .slice(0, maxProspect)
+
+  // Mezclar: cliente urgente primero, luego intercalar 1 prospecto cada ~3 clientes
+  const result = []
+  let pi = 0
+  for (let i = 0; i < clientesCon.length; i++) {
+    result.push(clientesCon[i])
+    // Insertar un prospecto cada 3 clientes si queda cupo
+    if ((i + 1) % 3 === 0 && pi < prospectosCon.length) {
+      result.push(prospectosCon[pi++])
+    }
+  }
+  // Agregar prospectos restantes al final si hay cupo
+  while (pi < prospectosCon.length && result.length < maxStops) {
+    result.push(prospectosCon[pi++])
+  }
+
+  return result.slice(0, maxStops)
 }

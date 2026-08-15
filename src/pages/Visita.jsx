@@ -67,6 +67,7 @@ export default function Visita({ session }) {
   const [showNoVenta, setShowNoVenta] = useState(false)
   const [noVentaMotivo, setNoVentaMotivo] = useState('')
   const [pedidoOk, setPedidoOk] = useState(false)
+  const [preciosPorNombre, setPreciosPorNombre] = useState({}) // nombre → precio_unidad de lista
 
   async function cargar() {
     setLoading(true)
@@ -124,9 +125,32 @@ export default function Visita({ session }) {
     setLoading(false)
   }
 
+  // Cargar precios de lista desde tabla stock (se ejecuta cuando termina cargar)
   useEffect(() => {
-    cargar()
-  }, [id])
+    if (loading) return
+    ;(async () => {
+      try {
+        const { data } = await supabase
+          .from('stock')
+          .select('producto_nombre,sku_canon,precio_unidad,precio_kilo')
+          .not('precio_unidad', 'is', null)
+          .limit(500)
+        if (!data?.length) return
+        const mapa = {}
+        for (const s of data) {
+          const precio = Number(s.precio_unidad) || 0
+          if (precio <= 0) continue
+          // Indexar por nombre y por sku_canon para máxima cobertura de matches
+          const keys = [
+            String(s.producto_nombre || '').toLowerCase().trim(),
+            String(s.sku_canon || '').toLowerCase().trim(),
+          ].filter(k => k.length > 2)
+          for (const k of keys) mapa[k] = precio
+        }
+        setPreciosPorNombre(mapa)
+      } catch { /* silent — precios es un nice-to-have */ }
+    })()
+  }, [loading])
 
   function posicion() {
     return new Promise(resolve => {
@@ -459,18 +483,34 @@ export default function Visita({ session }) {
             }
             return (
               <>
-                {items.slice(0, 8).map((it, i) => (
-                  <div key={i} style={{
-                    display: 'flex', gap: 10, alignItems: 'flex-start',
-                    padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  }}>
-                    <span style={{ color: '#22c55e', fontWeight: 800, marginTop: 2 }}>✓</span>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{it.tag}</div>
+                {items.slice(0, 8).map((it, i) => {
+                  // Buscar precio de lista por nombre del producto
+                  const nombreKey = String(it.nombre || '').toLowerCase().trim()
+                  // Buscar match exacto o parcial (ej: "PECHUGA DESH 10KG" → "pechuga desh 10kg")
+                  const precioDeLista = preciosPorNombre[nombreKey] ||
+                    Object.entries(preciosPorNombre).find(([k]) =>
+                      k.length > 4 && (nombreKey.includes(k) || k.includes(nombreKey))
+                    )?.[1]
+                  return (
+                    <div key={i} style={{
+                      display: 'flex', gap: 10, alignItems: 'flex-start',
+                      padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none',
+                    }}>
+                      <span style={{ color: '#22c55e', fontWeight: 800, marginTop: 2 }}>✓</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <span>{it.tag}</span>
+                          {precioDeLista > 0 && (
+                            <span style={{ color: '#c2410c', fontWeight: 700 }}>
+                              Lista: ${Math.round(precioDeLista).toLocaleString('es-CL')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 <button
                   type="button"
                   onClick={() => setPedidoOpen(true)}

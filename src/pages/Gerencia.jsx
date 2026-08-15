@@ -550,18 +550,38 @@ let skus = parseSkuDetalle(fromGer?.sku_detalle)
     }
 
     if (!skus.length && clienteKey) {
-      const { data } = await supabase
-        .from('cartera')
-        .select(
-          'sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra,cliente_key,razon_social,nombre_cliente'
-        )
-        .eq('cliente_key', clienteKey)
-        .limit(1)
-      const row = data?.[0]
-      if (row) {
-        skus = parseSkuDetalle(row.sku_detalle)
-        oferta = oferta || row.oferta_real
-        productos_top = productos_top || row.productos_top
+      // Normalizar cliente_key: probar con y sin dígito verificador
+      const keyBase = String(clienteKey).replace(/-[0-9kK]$/, '') // "76720094-C" → "76720094"
+      const keysToTry = [...new Set([clienteKey, keyBase, keyBase + '-0'])]
+      for (const k of keysToTry) {
+        if (skus.length) break
+        const { data } = await supabase
+          .from('cartera')
+          .select(
+            'sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra,cliente_key,razon_social,nombre_cliente'
+          )
+          .eq('cliente_key', k)
+          .limit(1)
+        const row = data?.[0]
+        if (row) {
+          skus = parseSkuDetalle(row.sku_detalle)
+          oferta = oferta || row.oferta_real
+          productos_top = productos_top || row.productos_top
+        }
+      }
+      // Si aún sin SKU, intentar búsqueda parcial por los primeros 8 dígitos del RUT
+      if (!skus.length && keyBase.length >= 7) {
+        const { data } = await supabase
+          .from('cartera')
+          .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente')
+          .like('cliente_key', `${keyBase}%`)
+          .limit(3)
+        const row = (data || []).find(r => parseSkuDetalle(r.sku_detalle).length > 0) || data?.[0]
+        if (row) {
+          skus = parseSkuDetalle(row.sku_detalle)
+          oferta = oferta || row.oferta_real
+          productos_top = productos_top || row.productos_top
+        }
       }
     }
 
@@ -1150,8 +1170,7 @@ let skus = parseSkuDetalle(fromGer?.sku_detalle)
                                 })}
                                 {!det?.loading && !(det?.skus || []).length && (
                                   <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
-                                    Sin mix disponible (ni en gerencia_clientes, cartera ni ventas_lineas).
-                                    Revisá que el ciclo cargue sku_detalle o productos_top para este canal.
+                                    Sin historial de SKU para este cliente. Si es canal KAM o Corporativo, revisá la maestra de clientes.
                                   </div>
                                 )}
                               </div>
@@ -1309,8 +1328,7 @@ let skus = parseSkuDetalle(fromGer?.sku_detalle)
                                 })}
                                 {!cliSku[d.cliente_key]?.loading && !(cliSku[d.cliente_key]?.skus || []).length && (
                                   <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
-                                    Sin mix disponible (ni en gerencia_clientes, cartera ni ventas_lineas).
-                                    Revisá que el ciclo cargue sku_detalle o productos_top para este canal.
+                                    Sin historial de SKU para este cliente. Si es canal KAM o Corporativo, revisá la maestra de clientes.
                                   </div>
                                 )}
                               </div>
