@@ -305,7 +305,8 @@ export function buildPedidoFormalHtml({
   pedidoId,
   total,
 }) {
-  const nom = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
+  const nom   = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
+  const folio = folioPedido(pedidoId)
   const fecha = new Date().toLocaleString('es-CL', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -342,7 +343,7 @@ export function buildPedidoFormalHtml({
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
     <div>
       <h1>Pedido KeyFoods</h1>
-      <div class="muted">${escapeHtml(fecha)}${pedidoId ? ' · #' + escapeHtml(String(pedidoId).slice(0, 8)) : ''}</div>
+      <div class="muted">${escapeHtml(fecha)} · <strong>${escapeHtml(folio)}</strong></div>
     </div>
     <span class="badge">TERRENO</span>
   </div>
@@ -370,20 +371,45 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;')
 }
 
-/** Abre ventana de impresión (en móvil: Compartir → Guardar PDF). */
+/** Número de pedido legible: P-YYYYMM-XXXX desde UUID */
+export function folioPedido(uuid) {
+  if (!uuid) return 'P-????'
+  const ym = new Date().toISOString().slice(0, 7).replace('-', '')
+  const short = String(uuid).replace(/-/g, '').slice(-4).toUpperCase()
+  return `P-${ym}-${short}`
+}
+
+/** Abre ventana de impresión (en móvil: Compartir → Guardar PDF).
+ *  Fix móvil: usa blob URL en lugar de window.open('','_blank')
+ *  para evitar el bloqueo de popups en Chrome Android. */
 export function imprimirPedidoPdf(opts) {
   const html = buildPedidoFormalHtml(opts)
-  const w = window.open('', '_blank')
-  if (!w) return { ok: false, error: 'Permite ventanas emergentes para el PDF' }
-  w.document.write(html)
-  w.document.close()
-  setTimeout(() => {
+  try {
+    // Método 1: blob URL — funciona en Chrome Android sin popup blocker
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.target   = '_blank'
+    a.rel      = 'noopener'
+    // En móvil: abre en nueva pestaña → menú compartir → Guardar PDF
+    // En desktop: abre y el usuario imprime con Ctrl+P
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+    return { ok: true }
+  } catch (e1) {
+    // Fallback: data URI
     try {
-      w.focus()
-      w.print()
-    } catch (_) {}
-  }, 300)
-  return { ok: true }
+      const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(html)
+      const w = window.open(dataUri, '_blank')
+      if (!w) throw new Error('popup bloqueado')
+      return { ok: true }
+    } catch (e2) {
+      return { ok: false, error: 'No se pudo abrir el PDF. Intentá desde Chrome.' }
+    }
+  }
 }
 
 /** Texto formal para WhatsApp bodega (sin depender del teléfono del cliente). */

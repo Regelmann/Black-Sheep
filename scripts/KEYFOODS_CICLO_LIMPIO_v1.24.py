@@ -1,7 +1,7 @@
 # =============================================================================
 # KEYFOODS CICLO LIMPIO — UN SOLO SCRIPT CANÓNICO
 # =============================================================================
-# VERSION = CICLO_LIMPIO_v1.23
+# VERSION = CICLO_LIMPIO_v1.24
 #
 # Una corrida hace TODO:
 #   1. Carga 4 Excel (VENTAS, MAESTRA, STOCK, LISTA_PRECIOS)
@@ -55,7 +55,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # ---------------------------------------------------------------------------
 # Banner
 # ---------------------------------------------------------------------------
-VERSION = "CICLO_LIMPIO_v1.23"
+VERSION = "CICLO_LIMPIO_v1.24"
 print("=" * 72)
 print(f"VERSION = {VERSION}")
 print("Un solo script. Validar → Calcular → Metas → Places → Supabase.")
@@ -129,6 +129,7 @@ SKIP_PLACES_AUTO = _sp in ("", "auto")  # default: no re-buscar Places si ya hay
 SKIP_SUPABASE = os.environ.get("KF_SKIP_SUPABASE", "").strip() in ("1", "true", "True")
 VENTAS_FULL_REPLACE = os.environ.get("KF_VENTAS_FULL_REPLACE", "").strip() in ("1", "true", "True")
 FORCE_VENTAS = os.environ.get("KF_FORCE_VENTAS", "").strip() in ("1", "true", "True")  # permite FULL_REPLACE o MTD a la baja
+FORCE_MAESTRA = os.environ.get("KF_FORCE_MAESTRA", "").strip() in ("1", "true", "True")  # permite maestra con menos clientes que snapshot previo
 MES_FORCE = os.environ.get("KF_MES", "").strip() or None  # "YYYY-MM-01"
 
 # ---------------------------------------------------------------------------
@@ -215,20 +216,19 @@ ZONAS_TERRENO = {"NOR-ORIENTE", "NOR-PONIENTE", "ZONA SUR"}
 
 # Comunas default si no hay archivo de config (RM)
 DEFAULT_ZONAS_COMUNAS = {
+    # Fuente: ZONAS_COMUNAS.csv de producción
     "NOR-ORIENTE": [
         "LAS CONDES", "VITACURA", "LO BARNECHEA", "LA REINA",
-        "PEÑALOLEN", "ÑUÑOA",
-        # PROVIDENCIA → NOR-PONIENTE (no duplicar)
+        "PEÑALOLEN", "SAN BERNARDO", "PUENTE ALTO",
     ],
     "NOR-PONIENTE": [
-        "PROVIDENCIA", "RECOLETA", "INDEPENDENCIA", "HUECHURABA",
-        "QUILICURA", "RENCA", "CONCHALI", "COLINA", "LAMPA",
+        "ÑUÑOA", "NUNOA", "PROVIDENCIA", "RECOLETA", "INDEPENDENCIA",
+        "HUECHURABA", "QUILICURA", "RENCA", "CONCHALI", "COLINA", "LAMPA",
         "CERRO NAVIA", "QUINTA NORMAL", "SANTIAGO",
     ],
     "ZONA SUR": [
-        "LA FLORIDA", "PUENTE ALTO", "MAIPU", "SAN MIGUEL",
-        "SAN JOAQUIN", "EL BOSQUE", "LA CISTERNA", "SAN BERNARDO",
-        "PAINE", "PIRQUE",
+        "LA FLORIDA", "MAIPU", "SAN MIGUEL", "SAN JOAQUIN",
+        "EL BOSQUE", "LA CISTERNA", "PAINE", "PIRQUE",
     ],
 }
 
@@ -1169,6 +1169,170 @@ def audit_venta_mtd(ventas: pd.DataFrame, mes_inicio: date) -> None:
     ncol = "numero_documento" if "numero_documento" in vm.columns else ("numero_doc" if "numero_doc" in vm.columns else None)
     if ncol:
         print(f"    docs distintos: {vm[ncol].nunique()}")
+
+
+
+def fetch_cartera_previa(sb) -> List[dict]:
+    """Snapshot de cartera en Supabase para diff de maestra (paginado)."""
+    if sb is None:
+        return []
+    try:
+        page, start, rows = 1000, 0, []
+        while True:
+            q = (
+                sb.table("cartera")
+                .select("cliente_key,nombre_cliente,zona,ejecutivo_id,venta_mtd,dias_sin_comprar,estado_fuga,sku_detalle,ultima_compra")
+                .range(start, start + page - 1)
+            )
+            chunk = q.execute().data or []
+            rows.extend(chunk)
+            if len(chunk) < page:
+                break
+            start += page
+            if start > 20000:
+                break
+        print(f"  cartera previa Supabase: {len(rows)} filas")
+        return rows
+    except Exception as e:
+        print(f"  cartera previa: {str(e)[:120]}")
+        return []
+
+
+def audit_maestra_incremental(maestra: pd.DataFrame, prev: List[dict]) -> dict:
+    """
+    Diff maestra Excel vs cartera publicada.
+    Permite verificar reasignaciones, altas y bajas antes de publicar.
+    """
+    report = {
+        "n_maestra": 0,
+        "n_prev": len(prev or []),
+        "nuevos": [],
+        "bajas": [],
+        "cambio_zona": [],
+        "sin_zona": 0,
+        "por_zona": {},
+    }
+    if maestra is None or maestra.empty:
+        print("  AUDIT MAESTRA: Excel vacío")
+        return report
+
+    m = maestra.copy()
+    m["cliente_key"] = m["cliente_key"].map(lambda x: str(x).strip() if x is not None else "")
+    m = m[m["cliente_key"] != ""]
+    report["n_maestra"] = len(m)
+    report["por_zona"] = m["zona"].value_counts().to_dict() if "zona" in m.columns else {}
+
+    prev_map = {}
+    for r in prev or []:
+        ck = str(r.get("cliente_key") or "").strip()
+        if not ck:
+            continue
+        prev_map[ck] = {
+            "zona": str(r.get("zona") or "").strip().upper() or "NO_ASIGNADO",
+            "nombre": r.get("nombre_cliente"),
+        }
+
+    new_map = {}
+    for _, r in m.iterrows():
+        ck = str(r.get("cliente_key") or "").strip()
+        z = str(r.get("zona") or "NO_ASIGNADO").strip().upper() or "NO_ASIGNADO"
+        nom = _s(r.get("nombre_comercial") or r.get("razon_social") or r.get("nombre") or ck)
+        new_map[ck] = {"zona": z, "nombre": nom}
+        if z in ("", "NO_ASIGNADO", "OTROS", "NONE", "NAN"):
+            report["sin_zona"] += 1
+
+    for ck, info in new_map.items():
+        if ck not in prev_map:
+            report["nuevos"].append({"cliente_key": ck, "zona": info["zona"], "nombre": info["nombre"]})
+        else:
+            z0 = prev_map[ck]["zona"]
+            z1 = info["zona"]
+            if z0 and z1 and z0 != z1:
+                report["cambio_zona"].append({
+                    "cliente_key": ck,
+                    "nombre": info["nombre"],
+                    "zona_antes": z0,
+                    "zona_ahora": z1,
+                })
+
+    for ck, info in prev_map.items():
+        if ck not in new_map:
+            report["bajas"].append({"cliente_key": ck, "zona": info["zona"], "nombre": info["nombre"]})
+
+    print(f"  AUDIT MAESTRA Excel={report['n_maestra']} | prev cartera={report['n_prev']}")
+    print(f"    altas={len(report['nuevos'])} · bajas={len(report['bajas'])} · cambio zona={len(report['cambio_zona'])} · sin zona={report['sin_zona']}")
+    if report["por_zona"]:
+        topz = sorted(report["por_zona"].items(), key=lambda x: -x[1])[:12]
+        print("    por zona:", ", ".join(f"{z}={n}" for z, n in topz))
+    for row in report["cambio_zona"][:8]:
+        print(f"    ZONA {row['cliente_key']}: {row['zona_antes']} → {row['zona_ahora']} · {row['nombre']}")
+    if len(report["cambio_zona"]) > 8:
+        print(f"    … +{len(report['cambio_zona']) - 8} cambios de zona")
+    for row in report["nuevos"][:5]:
+        print(f"    ALTA {row['cliente_key']} · {row['zona']} · {row['nombre']}")
+    for row in report["bajas"][:5]:
+        print(f"    BAJA {row['cliente_key']} · {row['zona']} · {row['nombre']}")
+
+    # Seguridad: maestra no puede caer >25% sin force
+    if report["n_prev"] >= 200 and report["n_maestra"] < report["n_prev"] * 0.75:
+        msg = (
+            f"Maestra Excel tiene {report['n_maestra']} clientes vs {report['n_prev']} en cartera. "
+            f"Posible archivo parcial. Usá KF_FORCE_MAESTRA=1 si es intencional."
+        )
+        if not FORCE_MAESTRA:
+            raise SystemExit(msg)
+        print(f"  ⚠ FORCE_MAESTRA: {msg}")
+
+    return report
+
+
+def audit_recompra_signals(cartera_rows: List[dict], limit: int = 8) -> None:
+    """
+    Verifica que sku_detalle traiga ciclo/última para insights de Hoy.
+    Muestra muestra de clientes terreno con señal de reponer.
+    """
+    from collections import Counter
+    n_det = 0
+    n_ciclo = 0
+    n_reponer = 0
+    samples = []
+    for r in cartera_rows or []:
+        if r.get("zona") not in ZONAS_TERRENO:
+            continue
+        det = str(r.get("sku_detalle") or "")
+        if not det or det in ("None", "nan"):
+            continue
+        n_det += 1
+        # Formato ciclo: nombre|prom|mtd|…|ultima|ciclo|n
+        parts_all = [p for p in det.replace("||", "|").split("|") if p is not None]
+        # conteo simple de tokens numéricos de ciclo en segmentos
+        has_ciclo = False
+        # parse tosco: si aparece patrón de fechas y números de ciclo en el string
+        if re.search(r"\d{4}-\d{2}-\d{2}", det) and re.search(r"\|\d{1,3}(\.\d+)?\|", det):
+            has_ciclo = True
+            n_ciclo += 1
+        dias = r.get("dias_sin_comprar")
+        try:
+            dias_n = int(dias) if dias is not None else None
+        except Exception:
+            dias_n = None
+        if dias_n is not None and dias_n >= 14 and dias_n < 999:
+            n_reponer += 1
+            if len(samples) < limit:
+                samples.append({
+                    "ck": r.get("cliente_key"),
+                    "nom": (r.get("nombre_cliente") or "")[:40],
+                    "zona": r.get("zona"),
+                    "dias": dias_n,
+                    "has_ciclo": has_ciclo,
+                    "sku_len": len(det),
+                })
+    print(f"  AUDIT RECOMPRA terreno: con sku_detalle={n_det} · con señal ciclo/fecha≈{n_ciclo} · dias≥14={n_reponer}")
+    for s in samples:
+        print(
+            f"    {s['zona']} · {s['ck']} · hace {s['dias']}d · ciclo_data={'sí' if s['has_ciclo'] else 'no'} · "
+            f"{s['nom']} · sku_detalle chars={s['sku_len']}"
+        )
 
 
 def build_cartera_rows(
@@ -2657,9 +2821,12 @@ def main():
     ofertas = build_oferta(detalle, precios, stock, focos_skus)
     print(f"  ofertas={sum(1 for v in ofertas.values() if v)}")
 
-    print("\n[5] CARTERA")
+    print("\n[5] MAESTRA INCREMENTAL + CARTERA")
+    prev_cartera = fetch_cartera_previa(sb) if sb else []
+    audit_maestra_incremental(maestra, prev_cartera)
     cartera_rows = build_cartera_rows(maestra, ventas, detalle, ofertas, mes_inicio, ejecutivos_map)
     print(f"  cartera rows={len(cartera_rows)}")
+    audit_recompra_signals(cartera_rows)
     # solo terreno para app campo (gerencia ve todos)
     cartera_terreno = [r for r in cartera_rows if r["zona"] in ZONAS_TERRENO]
     print(f"  cartera terreno={len(cartera_terreno)}")
@@ -2889,6 +3056,8 @@ def main():
         for ck, v in agg.items():
             z = zona_ck.get(str(ck)) or "NO_ASIGNADO"
             tot_z = venta_por_zona.get(z) or 1
+            # sku_detalle y productos_top desde cartera (para mix en Gerencia web)
+            _car_row = next((r for r in cartera_rows if str(r.get("cliente_key","")) == str(ck)), None)
             gerencia_clientes_rows.append({
                 "ejecutivo": z,
                 "canal": z,  # alias para schemas viejos
@@ -2897,9 +3066,9 @@ def main():
                 "comuna": com_ck.get(str(ck)) or None,
                 "venta_mtd": round(float(v), 0),
                 "pct_zona": round(100.0 * float(v) / tot_z, 2),
-                # SKU detalle para drill-down en Gerencia (clave para clientes fuera de zona terreno)
-                "sku_detalle": detalle.get(str(ck), {}).get("sku_detalle"),
-                "productos_top": detalle.get(str(ck), {}).get("productos_top"),
+                "sku_detalle": _car_row.get("sku_detalle") if _car_row else None,
+                "productos_top": _car_row.get("productos_top") if _car_row else None,
+                "oferta_real": _car_row.get("oferta_real") if _car_row else None,
                 "fecha_snapshot": date.today().isoformat(),
             })
         gerencia_clientes_rows.sort(key=lambda r: -r["venta_mtd"])
