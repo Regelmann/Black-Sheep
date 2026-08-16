@@ -11,8 +11,8 @@ import PedidoSheet from '../components/PedidoSheet.jsx'
 /** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
 const ZONAS_COMUNAS = {
   'NOR-ORIENTE': [
-    'LAS CONDES', 'VITACURA', 'LO BARNECHEA', 'LA REINA', 'PROVIDENCIA',
-    'PEÑALOLEN', 'PENALOLEN', 'ÑUÑOA', 'NUNOA', 'MACUL', 'LA FLORIDA',
+    'LAS CONDES', 'VITACURA', 'LO BARNECHEA', 'LA REINA',
+    'PEÑALOLEN', 'PENALOLEN', 'ÑUÑOA', 'NUNOA', 'MACUL',
   ],
   'NOR-PONIENTE': [
     'PROVIDENCIA', 'RECOLETA', 'INDEPENDENCIA', 'HUECHURABA', 'QUILICURA',

@@ -106,6 +106,8 @@ export default function Gerencia({ esGerente }) {
   const [topProd, setTopProd] = useState([])
   const [stockLento, setStockLento] = useState([])
   const [mesSel, setMesSel] = useState(null)
+  const [mesCanales, setMesCanales] = useState(null) // { loading, rows: [{canal, venta, pct}] }
+
   const [error, setError] = useState(null)
   const [tab, setTab] = useState('zonas') // zonas | productos | stock | actividad
   const [detalleCli, setDetalleCli] = useState([])
@@ -365,6 +367,66 @@ export default function Gerencia({ esGerente }) {
   }, [gerencia, totalVenta])
 
   // Solo últimos 12 meses (evita “año” inflado con histórico largo)
+
+  // Desglose real por canal del mes seleccionado (ventas_lineas.zona_vendedor)
+  useEffect(() => {
+    if (!mesSel) {
+      setMesCanales(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      setMesCanales({ loading: true, rows: [] })
+      try {
+        const startStr = String(mesSel).slice(0, 10)
+        const d0 = new Date(startStr + 'T12:00:00')
+        const d1 = new Date(d0.getFullYear(), d0.getMonth() + 1, 1)
+        const endStr = d1.toISOString().slice(0, 10)
+        const agg = {}
+        let from = 0
+        const page = 1000
+        for (let guard = 0; guard < 40; guard++) {
+          const { data, error } = await supabase
+            .from('ventas_lineas')
+            .select('venta_neta_clp,zona_vendedor,cliente_key')
+            .gte('fecha', startStr)
+            .lt('fecha', endStr)
+            .range(from, from + page - 1)
+          if (error) {
+            // fallback: sin zona_vendedor / sin fecha column names
+            console.warn('mesCanales', error.message)
+            break
+          }
+          if (!data?.length) break
+          for (const r of data) {
+            let z = (r.zona_vendedor || '').toString().trim().toUpperCase() || null
+            if (!z && r.cliente_key) {
+              const c = (carteraCache || []).find(x => String(x.cliente_key) === String(r.cliente_key))
+              z = (c?.zona || 'NO_ASIGNADO').toString().toUpperCase()
+            }
+            if (!z) z = 'NO_ASIGNADO'
+            agg[z] = (agg[z] || 0) + (Number(r.venta_neta_clp) || 0)
+          }
+          if (data.length < page) break
+          from += page
+        }
+        const total = Object.values(agg).reduce((a, b) => a + b, 0) || 1
+        const rows = Object.entries(agg)
+          .map(([canal, venta]) => ({
+            canal,
+            venta,
+            pct: Math.round((venta / total) * 1000) / 10,
+            terreno: /NOR-ORIENTE|NOR-PONIENTE|ZONA SUR/.test(canal),
+          }))
+          .sort((a, b) => b.venta - a.venta)
+        if (!cancelled) setMesCanales({ loading: false, rows, total: Object.values(agg).reduce((a, b) => a + b, 0) })
+      } catch (e) {
+        if (!cancelled) setMesCanales({ loading: false, rows: [], error: String(e.message || e) })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [mesSel, carteraCache])
+
   const tendencia12 = useMemo(() => {
     const rows = [...(tendencia || [])]
     const key = (m) => String(m?.mes || m?.mes_texto || '')
@@ -654,15 +716,17 @@ export default function Gerencia({ esGerente }) {
       if (fromGer?.cliente_key) keys.push(String(fromGer.cliente_key))
       const base = String(clienteKey || '').replace(/-.*$/, '')
       if (base) keys.push(base)
+      const nom = (fromGer?.nombre_cliente || fromGer?.razon_social || '').trim()
+      if (clienteKey && !String(clienteKey).endsWith('-C')) keys.push(String(clienteKey) + '-C')
       for (const k of [...new Set(keys.filter(Boolean))]) {
         if (skus.length) break
         try {
           const { data: vl } = await supabase
             .from('ventas_lineas')
-            .select('producto_nombre,sku_canon,venta_neta_clp,cantidad_unidad,cliente_key')
+            .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
             .eq('cliente_key', k)
             .order('venta_neta_clp', { ascending: false })
-            .limit(80)
+            .limit(120)
           if (vl?.length) {
             const agg = {}
             for (const r of vl) {
@@ -670,7 +734,7 @@ export default function Gerencia({ esGerente }) {
               if (!n) continue
               if (!agg[n]) agg[n] = { nombre: n, clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0 }
               agg[n].clpMtd += Number(r.venta_neta_clp) || 0
-              agg[n].udMtd += Number(r.cantidad_unidad) || 0
+              agg[n].udMtd += Number(r.cantidad_unidad || r.cantidad) || 0
             }
             skus = Object.values(agg)
               .sort((a, b) => b.clpMtd - a.clpMtd)
@@ -679,6 +743,35 @@ export default function Gerencia({ esGerente }) {
           }
         } catch {
           /* RLS */
+        }
+      }
+    }
+
+    if (!skus.length) {
+      const nom = (fromGer?.nombre_cliente || fromGer?.razon_social || '').trim()
+      if (nom.length > 4) {
+        try {
+          const { data: vl } = await supabase
+            .from('ventas_lineas')
+            .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key,nombre_cliente')
+            .ilike('nombre_cliente', `%${nom.slice(0, 28)}%`)
+            .limit(150)
+          if (vl?.length) {
+            const agg = {}
+            for (const r of vl) {
+              const n = r.producto_nombre || r.sku_canon
+              if (!n) continue
+              if (!agg[n]) agg[n] = { nombre: n, clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0 }
+              agg[n].clpMtd += Number(r.venta_neta_clp) || 0
+              agg[n].udMtd += Number(r.cantidad_unidad || r.cantidad) || 0
+            }
+            skus = Object.values(agg)
+              .sort((a, b) => b.clpMtd - a.clpMtd)
+              .slice(0, 12)
+              .map(s => ({ ...s, promClp: s.clpMtd, promUd: s.udMtd, cicloDias: null, ultima: null }))
+          }
+        } catch {
+          /* */
         }
       }
     }
@@ -868,19 +961,19 @@ export default function Gerencia({ esGerente }) {
                   {mesSelRow.clientes_activos} clientes activos en el mes
                 </div>
               )}
-              {/* Desglose por canal: mes en curso desde gerencia; meses pasados = mismo snapshot como referencia */}
-              {participacion?.length > 0 && (
+              <div className="card-label" style={{ marginTop: 8 }}>
+                Contribución por canal en {mesLabel(mesSelRow.mes)}
+              </div>
+              {mesCanales?.loading && (
+                <p className="muted" style={{ fontSize: 13 }}>Calculando desglose del mes…</p>
+              )}
+              {!mesCanales?.loading && mesCanales?.rows?.length > 0 && (
                 <>
-                  <div className="card-label" style={{ marginTop: 8 }}>
-                    {String(mesSelRow.mes).slice(0, 7) === String(tendencia12[tendencia12.length - 1]?.mes || '').slice(0, 7)
-                      ? 'Contribución por ejecutivo / canal (mes en curso)'
-                      : 'Referencia: peso actual por canal (histórico mes a mes aún no persistido)'}
-                  </div>
-                  {participacion.slice(0, 14).map(p => (
-                    <div key={p.ejecutivo} style={{ marginTop: 8 }}>
+                  {mesCanales.rows.slice(0, 14).map(p => (
+                    <div key={p.canal} style={{ marginTop: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                         <span style={{ fontWeight: 700 }}>
-                          {p.ejecutivo}
+                          {p.canal}
                           {p.terreno && <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>terreno</span>}
                         </span>
                         <span><b>{p.pct}%</b> · {money(p.venta)}</span>
@@ -890,15 +983,30 @@ export default function Gerencia({ esGerente }) {
                           className="progress-fill"
                           style={{
                             width: Math.min(p.pct, 100) + '%',
-                            background: p.terreno ? '#2563eb' : esSinAsignar(p.ejecutivo) ? '#f59e0b' : '#94a3b8',
+                            background: p.terreno ? '#2563eb' : esSinAsignar(p.canal) ? '#f59e0b' : '#94a3b8',
                           }}
                         />
                       </div>
                     </div>
                   ))}
                   <p className="muted" style={{ fontSize: 11, marginTop: 12 }}>
-                    El total del mes es histórico. El desglose por canal refleja el snapshot de gerencia del mes en curso hasta persistir ventas por canal/mes.
+                    Desglose desde ventas del mes (zona del vendedor / maestra). Total barras {money(mesCanales.total || 0)}.
                   </p>
+                </>
+              )}
+              {!mesCanales?.loading && !(mesCanales?.rows?.length) && participacion?.length > 0 && (
+                <>
+                  <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                    Sin líneas de ese mes en ventas_lineas. Mostrando peso actual (mes en curso) como referencia.
+                  </p>
+                  {participacion.slice(0, 10).map(p => (
+                    <div key={p.ejecutivo} style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ fontWeight: 700 }}>{p.ejecutivo}</span>
+                        <span><b>{p.pct}%</b> · {money(p.venta)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </>
               )}
             </div>
