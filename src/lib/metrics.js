@@ -96,17 +96,55 @@ export function scorePrioridad(c) {
   const mtd = Number(c?.venta_mtd) || 0
   const hist = Number(c?.venta_mensual) || Number(c?.venta_historica) || 0
   const ef = String(c?.estado_fuga || '')
+  const skus = skusAReponer(c)
   let s = 0
   if (/RIESGO/i.test(ef)) s += 80
   else if (/ENFRI/i.test(ef)) s += 55
   else if (/FUGADO|DORMIDO/i.test(ef)) s += 40
-  if (clienteTocaReponer(c)) s += 35
+  if (skus.length) s += 35 + Math.min(20, skus.length * 4)
+  // $ en juego: promedio histórico del top SKU a reponer
+  const top$ = skus.reduce((mx, x) => Math.max(mx, Number(x.promClp) || Number(x.clpMtd) || 0), 0)
+  if (top$ > 0) s += Math.min(30, Math.round(top$ / 80000))
   if (dias >= 45) s += 30
   else if (dias >= 28) s += 20
   else if (dias >= 21) s += 12
   if (hist > mtd) s += Math.min(25, Math.round((hist - mtd) / 50000))
   if (esNuevoMes(c) && mtd > 0) s += 15
   return s
+}
+
+/** Insight de 1 línea para el vendedor: ciclo + qué llevar */
+export function insightRecompra(c) {
+  const skus = skusAReponer(c)
+  if (!skus.length) {
+    const dias = Number(c?.dias_sin_comprar)
+    if (!isNaN(dias) && dias >= 14) return `Sin compra hace ${dias}d`
+    return null
+  }
+  // Orden: más atrasado primero, luego $
+  const ranked = [...skus].sort((a, b) => {
+    const da = (a.diasUltima || 0) - (a.cicloEst || 0)
+    const db = (b.diasUltima || 0) - (b.cicloEst || 0)
+    if (db !== da) return db - da
+    return (Number(b.promClp) || 0) - (Number(a.promClp) || 0)
+  })
+  const top = ranked[0]
+  const nom = String(top.nombre || '').split(/\s+/).slice(0, 4).join(' ')
+  const ciclo = top.cicloEst != null ? `ciclo ${top.cicloEst}d` : null
+  const atr = top.diasUltima != null && top.cicloEst != null
+    ? (top.diasUltima - top.cicloEst >= 0
+        ? `atrasa ${top.diasUltima - top.cicloEst}d`
+        : `próx. ${top.cicloEst - top.diasUltima}d`)
+    : (top.diasUltima != null ? `hace ${top.diasUltima}d` : null)
+  const falta = Math.max(0, (Number(top.promUd) || 0) - (Number(top.udMtd) || 0))
+  const qty = falta > 0 ? Math.max(1, Math.round(falta)) : (Number(top.promUd) > 0 ? Math.round(Number(top.promUd)) : null)
+  const qtyTxt = qty ? `llevar ~${qty}` : null
+  return {
+    text: [nom, ciclo, atr, qtyTxt].filter(Boolean).join(' · '),
+    topSku: top,
+    qty,
+    ranked,
+  }
 }
 
 export function ofertaCorta(oferta) {
@@ -196,7 +234,8 @@ export function computeConsistentMetrics(cartera, metaRow) {
       }
 
       const dias = Number(c.dias_sin_comprar)
-      // Subtítulo: lo más urgente primero
+      const insight = insightRecompra(c)
+      // Subtítulo: urgencia primero + comuna
       const partes = [
         !isNaN(dias) && dias < 999 ? `hace ${dias}d` : null,
         skus.length ? `${skus.length} SKU a reponer` : null,
@@ -209,6 +248,10 @@ export function computeConsistentMetrics(cartera, metaRow) {
         priority: score,
         title:    c.razon_social || c.nombre_cliente || c.cliente_key || 'Cliente',
         subtitle: partes.join(' · '),
+        insight:  insight?.text || null,
+        nextSku:  insight?.topSku?.nombre || null,
+        nextQty:  insight?.qty || null,
+        skusRanked: insight?.ranked || skus,
         count:    skus.length || undefined,
         amount:   Number(c.venta_mtd) || Number(c.venta_mensual) || undefined,
         clientId: c.cliente_key || c.id,

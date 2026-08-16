@@ -407,7 +407,7 @@ export default function Gerencia({ esGerente }) {
         for (let guard = 0; guard < 50; guard++) {
           const { data, error } = await supabase
             .from('ventas_lineas')
-            .select('venta_neta_clp,cliente_key')
+            .select('venta_neta_clp,cliente_key,zona_vendedor')
             .gte('fecha', startStr)
             .lt('fecha', endStr)
             .range(from, from + page - 1)
@@ -421,10 +421,14 @@ export default function Gerencia({ esGerente }) {
             let z =
               keyToZona[ck] ||
               keyToZona[ck.replace(/-.*$/, '')] ||
-              keyToZona[ck + '-C'] ||
-              'NO_ASIGNADO'
-            // ignorar basura tipo VENDEDOR_01 si por error quedó en el mapa
-            if (/^VENDEDOR[_\s]?\d*/i.test(z)) z = 'NO_ASIGNADO'
+              (ck && !ck.endsWith('-C') ? keyToZona[ck + '-C'] : null) ||
+              null
+            // Fallback: canal de factura si es un canal real (no VENDEDOR_01)
+            if (!z) {
+              const zv = normCanal(r.zona_vendedor || '')
+              if (zv && !/^VENDEDOR/.test(zv) && zv !== 'OTROS') z = zv
+            }
+            if (!z || /^VENDEDOR/.test(z)) z = 'NO_ASIGNADO'
             agg[z] = (agg[z] || 0) + (Number(r.venta_neta_clp) || 0)
           }
           if (data.length < page) break
@@ -735,10 +739,27 @@ export default function Gerencia({ esGerente }) {
       if (clienteKey) keys.push(String(clienteKey))
       if (fromGer?.rut) keys.push(String(fromGer.rut))
       if (fromGer?.cliente_key) keys.push(String(fromGer.cliente_key))
-      const base = String(clienteKey || '').replace(/-.*$/, '')
-      if (base) keys.push(base)
-      const nom = (fromGer?.nombre_cliente || fromGer?.razon_social || '').trim()
+      const base = String(clienteKey || fromGer?.cliente_key || '').replace(/-.*$/, '').replace(/\D/g, '')
+      if (base && base.length >= 6) {
+        keys.push(base)
+        keys.push(base + '-C')
+        keys.push(base + '-c')
+      }
       if (clienteKey && !String(clienteKey).endsWith('-C')) keys.push(String(clienteKey) + '-C')
+      const aggFromVl = (vl) => {
+        const agg = {}
+        for (const r of vl || []) {
+          const n = r.producto_nombre || r.sku_canon
+          if (!n) continue
+          if (!agg[n]) agg[n] = { nombre: n, clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0 }
+          agg[n].clpMtd += Number(r.venta_neta_clp) || 0
+          agg[n].udMtd += Number(r.cantidad_unidad || r.cantidad) || 0
+        }
+        return Object.values(agg)
+          .sort((a, b) => b.clpMtd - a.clpMtd)
+          .slice(0, 12)
+          .map(s => ({ ...s, promClp: s.clpMtd, promUd: s.udMtd, cicloDias: null, ultima: null }))
+      }
       for (const k of [...new Set(keys.filter(Boolean))]) {
         if (skus.length) break
         try {
@@ -746,20 +767,16 @@ export default function Gerencia({ esGerente }) {
             .from('ventas_lineas')
             .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
             .eq('cliente_key', k)
-            .limit(250)
-          if (vl?.length) {
-            const agg = {}
-            for (const r of vl) {
-              const n = r.producto_nombre || r.sku_canon
-              if (!n) continue
-              if (!agg[n]) agg[n] = { nombre: n, clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0 }
-              agg[n].clpMtd += Number(r.venta_neta_clp) || 0
-              agg[n].udMtd += Number(r.cantidad_unidad || r.cantidad) || 0
-            }
-            skus = Object.values(agg)
-              .sort((a, b) => b.clpMtd - a.clpMtd)
-              .slice(0, 12)
-              .map(s => ({ ...s, promClp: s.clpMtd, promUd: s.udMtd, cicloDias: null, ultima: null }))
+            .limit(300)
+          if (vl?.length) skus = aggFromVl(vl)
+          // Prefijo numérico del RUT/código
+          if (!skus.length && base && base.length >= 7) {
+            const { data: vl2 } = await supabase
+              .from('ventas_lineas')
+              .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
+              .like('cliente_key', base + '%')
+              .limit(300)
+            if (vl2?.length) skus = aggFromVl(vl2)
           }
         } catch {
           /* RLS */
@@ -768,14 +785,15 @@ export default function Gerencia({ esGerente }) {
     }
 
     if (!skus.length) {
-      const nom = (fromGer?.nombre_cliente || fromGer?.razon_social || '').trim()
+      const nom = (nombreHint || fromGer?.nombre_cliente || fromGer?.razon_social || '').trim()
       if (nom.length > 4) {
         try {
+          const token = nom.split(/\s+/)[0].slice(0, 16)
           const { data: vl } = await supabase
             .from('ventas_lineas')
             .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key,nombre_cliente')
-            .ilike('nombre_cliente', `%${nom.slice(0, 28)}%`)
-            .limit(150)
+            .ilike('nombre_cliente', `%${token}%`)
+            .limit(200)
           if (vl?.length) {
             const agg = {}
             for (const r of vl) {
@@ -1202,7 +1220,7 @@ export default function Gerencia({ esGerente }) {
                       </div>
                       <div>
                         <div className="muted">Clientes MTD</div>
-                        <div style={{ fontWeight: 700 }}>{cliZona.length || '—'}</div>
+                        <div style={{ fontWeight: 700 }}>{(Number(g.clientes_activos) > 0 ? Number(g.clientes_activos) : (cliZona.length || '—'))}</div>
                       </div>
                     </div>
                     <div className="progress-bg" style={{ marginTop: 8 }}>

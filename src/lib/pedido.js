@@ -66,6 +66,7 @@ export async function guardarPedido({
   lineas,
   nota,
   fuente = 'field_app',
+  estado = 'borrador',
 }) {
   const items = (lineas || [])
     .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
@@ -87,7 +88,7 @@ export async function guardarPedido({
     nombre_cliente: nombreCliente || null,
     lineas: items,
     nota: nota || null,
-    estado: 'borrador',
+    estado: estado || 'borrador',
     fuente,
     creado_en: new Date().toISOString(),
   }
@@ -108,7 +109,7 @@ export async function guardarPedido({
         nombre_cliente: nombreCliente || null,
         lineas: items,
         nota: nota || null,
-        estado: 'borrador',
+        estado: estado || 'borrador',
         fuente,
       }
       const r2 = await supabase.from('pedidos').insert(minimal).select().maybeSingle()
@@ -290,5 +291,136 @@ export async function enriquecerPreciosDesdeVentas(clienteKey, lineas) {
     })
   } catch {
     return lineas
+  }
+}
+
+/**
+ * Documento formal del pedido (HTML listo para imprimir / guardar PDF).
+ */
+export function buildPedidoFormalHtml({
+  cliente,
+  lineas,
+  ejecutivoNombre,
+  nota,
+  pedidoId,
+  total,
+}) {
+  const nom = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
+  const fecha = new Date().toLocaleString('es-CL', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+  const rows = (lineas || [])
+    .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
+    .map(l => {
+      const cant = Number(l.cantidad) || 0
+      const precio = Number(l.precio) || 0
+      const sub = precio > 0 ? cant * precio : null
+      return `<tr>
+        <td style="padding:8px;border-bottom:1px solid #e7e5e4">${escapeHtml(l.nombre || l.sku)}</td>
+        <td style="padding:8px;border-bottom:1px solid #e7e5e4;text-align:right">${cant} ${escapeHtml(l.unidad || 'ud')}</td>
+        <td style="padding:8px;border-bottom:1px solid #e7e5e4;text-align:right">${precio > 0 ? '$' + Math.round(precio).toLocaleString('es-CL') : '—'}</td>
+        <td style="padding:8px;border-bottom:1px solid #e7e5e4;text-align:right">${sub != null ? '$' + Math.round(sub).toLocaleString('es-CL') : '—'}</td>
+      </tr>`
+    })
+    .join('')
+  const tot = total != null ? total : (lineas || []).reduce((a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0), 0)
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Pedido KeyFoods — ${escapeHtml(nom)}</title>
+  <style>
+    body{font-family:system-ui,-apple-system,sans-serif;color:#1c1917;padding:24px;max-width:720px;margin:0 auto}
+    h1{font-size:20px;margin:0 0 4px}
+    .muted{color:#78716c;font-size:13px}
+    table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px}
+    th{text-align:left;padding:8px;border-bottom:2px solid #1c1917;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+    .total{font-size:18px;font-weight:800;margin-top:16px;text-align:right}
+    .badge{display:inline-block;background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    @media print{body{padding:0} .no-print{display:none}}
+  </style></head><body>
+  <div class="no-print" style="margin-bottom:16px">
+    <button onclick="window.print()" style="padding:10px 18px;border:none;background:#c2410c;color:#fff;border-radius:10px;font-weight:700;cursor:pointer">Imprimir / Guardar PDF</button>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <h1>Pedido KeyFoods</h1>
+      <div class="muted">${escapeHtml(fecha)}${pedidoId ? ' · #' + escapeHtml(String(pedidoId).slice(0, 8)) : ''}</div>
+    </div>
+    <span class="badge">TERRENO</span>
+  </div>
+  <div style="margin-top:16px;padding:12px;background:#fafaf9;border-radius:12px">
+    <div style="font-weight:800;font-size:16px">${escapeHtml(nom)}</div>
+    <div class="muted">${escapeHtml([cliente?.comuna, cliente?.direccion].filter(Boolean).join(' · ') || '')}</div>
+    ${cliente?.telefono ? `<div class="muted">Tel: ${escapeHtml(String(cliente.telefono))}</div>` : ''}
+  </div>
+  <table>
+    <thead><tr><th>Producto</th><th style="text-align:right">Cant.</th><th style="text-align:right">P. unit.</th><th style="text-align:right">Subtotal</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4" class="muted">Sin líneas</td></tr>'}</tbody>
+  </table>
+  <div class="total">Total estimado: $${Math.round(tot).toLocaleString('es-CL')}</div>
+  ${nota ? `<div style="margin-top:12px"><div class="muted">Nota</div><div>${escapeHtml(nota)}</div></div>` : ''}
+  ${ejecutivoNombre ? `<div class="muted" style="margin-top:24px">Ejecutivo: ${escapeHtml(ejecutivoNombre)}</div>` : ''}
+  <div class="muted" style="margin-top:8px">Documento generado en app de terreno. Confirmar recepción en bodega.</div>
+  </body></html>`
+}
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** Abre ventana de impresión (en móvil: Compartir → Guardar PDF). */
+export function imprimirPedidoPdf(opts) {
+  const html = buildPedidoFormalHtml(opts)
+  const w = window.open('', '_blank')
+  if (!w) return { ok: false, error: 'Permite ventanas emergentes para el PDF' }
+  w.document.write(html)
+  w.document.close()
+  setTimeout(() => {
+    try {
+      w.focus()
+      w.print()
+    } catch (_) {}
+  }, 300)
+  return { ok: true }
+}
+
+/** Texto formal para WhatsApp bodega (sin depender del teléfono del cliente). */
+export function buildWhatsAppBodega({ cliente, lineas, ejecutivoNombre, nota }) {
+  const nom = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
+  const lines = (lineas || [])
+    .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
+    .map(l => {
+      const cant = Number(l.cantidad)
+      return `• ${l.nombre || l.sku}: ${cant} ${l.unidad || 'ud'}`
+    })
+  const total = (lineas || []).reduce((a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0), 0)
+  const body = [
+    `*PEDIDO TERRENO — BODEGA*`,
+    `Cliente: *${nom}*`,
+    cliente?.comuna ? `Comuna: ${cliente.comuna}` : null,
+    cliente?.direccion ? `Dir: ${cliente.direccion}` : null,
+    '',
+    ...lines,
+    total > 0 ? `
+Total est.: $${Math.round(total).toLocaleString('es-CL')}` : null,
+    nota ? `Nota: ${nota}` : null,
+    ejecutivoNombre ? `Ejecutivo: ${ejecutivoNombre}` : null,
+    '',
+    'Por favor preparar / confirmar stock.',
+  ]
+    .filter(Boolean)
+    .join('\n')
+  return body
+}
+
+export async function marcarPedidoEstado(pedidoId, estado) {
+  if (!pedidoId) return { error: null }
+  try {
+    const { error } = await supabase.from('pedidos').update({ estado }).eq('id', pedidoId)
+    return { error }
+  } catch (e) {
+    return { error: e }
   }
 }

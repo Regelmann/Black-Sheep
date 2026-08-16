@@ -9,20 +9,20 @@ import { money } from '../components.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 
 /** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
+/** Alineado a ZONAS_COMUNAS.csv de producción (fuente de verdad). */
 const ZONAS_COMUNAS = {
   'NOR-ORIENTE': [
     'LAS CONDES', 'VITACURA', 'LO BARNECHEA', 'LA REINA',
-    'PEÑALOLEN', 'PENALOLEN', 'ÑUÑOA', 'NUNOA', 'MACUL',
+    'PENALOLEN', 'PEÑALOLEN', 'SAN BERNARDO', 'PUENTE ALTO',
   ],
   'NOR-PONIENTE': [
-    'PROVIDENCIA', 'RECOLETA', 'INDEPENDENCIA', 'HUECHURABA', 'QUILICURA',
-    'CONCHALI', 'RENCA', 'CERRO NAVIA', 'QUINTA NORMAL', 'ESTACION CENTRAL',
-    'ESTACIÓN CENTRAL', 'MAIPU', 'MAIPÚ', 'PUDAHUEL', 'LO PRADO', 'CERRILLOS',
+    'NUNOA', 'ÑUÑOA', 'PROVIDENCIA', 'RECOLETA', 'INDEPENDENCIA', 'HUECHURABA',
+    'QUILICURA', 'RENCA', 'CONCHALI', 'COLINA', 'LAMPA', 'CERRO NAVIA',
+    'QUINTA NORMAL', 'SANTIAGO',
   ],
   'ZONA SUR': [
-    'LA CISTERNA', 'SAN MIGUEL', 'SAN JOAQUIN', 'SAN JOAQUÍN', 'PEDRO AGUIRRE CERDA',
-    'LO ESPEJO', 'LA GRANJA', 'SAN RAMON', 'SAN RAMÓN', 'LA PINTANA', 'EL BOSQUE',
-    'PUENTE ALTO', 'SAN BERNARDO', 'CALERA DE TANGO', 'BUIN', 'PAINE', 'PIRQUE',
+    'LA FLORIDA', 'MAIPU', 'MAIPÚ', 'SAN MIGUEL', 'SAN JOAQUIN', 'SAN JOAQUÍN',
+    'EL BOSQUE', 'LA CISTERNA', 'PAINE', 'PIRQUE',
   ],
 }
 function normComuna(s) {

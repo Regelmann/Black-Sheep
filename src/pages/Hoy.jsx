@@ -157,11 +157,18 @@ export default function Hoy() {
 
   function openPrep(item) {
     const raw = item.raw || cartera.find(c => (c.cliente_key || c.id) === item.clientId) || null
-    const skus = raw ? skusAReponer(raw) : []
+    const skus = item.skusRanked || (raw ? skusAReponer(raw) : [])
     setPrep({
       ...item,
       raw,
-      skusTop: skus.slice(0, 3),
+      skusTop: skus.slice(0, 5).map(s => ({
+        nombre: s.nombre,
+        label: s.label || s.recompra?.label,
+        cicloEst: s.cicloEst,
+        diasUltima: s.diasUltima,
+        qty: Math.max(1, Math.round(Math.max(0, (Number(s.promUd) || 0) - (Number(s.udMtd) || 0)) || Number(s.promUd) || 1)),
+      })),
+      insight: item.insight,
       dias: raw ? Number(raw.dias_sin_comprar) : null,
       ultima: raw?.ultima_compra || null,
       estado: raw?.estado_fuga || null,
@@ -572,6 +579,14 @@ export default function Hoy() {
                     {item.subtitle}
                   </div>
                 )}
+                {item.insight && (
+                  <div style={{
+                    fontSize: 11, color: '#9a3412', marginTop: 2, fontWeight: 650,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    → {item.insight}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 {item.telefono && (
@@ -683,9 +698,18 @@ export default function Hoy() {
               </div>
             </div>
 
-            {prep.oferta && (
+            {prep.insight && (
               <div style={{
                 marginTop: 12, padding: '10px 12px', borderRadius: 12,
+                background: '#fef2f2', border: '1px solid #fecaca',
+                fontSize: 13, fontWeight: 700, color: '#991b1b', lineHeight: 1.4,
+              }}>
+                Debe llevar hoy: {prep.insight}
+              </div>
+            )}
+            {prep.oferta && (
+              <div style={{
+                marginTop: 8, padding: '10px 12px', borderRadius: 12,
                 background: '#fff7ed', border: '1px solid #fed7aa',
                 fontSize: 13, fontWeight: 600, color: '#9a3412', lineHeight: 1.4,
               }}>
@@ -707,7 +731,13 @@ export default function Hoy() {
                       width: 22, height: 22, borderRadius: 7, background: '#fef2f2', color: '#b91c1c',
                       fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     }}>{i + 1}</span>
-                    <div style={{ fontSize: 13, fontWeight: 650, color: '#1c1917', flex: 1 }}>{s.nombre}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 650, color: '#1c1917' }}>{s.nombre}</div>
+                      <div style={{ fontSize: 11, color: '#78716c', marginTop: 1 }}>
+                        {[s.label, s.cicloEst != null ? `ciclo ${s.cicloEst}d` : null, s.qty ? `sugerido ${s.qty}` : null]
+                          .filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

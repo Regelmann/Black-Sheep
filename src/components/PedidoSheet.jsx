@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   buildWhatsAppPedido,
+  buildWhatsAppBodega,
   guardarPedido,
   sugerirLineasDesdeCliente,
   enriquecerPreciosDesdeVentas,
   unidadDesdeNombre,
   sanitizeNombreProducto,
+  imprimirPedidoPdf,
+  marcarPedidoEstado,
 } from '../lib/pedido'
 
 const money = n => {
@@ -154,28 +157,52 @@ export default function PedidoSheet({
     [lineas]
   )
 
-  async function confirmar(wa) {
+  async function confirmar({ waCliente = false, waBodega = false, pdf = false } = {}) {
     setBusy(true)
     setMsg('')
-    const { error } = await guardarPedido({
+    const estado = waCliente || waBodega || pdf ? 'enviado' : 'borrador'
+    const { data, error } = await guardarPedido({
       ejecutivoId,
       clienteKey: cliente?.cliente_key,
       nombreCliente: cliente?.nombre_cliente || cliente?.nombre,
       lineas,
       nota,
+      estado,
     })
     if (error) {
       setMsg(error.message || String(error))
       setBusy(false)
       return
     }
-    if (wa) {
+    const pedidoId = data?.id
+    if (pdf) {
+      const r = imprimirPedidoPdf({
+        cliente,
+        lineas,
+        ejecutivoNombre,
+        nota,
+        pedidoId,
+        total,
+      })
+      if (!r.ok) setMsg(r.error || 'No se pudo abrir el PDF')
+    }
+    if (waCliente) {
       const { url } = buildWhatsAppPedido({ cliente, lineas, ejecutivoNombre })
       if (url) window.open(url, '_blank')
+      else setMsg('Sin teléfono del cliente para WhatsApp')
+    }
+    if (waBodega) {
+      const text = buildWhatsAppBodega({ cliente, lineas, ejecutivoNombre, nota })
+      // Abre WhatsApp genérico con texto listo (el usuario elige contacto bodega)
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`
+      window.open(url, '_blank')
+    }
+    if (pedidoId && estado === 'enviado') {
+      await marcarPedidoEstado(pedidoId, 'enviado')
     }
     setBusy(false)
-    onSaved?.()
-    onClose?.()
+    onSaved?.({ pedidoId, estado })
+    if (!pdf) onClose?.()
   }
 
   const nombreCli = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
@@ -495,16 +522,16 @@ export default function PedidoSheet({
           <button
             type="button"
             disabled={busy}
-            onClick={() => confirmar(false)}
+            onClick={() => confirmar({})}
             style={{
               flex: 1,
-              padding: 14,
+              padding: 12,
               borderRadius: 12,
               border: 'none',
               background: '#1c1917',
               color: '#fff',
               fontWeight: 800,
-              fontSize: 14,
+              fontSize: 13,
               cursor: busy ? 'wait' : 'pointer',
               fontFamily: 'inherit',
             }}
@@ -514,16 +541,54 @@ export default function PedidoSheet({
           <button
             type="button"
             disabled={busy}
-            onClick={() => confirmar(true)}
+            onClick={() => confirmar({ pdf: true })}
             style={{
-              flex: 1.15,
-              padding: 14,
+              flex: 1,
+              padding: 12,
+              borderRadius: 12,
+              border: '1.5px solid #c2410c',
+              background: '#fff7ed',
+              color: '#c2410c',
+              fontWeight: 800,
+              fontSize: 13,
+              cursor: busy ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            PDF
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => confirmar({ waBodega: true })}
+            style={{
+              flex: 1,
+              padding: 12,
+              borderRadius: 12,
+              border: 'none',
+              background: '#0f766e',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: 13,
+              cursor: busy ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Bodega
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => confirmar({ waCliente: true })}
+            style={{
+              flex: 1.1,
+              padding: 12,
               borderRadius: 12,
               border: 'none',
               background: '#16a34a',
               color: '#fff',
               fontWeight: 800,
-              fontSize: 14,
+              fontSize: 13,
               cursor: busy ? 'wait' : 'pointer',
               fontFamily: 'inherit',
             }}
@@ -531,6 +596,9 @@ export default function PedidoSheet({
             WhatsApp
           </button>
         </div>
+        <p className="muted" style={{ fontSize: 11, marginTop: 8, textAlign: 'center' }}>
+          PDF = imprimir/guardar · Bodega = WhatsApp a despacho · WhatsApp = al cliente
+        </p>
       </div>
     </div>
   )
