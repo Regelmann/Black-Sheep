@@ -2897,6 +2897,9 @@ def main():
                 "comuna": com_ck.get(str(ck)) or None,
                 "venta_mtd": round(float(v), 0),
                 "pct_zona": round(100.0 * float(v) / tot_z, 2),
+                # SKU detalle para drill-down en Gerencia (clave para clientes fuera de zona terreno)
+                "sku_detalle": detalle.get(str(ck), {}).get("sku_detalle"),
+                "productos_top": detalle.get(str(ck), {}).get("productos_top"),
                 "fecha_snapshot": date.today().isoformat(),
             })
         gerencia_clientes_rows.sort(key=lambda r: -r["venta_mtd"])
