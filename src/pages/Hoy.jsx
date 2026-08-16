@@ -620,7 +620,7 @@ export default function Hoy() {
           aria-modal="true"
           onClick={() => setPrep(null)}
           style={{
-            position: 'fixed', inset: 0, zIndex: 80,
+            position: 'fixed', inset: 0, zIndex: 400,
             background: 'rgba(28,25,23,0.45)',
             display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
           }}
@@ -631,7 +631,7 @@ export default function Hoy() {
               width: '100%', maxWidth: 480,
               background: '#fff',
               borderRadius: '20px 20px 0 0',
-              padding: '16px 18px 28px',
+              padding: '16px 18px calc(24px + 72px + env(safe-area-inset-bottom, 0px))',
               boxShadow: '0 -12px 40px rgba(0,0,0,0.18)',
               maxHeight: '85vh',
               overflowY: 'auto',

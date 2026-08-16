@@ -1505,14 +1505,21 @@ export default function Ruta({ session }) {
                 </button>
               )}
             </div>
-            {selected._tipo === 'ruta' && selected.id && (
+            {(selected._tipo === 'ruta' || selected._tipo === 'cliente' || selected._tipo === 'prospecto') && (
               <button
                 type="button"
-                onClick={() => nav(`/visita/${selected.id}`)}
+                onClick={() => {
+                  const key =
+                    selected._tipo === 'ruta'
+                      ? selected.id
+                      : selected.cliente_key || selected._id || selected.id
+                  if (!key) return
+                  nav(`/visita/${encodeURIComponent(String(key).replace(/^c_|^p_/, ''))}`)
+                }}
                 style={{
                   width: '100%', marginTop: 10, padding: '12px', borderRadius: 12,
-                  border: '1.5px solid #e7e0d8', background: '#fff', color: '#1c1917',
-                  fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  border: 'none', background: '#1c1917', color: '#fff',
+                  fontWeight: 800, fontSize: 14, cursor: 'pointer',
                 }}
               >
                 Abrir visita →

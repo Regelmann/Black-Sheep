@@ -71,58 +71,103 @@ export default function Visita({ session }) {
 
   async function cargar() {
     setLoading(true)
-    // Primero intentar buscar como visita_id en tabla visitas
-    const { data: v } = await supabase.from('visitas').select('*').eq('id', id).maybeSingle()
+    setMsg('')
+    try {
+      const decodedId = decodeURIComponent(id || '')
+      // 1) visita_id en tabla visitas
+      const { data: v } = await supabase.from('visitas').select('*').eq('id', id).maybeSingle()
 
-    if (v) {
-      setVisita(v)
-      // Enriquecer con cartera
-      let q = supabase.from('cartera')
-        .select('cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,oferta_real,productos_top,sku_detalle')
-        .limit(1)
-      if (v.cliente_key) q = q.eq('cliente_key', v.cliente_key)
-      else if (v.nombre_local) q = q.ilike('nombre_cliente', v.nombre_local)
-      const { data: cRows } = await q
-      setCliente(cRows?.[0] || null)
-    } else {
-      // No hay visita en ruta — navegar desde Hoy con cliente_key directo
-      // Construir visita sintética desde cartera
-      const decodedId = decodeURIComponent(id)
-      const { data: cRows } = await supabase.from('cartera')
-        .select('cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga')
-        .eq('cliente_key', decodedId)
-        .limit(1)
-      const cli = cRows?.[0]
-      if (cli) {
-        // Crear objeto visita sintético para que el template funcione igual
-        setVisita({
-          id: decodedId,
-          nombre_local: cli.nombre_cliente,
-          cliente_key: cli.cliente_key,
-          direccion: cli.direccion,
-          comuna: cli.comuna,
-          lat: cli.lat,
-          lng: cli.lng,
-          estado: 'pendiente',
-          oferta: cli.oferta_real,
-          segmento: cli.estado_fuga,
-          _sinRuta: true, // marca que es visita ad-hoc desde cartera
-        })
-        setCliente(cli)
+      if (v) {
+        setVisita(v)
+        let q = supabase
+          .from('cartera')
+          .select(
+            'cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga'
+          )
+          .limit(1)
+        if (v.cliente_key) q = q.eq('cliente_key', v.cliente_key)
+        else if (v.nombre_local) q = q.ilike('nombre_cliente', `%${v.nombre_local}%`)
+        const { data: cRows } = await q
+        setCliente(cRows?.[0] || null)
       } else {
-        setVisita(null)
-        setCliente(null)
+        // 2) cliente_key directo (Hoy / Mapa)
+        const sel =
+          'cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,venta_mensual,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga,ejecutivo_id'
+        let cli = null
+        const r1 = await supabase.from('cartera').select(sel).eq('cliente_key', decodedId).limit(1)
+        cli = r1.data?.[0] || null
+        // 3) fallback: nombre / razon
+        if (!cli && decodedId.length > 3) {
+          const r2 = await supabase
+            .from('cartera')
+            .select(sel)
+            .or(
+              `nombre_cliente.ilike.%${decodedId.slice(0, 24)}%,razon_social.ilike.%${decodedId.slice(0, 24)}%`
+            )
+            .limit(5)
+          cli =
+            (r2.data || []).find(c => String(c.cliente_key) === decodedId) ||
+            (r2.data || [])[0] ||
+            null
+        }
+        // 4) prospecto
+        if (!cli) {
+          const r3 = await supabase
+            .from('prospectos')
+            .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono')
+            .or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`)
+            .limit(1)
+          const p = r3.data?.[0]
+          if (p) {
+            cli = {
+              cliente_key: p.cliente_key || decodedId,
+              nombre_cliente: p.nombre_cliente,
+              comuna: p.comuna,
+              direccion: p.direccion,
+              lat: p.lat,
+              lng: p.lng,
+              oferta_real: p.oferta,
+              telefono: p.telefono,
+              _prospecto: true,
+            }
+          }
+        }
+        if (cli) {
+          setVisita({
+            id: decodedId,
+            nombre_local: cli.nombre_cliente,
+            cliente_key: cli.cliente_key,
+            direccion: cli.direccion,
+            comuna: cli.comuna,
+            lat: cli.lat,
+            lng: cli.lng,
+            estado: 'pendiente',
+            oferta: cli.oferta_real,
+            segmento: cli.estado_fuga,
+            _sinRuta: true,
+          })
+          setCliente(cli)
+        } else {
+          setVisita(null)
+          setCliente(null)
+          setMsg('No se encontró el cliente. Volvé al mapa o a Hoy.')
+        }
       }
-    }
 
-    const { data: c } = await supabase
-      .from('checkins')
-      .select('*')
-      .eq('visita_id', id)
-      .order('creado_en', { ascending: false })
-      .limit(1)
-    setCheckin(c && c[0] ? c[0] : null)
-    setLoading(false)
+      const { data: c } = await supabase
+        .from('checkins')
+        .select('*')
+        .eq('visita_id', id)
+        .order('creado_en', { ascending: false })
+        .limit(1)
+      setCheckin(c && c[0] ? c[0] : null)
+    } catch (e) {
+      console.error('Visita.cargar', e)
+      setMsg(String(e.message || e))
+      setVisita(null)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Cargar precios de lista desde tabla stock (se ejecuta cuando termina cargar)
@@ -319,6 +364,20 @@ export default function Visita({ session }) {
   }
 
   if (loading) return <div className="spinner">Cargando visita...</div>
+  if (!visita) {
+    return (
+      <div className="wrap" style={{ paddingTop: 32, textAlign: 'center' }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: '#1c1917' }}>No se pudo abrir la visita</div>
+        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>{msg || 'Cliente no encontrado en cartera.'}</p>
+        <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => nav(-1)}>
+          Volver
+        </button>
+        <button type="button" className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => nav('/')}>
+          Ir a Hoy
+        </button>
+      </div>
+    )
+  }
   if (!visita)
     return (
       <div className="wrap">

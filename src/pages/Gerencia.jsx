@@ -191,7 +191,7 @@ export default function Gerencia({ esGerente }) {
             supabase.from('gerencia').select('*'),
             supabase.from('tendencia').select('*'),
             supabase.from('stock').select('*').limit(500),
-            supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(800),
+            supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
             Promise.all(carPromises),
             supabase
               .from('notas_cliente')
@@ -200,6 +200,11 @@ export default function Gerencia({ esGerente }) {
               .limit(150),
           ])
 
+        // mapa ejecutivo_id → zona (para cuando cartera.zona viene vacía)
+        const zonaByEid = {}
+        for (const e of todosEjecutivos || []) {
+          if (e?.id) zonaByEid[e.id] = e.zona || e.nombre || null
+        }
         const carAll = []
         const seenKey = new Set()
         for (const r of carResults || []) {
@@ -207,7 +212,11 @@ export default function Gerencia({ esGerente }) {
             const k = row.cliente_key || row.nombre_cliente
             if (k && seenKey.has(k)) continue
             if (k) seenKey.add(k)
-            carAll.push(row)
+            const zona =
+              row.zona ||
+              zonaByEid[row.ejecutivo_id] ||
+              null
+            carAll.push({ ...row, zona, ejecutivo: zona })
           }
         }
         setCarteraCache(carAll)
