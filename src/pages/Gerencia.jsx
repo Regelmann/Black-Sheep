@@ -596,98 +596,59 @@ export default function Gerencia({ esGerente }) {
 
   async function cargarSkuCliente(clienteKey, nombreHint) {
     const key = clienteKey || nombreHint || 'sin-key'
-    if (cliSel === key) { setCliSel(null); return }
+    if (cliSel === key) {
+      setCliSel(null)
+      return
+    }
     setCliSel(key)
     if (cliSku[key]?.skus?.length) return
-
     setCliSku(prev => ({ ...prev, [key]: { loading: true, skus: [], oferta: null } }))
-
-    // Normalizar cliente_key para comparaciones (con/sin dígito verificador)
-    const normKey = (k) => String(k || '').replace(/-[0-9kKK]$/, '').replace(/\D/g, '')
 
     const fromGer =
       detalleCli.find(d => String(d.cliente_key) === String(clienteKey)) ||
-      detalleCli.find(d => normKey(d.cliente_key) === normKey(clienteKey)) ||
       (nombreHint
         ? detalleCli.find(d =>
-            String(d.nombre_cliente || d.nombre || '').toUpperCase()
-              .includes(String(nombreHint).toUpperCase().slice(0, 18)))
+            String(d.nombre_cliente || d.nombre || '')
+              .toUpperCase()
+              .includes(String(nombreHint).toUpperCase().slice(0, 18))
+          )
         : null)
-
-    // FAST PATH 1: gerencia_clientes tiene sku_detalle → mostrar sin queries
-    if (fromGer?.sku_detalle) {
-      const skusFast = parseSkuDetalle(fromGer.sku_detalle)
-      if (skusFast.length) {
-        setCliSku(prev => ({ ...prev, [key]: {
-          loading: false, skus: skusFast,
-          oferta: fromGer.oferta_real || null,
-          productos_top: fromGer.productos_top || null,
-          fuente: 'gerencia_clientes' } }))
-        return
-      }
-    }
-
-    // FAST PATH 2: productos_top como texto → parsear inmediatamente y mostrar
-    if (fromGer?.productos_top) {
-      const topTxt = typeof fromGer.productos_top === 'string'
-        ? fromGer.productos_top : JSON.stringify(fromGer.productos_top)
-      const skusTop = topTxt.split(/[·|,;]+/)
-        .map(x => x.trim()).filter(x => x.length > 3).slice(0, 10)
-        .map(x => {
-          const m = x.match(/^(.+?)\s+\$?([\d.,]+)\s*M?/i)
-          return { nombre: m ? m[1].trim() : x,
-            clpMtd: m ? Number(String(m[2]).replace(/\./g,'').replace(',','.')) * (/M/i.test(x)?1e6:1) : 0,
-            udMtd: 0, promClp: 0, promUd: 0, cicloDias: null, ultima: null }
-        })
-      if (skusTop.length) {
-        // Mostrar inmediatamente lo que tenemos, y seguir buscando detalle
-        setCliSku(prev => ({ ...prev, [key]: {
-          loading: false, skus: skusTop,
-          oferta: fromGer.oferta_real || null, fuente: 'productos_top' } }))
-      }
-    }
-
-    // Cache de cartera de terreno
-    const fromCache = carteraCache.find(c =>
-      (clienteKey && (String(c.cliente_key) === String(clienteKey) ||
-        normKey(c.cliente_key) === normKey(clienteKey))) ||
-      (nombreHint &&
-        (String(c.nombre_cliente || '').toUpperCase() === String(nombreHint).toUpperCase() ||
-          String(c.razon_social || '').toUpperCase() === String(nombreHint).toUpperCase()))
+        // Cache de cartera de terreno (incluye sku_detalle de las 3 zonas)
+    const fromCache = carteraCache.find(
+      c =>
+        (clienteKey && String(c.cliente_key) === String(clienteKey)) ||
+        (nombreHint &&
+          (String(c.nombre_cliente || '').toUpperCase() === String(nombreHint).toUpperCase() ||
+            String(c.razon_social || '').toUpperCase() === String(nombreHint).toUpperCase() ||
+            String(c.nombre_cliente || '')
+              .toUpperCase()
+              .includes(String(nombreHint).toUpperCase().slice(0, 16))))
     )
     if (fromCache && parseSkuDetalle(fromCache.sku_detalle).length) {
-      setCliSku(prev => ({ ...prev, [key]: {
-        loading: false, skus: parseSkuDetalle(fromCache.sku_detalle),
-        oferta: fromCache.oferta_real || null,
-        productos_top: fromCache.productos_top || null,
-        venta_mtd: fromCache.venta_mtd, fuente: 'cartera' } }))
+      setCliSku(prev => ({
+        ...prev,
+        [key]: {
+          loading: false,
+          skus: parseSkuDetalle(fromCache.sku_detalle),
+          oferta: fromCache.oferta_real || null,
+          productos_top: fromCache.productos_top || null,
+          venta_mtd: fromCache.venta_mtd,
+          fuente: 'cartera',
+        },
+      }))
       return
     }
 
-    let skus = []
+    let skus = parseSkuDetalle(fromGer?.sku_detalle)
     let oferta = fromGer?.oferta_real || fromGer?.oferta || null
     let productos_top = fromGer?.productos_top || null
-
-
-    // Fuente 0: sku_detalle directo de gerencia_clientes (más confiable, incluye clientes fuera de zona terreno)
-    if (fromGer?.sku_detalle) {
-      skus = parseSkuDetalle(fromGer.sku_detalle)
-    }
-
-    // Fuente 0b: productos_top de gerencia_clientes (accion field con Top SKU)
-    if (!skus.length && fromGer?.accion) {
-      const topMatch = String(fromGer.accion).match(/TOP:\s*(.+)/i)
-      if (topMatch) {
-        skus = topMatch[1].split(' | ').slice(0, 8).map(x => {
-          const m = x.match(/^(.+?)\s+\$?([\d.,]+)\s*M?/i)
-          return {
-            nombre: m ? m[1].trim() : x.trim(),
-            clpMtd: m ? Number(String(m[2]).replace(/\./g,'').replace(',','.')) * (/M/i.test(x) ? 1e6 : 1) : 0,
-            udMtd: 0, promClp: 0, promUd: 0, cicloDias: null, ultima: null,
-          }
-        }).filter(s => s.nombre.length > 2)
-      }
-    }
+    const nomBuscar = (
+      nombreHint ||
+      fromGer?.nombre_cliente ||
+      fromGer?.razon_social ||
+      fromGer?.nombre ||
+      ''
+    ).trim()
 
     if (!skus.length && productos_top) {
       const topTxt = typeof productos_top === 'string' ? productos_top : JSON.stringify(productos_top)

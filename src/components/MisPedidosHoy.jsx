@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listarPedidosHoy, folioPedido } from '../lib/pedido'
+import { listarPedidosHoy } from '../lib/pedido'
 
 /**
  * Lista compacta de pedidos guardados hoy (P0 terreno).
@@ -66,21 +66,12 @@ export default function MisPedidosHoy({ ejecutivoId }) {
                 }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#c2410c', letterSpacing: '0.04em' }}>
-                      {folioPedido(p.id)}
-                    </span>
-                    <span style={{ fontSize: 10, color: '#a8a29e' }}>
-                      {p.estado === 'enviado' ? '✓ enviado' : '· borrador'}
-                    </span>
-                  </div>
                   <div style={{ fontWeight: 700, fontSize: 13.5, color: '#1a1614' }}>
                     {p.nombre_cliente || p.cliente_key || 'Cliente'}
                   </div>
                   <div style={{ fontSize: 12, color: '#78716c' }}>
                     {n} línea{n === 1 ? '' : 's'}
-                    {p.total_estimado > 0 ? ` · $${Math.round(p.total_estimado).toLocaleString('es-CL')}` : ''}
-                    {p.nota ? ` · ${String(p.nota).slice(0, 30)}` : ''}
+                    {p.nota ? ` · ${String(p.nota).slice(0, 40)}` : ''}
                   </div>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', whiteSpace: 'nowrap' }}>
