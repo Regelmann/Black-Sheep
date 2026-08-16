@@ -313,7 +313,11 @@ export default function Gerencia({ esGerente }) {
     })()
   }, [eidVista, todosEjecutivos.map(e => e.id).join("|")])
 
-  /** Clientes del canal: gerencia_clientes + fallback cartera de terreno (mix/SKU) */
+  /** Clientes del canal: gerencia_clientes + fallback cartera de terreno
+   *  gerencia_clientes.ejecutivo = zona ("NOR-ORIENTE")
+   *  gerencia.ejecutivo puede ser nombre ("Sebastian Vargas") O zona
+   *  → mapear siempre por zona canónica
+   */
   const clientesDelCanal = useMemo(() => {
     const byCanal = {}
     const push = (canal, row) => {
@@ -322,8 +326,22 @@ export default function Gerencia({ esGerente }) {
       if (!byCanal[k]) byCanal[k] = []
       byCanal[k].push(row)
     }
+
+    // Mapa nombre ejecutivo → zona (para resolver "Sebastian Vargas" → "NOR-ORIENTE")
+    const nombreToZona = {}
+    for (const e of todosEjecutivos || []) {
+      if (e?.nombre && e?.zona) nombreToZona[normCanal(e.nombre)] = normCanal(e.zona)
+      if (e?.zona) nombreToZona[normCanal(e.zona)] = normCanal(e.zona)
+    }
+    const resolverZona = (raw) => {
+      const k = normCanal(raw)
+      return nombreToZona[k] || k
+    }
+
     for (const d of detalleCli || []) {
-      push(canalDeCliente(d), {
+      // gerencia_clientes.ejecutivo siempre es la zona
+      const zona = resolverZona(d?.ejecutivo || d?.canal || d?.zona)
+      push(zona, {
         ...d,
         nombre_cliente: d.nombre_cliente || d.nombre || d.cliente_key,
         venta_mtd: Number(d.venta_mtd) || 0,
@@ -331,16 +349,13 @@ export default function Gerencia({ esGerente }) {
         _src: 'gerencia_clientes',
       })
     }
-    // Fallback: si un canal terreno no tiene filas, armar desde carteraCache
+
+    // Fallback desde cartera para zonas sin filas en gerencia_clientes
     for (const c of carteraCache || []) {
-      const z = normCanal(c.zona || c.ejecutivo)
+      const z = resolverZona(c.zona || c.ejecutivo)
       if (!z || !esTerreno(z)) continue
       const list = byCanal[z] || []
-      const exists = list.some(
-        x => x.cliente_key && c.cliente_key && String(x.cliente_key) === String(c.cliente_key)
-      )
-      if (exists) continue
-      // Solo agregar si el canal está vacío o como complemento con sku
+      if (list.some(x => x.cliente_key && String(x.cliente_key) === String(c.cliente_key))) continue
       if (!list.length || (c.sku_detalle && !list.find(x => x.cliente_key === c.cliente_key))) {
         push(z, {
           cliente_key: c.cliente_key,
@@ -359,7 +374,7 @@ export default function Gerencia({ esGerente }) {
       byCanal[k].sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
     }
     return byCanal
-  }, [detalleCli, carteraCache])
+  }, [detalleCli, carteraCache, todosEjecutivos])
 
   const terreno = useMemo(() => gerencia.filter(g => esTerreno(g.ejecutivo)), [gerencia])
   const otros = useMemo(() => gerencia.filter(g => !esTerreno(g.ejecutivo)), [gerencia])
@@ -1066,7 +1081,16 @@ export default function Gerencia({ esGerente }) {
               const p = meta ? Math.round((venta / meta) * 100) : 0
               const color = barColor(p)
               const open = canalSel === g.ejecutivo
-              const cliZona = (clientesDelCanal[normCanal(g.ejecutivo)] || [])
+              // Resolver zona canónica: "Sebastian Vargas" → "NOR-ORIENTE"
+              const zonaKey = (() => {
+                const k = normCanal(g.ejecutivo)
+                for (const e of todosEjecutivos || []) {
+                  if (normCanal(e.nombre) === k && e.zona) return normCanal(e.zona)
+                  if (normCanal(e.zona) === k) return k
+                }
+                return k
+              })()
+              const cliZona = (clientesDelCanal[zonaKey] || [])
               return (
                 <div key={g.ejecutivo || g.id} className="card">
                   <button
