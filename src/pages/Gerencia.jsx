@@ -368,7 +368,7 @@ export default function Gerencia({ esGerente }) {
 
   // Solo últimos 12 meses (evita “año” inflado con histórico largo)
 
-  // Desglose real por canal del mes seleccionado (ventas_lineas.zona_vendedor)
+  // Desglose del mes por CANAL DE LA MAESTRA (cliente_key → ejecutivo/zona), NUNCA por VENDEDOR de factura
   useEffect(() => {
     if (!mesSel) {
       setMesCanales(null)
@@ -378,6 +378,25 @@ export default function Gerencia({ esGerente }) {
     ;(async () => {
       setMesCanales({ loading: true, rows: [] })
       try {
+        // Mapa canónico cliente → canal (maestra / gerencia_clientes)
+        const keyToZona = {}
+        const put = (ck, z) => {
+          if (!ck || !z) return
+          const k = String(ck).trim()
+          const zz = normCanal(z)
+          if (!k || !zz) return
+          keyToZona[k] = zz
+          const base = k.replace(/-.*$/, '')
+          if (base && base !== k) keyToZona[base] = zz
+          if (!k.endsWith('-C')) keyToZona[k + '-C'] = zz
+        }
+        for (const d of detalleCli || []) {
+          put(d.cliente_key, d.ejecutivo || d.canal || d.zona)
+        }
+        for (const c of carteraCache || []) {
+          put(c.cliente_key, c.zona || c.ejecutivo)
+        }
+
         const startStr = String(mesSel).slice(0, 10)
         const d0 = new Date(startStr + 'T12:00:00')
         const d1 = new Date(d0.getFullYear(), d0.getMonth() + 1, 1)
@@ -385,32 +404,34 @@ export default function Gerencia({ esGerente }) {
         const agg = {}
         let from = 0
         const page = 1000
-        for (let guard = 0; guard < 40; guard++) {
+        for (let guard = 0; guard < 50; guard++) {
           const { data, error } = await supabase
             .from('ventas_lineas')
-            .select('venta_neta_clp,zona_vendedor,cliente_key')
+            .select('venta_neta_clp,cliente_key')
             .gte('fecha', startStr)
             .lt('fecha', endStr)
             .range(from, from + page - 1)
           if (error) {
-            // fallback: sin zona_vendedor / sin fecha column names
             console.warn('mesCanales', error.message)
             break
           }
           if (!data?.length) break
           for (const r of data) {
-            let z = (r.zona_vendedor || '').toString().trim().toUpperCase() || null
-            if (!z && r.cliente_key) {
-              const c = (carteraCache || []).find(x => String(x.cliente_key) === String(r.cliente_key))
-              z = (c?.zona || 'NO_ASIGNADO').toString().toUpperCase()
-            }
-            if (!z) z = 'NO_ASIGNADO'
+            const ck = String(r.cliente_key || '').trim()
+            let z =
+              keyToZona[ck] ||
+              keyToZona[ck.replace(/-.*$/, '')] ||
+              keyToZona[ck + '-C'] ||
+              'NO_ASIGNADO'
+            // ignorar basura tipo VENDEDOR_01 si por error quedó en el mapa
+            if (/^VENDEDOR[_\s]?\d*/i.test(z)) z = 'NO_ASIGNADO'
             agg[z] = (agg[z] || 0) + (Number(r.venta_neta_clp) || 0)
           }
           if (data.length < page) break
           from += page
         }
-        const total = Object.values(agg).reduce((a, b) => a + b, 0) || 1
+        const totalSum = Object.values(agg).reduce((a, b) => a + b, 0)
+        const total = totalSum || 1
         const rows = Object.entries(agg)
           .map(([canal, venta]) => ({
             canal,
@@ -419,13 +440,13 @@ export default function Gerencia({ esGerente }) {
             terreno: /NOR-ORIENTE|NOR-PONIENTE|ZONA SUR/.test(canal),
           }))
           .sort((a, b) => b.venta - a.venta)
-        if (!cancelled) setMesCanales({ loading: false, rows, total: Object.values(agg).reduce((a, b) => a + b, 0) })
+        if (!cancelled) setMesCanales({ loading: false, rows, total: totalSum })
       } catch (e) {
         if (!cancelled) setMesCanales({ loading: false, rows: [], error: String(e.message || e) })
       }
     })()
     return () => { cancelled = true }
-  }, [mesSel, carteraCache])
+  }, [mesSel, carteraCache, detalleCli])
 
   const tendencia12 = useMemo(() => {
     const rows = [...(tendencia || [])]
@@ -725,8 +746,7 @@ export default function Gerencia({ esGerente }) {
             .from('ventas_lineas')
             .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
             .eq('cliente_key', k)
-            .order('venta_neta_clp', { ascending: false })
-            .limit(120)
+            .limit(250)
           if (vl?.length) {
             const agg = {}
             for (const r of vl) {
@@ -990,7 +1010,7 @@ export default function Gerencia({ esGerente }) {
                     </div>
                   ))}
                   <p className="muted" style={{ fontSize: 11, marginTop: 12 }}>
-                    Desglose desde ventas del mes (zona del vendedor / maestra). Total barras {money(mesCanales.total || 0)}.
+                    Desglose por canal de la maestra (cliente→ejecutivo). Total barras {money(mesCanales.total || 0)}.
                   </p>
                 </>
               )}
@@ -1399,7 +1419,14 @@ export default function Gerencia({ esGerente }) {
                       <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>
                         Clientes (para actualizar maestra) · toca canal de nuevo para cerrar
                       </div>
-                      {(clientesDelCanal[normCanal(g.ejecutivo)] || [])
+                      {(clientesDelCanal[(() => {
+                        const k = normCanal(g.ejecutivo)
+                        for (const e of todosEjecutivos || []) {
+                          if (normCanal(e.nombre) === k && e.zona) return normCanal(e.zona)
+                          if (normCanal(e.zona) === k) return k
+                        }
+                        return k
+                      })()] || [])
                         .slice(0, 40)
                         .map(d => (
                           <div

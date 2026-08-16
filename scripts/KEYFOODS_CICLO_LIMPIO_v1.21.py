@@ -48,7 +48,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # ---------------------------------------------------------------------------
 # Banner
 # ---------------------------------------------------------------------------
-VERSION = "CICLO_LIMPIO_v1.20"
+VERSION = "CICLO_LIMPIO_v1.21"
 print("=" * 72)
 print(f"VERSION = {VERSION}")
 print("Un solo script. Validar → Calcular → Metas → Places → Supabase.")
@@ -72,7 +72,11 @@ except ImportError:
 # PATHS — ajustar en Colab / local
 # ---------------------------------------------------------------------------
 # Orden de búsqueda de cada archivo (primer hit gana)
-SEARCH_DIRS = [
+_env_data_dir = os.environ.get("KF_DATA_DIR", "").strip()
+SEARCH_DIRS = (
+    [Path(_env_data_dir)]
+    if _env_data_dir else []
+) + [
     Path("/content"),
     Path("/content/drive/MyDrive/Keyfoods"),
     Path("/content/drive/MyDrive/Keyfoods/00_PRODUCCION_ACTIVA_R2"),
@@ -737,14 +741,14 @@ def load_config_csv(globs: List[str]) -> Optional[pd.DataFrame]:
         return None
 
 
-def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], Dict[str, str]]:
+def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], Dict[str, str], Dict[str, float]]:
     """
     Lee Excel de configuración mensual (hojas METAS, FOCOS_MES, FOCO_SKU).
-    Devuelve (metas_rows, focos_rows, foco_sku_map) listos para Supabase.
+    Devuelve (metas_rows, focos_rows, foco_sku_map, foco_kg_factor) listos para Supabase.
     """
     metas, focos = [], []
     if not path or not path.exists():
-        return metas, focos, {}
+        return metas, focos, {}, {}
     xl = pd.ExcelFile(path, engine="openpyxl")
     sheets = {s.upper(): s for s in xl.sheet_names}
     print(f"  config mensual: {path.name} hojas={list(xl.sheet_names)}")
@@ -819,8 +823,9 @@ def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], D
                 }
             )
 
-    # --- FOCO_SKU (sku → nombre de foco) ---
+    # --- FOCO_SKU (sku → nombre de foco + factor KG opcional) ---
     foco_skus: Dict[str, str] = {}
+    foco_kg_factor: Dict[str, float] = {}  # sku → kg (o LT) por unidad de venta del ERP
     sdf = sheet("FOCO_SKU", "FOCOS_SKU", "SKU_FOCO")
     if sdf is not None and not sdf.empty:
         sdf.columns = [str(c).strip() for c in sdf.columns]
@@ -832,21 +837,58 @@ def load_config_mensual(path: Optional[Path]) -> Tuple[List[dict], List[dict], D
             return None
         c_sku = sc("sku_canon", "sku", "codigo", "codigo_sku")
         c_foco = sc("foco", "nombre_foco", "producto_foco")
+        c_kg = sc(
+            "factor_kg_equivalente_por_unidad",
+            "factor_kg",
+            "kg_unidad",
+            "kg_por_unidad",
+            "kilogramos_por_unidad",
+            "factor_lt",
+            "lt_unidad",
+        )
         if c_sku:
             for _, r in sdf.iterrows():
                 sk = normalize_sku(r[c_sku])
                 fo = _s(r[c_foco]) if c_foco else None
                 if sk and fo:
                     foco_skus[sk] = fo
+                if sk and c_kg is not None:
+                    try:
+                        fv = float(str(r[c_kg]).replace(",", ".").strip() or 0)
+                        if fv > 0:
+                            foco_kg_factor[sk] = fv
+                    except Exception:
+                        pass
         print(f"  config FOCO_SKU: {len(foco_skus)} skus")
+        if foco_kg_factor:
+            print(f"  config FOCO_SKU factores KG/LT: {len(foco_kg_factor)} skus")
 
     print(f"  config metas={len(metas)} focos={len(focos)}")
-    return metas, focos, foco_skus
+    return metas, focos, foco_skus, foco_kg_factor
 
 
 # ---------------------------------------------------------------------------
 # CÁLCULOS
 # ---------------------------------------------------------------------------
+
+def _kg_from_nombre(nombre: str) -> Optional[float]:
+    """Infiere kg por unidad de venta desde el nombre (ej. 6X2K=12, 10KG=10, 1X2,5KG=2.5)."""
+    if not nombre:
+        return None
+    n = str(nombre).upper().replace(",", ".")
+    # NxM KG  or NxMK
+    import re
+    m = re.search(r"(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*K(?:G)?\b", n)
+    if m:
+        return float(m.group(1)) * float(m.group(2))
+    m = re.search(r"(\d+(?:\.\d+)?)\s*KG\b", n)
+    if m:
+        return float(m.group(1))
+    m = re.search(r"(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*KG", n)
+    if m:
+        return float(m.group(1)) * float(m.group(2))
+    return None
+
 def mes_mtd(ventas: pd.DataFrame) -> date:
     if MES_FORCE:
         return date.fromisoformat(MES_FORCE[:10])
@@ -2532,7 +2574,7 @@ def main():
     except Exception as e:
         raise SystemExit(f"No se pudo cargar stock: {e}") from e
     precios = load_precios(p_precios)
-    metas_cfg, focos_cfg_mes, foco_sku_map = load_config_mensual(p_config)
+    metas_cfg, focos_cfg_mes, foco_sku_map, foco_kg_factor = load_config_mensual(p_config)
 
     print(f"  ventas Excel filas={len(ventas_excel)} | {ventas_excel['fecha_d'].min()} → {ventas_excel['fecha_d'].max()}")
     print(f"  maestra clientes={len(maestra)} | zonas={maestra['zona'].value_counts().to_dict()}")
@@ -2662,6 +2704,13 @@ def main():
             elif kg_c and kg_c > 0:
                 kg_por_sku[sk] = float(kg_c)  # cantidad ya en cajas
 
+    # FOCO_SKU pisa precios (fuente más confiable para focos del mes)
+    for sk, fv in (foco_kg_factor or {}).items():
+        if fv and float(fv) > 0:
+            kg_por_sku[str(sk).strip()] = float(fv)
+    print(f"  kg_por_sku config (FOCO_SKU): {len(foco_kg_factor or {})} factores explícitos")
+    print(f"  kg_por_sku total: {len(kg_por_sku)} skus con factor KG/LT")
+
     def _skus_for_foco(foco_name: str):
         fn = _norm_col(foco_name)
         skus = [sk for sk, name in foco_sku_map.items() if _norm_col(name) == fn]
@@ -2669,7 +2718,7 @@ def main():
         if len(skus) < 3 and not vm_f.empty and "producto_nombre" in vm_f.columns:
             pat = None
             if "POLLO" in fn or "PECH" in fn:
-                pat = r"POLLO|PECHUGA|ALITA|NUGGET|TRUTRO|MUSLO"
+                pat = r"POLLO|PECHUGA|PECH|ALITA|NUGGET|TRUTRO|MUSLO|SUPREMA|FILETE.*POLLO|COCIDO.*POLLO|KEKRISPY|MAR S/PIEL|MEDALLON.*POLLO"
             elif "HANK" in fn or "SALSA" in fn or "KETCH" in fn:
                 pat = r"HANK|KETCHUP|SALSA|MAYO"
             if pat:
@@ -2693,14 +2742,24 @@ def main():
             return float(sub["venta_neta_clp"].fillna(0).sum()) if "venta_neta_clp" in sub.columns else 0.0
         if "KG" in u or "KILO" in u:
             total = 0.0
+            sin_factor = 0
             for sk, g in sub.groupby(sub["sku_canon"].astype(str)):
                 c = float(g["cantidad"].fillna(0).sum())
                 factor = kg_por_sku.get(sk)
+                if not factor or factor <= 0:
+                    # inferir desde nombre de producto en las filas
+                    for nom in g.get("producto_nombre", pd.Series(dtype=str)).dropna().unique().tolist()[:3]:
+                        factor = _kg_from_nombre(str(nom))
+                        if factor and factor > 0:
+                            kg_por_sku[sk] = factor  # cache
+                            break
                 if factor and factor > 0:
                     total += c * factor
                 else:
-                    # sin factor: si el nombre sugiere pack en kg, no inventar; sumar cantidad
-                    total += c
+                    sin_factor += c
+                    total += c  # último recurso
+            if sin_factor > 0:
+                print(f"    aviso foco KG: {sin_factor:.0f} ud sin factor (sumadas crudas)")
             return total
         if "LT" in u or "LTS" in u or "LITRO" in u:
             # muchas salsas vienen en LT por unidad o por caja; usar kg_por_sku si existe como proxy de LT
@@ -2729,6 +2788,7 @@ def main():
                     sub2 = sub[sub["zona_vendedor"].map(lambda x: normalize_zona(x) == z)]
                 sub = sub2
             vendido = _vendido_unidades(sub, unidad)
+            print(f"  foco {z}/{foco_name}: skus={len(skus_foco)} filas={len(sub)} vendido={vendido:.1f} {unidad}")
         meta_u = float(f.get("meta_unidad") or 0) or 0
         pct = round(vendido / meta_u, 4) if meta_u else None
         if meta_u and vendido >= meta_u:
