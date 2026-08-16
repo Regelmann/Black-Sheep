@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
@@ -53,6 +53,7 @@ export default function Visita({ session }) {
   const [pedidoOpen, setPedidoOpen] = useState(false)
   const { id } = useParams()
   const nav = useNavigate()
+  const location = useLocation()
   const [visita, setVisita] = useState(null)
   const [cliente, setCliente] = useState(null)
   const [checkin, setCheckin] = useState(null)
@@ -69,58 +70,171 @@ export default function Visita({ session }) {
   const [pedidoOk, setPedidoOk] = useState(false)
   const [preciosPorNombre, setPreciosPorNombre] = useState({}) // nombre → precio_unidad de lista
 
-  async function cargar() {
-    setLoading(true)
-    setMsg('')
-    try {
-      const decodedId = decodeURIComponent(id || '')
-      // 1) visita_id en tabla visitas
-      const { data: v } = await supabase.from('visitas').select('*').eq('id', id).maybeSingle()
+  const CARTERA_SEL =
+    'cliente_key,nombre_cliente,razon_social,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,venta_mensual,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga,ejecutivo_id'
 
-      if (v) {
-        setVisita(v)
-        let q = supabase
-          .from('cartera')
-          .select(
-            'cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga'
-          )
-          .limit(1)
-        if (v.cliente_key) q = q.eq('cliente_key', v.cliente_key)
-        else if (v.nombre_local) q = q.ilike('nombre_cliente', `%${v.nombre_local}%`)
-        const { data: cRows } = await q
-        setCliente(cRows?.[0] || null)
-      } else {
-        // 2) cliente_key directo (Hoy / Mapa)
-        const sel =
-          'cliente_key,nombre_cliente,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,venta_mensual,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga,ejecutivo_id'
-        let cli = null
-        const r1 = await supabase.from('cartera').select(sel).eq('cliente_key', decodedId).limit(1)
-        cli = r1.data?.[0] || null
-        // 3) fallback: nombre / razon
-        if (!cli && decodedId.length > 3) {
-          const r2 = await supabase
-            .from('cartera')
-            .select(sel)
-            .or(
-              `nombre_cliente.ilike.%${decodedId.slice(0, 24)}%,razon_social.ilike.%${decodedId.slice(0, 24)}%`
-            )
-            .limit(5)
-          cli =
-            (r2.data || []).find(c => String(c.cliente_key) === decodedId) ||
-            (r2.data || [])[0] ||
-            null
+  function cliFromNavState(decodedId) {
+    const st = location?.state
+    if (!st) return null
+    if (!(st.fromHoy || st.cliente_key || st.nombre_cliente)) return null
+    return {
+      cliente_key: st.cliente_key || decodedId,
+      nombre_cliente: st.nombre_cliente || st.title || decodedId,
+      comuna: st.comuna || null,
+      telefono: st.telefono || null,
+      link_whatsapp: st.link_whatsapp || st.whatsapp || null,
+      oferta_real: st.oferta_real || st.oferta || null,
+      sku_detalle: st.sku_detalle || null,
+      direccion: st.direccion || null,
+      lat: st.lat ?? null,
+      lng: st.lng ?? null,
+      venta_mtd: st.venta_mtd,
+      venta_mensual: st.venta_mensual,
+      estado_fuga: st.estado_fuga || null,
+      _fromHoy: true,
+    }
+  }
+
+  function applyCliente(cli, decodedId, extraVisita = {}) {
+    if (!cli) {
+      setVisita(null)
+      setCliente(null)
+      return
+    }
+    setCliente(cli)
+    setVisita({
+      id: extraVisita.id || decodedId,
+      nombre_local: cli.nombre_cliente || cli.razon_social || decodedId,
+      cliente_key: cli.cliente_key || decodedId,
+      direccion: cli.direccion,
+      comuna: cli.comuna,
+      lat: cli.lat,
+      lng: cli.lng,
+      estado: extraVisita.estado || 'pendiente',
+      oferta: cli.oferta_real,
+      segmento: cli.estado_fuga,
+      telefono: cli.telefono,
+      link_whatsapp: cli.link_whatsapp,
+      _sinRuta: extraVisita._sinRuta !== false,
+      ...extraVisita,
+    })
+  }
+
+  async function buscarCarteraPorKey(key) {
+    if (!key) return null
+    const k = String(key).trim()
+    // eq exacto
+    let { data, error } = await supabase.from('cartera').select(CARTERA_SEL).eq('cliente_key', k).limit(1)
+    if (!error && data?.[0]) return data[0]
+    // sin ceros a la izquierda / numérico
+    const k2 = k.replace(/^0+/, '')
+    if (k2 && k2 !== k) {
+      const r2 = await supabase.from('cartera').select(CARTERA_SEL).eq('cliente_key', k2).limit(1)
+      if (r2.data?.[0]) return r2.data[0]
+    }
+    return null
+  }
+
+  async function cargar() {
+    const decodedId = decodeURIComponent(id || '').trim()
+    if (!decodedId) {
+      setLoading(false)
+      setMsg('Sin ID de visita')
+      setVisita(null)
+      setCliente(null)
+      return
+    }
+
+    setMsg('')
+    setLoading(true)
+
+    // 0) Hidratar YA desde navigation state (Hoy/Mapa) → UI inmediata
+    const snap = cliFromNavState(decodedId)
+    if (snap?.nombre_cliente) {
+      applyCliente(snap, decodedId, { _sinRuta: true })
+      setLoading(false) // mostrar pantalla; enriquecer en background
+    }
+
+    try {
+      const looksUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decodedId)
+
+      // 1) Visita planificada (solo UUID)
+      if (looksUuid) {
+        const { data: v, error: ve } = await supabase
+          .from('visitas')
+          .select('*')
+          .eq('id', decodedId)
+          .maybeSingle()
+        if (ve) console.warn('Visita.visitas', ve.message)
+        if (v) {
+          let cli = null
+          if (v.cliente_key) cli = await buscarCarteraPorKey(v.cliente_key)
+          if (!cli && v.nombre_local) {
+            const { data: cRows } = await supabase
+              .from('cartera')
+              .select(CARTERA_SEL)
+              .ilike('nombre_cliente', `%${String(v.nombre_local).slice(0, 40)}%`)
+              .limit(3)
+            cli = cRows?.[0] || null
+          }
+          if (cli) {
+            applyCliente(cli, decodedId, {
+              id: v.id,
+              estado: v.estado || 'pendiente',
+              _sinRuta: false,
+              lat: v.lat ?? cli.lat,
+              lng: v.lng ?? cli.lng,
+            })
+          } else {
+            // visita sin match en cartera
+            setVisita({
+              ...v,
+              nombre_local: v.nombre_local || decodedId,
+              _sinRuta: false,
+            })
+            setCliente({
+              cliente_key: v.cliente_key,
+              nombre_cliente: v.nombre_local,
+              comuna: v.comuna,
+              direccion: v.direccion,
+              lat: v.lat,
+              lng: v.lng,
+              telefono: v.telefono,
+            })
+          }
+          // check-in de esta visita
+          try {
+            const { data: c } = await supabase
+              .from('checkins')
+              .select('*')
+              .eq('visita_id', decodedId)
+              .order('creado_en', { ascending: false })
+              .limit(1)
+            setCheckin(c?.[0] || null)
+          } catch (_) {
+            /* ignore */
+          }
+          setLoading(false)
+          return
         }
-        // 4) prospecto
-        if (!cli) {
-          const r3 = await supabase
+      }
+
+      // 2) cliente_key desde Hoy / Mapa / deep link
+      let cli = await buscarCarteraPorKey(decodedId)
+
+      // 3) prospecto
+      if (!cli) {
+        try {
+          const { data: pRows } = await supabase
             .from('prospectos')
-            .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono')
+            .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono,place_id')
             .or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`)
             .limit(1)
-          const p = r3.data?.[0]
+          const p = pRows?.[0]
           if (p) {
             cli = {
-              cliente_key: p.cliente_key || decodedId,
+              cliente_key: p.cliente_key || p.place_id || decodedId,
               nombre_cliente: p.nombre_cliente,
               comuna: p.comuna,
               direccion: p.direccion,
@@ -131,44 +245,56 @@ export default function Visita({ session }) {
               _prospecto: true,
             }
           }
-        }
-        if (cli) {
-          setVisita({
-            id: decodedId,
-            nombre_local: cli.nombre_cliente,
-            cliente_key: cli.cliente_key,
-            direccion: cli.direccion,
-            comuna: cli.comuna,
-            lat: cli.lat,
-            lng: cli.lng,
-            estado: 'pendiente',
-            oferta: cli.oferta_real,
-            segmento: cli.estado_fuga,
-            _sinRuta: true,
-          })
-          setCliente(cli)
-        } else {
-          setVisita(null)
-          setCliente(null)
-          setMsg('No se encontró el cliente. Volvé al mapa o a Hoy.')
+        } catch (_) {
+          /* ignore */
         }
       }
 
-      const { data: c } = await supabase
-        .from('checkins')
-        .select('*')
-        .eq('visita_id', id)
-        .order('creado_en', { ascending: false })
-        .limit(1)
-      setCheckin(c && c[0] ? c[0] : null)
+      // 4) snapshot de navegación (si no había UI aún)
+      if (!cli) cli = snap
+
+      if (cli) {
+        applyCliente(cli, decodedId, { _sinRuta: true })
+        setMsg('')
+      } else {
+        setVisita(null)
+        setCliente(null)
+        setMsg('No se encontró el cliente. Volvé al mapa o a Hoy.')
+      }
     } catch (e) {
       console.error('Visita.cargar', e)
-      setMsg(String(e.message || e))
-      setVisita(null)
+      // Si ya hay snap en pantalla, no borrar; solo avisar
+      if (!snap) {
+        setMsg(String(e?.message || e))
+        setVisita(null)
+        setCliente(null)
+      } else {
+        setMsg('Datos parciales (sin red o RLS). Podés seguir la visita.')
+      }
     } finally {
       setLoading(false)
     }
   }
+
+  // Montar / cambiar :id → cargar
+  useEffect(() => {
+    if (!id) {
+      setLoading(false)
+      setMsg('Sin ID de visita')
+      setVisita(null)
+      setCliente(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      if (cancelled) return
+      await cargar()
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   // Cargar precios de lista desde tabla stock (se ejecuta cuando termina cargar)
   useEffect(() => {

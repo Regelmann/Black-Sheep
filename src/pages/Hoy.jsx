@@ -172,8 +172,26 @@ export default function Hoy() {
 
   function goVisita(item) {
     setPrep(null)
-    if (item?.clientId) nav(`/visita/${encodeURIComponent(item.clientId)}`)
-    else nav('/mapa')
+    if (item?.clientId) {
+      nav(`/visita/${encodeURIComponent(String(item.clientId))}`, {
+        state: {
+          cliente_key: item.clientId,
+          nombre_cliente: item.title,
+          comuna: item.raw?.comuna || item.comuna,
+          telefono: item.telefono || item.raw?.telefono,
+          link_whatsapp: item.whatsapp || item.raw?.link_whatsapp,
+          oferta_real: item.oferta || item.raw?.oferta_real,
+          sku_detalle: item.raw?.sku_detalle,
+          direccion: item.raw?.direccion,
+          lat: item.raw?.lat,
+          lng: item.raw?.lng,
+          venta_mtd: item.raw?.venta_mtd,
+          venta_mensual: item.raw?.venta_mensual,
+          estado_fuga: item.raw?.estado_fuga,
+          fromHoy: true,
+        },
+      })
+    } else nav('/mapa')
   }
 
   const saludo = () => {

@@ -1514,7 +1514,24 @@ export default function Ruta({ session }) {
                       ? selected.id
                       : selected.cliente_key || selected._id || selected.id
                   if (!key) return
-                  nav(`/visita/${encodeURIComponent(String(key).replace(/^c_|^p_/, ''))}`)
+                  const clean = String(key).replace(/^c_|^p_/, '')
+                  nav(`/visita/${encodeURIComponent(clean)}`, {
+                    state: {
+                      fromHoy: true,
+                      cliente_key: selected.cliente_key || clean,
+                      nombre_cliente: selected.nombre_cliente || selected.nombre_local || selected.title,
+                      comuna: selected.comuna,
+                      telefono: selected.telefono,
+                      link_whatsapp: selected.link_whatsapp,
+                      oferta_real: selected.oferta_real || selected.oferta,
+                      direccion: selected.direccion,
+                      lat: selected.lat,
+                      lng: selected.lng,
+                      venta_mtd: selected.venta_mtd,
+                      venta_mensual: selected.venta_mensual,
+                      estado_fuga: selected.estado_fuga,
+                    },
+                  })
                 }}
                 style={{
                   width: '100%', marginTop: 10, padding: '12px', borderRadius: 12,
