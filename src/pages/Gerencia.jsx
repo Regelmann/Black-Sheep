@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
+import { parseSkuDetalle, clpEfectivo } from '../lib/coach.js'
 
 function fmtStock(n) {
   if (n == null || n === '') return '—'
@@ -10,49 +11,6 @@ function fmtStock(n) {
   const r = Math.round(v * 100) / 100
   return r.toLocaleString('es-CL', { maximumFractionDigits: 1 })
 }
-
-function parseSkuDetalle(text) {
-  if (!text) return []
-  return String(text)
-    .split(/\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(line => {
-      const p = line.split('||')
-      // V1.4: nombre||prom_ud||ud_mtd||prom_clp||clp_mtd||ultima||ciclo_dias||n_compras
-      if (p.length >= 5) {
-        const cicloRaw = p[6]
-        const cicloDias =
-          cicloRaw !== undefined && cicloRaw !== '' && !isNaN(Number(cicloRaw))
-            ? Number(cicloRaw)
-            : null
-        return {
-          nombre: p[0],
-          promUd: Number(p[1]) || 0,
-          udMtd: Number(p[2]) || 0,
-          promClp: Number(p[3]) || 0,
-          clpMtd: Number(p[4]) || 0,
-          ultima: p[5] || null,
-          cicloDias,
-          nCompras: p[7] !== undefined && p[7] !== '' ? Number(p[7]) || 0 : null,
-        }
-      }
-      if (p.length >= 3) {
-        return {
-          nombre: p[0],
-          promUd: Number(p[1]) || 0,
-          udMtd: Number(p[1]) || 0,
-          promClp: Number(p[2]) || 0,
-          clpMtd: Number(p[2]) || 0,
-          ultima: null,
-          cicloDias: null,
-          nCompras: null,
-        }
-      }
-      return { nombre: p[0], promUd: 0, udMtd: 0, promClp: 0, clpMtd: 0, ultima: null, cicloDias: null, nCompras: null }
-    })
-}
-
 
 /**
  * Ciclo REAL (mediana de gaps entre compras desde bajada V1.4).
@@ -910,11 +868,15 @@ export default function Gerencia({ esGerente }) {
                   {mesSelRow.clientes_activos} clientes activos en el mes
                 </div>
               )}
-              {/* Si es el mes actual (o el más reciente), mostrar peso por ejecutivo */}
-              {String(mesSelRow.mes).slice(0, 7) === String(tendencia12[tendencia12.length - 1]?.mes || '').slice(0, 7) ? (
+              {/* Desglose por canal: mes en curso desde gerencia; meses pasados = mismo snapshot como referencia */}
+              {participacion?.length > 0 && (
                 <>
-                  <div className="card-label" style={{ marginTop: 8 }}>Contribución por ejecutivo / canal (mes en curso)</div>
-                  {participacion.slice(0, 12).map(p => (
+                  <div className="card-label" style={{ marginTop: 8 }}>
+                    {String(mesSelRow.mes).slice(0, 7) === String(tendencia12[tendencia12.length - 1]?.mes || '').slice(0, 7)
+                      ? 'Contribución por ejecutivo / canal (mes en curso)'
+                      : 'Referencia: peso actual por canal (histórico mes a mes aún no persistido)'}
+                  </div>
+                  {participacion.slice(0, 14).map(p => (
                     <div key={p.ejecutivo} style={{ marginTop: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                         <span style={{ fontWeight: 700 }}>
@@ -935,13 +897,9 @@ export default function Gerencia({ esGerente }) {
                     </div>
                   ))}
                   <p className="muted" style={{ fontSize: 11, marginTop: 12 }}>
-                    Histórico por ejecutivo mes a mes requiere tabla de ventas por canal por mes. Hoy el desglose está disponible para el mes en curso.
+                    El total del mes es histórico. El desglose por canal refleja el snapshot de gerencia del mes en curso hasta persistir ventas por canal/mes.
                   </p>
                 </>
-              ) : (
-                <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-                  Total compañía del mes. El desglose por ejecutivo está disponible al seleccionar el mes en curso.
-                </p>
               )}
             </div>
           </div>
@@ -1227,7 +1185,7 @@ export default function Gerencia({ esGerente }) {
                                   </div>
                                 )}
                                 {(det?.skus || []).slice(0, 10).map((s, i) => {
-                                  const pct = s.promClp > 0 ? Math.round((s.clpMtd / s.promClp) * 100) : s.clpMtd > 0 ? 100 : 0
+                                  const clp = clpEfectivo(s); const pct = s.promClp > 0 ? Math.round((clp / s.promClp) * 100) : clp > 0 ? 100 : 0
                                   const falta = Math.max(0, s.promUd - s.udMtd)
                                   const { recompra, cicloEst, diasUltima } = cicloReposicion(s)
                                   const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']
@@ -1241,7 +1199,7 @@ export default function Gerencia({ esGerente }) {
                                         <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
                                       </div>
                                       <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
-                                        Mes {fmtStock(s.udMtd)} ud · {money(s.clpMtd)} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
+                                        Mes {fmtStock(s.udMtd)} ud · {money(clpEfectivo(s))} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
                                         <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
@@ -1384,7 +1342,7 @@ export default function Gerencia({ esGerente }) {
                                   </div>
                                 )}
                                 {(cliSku[d.cliente_key]?.skus || []).slice(0, 10).map((s, i) => {
-                                  const pct = s.promClp > 0 ? Math.round((s.clpMtd / s.promClp) * 100) : s.clpMtd > 0 ? 100 : 0
+                                  const clp = clpEfectivo(s); const pct = s.promClp > 0 ? Math.round((clp / s.promClp) * 100) : clp > 0 ? 100 : 0
                                   const falta = Math.max(0, s.promUd - s.udMtd)
                                   const { recompra, cicloEst, diasUltima } = cicloReposicion(s)
                                   const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']
@@ -1398,7 +1356,7 @@ export default function Gerencia({ esGerente }) {
                                         <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
                                       </div>
                                       <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
-                                        Mes {fmtStock(s.udMtd)} ud · {money(s.clpMtd)} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
+                                        Mes {fmtStock(s.udMtd)} ud · {money(clpEfectivo(s))} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
                                         <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>

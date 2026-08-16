@@ -7,6 +7,33 @@ import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach
 import { formatDist, formatEta } from '../lib/geo'
 import { money } from '../components.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
+
+/** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
+const ZONAS_COMUNAS = {
+  'NOR-ORIENTE': [
+    'LAS CONDES', 'VITACURA', 'LO BARNECHEA', 'LA REINA', 'PROVIDENCIA',
+    'PEÑALOLEN', 'PENALOLEN', 'ÑUÑOA', 'NUNOA', 'MACUL', 'LA FLORIDA',
+  ],
+  'NOR-PONIENTE': [
+    'PROVIDENCIA', 'RECOLETA', 'INDEPENDENCIA', 'HUECHURABA', 'QUILICURA',
+    'CONCHALI', 'RENCA', 'CERRO NAVIA', 'QUINTA NORMAL', 'ESTACION CENTRAL',
+    'ESTACIÓN CENTRAL', 'MAIPU', 'MAIPÚ', 'PUDAHUEL', 'LO PRADO', 'CERRILLOS',
+  ],
+  'ZONA SUR': [
+    'LA CISTERNA', 'SAN MIGUEL', 'SAN JOAQUIN', 'SAN JOAQUÍN', 'PEDRO AGUIRRE CERDA',
+    'LO ESPEJO', 'LA GRANJA', 'SAN RAMON', 'SAN RAMÓN', 'LA PINTANA', 'EL BOSQUE',
+    'PUENTE ALTO', 'SAN BERNARDO', 'CALERA DE TANGO', 'BUIN', 'PAINE', 'PIRQUE',
+  ],
+}
+function normComuna(s) {
+  return String(s || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 import MisPedidosHoy from '../components/MisPedidosHoy.jsx'
 
 function saludoHora() {
@@ -278,34 +305,63 @@ export default function Ruta({ session }) {
         })
       })
 
-      const zonaNom = eje?.zonaVista || eje?.zona || ''
-      let pros = null
+      const zonaNom = String(eje?.zonaVista || eje?.zona || '').toUpperCase().trim()
+      let pros = []
       let ep = null
-      // 1) por zona (preferido: ~3.5k por zona de Places) — luego por eid
+      const comunaSet = new Set((ZONAS_COMUNAS[zonaNom] || []).map(normComuna))
+      // 1) por zona exacta
       if (zonaNom) {
         const r2 = await supabase
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .eq('zona', zonaNom)
-          .limit(4000)
+          .limit(5000)
         if (!r2.error && r2.data?.length) {
           pros = r2.data
-          ep = null
           console.log('prospectos por zona', zonaNom, pros.length)
         } else if (r2.error) {
           console.warn('prospectos zona', r2.error.message)
           ep = r2.error
         }
       }
-      // 2) fallback por ejecutivo_id
-      if ((!pros || !pros.length) && uid) {
+      // 2) por ejecutivo_id
+      if (uid) {
         const r1 = await supabase
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .eq('ejecutivo_id', uid)
-          .limit(4000)
-        ep = r1.error
-        pros = r1.data
+          .limit(5000)
+        if (!r1.error && r1.data?.length) {
+          const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
+          for (const p of r1.data) {
+            const k = p.cliente_key || p.nombre_cliente
+            if (k && !seen.has(k)) { seen.add(k); pros.push(p) }
+          }
+        } else if (r1.error) ep = r1.error
+      }
+      // 3) sin zona en DB: traer lote amplio y filtrar por comuna de la zona (cubre Providencia en Nor-Poniente)
+      if (comunaSet.size && pros.length < 200) {
+        const r3 = await supabase
+          .from('prospectos')
+          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
+          .not('lat', 'is', null)
+          .limit(8000)
+        if (!r3.error && r3.data?.length) {
+          const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
+          let added = 0
+          for (const p of r3.data) {
+            const k = p.cliente_key || p.nombre_cliente
+            if (!k || seen.has(k)) continue
+            const cz = normComuna(p.comuna)
+            const pz = String(p.zona || '').toUpperCase().trim()
+            if (pz === zonaNom || (cz && comunaSet.has(cz))) {
+              seen.add(k)
+              pros.push(p)
+              added++
+            }
+          }
+          console.log('prospectos por comuna zona', zonaNom, 'added', added, 'total', pros.length)
+        }
       }
       if (ep) console.warn('prospectos', ep.message)
       let nPros = 0, nSkipGeo = 0

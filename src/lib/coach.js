@@ -112,6 +112,18 @@ export function parseSkuDetalle(text) {
   return out
 }
 
+/** $ efectivo del mes: clpMtd o estimación promClp/promUd * udMtd */
+export function clpEfectivo(s) {
+  const clp = Number(s?.clpMtd) || 0
+  if (clp > 0) return clp
+  const ud = Number(s?.udMtd) || 0
+  const promClp = Number(s?.promClp) || 0
+  const promUd = Number(s?.promUd) || 0
+  if (ud > 0 && promClp > 0 && promUd > 0) return Math.round((promClp / promUd) * ud)
+  if (ud > 0 && promClp > 0 && promUd <= 0) return Math.round(promClp) // last resort
+  return 0
+}
+
 export function pctRitmo(udMtd, promUd) {
   if (!promUd || promUd <= 0) return null
   const p = Math.round((udMtd / promUd) * 100)

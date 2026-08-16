@@ -5,7 +5,7 @@ import PedidoSheet from '../components/PedidoSheet.jsx'
 import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
-import { parseSkuDetalle, pctRitmo } from '../lib/coach'
+import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach'
 import {
   esActivoMes,
   esNuevoMes,
@@ -1013,7 +1013,7 @@ export default function Cartera({ session }) {
                                 }}
                               >
                                 <span>
-                                  Mes {Number(s.udMtd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud · {money(s.clpMtd)}
+                                  Mes {Number(s.udMtd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud · {money(clpEfectivo(s))}
                                 </span>
                                 <span>
                                   prom {Number(s.promUd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} · {money(s.promClp)}
