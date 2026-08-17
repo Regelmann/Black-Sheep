@@ -321,7 +321,7 @@ if ('serviceWorker' in navigator) {
 // ── Config ──────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://ihhnfouwviuyycltgafc.supabase.co'
 // Pegá la anon key (pública, con RLS). Nunca service_role aquí.
-const SUPABASE_ANON = (localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4') || window.__BS_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4').trim() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4'
+const SUPABASE_ANON = (localStorage.getItem('bs_anon') || window.__BS_ANON || '').trim() || ''
 
 const TERRENO = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
 const REFRESH_MS = 5 * 60 * 1000
@@ -335,7 +335,7 @@ let _refreshTimer = null
 let _lastLoad = null
 
 // ── Auth / fetch ────────────────────────────────────────────────────────
-async function sbFetch(path, opts = {}) {
+async function sbFetch(path, opts = {}, retry = 0) {
   if (!SUPABASE_ANON) throw new Error('Falta SUPABASE_ANON (localStorage bs_anon o constante)')
   const headers = {
     'Content-Type': 'application/json',
@@ -346,7 +346,13 @@ async function sbFetch(path, opts = {}) {
   const res = await fetch(SUPABASE_URL + path, { ...opts, headers })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.message || err.error_description || res.statusText)
+    const msg = err.message || err.error_description || res.statusText || ''
+    // JWT issued at future: esperar 2s y reintentar (máx 3 veces)
+    if (msg.includes('future') && retry < 3) {
+      await new Promise(r => setTimeout(r, 2000))
+      return sbFetch(path, opts, retry + 1)
+    }
+    throw new Error(msg)
   }
   if (res.status === 204) return null
   return res.json()
@@ -384,7 +390,13 @@ async function doLogin() {
     await loadAll()
     startAutoRefresh()
   } catch (e) {
-    err.textContent = e.message || 'Correo o contraseña incorrectos.'
+    const msg = String(e.message || '')
+    if (msg.includes('future') || msg.includes('clock')) {
+      err.textContent = 'Error de reloj del servidor. Reintentando en 3 segundos…'
+      setTimeout(() => doLogin(), 3000)
+    } else {
+      err.textContent = msg || 'Correo o contraseña incorrectos.'
+    }
   } finally {
     btn.disabled = false
     btn.textContent = 'Entrar →'
