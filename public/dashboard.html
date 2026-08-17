@@ -321,7 +321,7 @@ if ('serviceWorker' in navigator) {
 // ── Config ──────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://ihhnfouwviuyycltgafc.supabase.co'
 // Pegá la anon key (pública, con RLS). Nunca service_role aquí.
-const SUPABASE_ANON = (localStorage.getItem('bs_anon') || window.__BS_ANON || '').trim() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4'
+const SUPABASE_ANON = (localStorage.getItem('bs_anon') || window.__BS_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4').trim() || ''
 
 const TERRENO = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
 const REFRESH_MS = 5 * 60 * 1000
