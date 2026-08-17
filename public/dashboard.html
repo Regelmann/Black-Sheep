@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0b0d">
+<title>BlackSheep · Dashboard Gerencial</title>
+<style>
+  :root {
+    --bg: #0a0b0d; --surface: #111316; --border: #1e2127; --border2: #2a2d35;
+    --lime: #b8f03c; --lime-dim: #8ab82d; --red: #ff4545; --amber: #f59e0b;
+    --blue: #60a5fa; --text: #f0f2f5; --muted: #6b7280; --muted2: #9ca3af;
+    --brand: #c2410c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    line-height: 1.5; min-height: 100vh;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,11,13,.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; letter-spacing: -.02em; }
+  .logo-sheep {
+    width: 28px; height: 28px; border-radius: 8px; background: var(--lime);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .logo-tag { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .stamp {
+    font-size: 11px; color: var(--muted); background: var(--surface);
+    border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px;
+  }
+  .stamp.fresh::before { content: '● '; color: var(--lime); }
+  .stamp.stale::before { content: '● '; color: var(--amber); }
+  .stamp.err::before { content: '● '; color: var(--red); }
+  .btn-ghost {
+    background: var(--border2); border: none; color: var(--muted2);
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-family: inherit;
+  }
+  .btn-ghost:hover { color: var(--text); }
+  .main { padding: 28px; max-width: 1440px; margin: 0 auto; }
+
+  .kpi-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 24px; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px; position: relative; overflow: hidden;
+  }
+  .kpi::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--lime); opacity: .6;
+  }
+  .kpi.red::before { background: var(--red); }
+  .kpi.amber::before { background: var(--amber); }
+  .kpi.blue::before { background: var(--blue); }
+  .kpi.neutral::before { background: var(--border2); }
+  .kpi-label {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px;
+  }
+  .kpi-value { font-size: 24px; font-weight: 900; letter-spacing: -.04em; line-height: 1; }
+  .kpi-value.big { font-size: 28px; }
+  .kpi-sub { font-size: 11px; color: var(--muted2); margin-top: 6px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .07em; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .card-title span { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: none; letter-spacing: 0; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chip {
+    font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--border2); background: transparent; color: var(--muted2);
+    cursor: pointer; font-family: inherit;
+  }
+  .chip:hover { border-color: var(--muted); color: var(--text); }
+  .chip.on { background: rgba(184,240,60,.12); border-color: var(--lime-dim); color: var(--lime); }
+
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; cursor: pointer; }
+  .bar-row:hover .bar-label { color: var(--lime); }
+  .bar-label { font-size: 12px; font-weight: 600; width: 120px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 6px; background: var(--border2); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+  .bar-val { font-size: 12px; font-weight: 700; width: 72px; text-align: right; color: var(--muted2); }
+  .bar-pct { font-size: 11px; font-weight: 700; width: 40px; text-align: right; }
+
+  .trend-bars { display: flex; align-items: flex-end; gap: 6px; height: 100px; padding-top: 8px; }
+  .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+  .trend-bar {
+    width: 100%; border-radius: 4px 4px 0 0; background: var(--border2); transition: all .25s; min-height: 4px;
+  }
+  .trend-bar.current { background: var(--lime) !important; }
+  .trend-bar.selected { background: var(--blue) !important; }
+  .trend-bar:hover { filter: brightness(1.2); }
+  .trend-label { font-size: 9px; color: var(--muted); font-weight: 600; }
+
+  .table { width: 100%; border-collapse: collapse; }
+  .table th {
+    font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .06em; padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left;
+  }
+  .table td { padding: 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .table tr:last-child td { border-bottom: none; }
+  .table tr:hover td { background: rgba(255,255,255,.02); }
+  .td-money { font-weight: 700; font-size: 13px; }
+
+  .foco-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .foco-row:last-child { border-bottom: none; }
+  .foco-name { font-size: 13px; font-weight: 700; width: 110px; flex-shrink: 0; }
+  .foco-zona { font-size: 11px; color: var(--muted); width: 96px; flex-shrink: 0; }
+  .foco-track { flex: 1; min-width: 0; }
+  .foco-bar { height: 8px; background: var(--border2); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+  .foco-fill { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+  .foco-meta { font-size: 10px; color: var(--muted); }
+  .foco-pct { font-size: 14px; font-weight: 900; width: 48px; text-align: right; flex-shrink: 0; }
+  .foco-ritmo { font-size: 10px; font-weight: 700; text-align: right; width: 72px; flex-shrink: 0; }
+
+  .zona-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  .zona-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+  }
+  .zona-name { font-size: 12px; font-weight: 800; margin-bottom: 10px; }
+  .zona-pct { font-size: 30px; font-weight: 900; line-height: 1; letter-spacing: -.04em; }
+  .zona-money { font-size: 12px; color: var(--muted2); margin-top: 4px; margin-bottom: 8px; }
+  .zona-meta { font-size: 11px; color: var(--muted); }
+  .progress { height: 5px; background: var(--border2); border-radius: 99px; overflow: hidden; margin: 8px 0 6px; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+
+  .alert {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; font-size: 12px;
+  }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+  .alert.ok { background: rgba(184,240,60,.07); border: 1px solid rgba(184,240,60,.2); }
+  .alert.warn { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); }
+  .alert.risk { background: rgba(255,69,69,.07); border: 1px solid rgba(255,69,69,.25); }
+  .alert.ok .alert-dot { background: var(--lime); }
+  .alert.warn .alert-dot { background: var(--amber); }
+  .alert.risk .alert-dot { background: var(--red); }
+
+  .health-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px;
+  }
+  .health-row:last-child { border-bottom: none; }
+  .pill {
+    font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
+  }
+  .pill.ok { background: rgba(184,240,60,.15); color: var(--lime); }
+  .pill.warn { background: rgba(245,158,11,.15); color: var(--amber); }
+  .pill.fail { background: rgba(255,69,69,.15); color: var(--red); }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--border) 25%, var(--border2) 50%, var(--border) 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  #login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(184,240,60,.06) 0%, transparent 70%), var(--bg);
+  }
+  .login-box {
+    width: 360px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 36px 32px;
+  }
+  .login-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 10px; padding: 12px 14px;
+    font-size: 14px; font-family: inherit; outline: none; margin-bottom: 12px;
+  }
+  .login-input:focus { border-color: var(--lime); }
+  .login-btn {
+    width: 100%; padding: 13px; background: var(--lime); color: #000;
+    font-weight: 800; font-size: 14px; border: none; border-radius: 10px;
+    cursor: pointer; font-family: inherit; margin-top: 8px;
+  }
+  .login-btn:hover { background: #caf557; }
+  .login-btn:disabled { background: var(--border2); color: var(--muted); cursor: not-allowed; }
+  .login-error { font-size: 12px; color: var(--red); margin-top: 8px; min-height: 18px; }
+  .login-hint { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.4; }
+
+  @media (max-width: 1100px) {
+    .kpi-strip { grid-template-columns: repeat(3,1fr); }
+    .grid-3-1 { grid-template-columns: 1fr; }
+    .zona-cards { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .main { padding: 16px; }
+    .kpi-strip { grid-template-columns: repeat(2,1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .zona-cards { grid-template-columns: 1fr; }
+    .topbar { padding: 0 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <div class="logo-sheep">🐑</div>
+      <div style="font-size:18px;font-weight:900;letter-spacing:-.03em;">BlackSheep</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:28px;">Dashboard Gerencial · Inteligencia de Terreno</div>
+    <input class="login-input" id="l-email" type="email" placeholder="correo@empresa.cl" autocomplete="username">
+    <input class="login-input" id="l-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <button class="login-btn" id="l-btn" onclick="doLogin()">Entrar →</button>
+    <div class="login-error" id="l-err"></div>
+    <div class="login-hint">Misma cuenta Supabase de la app de terreno. Solo perfiles con rol gerencia ven datos sensibles (RLS).</div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-sheep">🐑</div>
+      <span>BlackSheep</span>
+      <span class="logo-tag">· Dashboard Gerencial</span>
+    </div>
+    <div class="topbar-right">
+      <div class="stamp" id="data-stamp">Cargando…</div>
+      <button class="btn-ghost" onclick="loadAll()">↻ Actualizar</button>
+      <button class="btn-ghost" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="kpi-strip" id="kpi-strip">
+      <div class="kpi"><div class="kpi-label">Venta total</div><div class="kpi-value skeleton" style="height:28px;width:120px">&nbsp;</div></div>
+      <div class="kpi"><div class="kpi-label">Brecha terreno</div><div class="kpi-value skeleton" style="height:28px;width:100px">&nbsp;</div></div>
+      <div class="kpi"><div class="kpi-label">Sin asignar</div><div class="kpi-value skeleton" style="height:28px;width:80px">&nbsp;</div></div>
+      <div class="kpi"><div class="kpi-label">Activos</div><div class="kpi-value skeleton" style="height:28px;width:50px">&nbsp;</div></div>
+      <div class="kpi"><div class="kpi-label">Focos en riesgo</div><div class="kpi-value skeleton" style="height:28px;width:40px">&nbsp;</div></div>
+      <div class="kpi"><div class="kpi-label">Salud datos</div><div class="kpi-value skeleton" style="height:28px;width:60px">&nbsp;</div></div>
+    </div>
+
+    <div class="grid-3-1">
+      <div class="card">
+        <div class="card-title">Terreno — avance vs meta <span id="mes-label"></span></div>
+        <div class="zona-cards" id="zona-cards"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tendencia 12 meses</div>
+        <div class="trend-bars" id="trend-bars"></div>
+        <div id="trend-detail" style="margin-top:12px;font-size:11px;color:var(--muted);min-height:24px;"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Focos del mes — KG / LT</div>
+        <div id="focos-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Canales · tocá para filtrar top clientes</div>
+        <div id="canales-list"></div>
+      </div>
+    </div>
+
+    <div class="grid-3-1">
+      <div class="card">
+        <div class="card-title">
+          Top clientes del mes
+          <span id="top-subtitle"></span>
+        </div>
+        <div class="chips" id="canal-chips"></div>
+        <div style="overflow-x:auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Cliente</th><th>Canal</th><th>SKU top</th>
+                <th style="text-align:right">Venta MTD</th>
+                <th style="text-align:right">% canal</th>
+              </tr>
+            </thead>
+            <tbody id="top-tbody"><tr><td colspan="5" style="color:var(--muted);padding:16px 8px;">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Alertas + salud de datos</div>
+        <div id="alertas-list"></div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Salud del snapshot</div>
+          <div id="health-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-title">Stock crítico (focos y baja cobertura)</div>
+      <div id="stock-list" style="color:var(--muted);font-size:12px;">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://ihhnfouwviuyycltgafc.supabase.co'
+// Pegá la anon key (pública, con RLS). Nunca service_role aquí.
+const SUPABASE_ANON = (localStorage.getItem('bs_anon') || window.__BS_ANON || '').trim() || ''
+
+const TERRENO = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
+const REFRESH_MS = 5 * 60 * 1000
+
+let _token = null
+let _uid = null
+let _tendencia = []
+let _gerCli = []
+let _canalFiltro = 'TODOS'
+let _refreshTimer = null
+let _lastLoad = null
+
+// ── Auth / fetch ────────────────────────────────────────────────────────
+async function sbFetch(path, opts = {}) {
+  if (!SUPABASE_ANON) throw new Error('Falta SUPABASE_ANON (localStorage bs_anon o constante)')
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON,
+    ...(opts.headers || {}),
+  }
+  if (_token) headers['Authorization'] = 'Bearer ' + _token
+  const res = await fetch(SUPABASE_URL + path, { ...opts, headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.message || err.error_description || res.statusText)
+  }
+  if (res.status === 204) return null
+  return res.json()
+}
+
+function saveSession() {
+  if (_token) sessionStorage.setItem('bs_token', _token)
+  else sessionStorage.removeItem('bs_token')
+}
+function loadSession() {
+  _token = sessionStorage.getItem('bs_token') || null
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim()
+  const pass = document.getElementById('l-pass').value
+  const btn = document.getElementById('l-btn')
+  const err = document.getElementById('l-err')
+  err.textContent = ''
+  if (!SUPABASE_ANON) {
+    err.textContent = 'Configurá SUPABASE_ANON en el HTML o localStorage.bs_anon'
+    return
+  }
+  btn.disabled = true
+  btn.textContent = 'Entrando…'
+  try {
+    const data = await sbFetch('/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      body: JSON.stringify({ email, password: pass }),
+    })
+    _token = data.access_token
+    _uid = data.user?.id
+    saveSession()
+    showApp()
+    await loadAll()
+    startAutoRefresh()
+  } catch (e) {
+    err.textContent = e.message || 'Correo o contraseña incorrectos.'
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'Entrar →'
+  }
+}
+document.getElementById('l-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin()
+})
+
+function doLogout() {
+  _token = null
+  _uid = null
+  saveSession()
+  stopAutoRefresh()
+  document.getElementById('login-screen').style.display = 'flex'
+  document.getElementById('app').style.display = 'none'
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none'
+  document.getElementById('app').style.display = 'block'
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh()
+  _refreshTimer = setInterval(() => { if (_token) loadAll() }, REFRESH_MS)
+}
+function stopAutoRefresh() {
+  if (_refreshTimer) clearInterval(_refreshTimer)
+  _refreshTimer = null
+}
+
+// ── Format ──────────────────────────────────────────────────────────────
+const fmt = n => {
+  if (n == null || isNaN(Number(n))) return '—'
+  const v = Number(n)
+  if (Math.abs(v) >= 1e6) return '$' + (v / 1e6).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M'
+  return '$' + Math.round(v).toLocaleString('es-CL')
+}
+const fmtN = (n, dec = 1) => n == null || isNaN(Number(n)) ? '—' :
+  Number(n).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec })
+
+function barColor(pct) {
+  if (pct >= 100) return 'var(--lime)'
+  if (pct >= 80) return 'var(--blue)'
+  if (pct >= 50) return 'var(--amber)'
+  return 'var(--red)'
+}
+function monthLabel(mes) {
+  if (!mes) return ''
+  const [y, m] = String(mes).slice(0, 7).split('-')
+  const names = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+  return (names[Number(m)] || m) + ' ' + String(y).slice(2)
+}
+function normZona(z) {
+  return String(z || '').trim().toUpperCase().replace(/\s+/g, '-').replace(/_/g, '-')
+}
+function isTerreno(z) {
+  const n = normZona(z)
+  return TERRENO.some(t => n === t || n.includes(t.replace('-', '')))
+}
+function topSkuFromRow(d) {
+  if (d.productos_top) {
+    const p = String(d.productos_top).split(/[·|,]/)[0]?.trim()
+    if (p) return p.slice(0, 32)
+  }
+  if (d.sku_detalle) {
+    // formato ciclo: nombre||prom||mtd||…  o nombre|prom|mtd
+    const first = String(d.sku_detalle).split(/\n|\|\|/)[0]?.split('|')[0]?.trim()
+    if (first) return first.slice(0, 32)
+  }
+  return '—'
+}
+
+async function q(table, params = '') {
+  return sbFetch(`/rest/v1/${table}?${params}`)
+}
+
+// ── Load ────────────────────────────────────────────────────────────────
+async function loadAll() {
+  const stamp = document.getElementById('data-stamp')
+  try {
+    const [gerencia, focos, tendencia, gerCliRaw, carteraRaw, stockRaw] = await Promise.all([
+      q('gerencia', 'select=*&order=venta_mtd.desc'),
+      q('focos', 'select=*'),
+      q('tendencia', 'select=*&order=mes.asc'),
+      q('gerencia_clientes', 'select=ejecutivo,cliente_key,nombre_cliente,venta_mtd,pct_zona,sku_detalle,productos_top,comuna&venta_mtd=gt.0&order=venta_mtd.desc&limit=400'),
+      q('cartera', 'select=nombre_cliente,ejecutivo_id,venta_mtd,estado_fuga,dias_sin_comprar,sku_detalle,fecha_snapshot&order=venta_mtd.desc&limit=800'),
+      q('stock', 'select=producto_nombre,sku_canon,es_foco_mes,cobertura_dias,stock_operativo,estado_stock&order=cobertura_dias.asc&limit=200'),
+    ])
+
+    _gerCli = (gerCliRaw || []).filter(d => Number(d.venta_mtd) > 0)
+    _tendencia = tendencia || []
+    _lastLoad = new Date()
+
+    const snap =
+      (gerencia || []).find(g => g.fecha_snapshot)?.fecha_snapshot ||
+      (carteraRaw || []).find(c => c.fecha_snapshot)?.fecha_snapshot
+    if (snap) {
+      stamp.textContent = 'Datos al ' + String(snap).slice(0, 10) + ' · act. ' + _lastLoad.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+      const hours = (Date.now() - new Date(snap).getTime()) / 3600000
+      stamp.className = 'stamp ' + (hours < 30 ? 'fresh' : 'stale')
+    } else {
+      stamp.textContent = 'Sin fecha_snapshot'
+      stamp.className = 'stamp stale'
+    }
+
+    const health = computeHealth(gerencia, focos, stockRaw, carteraRaw, snap)
+    renderKPIs(gerencia, carteraRaw, focos, health)
+    renderZonas(gerencia)
+    renderTendencia(_tendencia)
+    renderFocos(focos)
+    renderCanales(gerencia)
+    renderCanalChips(gerencia)
+    renderTopClientes()
+    renderAlertas(gerencia, focos, stockRaw, carteraRaw)
+    renderHealth(health)
+    renderStock(stockRaw)
+  } catch (e) {
+    console.error(e)
+    stamp.textContent = 'Error: ' + e.message
+    stamp.className = 'stamp err'
+  }
+}
+
+function computeHealth(gerencia, focos, stock, cartera, snap) {
+  const items = []
+  const hours = snap ? (Date.now() - new Date(snap).getTime()) / 3600000 : 999
+  items.push({
+    name: 'Frescura snapshot',
+    level: hours < 30 ? 'ok' : hours < 72 ? 'warn' : 'fail',
+    detail: snap ? `${hours.toFixed(0)}h · ${String(snap).slice(0, 10)}` : 'sin fecha',
+  })
+  const total = (gerencia || []).reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  items.push({
+    name: 'MTD gerencia',
+    level: total > 0 ? 'ok' : 'fail',
+    detail: fmt(total),
+  })
+  const noAsig = (gerencia || []).filter(g => /NO.?ASIG/i.test(g.ejecutivo || ''))
+    .reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  const pctNa = total ? (100 * noAsig / total) : 0
+  items.push({
+    name: 'NO_ASIGNADO',
+    level: pctNa > 15 ? 'fail' : pctNa > 8 ? 'warn' : 'ok',
+    detail: `${pctNa.toFixed(1)}% · ${fmt(noAsig)}`,
+  })
+  items.push({
+    name: 'Focos cargados',
+    level: (focos || []).length ? 'ok' : 'warn',
+    detail: String((focos || []).length),
+  })
+  items.push({
+    name: 'Cartera terreno',
+    level: (cartera || []).length > 50 ? 'ok' : 'warn',
+    detail: `${(cartera || []).length} filas`,
+  })
+  const score = items.reduce((s, i) => s + (i.level === 'ok' ? 100 : i.level === 'warn' ? 55 : 0), 0)
+  const avg = items.length ? Math.round(score / items.length) : 0
+  return { items, score: avg, hours, total, pctNa }
+}
+
+function renderKPIs(gerencia, cartera, focos, health) {
+  const total = (gerencia || []).reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  const gTerr = (gerencia || []).filter(g => isTerreno(g.ejecutivo))
+  const ventaT = gTerr.reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  const metaT = gTerr.reduce((s, g) => s + (Number(g.meta_mensual) || 0), 0)
+  const brecha = Math.max(0, metaT - ventaT)
+  const sinAsig = (gerencia || []).filter(g => /NO.?ASIG/i.test(g.ejecutivo || ''))
+    .reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  const activos = (cartera || []).filter(c => Number(c.venta_mtd) > 0).length
+  const hoy = new Date()
+  const ritmoEsperado = hoy.getDate() / new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
+  const focosRisk = (focos || []).filter(f => {
+    const m = Number(f.meta_unidad) || 0
+    if (!m) return false
+    const p = (Number(f.vendido_unidad) || 0) / m
+    return p < ritmoEsperado * 0.8
+  }).length
+  const pctT = metaT ? Math.round(ventaT / metaT * 100) : 0
+  const mes = (gerencia || []).find(g => g.fecha_snapshot)?.fecha_snapshot
+  document.getElementById('mes-label').textContent = mes ? monthLabel(mes.slice(0, 7)) : ''
+
+  const sc = health.score
+  document.getElementById('kpi-strip').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Venta total del mes</div>
+      <div class="kpi-value big">${fmt(total)}</div>
+      <div class="kpi-sub">Todos los canales · maestra</div>
+    </div>
+    <div class="kpi ${brecha > metaT * 0.4 ? 'red' : brecha > 0 ? 'amber' : ''}">
+      <div class="kpi-label">Brecha terreno</div>
+      <div class="kpi-value">${fmt(brecha)}</div>
+      <div class="kpi-sub">${pctT}% meta · ${fmt(ventaT)} / ${fmt(metaT)}</div>
+    </div>
+    <div class="kpi ${sinAsig > total * 0.1 ? 'amber' : 'neutral'}">
+      <div class="kpi-label">Sin asignar</div>
+      <div class="kpi-value">${fmt(sinAsig)}</div>
+      <div class="kpi-sub">${Math.round(sinAsig / Math.max(total, 1) * 100)}% · maestra</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Clientes activos</div>
+      <div class="kpi-value">${activos}</div>
+      <div class="kpi-sub">con venta este mes (cartera)</div>
+    </div>
+    <div class="kpi ${focosRisk ? 'red' : ''}">
+      <div class="kpi-label">Focos en riesgo</div>
+      <div class="kpi-value">${focosRisk}</div>
+      <div class="kpi-sub">bajo ritmo del mes</div>
+    </div>
+    <div class="kpi ${sc < 65 ? 'red' : sc < 85 ? 'amber' : ''}">
+      <div class="kpi-label">Salud datos</div>
+      <div class="kpi-value">${sc}</div>
+      <div class="kpi-sub">score monitoreo</div>
+    </div>`
+}
+
+function renderZonas(gerencia) {
+  const html = TERRENO.map(z => {
+    const row = (gerencia || []).find(g => normZona(g.ejecutivo) === z) || {}
+    const v = Number(row.venta_mtd) || 0
+    const m = Number(row.meta_mensual) || 0
+    const p = m ? Math.round(v / m * 100) : 0
+    const color = barColor(p)
+    const hoy = new Date()
+    const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)
+    let hab = 0
+    const t = new Date(hoy); t.setDate(t.getDate() + 1)
+    while (t <= fin) { if (t.getDay() !== 0 && t.getDay() !== 6) hab++; t.setDate(t.getDate() + 1) }
+    const necesario = hab > 0 && m > v ? Math.round((m - v) / hab) : 0
+    const nCli = Number(row.clientes_activos) || 0
+    return `<div class="zona-card">
+      <div class="zona-name">${z}</div>
+      <div class="zona-pct" style="color:${color}">${p}%</div>
+      <div class="zona-money">${fmt(v)} <span style="color:var(--muted)">/ ${fmt(m)}</span></div>
+      <div class="progress"><div class="progress-fill" style="width:${Math.min(p,100)}%;background:${color}"></div></div>
+      <div class="zona-meta">${nCli ? nCli + ' clientes MTD' : '—'}</div>
+      ${necesario > 0 ? `<div style="font-size:10px;color:var(--amber);margin-top:4px;">→ ${fmt(necesario)}/día hábil</div>` : ''}
+    </div>`
+  }).join('')
+  document.getElementById('zona-cards').innerHTML = html
+}
+
+function renderTendencia(tendencia) {
+  if (!tendencia.length) {
+    document.getElementById('trend-bars').innerHTML = '<div style="color:var(--muted);font-size:12px;">Sin tendencia.</div>'
+    return
+  }
+  const max = Math.max(...tendencia.map(t => Number(t.venta_clp) || 0), 1)
+  const mesActual = new Date().toISOString().slice(0, 7)
+  document.getElementById('trend-bars').innerHTML = tendencia.map((t, i) => {
+    const v = Number(t.venta_clp) || 0
+    const h = Math.max(6, Math.round(v / max * 88))
+    const isCurrent = String(t.mes || '').slice(0, 7) === mesActual
+    return `<div class="trend-bar-wrap" onclick="showTrendDetail(${i})">
+      <div class="trend-bar ${isCurrent ? 'current' : ''}" id="tbar-${i}" style="height:${h}px"></div>
+      <div class="trend-label">${monthLabel(t.mes).slice(0, 3)}</div>
+    </div>`
+  }).join('')
+}
+function showTrendDetail(i) {
+  document.querySelectorAll('.trend-bar').forEach((b, j) => {
+    b.classList.toggle('selected', j === i)
+  })
+  const t = _tendencia[i]
+  if (!t) return
+  document.getElementById('trend-detail').innerHTML =
+    `<b>${monthLabel(t.mes)}</b>: <span style="color:var(--lime);font-weight:700">${fmt(Number(t.venta_clp))}</span>` +
+    (t.n_clientes ? ` · ${t.n_clientes} clientes` : '') +
+    (t.top_producto ? ` · Top: ${t.top_producto}` : '')
+}
+
+function renderFocos(focos) {
+  if (!focos || !focos.length) {
+    document.getElementById('focos-list').innerHTML = '<div style="color:var(--muted);font-size:12px;">Sin focos.</div>'
+    return
+  }
+  const hoy = new Date()
+  const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)
+  let habRestantes = 0
+  const t = new Date(hoy); t.setDate(t.getDate() + 1)
+  while (t <= fin) { if (t.getDay() !== 0 && t.getDay() !== 6) habRestantes++; t.setDate(t.getDate() + 1) }
+
+  document.getElementById('focos-list').innerHTML = focos.map(f => {
+    const v = Number(f.vendido_unidad) || 0
+    const m = Number(f.meta_unidad) || 0
+    const p = m ? Math.round(v / m * 100) : 0
+    const unidad = f.unidad_meta || 'ud'
+    const falta = Math.max(0, m - v)
+    const ritmo = habRestantes > 0 ? fmtN(falta / habRestantes, 1) : '—'
+    const color = barColor(p)
+    const ritmoLabel = p >= 100 ? '✓ ok' : habRestantes > 0 ? `${ritmo} ${unidad}/d` : 'cerrado'
+    return `<div class="foco-row">
+      <div class="foco-name">${f.foco || '—'}</div>
+      <div class="foco-zona">${f.ejecutivo || f.zona || '—'}</div>
+      <div class="foco-track">
+        <div class="foco-bar"><div class="foco-fill" style="width:${Math.min(p,100)}%;background:${color}"></div></div>
+        <div class="foco-meta">${fmtN(v, 0)} / ${fmtN(m, 0)} ${unidad}</div>
+      </div>
+      <div class="foco-pct" style="color:${color}">${p}%</div>
+      <div class="foco-ritmo" style="color:${p >= 100 ? 'var(--lime)' : 'var(--muted2)'}">${ritmoLabel}</div>
+    </div>`
+  }).join('')
+}
+
+function renderCanales(gerencia) {
+  const total = (gerencia || []).reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  const sorted = [...(gerencia || [])].filter(g => g.ejecutivo && !String(g.ejecutivo).startsWith('_'))
+    .sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
+  document.getElementById('canales-list').innerHTML = sorted.map(g => {
+    const v = Number(g.venta_mtd) || 0
+    const p = total ? Math.round(v / total * 1000) / 10 : 0
+    const z = g.ejecutivo
+    const isT = isTerreno(z)
+    const color = isT ? 'var(--blue)' : /NO.?ASIG/i.test(z) ? 'var(--amber)' : 'var(--border2)'
+    const fillW = total ? Math.min(100, Math.round(v / total * 100)) : 0
+    return `<div class="bar-row" onclick="setCanalFiltro('${String(z).replace(/'/g, "\\'")}')">
+      <div class="bar-label">${z}${isT ? ' <span style="font-size:10px;color:var(--muted)">terreno</span>' : ''}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${fillW}%;background:${color}"></div></div>
+      <div class="bar-val">${fmt(v)}</div>
+      <div class="bar-pct" style="color:${color}">${p}%</div>
+    </div>`
+  }).join('')
+}
+
+function renderCanalChips(gerencia) {
+  const canales = ['TODOS', ...[...(gerencia || [])]
+    .filter(g => g.ejecutivo && !String(g.ejecutivo).startsWith('_'))
+    .sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
+    .map(g => g.ejecutivo)]
+  const uniq = [...new Set(canales)]
+  document.getElementById('canal-chips').innerHTML = uniq.slice(0, 12).map(c =>
+    `<button type="button" class="chip ${_canalFiltro === c ? 'on' : ''}" onclick="setCanalFiltro('${String(c).replace(/'/g, "\\'")}')">${c}</button>`
+  ).join('')
+}
+
+function setCanalFiltro(c) {
+  _canalFiltro = c
+  document.querySelectorAll('#canal-chips .chip').forEach(el => {
+    el.classList.toggle('on', el.textContent === c)
+  })
+  renderTopClientes()
+}
+
+function renderTopClientes() {
+  let rows = _gerCli
+  if (_canalFiltro && _canalFiltro !== 'TODOS') {
+    const f = normZona(_canalFiltro)
+    rows = rows.filter(d => normZona(d.ejecutivo) === f || normZona(d.ejecutivo).includes(f))
+  }
+  const top = rows.slice(0, 30)
+  document.getElementById('top-subtitle').textContent =
+    _canalFiltro === 'TODOS' ? `top ${top.length}` : `${_canalFiltro} · ${top.length}`
+  if (!top.length) {
+    document.getElementById('top-tbody').innerHTML =
+      '<tr><td colspan="5" style="color:var(--muted);padding:16px 8px;">Sin clientes con venta en este filtro.</td></tr>'
+    return
+  }
+  document.getElementById('top-tbody').innerHTML = top.map(d => {
+    const sku = topSkuFromRow(d)
+    return `<tr>
+      <td><b>${d.nombre_cliente || d.cliente_key}</b>${d.comuna ? `<br><span style="font-size:10px;color:var(--muted)">${d.comuna}</span>` : ''}</td>
+      <td style="font-size:11px;color:var(--muted2)">${d.ejecutivo || '—'}</td>
+      <td style="font-size:11px;color:var(--muted2)">${sku}</td>
+      <td class="td-money" style="text-align:right;color:var(--lime)">${fmt(d.venta_mtd)}</td>
+      <td class="td-money" style="text-align:right;color:var(--muted2)">${d.pct_zona != null ? fmtN(d.pct_zona, 1) + '%' : '—'}</td>
+    </tr>`
+  }).join('')
+}
+
+function renderAlertas(gerencia, focos, stock, cartera) {
+  const alertas = []
+  const hoy = new Date()
+  const ritmoEsperado = hoy.getDate() / new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
+  ;(focos || []).filter(f => {
+    const m = Number(f.meta_unidad) || 0
+    if (!m) return false
+    return ((Number(f.vendido_unidad) || 0) / m) < ritmoEsperado * 0.8
+  }).slice(0, 4).forEach(f => {
+    const p = Math.round((Number(f.vendido_unidad) || 0) / Number(f.meta_unidad) * 100)
+    alertas.push({ level: 'risk', msg: `Foco ${f.foco} (${f.ejecutivo || f.zona}): ${p}% — acelerar` })
+  })
+  const total = (gerencia || []).reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  const noAsig = (gerencia || []).filter(g => /NO.?ASIG/i.test(g.ejecutivo || ''))
+    .reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+  if (total && noAsig / total > 0.08) {
+    alertas.push({ level: 'warn', msg: `${Math.round(noAsig / total * 100)}% venta sin ejecutivo (${fmt(noAsig)}) — maestra` })
+  }
+  ;(stock || []).filter(s => (s.es_foco_mes || /foco/i.test(String(s.estado_stock || ''))) && Number(s.cobertura_dias) < 10)
+    .slice(0, 3).forEach(s => {
+      alertas.push({ level: 'risk', msg: `Stock bajo: ${s.producto_nombre || s.sku_canon} · ${fmtN(s.cobertura_dias, 1)} días` })
+    })
+  ;(cartera || []).filter(c => /RIESGO|FUGADO/i.test(c.estado_fuga || '') && !(Number(c.venta_mtd) > 0))
+    .slice(0, 2).forEach(c => {
+      alertas.push({ level: 'warn', msg: `${c.nombre_cliente || 'Cliente'} — sin compra ${c.dias_sin_comprar || '?'}d` })
+    })
+  if (!alertas.length) alertas.push({ level: 'ok', msg: 'Sin alertas críticas.' })
+  document.getElementById('alertas-list').innerHTML = alertas.map(a =>
+    `<div class="alert ${a.level}"><div class="alert-dot"></div><div>${a.msg}</div></div>`
+  ).join('')
+}
+
+function renderHealth(health) {
+  document.getElementById('health-list').innerHTML = health.items.map(i =>
+    `<div class="health-row"><span>${i.name}</span><span><span class="pill ${i.level}">${i.level}</span> <span style="color:var(--muted2);margin-left:8px">${i.detail}</span></span></div>`
+  ).join('')
+}
+
+function renderStock(stock) {
+  const crit = (stock || []).filter(s => Number(s.cobertura_dias) < 15 || s.es_foco_mes).slice(0, 12)
+  if (!crit.length) {
+    document.getElementById('stock-list').textContent = 'Sin SKUs críticos en el snapshot.'
+    return
+  }
+  document.getElementById('stock-list').innerHTML = `
+    <table class="table"><thead><tr>
+      <th>Producto</th><th>Cobertura</th><th>Stock</th><th>Foco</th>
+    </tr></thead><tbody>
+    ${crit.map(s => `<tr>
+      <td>${s.producto_nombre || s.sku_canon}</td>
+      <td style="color:${Number(s.cobertura_dias) < 7 ? 'var(--red)' : 'var(--amber)'}">${fmtN(s.cobertura_dias, 1)} d</td>
+      <td>${fmtN(s.stock_operativo, 0)}</td>
+      <td>${s.es_foco_mes ? '●' : '—'}</td>
+    </tr>`).join('')}
+    </tbody></table>`
+}
+
+// boot
+;(async () => {
+  loadSession()
+  if (_token && SUPABASE_ANON) {
+    showApp()
+    try {
+      await loadAll()
+      startAutoRefresh()
+    } catch (e) {
+      doLogout()
+    }
+  }
+})()
+</script>
+</body>
+</html>
