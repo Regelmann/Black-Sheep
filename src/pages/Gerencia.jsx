@@ -299,36 +299,38 @@ export default function Gerencia({ esGerente }) {
     }
 
     for (const d of detalleCli || []) {
-      // gerencia_clientes.ejecutivo siempre es la zona
+      // Solo activos del mes (con venta). No listar maestra completa en $0.
+      const v = Number(d.venta_mtd) || 0
+      if (v <= 0) continue
       const zona = resolverZona(d?.ejecutivo || d?.canal || d?.zona)
       push(zona, {
         ...d,
         nombre_cliente: d.nombre_cliente || d.nombre || d.cliente_key,
-        venta_mtd: Number(d.venta_mtd) || 0,
+        venta_mtd: v,
         pct_zona: d.pct_zona,
         _src: 'gerencia_clientes',
       })
     }
 
-    // Fallback desde cartera para zonas sin filas en gerencia_clientes
+    // Fallback cartera terreno: solo venta_mtd > 0
     for (const c of carteraCache || []) {
+      const v = Number(c.venta_mtd) || 0
+      if (v <= 0) continue
       const z = resolverZona(c.zona || c.ejecutivo)
       if (!z || !esTerreno(z)) continue
       const list = byCanal[z] || []
       if (list.some(x => x.cliente_key && String(x.cliente_key) === String(c.cliente_key))) continue
-      if (!list.length || (c.sku_detalle && !list.find(x => x.cliente_key === c.cliente_key))) {
-        push(z, {
-          cliente_key: c.cliente_key,
-          nombre_cliente: c.nombre_cliente || c.razon_social || c.cliente_key,
-          comuna: c.comuna,
-          venta_mtd: Number(c.venta_mtd) || 0,
-          pct_zona: null,
-          sku_detalle: c.sku_detalle,
-          oferta_real: c.oferta_real,
-          productos_top: c.productos_top,
-          _src: 'cartera',
-        })
-      }
+      push(z, {
+        cliente_key: c.cliente_key,
+        nombre_cliente: c.nombre_cliente || c.razon_social || c.cliente_key,
+        comuna: c.comuna,
+        venta_mtd: v,
+        pct_zona: null,
+        sku_detalle: c.sku_detalle,
+        oferta_real: c.oferta_real,
+        productos_top: c.productos_top,
+        _src: 'cartera',
+      })
     }
     for (const k of Object.keys(byCanal)) {
       byCanal[k].sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
@@ -401,56 +403,90 @@ export default function Gerencia({ esGerente }) {
         const d0 = new Date(startStr + 'T12:00:00')
         const d1 = new Date(d0.getFullYear(), d0.getMonth() + 1, 1)
         const endStr = d1.toISOString().slice(0, 10)
-        const agg = {}
-        let from = 0
-        const page = 1000
-        for (let guard = 0; guard < 50; guard++) {
-          const { data, error } = await supabase
-            .from('ventas_lineas')
-            .select('venta_neta_clp,cliente_key,zona_vendedor')
-            .gte('fecha', startStr)
-            .lt('fecha', endStr)
-            .range(from, from + page - 1)
-          if (error) {
-            console.warn('mesCanales', error.message)
-            break
-          }
-          if (!data?.length) break
-          for (const r of data) {
-            const ck = String(r.cliente_key || '').trim()
-            let z =
-              keyToZona[ck] ||
-              keyToZona[ck.replace(/-.*$/, '')] ||
-              (ck && !ck.endsWith('-C') ? keyToZona[ck + '-C'] : null) ||
-              null
-            // Fallback: canal de factura si es un canal real (no VENDEDOR_01)
-            if (!z) {
-              const zv = normCanal(r.zona_vendedor || '')
-              if (zv && !/^VENDEDOR/.test(zv) && zv !== 'OTROS') z = zv
+        // Mes actual: usar snapshot gerencia (1 conteo, ya por maestra) — evita doble conteo
+        const hoy = new Date()
+        const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-01`
+        const esMesActual = String(mesSel).slice(0, 7) === mesActual.slice(0, 7)
+
+        let totalSum = 0
+        let rows = []
+
+        if (esMesActual && Array.isArray(gerencia) && gerencia.length) {
+          totalSum = gerencia.reduce((s, g) => s + (Number(g.venta_mtd) || 0), 0)
+          const total = totalSum || 1
+          rows = gerencia
+            .map(g => {
+              const venta = Number(g.venta_mtd) || 0
+              const canal = normCanal(g.ejecutivo) || g.ejecutivo || '—'
+              return {
+                canal,
+                venta,
+                pct: Math.round((venta / total) * 1000) / 10,
+                terreno: /NOR-ORIENTE|NOR-PONIENTE|ZONA SUR/.test(canal),
+              }
+            })
+            .filter(r => r.venta > 0)
+            .sort((a, b) => b.venta - a.venta)
+        } else {
+          const agg = {}
+          const seenLine = new Set()
+          let from = 0
+          const page = 1000
+          for (let guard = 0; guard < 50; guard++) {
+            const { data, error } = await supabase
+              .from('ventas_lineas')
+              .select('venta_neta_clp,cliente_key,zona_vendedor,fecha,sku_canon,numero_documento')
+              .gte('fecha', startStr)
+              .lt('fecha', endStr)
+              .order('fecha', { ascending: true })
+              .order('cliente_key', { ascending: true })
+              .range(from, from + page - 1)
+            if (error) {
+              console.warn('mesCanales', error.message)
+              break
             }
-            if (!z || /^VENDEDOR/.test(z)) z = 'NO_ASIGNADO'
-            agg[z] = (agg[z] || 0) + (Number(r.venta_neta_clp) || 0)
+            if (!data?.length) break
+            for (const r of data) {
+              // Anti-doble por línea (paginación inestable sin order → filas repetidas)
+              const lid = [
+                r.fecha, r.cliente_key, r.sku_canon, r.numero_documento, r.venta_neta_clp,
+              ].join('|')
+              if (seenLine.has(lid)) continue
+              seenLine.add(lid)
+              const ck = String(r.cliente_key || '').trim()
+              let z =
+                keyToZona[ck] ||
+                keyToZona[ck.replace(/-.*$/, '')] ||
+                (ck && !ck.endsWith('-C') ? keyToZona[ck + '-C'] : null) ||
+                null
+              if (!z) {
+                const zv = normCanal(r.zona_vendedor || '')
+                if (zv && !/^VENDEDOR/.test(zv) && zv !== 'OTROS') z = zv
+              }
+              if (!z || /^VENDEDOR/.test(z)) z = 'NO_ASIGNADO'
+              agg[z] = (agg[z] || 0) + (Number(r.venta_neta_clp) || 0)
+            }
+            if (data.length < page) break
+            from += page
           }
-          if (data.length < page) break
-          from += page
+          totalSum = Object.values(agg).reduce((a, b) => a + b, 0)
+          const total = totalSum || 1
+          rows = Object.entries(agg)
+            .map(([canal, venta]) => ({
+              canal,
+              venta,
+              pct: Math.round((venta / total) * 1000) / 10,
+              terreno: /NOR-ORIENTE|NOR-PONIENTE|ZONA SUR/.test(canal),
+            }))
+            .sort((a, b) => b.venta - a.venta)
         }
-        const totalSum = Object.values(agg).reduce((a, b) => a + b, 0)
-        const total = totalSum || 1
-        const rows = Object.entries(agg)
-          .map(([canal, venta]) => ({
-            canal,
-            venta,
-            pct: Math.round((venta / total) * 1000) / 10,
-            terreno: /NOR-ORIENTE|NOR-PONIENTE|ZONA SUR/.test(canal),
-          }))
-          .sort((a, b) => b.venta - a.venta)
         if (!cancelled) setMesCanales({ loading: false, rows, total: totalSum })
       } catch (e) {
         if (!cancelled) setMesCanales({ loading: false, rows: [], error: String(e.message || e) })
       }
     })()
     return () => { cancelled = true }
-  }, [mesSel, carteraCache, detalleCli])
+  }, [mesSel, carteraCache, detalleCli, gerencia])
 
   const tendencia12 = useMemo(() => {
     const rows = [...(tendencia || [])]
@@ -1346,7 +1382,7 @@ export default function Gerencia({ esGerente }) {
                       </div>
                       <div>
                         <div className="muted">Clientes MTD</div>
-                        <div style={{ fontWeight: 700 }}>{(Number(g.clientes_activos) > 0 ? Number(g.clientes_activos) : (cliZona.length || '—'))}</div>
+                        <div style={{ fontWeight: 700 }}>{cliZona.length || (Number(g.clientes_activos) > 0 ? Number(g.clientes_activos) : '—')}</div>
                       </div>
                     </div>
                     <div className="progress-bg" style={{ marginTop: 8 }}>

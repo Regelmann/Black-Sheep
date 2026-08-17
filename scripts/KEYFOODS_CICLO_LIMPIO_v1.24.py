@@ -3056,8 +3056,12 @@ def main():
         for ck, v in agg.items():
             z = zona_ck.get(str(ck)) or "NO_ASIGNADO"
             tot_z = venta_por_zona.get(z) or 1
-            # sku_detalle y productos_top desde cartera (para mix en Gerencia web)
+            # sku_detalle desde detalle (todas las zonas/canales) + fallback cartera
             _car_row = next((r for r in cartera_rows if str(r.get("cliente_key","")) == str(ck)), None)
+            _det = detalle.get(str(ck)) or detalle.get(ck) or {}
+            _sku = _det.get("sku_detalle") or (_car_row.get("sku_detalle") if _car_row else None)
+            _top = _det.get("productos_top") or (_car_row.get("productos_top") if _car_row else None)
+            _ofe = (_car_row.get("oferta_real") if _car_row else None)
             gerencia_clientes_rows.append({
                 "ejecutivo": z,
                 "canal": z,  # alias para schemas viejos
@@ -3066,9 +3070,9 @@ def main():
                 "comuna": com_ck.get(str(ck)) or None,
                 "venta_mtd": round(float(v), 0),
                 "pct_zona": round(100.0 * float(v) / tot_z, 2),
-                "sku_detalle": _car_row.get("sku_detalle") if _car_row else None,
-                "productos_top": _car_row.get("productos_top") if _car_row else None,
-                "oferta_real": _car_row.get("oferta_real") if _car_row else None,
+                "sku_detalle": _sku,
+                "productos_top": _top,
+                "oferta_real": _ofe,
                 "fecha_snapshot": date.today().isoformat(),
             })
         gerencia_clientes_rows.sort(key=lambda r: -r["venta_mtd"])
