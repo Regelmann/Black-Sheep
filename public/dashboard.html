@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0b0d">
 <title>BlackSheep · Dashboard Gerencial</title>
 <style>
   :root {
@@ -314,6 +313,11 @@
 </div>
 
 <script>
+// Dashboard gerencial: no registrar SW (evita pantalla en blanco)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations?.().then(rs => rs.forEach(r => r.unregister())).catch(() => {})
+}
+
 // ── Config ──────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://ihhnfouwviuyycltgafc.supabase.co'
 // Pegá la anon key (pública, con RLS). Nunca service_role aquí.
