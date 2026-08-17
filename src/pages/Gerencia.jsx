@@ -594,6 +594,24 @@ export default function Gerencia({ esGerente }) {
     }
   }, [tab, actRango, carteraCache])
 
+  // Precargar SKU de los top 3 clientes de cada zona en background
+  // Así cuando el usuario toca "▼ mix" ya está en cache → sin lag
+  useEffect(() => {
+    if (loading || !detalleCli.length) return
+    const tops = detalleCli
+      .filter(d => d.venta_mtd > 0 && (d.sku_detalle || d.productos_top))
+      .sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
+      .slice(0, 15)
+    for (const d of tops) {
+      const key = d.cliente_key || d.nombre_cliente || d.nombre
+      if (!key || cliSku[key]) continue
+      // Precargar en background sin bloquear la UI
+      setTimeout(() => {
+        cargarSkuCliente(d.cliente_key, d.nombre_cliente || d.nombre)
+      }, 100)
+    }
+  }, [loading, detalleCli]) // eslint-disable-line
+
   async function cargarSkuCliente(clienteKey, nombreHint) {
     const key = clienteKey || nombreHint || 'sin-key'
     if (cliSel === key) { setCliSel(null); return }
@@ -957,22 +975,60 @@ export default function Gerencia({ esGerente }) {
               />
             </div>
           </div>
-          {noAsignado > 0 && (
-            <div
-              style={{
-                marginTop: 10,
-                padding: '8px 10px',
-                background: '#fef3c7',
-                borderRadius: 10,
-                fontSize: 12,
-                color: '#92400e',
-              }}
-            >
-              <b>{money(noAsignado)}</b> ({Math.round((noAsignado / Math.max(totalVenta, 1)) * 100)}%) sin
-              zona en maestra. Completar columna de asignación baja el “NO_ASIGNADOS” y sube el peso real de
-              cada ejecutivo.
-            </div>
-          )}
+          {noAsignado > 0 && (() => {
+            const cliNoAsig = (
+              clientesDelCanal['NO_ASIGNADO'] ||
+              clientesDelCanal['NO ASIGNADO'] ||
+              Object.entries(clientesDelCanal).find(([k]) => /NO.*ASIG/i.test(k))?.[1] || []
+            ).filter(d => Number(d.venta_mtd) > 0)
+              .sort((a, b) => (Number(b.venta_mtd)||0) - (Number(a.venta_mtd)||0))
+            const openNoAsig = canalSel === '_NO_ASIGNADO'
+            return (
+              <div style={{ marginTop: 10, borderRadius: 12, border: '1.5px solid #fde68a', overflow: 'hidden' }}>
+                <button type="button"
+                  onClick={() => setCanalSel(openNoAsig ? null : '_NO_ASIGNADO')}
+                  style={{ width: '100%', display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', padding: '10px 12px', background: '#fef3c7',
+                    border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <div style={{ fontSize: 12, color: '#92400e', textAlign: 'left' }}>
+                    <b>⚠ {money(noAsignado)}</b>
+                    {' '}({Math.round((noAsignado / Math.max(totalVenta, 1)) * 100)}%) sin zona en maestra
+                    <span style={{ display: 'block', fontSize: 11, marginTop: 2, color: '#b45309' }}>
+                      {openNoAsig ? '▲ cerrar' : `▼ ver ${cliNoAsig.length} clientes a asignar`}
+                    </span>
+                  </div>
+                </button>
+                {openNoAsig && (
+                  <div style={{ background: '#fffbeb', padding: '10px 12px 14px' }}>
+                    {cliNoAsig.length === 0 && (
+                      <p style={{ fontSize: 12, color: '#92400e' }}>Sin detalle. Corré el ciclo v1.24.</p>
+                    )}
+                    {cliNoAsig.slice(0, 30).map((d, i) => (
+                      <div key={d.cliente_key || i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '7px 0', borderBottom: i < Math.min(cliNoAsig.length,30) - 1 ? '1px solid #fde68a' : 'none',
+                      }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: '#1c1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {d.nombre_cliente || d.cliente_key}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#78716c' }}>
+                            {d.cliente_key}{d.comuna ? ` · ${d.comuna}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 700, color: '#c2410c', flexShrink: 0, marginLeft: 8, fontSize: 13 }}>
+                          {money(d.venta_mtd)}
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 10, fontSize: 11, color: '#92400e', background: '#fef3c7', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
+                      → Abrí la maestra, buscá estos RUTs y asignales el ejecutivo. El próximo ciclo los mueve a la zona correcta.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Tendencia ARRIBA — tocá un mes para ver detalle */}
