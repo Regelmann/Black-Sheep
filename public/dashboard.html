@@ -321,7 +321,7 @@ if ('serviceWorker' in navigator) {
 // ── Config ──────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://ihhnfouwviuyycltgafc.supabase.co'
 // Pegá la anon key (pública, con RLS). Nunca service_role aquí.
-const SUPABASE_ANON = (localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4') || window.__BS_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4').trim() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaG5mb3V3dml1eXljbHRnYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MjYxMjEsImV4cCI6MjEwMTIwMjEyMX0.zZC8R3xE5UuVG14Z-JB8RCJwElEhBMKHzYB4gfJtBd4'
+const SUPABASE_ANON = (localStorage.getItem('bs_anon') || window.__BS_ANON || '').trim() || ''
 
 const TERRENO = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
 const REFRESH_MS = 5 * 60 * 1000
@@ -471,9 +471,9 @@ async function loadAll() {
       q('gerencia', 'select=*&order=venta_mtd.desc'),
       q('focos', 'select=*'),
       q('tendencia', 'select=*&order=mes.asc'),
-      q('gerencia_clientes', 'select=ejecutivo,cliente_key,nombre_cliente,venta_mtd,pct_zona,sku_detalle,productos_top,comuna&venta_mtd=gt.0&order=venta_mtd.desc&limit=400'),
-      q('cartera', 'select=nombre_cliente,ejecutivo_id,venta_mtd,estado_fuga,dias_sin_comprar,sku_detalle,fecha_snapshot&order=venta_mtd.desc&limit=800'),
-      q('stock', 'select=producto_nombre,sku_canon,es_foco_mes,cobertura_dias,stock_operativo,estado_stock&order=cobertura_dias.asc&limit=200'),
+      q('gerencia_clientes', 'select=ejecutivo,cliente_key,nombre_cliente,venta_mtd,pct_zona,comuna&venta_mtd=gt.0&order=venta_mtd.desc&limit=400'),
+      q('cartera', 'select=*&order=venta_mtd.desc&limit=800'),
+      q('stock', 'select=*&order=cobertura_dias.asc&limit=200'),
     ])
 
     _gerCli = (gerCliRaw || []).filter(d => Number(d.venta_mtd) > 0)
