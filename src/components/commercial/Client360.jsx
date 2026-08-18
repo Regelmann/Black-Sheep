@@ -117,7 +117,7 @@ export default function Client360({
         ) : null}
         {!c.es_bloqueado && (
           <button type="button" className="c360-cta-main" onClick={() => onPedido?.(c)}>
-            {action.cta}
+            Pedido en terreno
           </button>
         )}
       </div>
@@ -188,11 +188,7 @@ export default function Client360({
         <button type="button" className="c360-btn c360-btn-ghost" onClick={() => onNota?.(c)}>Nota</button>
       </div>
 
-      {!c.es_bloqueado && (
-        <button type="button" className="c360-pedido" onClick={() => onPedido?.(c)}>
-          Pedido en terreno
-        </button>
-      )}
+      
 
       {/* Mix colapsable */}
       <button type="button" className="c360-mix-toggle" onClick={() => setMixOpen(v => !v)}>
