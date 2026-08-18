@@ -34,18 +34,23 @@ export default function Login() {
     }}>
       {/* Logo y marca */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{
-          width: 64, height: 64, margin: '0 auto 16px',
-          borderRadius: 20, background: 'linear-gradient(145deg, #c2410c, #9a3412)',
-          color: '#fff', fontWeight: 900, fontSize: 22, letterSpacing: '-0.02em',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 12px 32px rgba(194,65,12,0.4)',
-        }}>KF</div>
+        <img
+          src="/brand/logo-mark-192.png"
+          alt="Black Sheep"
+          width={80}
+          height={80}
+          style={{
+            margin: '0 auto 16px',
+            display: 'block',
+            borderRadius: 20,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
+          }}
+        />
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em', color: '#1c1917' }}>
-          KeyFoods Field
+          Black Sheep Field
         </h1>
         <p style={{ margin: '8px 0 0', color: '#78716c', fontSize: 14, fontWeight: 500 }}>
-          Tu día de terreno · ordenado por impacto
+          Inteligencia comercial en terreno
         </p>
       </div>
 

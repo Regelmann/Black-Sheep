@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Black Sheep">
+  <path fill="none" stroke="#16a34a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"
+        d="M128 220c-18-40 12-96 68-108 20-48 88-64 128-28 36-24 96-8 108 40 48 8 72 56 52 100 28 36 12 92-28 112 4 44-28 84-72 88-20 36-72 48-108 20-40 24-92 4-108-36-48 4-84-36-72-80-24-28-16-72 32-108z"/>
+  <path fill="#1c1917" stroke="#16a34a" stroke-width="12" stroke-linejoin="round"
+        d="M176 210c20-48 56-78 96-82 44 2 84 34 104 82 12 28 8 70-6 98-18 36-54 62-98 64s-84-24-104-62c-16-30-18-72-8-100z"/>
+  <path fill="none" stroke="#16a34a" stroke-width="8" stroke-linecap="round"
+        d="M220 150v36m36-44v40m36-36v36"/>
+  <circle cx="220" cy="146" r="7" fill="#16a34a"/>
+  <circle cx="256" cy="138" r="7" fill="#16a34a"/>
+  <circle cx="292" cy="146" r="7" fill="#16a34a"/>
+  <path fill="#1c1917" stroke="#16a34a" stroke-width="10"
+        d="M150 230c-36 8-56 40-40 72 28-12 52-36 56-64z"/>
+  <path fill="#1c1917" stroke="#16a34a" stroke-width="10"
+        d="M362 230c36 8 56 40 40 72-28-12-52-36-56-64z"/>
+  <ellipse cx="220" cy="248" rx="22" ry="14" fill="#052e16"/>
+  <ellipse cx="292" cy="248" rx="22" ry="14" fill="#052e16"/>
+  <ellipse cx="224" cy="248" rx="12" ry="7" fill="#4ade80"/>
+  <ellipse cx="296" cy="248" rx="12" ry="7" fill="#4ade80"/>
+  <path fill="#0c0a09" stroke="#16a34a" stroke-width="8" stroke-linejoin="round"
+        d="M230 278c8 22 20 34 26 34s18-12 26-34c-16-6-36-6-52 0z"/>
+  <path fill="none" stroke="#16a34a" stroke-width="8" stroke-linecap="round"
+        d="M256 352v28"/>
+  <circle cx="256" cy="386" r="7" fill="#16a34a"/>
+</svg>

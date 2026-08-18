@@ -13,7 +13,7 @@ import { NavBar } from './components.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-V56.4-CAT'
+export const BUILD_STAMP = 'v-BS-V56.5-LOGO'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
