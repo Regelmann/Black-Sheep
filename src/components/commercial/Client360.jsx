@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { money } from '../components.jsx'
-import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach'
-import { skusAReponer } from '../lib/metrics'
+import { money } from '../../components.jsx'
+import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../../lib/coach'
+import { skusAReponer } from '../../lib/metrics'
 
 const limpiaOferta = t => (t ? String(t).replace(/_/g, ' ').replace(/\s+/g, ' ').trim() : '')
 
