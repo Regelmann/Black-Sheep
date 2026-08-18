@@ -13,7 +13,7 @@ import { NavBar } from './components.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-UX-V56.0'
+export const BUILD_STAMP = 'v-BS-V56.3-COM'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)

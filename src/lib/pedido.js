@@ -133,7 +133,7 @@ export async function listarPedidosHoy(ejecutivoId) {
   start.setHours(0, 0, 0, 0)
   const { data, error } = await supabase
     .from('pedidos')
-    .select('id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en')
+    .select('id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado')
     .eq('ejecutivo_id', ejecutivoId)
     .gte('creado_en', start.toISOString())
     .order('creado_en', { ascending: false })

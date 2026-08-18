@@ -15,6 +15,8 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
   const [items, setItems] = useState([])
   const [offer, setOffer] = useState(null)
   const [q, setQ] = useState('')
+  const [soloConStock, setSoloConStock] = useState(true)
+  const [cat, setCat] = useState('Todos')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -36,12 +38,23 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
       } else {
         // Primera propuesta: habituales del cliente + focos con stock.
         const habituales = parseSkuDetalle(cliente?.sku_detalle || '').map(x => String(x.nombre || '').toLowerCase())
-        const seed = (s || []).filter(x => {
-          const name = String(x.producto_nombre || '').toLowerCase()
-          const disponible = Number(x.stock_operativo || 0) > 0 && !['SIN_STOCK','VENCIDO'].includes(x.estado_stock)
-          const habitual = habituales.some(h => h && (name.includes(h.slice(0, 28)) || h.includes(name.slice(0, 28))))
-          return disponible && (habitual || x.es_foco_mes)
-        }).slice(0, 18)
+        const seed = (s || [])
+          .filter(x => {
+            const name = String(x.producto_nombre || '').toLowerCase()
+            const disponible = Number(x.stock_operativo || 0) > 0 && !['SIN_STOCK','VENCIDO'].includes(String(x.estado_stock||''))
+            const tienePrecio = Number(x.precio_unidad || x.precio_caja || 0) > 0
+            const habitual = habituales.some(h => h && (name.includes(h.slice(0, 28)) || h.includes(name.slice(0, 28))))
+            return disponible && (habitual || x.es_foco_mes || tienePrecio)
+          })
+          .sort((a, b) => {
+            const pa = Number(a.precio_unidad || a.precio_caja || 0) > 0 ? 0 : 1
+            const pb = Number(b.precio_unidad || b.precio_caja || 0) > 0 ? 0 : 1
+            if (pa !== pb) return pa - pb
+            const fa = a.es_foco_mes ? 0 : 1
+            const fb = b.es_foco_mes ? 0 : 1
+            return fa - fb
+          })
+          .slice(0, 24)
         setItems(seed.map((x, idx) => ({
           sku_canon: String(x.sku_canon), producto_nombre: x.producto_nombre,
           precio_lista: Number(x.precio_unidad || x.precio_caja || 0) || null, precio_cliente: null,
@@ -142,7 +155,7 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
       </header>
       {loading ? <div className="kf-offer-loading">Cargando catálogo…</div> : <>
         <div className="kf-offer-toolbar">
-          <input className="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar producto…" />
+          <input className="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar producto o SKU producto…" />
           <div className="kf-offer-count">{items.length} productos seleccionados</div>
         </div>
         <div className="kf-offer-grid">

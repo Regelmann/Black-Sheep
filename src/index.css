@@ -352,10 +352,10 @@ a { color: inherit; text-decoration: none; }
 .a-red .alerta-dot { background: #dc2626; }
 
 .build-stamp {
-  position: fixed; bottom: calc(var(--nav-h) + 6px); right: 10px; z-index: 90;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.04em; color: #fff;
-  background: var(--brand); padding: 4px 10px; border-radius: 8px;
-  pointer-events: none; box-shadow: 0 4px 12px var(--brand-ring);
+  position: fixed; bottom: calc(var(--nav-h, 68px) + env(safe-area-inset-bottom, 0px) + 4px);
+  right: 8px; z-index: 50; font-size: 9px; font-weight: 600;
+  color: rgba(120,113,108,.45); background: transparent; border: none;
+  pointer-events: none; opacity: .65;
 }
 
 .skeleton {
@@ -620,20 +620,10 @@ a { color: inherit; text-decoration: none; }
 }
 
 .build-stamp {
-  position: fixed;
-  right: max(8px, calc((100vw - 480px) / 2 + 8px));
-  bottom: calc(var(--nav-h) + var(--safe-b) + 6px);
-  z-index: 50;
-  padding: 4px 8px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 999px;
-  background: rgba(24,22,20,.82);
-  color: rgba(255,255,255,.72);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  pointer-events: none;
-  backdrop-filter: blur(8px);
+  position: fixed; bottom: calc(var(--nav-h, 68px) + env(safe-area-inset-bottom, 0px) + 4px);
+  right: 8px; z-index: 50; font-size: 9px; font-weight: 600;
+  color: rgba(120,113,108,.45); background: transparent; border: none;
+  pointer-events: none; opacity: .65;
 }
 
 

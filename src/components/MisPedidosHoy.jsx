@@ -71,15 +71,15 @@ export default function MisPedidosHoy({ ejecutivoId }) {
                       {folioPedido(p.id)}
                     </span>
                     <span style={{ fontSize: 10, color: '#a8a29e' }}>
-                      {p.estado === 'enviado' ? '✓ enviado' : '· borrador'}
+                      {p.fuente === 'catalogo_publico' ? '🌐 catálogo' : (p.estado === 'enviado' || p.estado === 'recibido' ? '✓ ' + p.estado : '· ' + (p.estado || 'borrador'))}
                     </span>
                   </div>
                   <div style={{ fontWeight: 700, fontSize: 13.5, color: '#1a1614' }}>
-                    {p.nombre_cliente || p.cliente_key || 'Cliente'}
+                    {p.nombre_cliente || p.cliente_key || 'Sin nombre de cliente'}
                   </div>
                   <div style={{ fontSize: 12, color: '#78716c' }}>
                     {n} línea{n === 1 ? '' : 's'}
-                    {p.total_estimado > 0 ? ` · $${Math.round(p.total_estimado).toLocaleString('es-CL')}` : ''}
+                    {(Number(p.total_estimado) > 0) ? ` · $${Math.round(Number(p.total_estimado)).toLocaleString('es-CL')}` : ''}
                     {p.nota ? ` · ${String(p.nota).slice(0, 30)}` : ''}
                   </div>
                 </div>
