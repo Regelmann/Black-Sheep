@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { parseSkuDetalle } from '../lib/coach'
+import { precioUnitarioDesdeSku } from '../lib/pedido'
 
 const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')
 
@@ -55,11 +56,27 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
             return fa - fb
           })
           .slice(0, 24)
-        setItems(seed.map((x, idx) => ({
-          sku_canon: String(x.sku_canon), producto_nombre: x.producto_nombre,
-          precio_lista: Number(x.precio_unidad || x.precio_caja || 0) || null, precio_cliente: null,
-          visible: true, destacado: Boolean(x.es_foco_mes), prioridad: idx,
-        })))
+        const hist = parseSkuDetalle(cliente?.sku_detalle || '')
+        const histByName = {}
+        hist.forEach(h => {
+          const k = String(h.nombre || '').toLowerCase().slice(0, 28)
+          if (k) histByName[k] = h
+        })
+        setItems(seed.map((x, idx) => {
+          const name = String(x.producto_nombre || '').toLowerCase()
+          const hit = Object.entries(histByName).find(([k]) => name.includes(k) || k.includes(name.slice(0, 28)))
+          const histPrice = hit ? precioUnitarioDesdeSku(hit[1]) : null
+          const lista = Number(x.precio_unidad || x.precio_caja || 0) || null
+          return {
+            sku_canon: String(x.sku_canon),
+            producto_nombre: x.producto_nombre,
+            precio_lista: lista,
+            precio_cliente: histPrice && histPrice > 0 ? Math.round(histPrice) : null,
+            visible: true,
+            destacado: Boolean(x.es_foco_mes) || Boolean(hit),
+            prioridad: hit ? idx : 50 + idx,
+          }
+        }))
       }
       setLoading(false)
     })()
