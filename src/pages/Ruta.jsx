@@ -159,6 +159,7 @@ export default function Ruta({ session }) {
   const [ruta, setRuta] = useState(null)
   const [visitas, setVisitas] = useState([])
   const [territorio, setTerritorio] = useState([])
+  const [pedidoCliente, setPedidoCliente] = useState(null)
   const [activos, setActivos] = useState(() => new Set(['ruta', 'riesgo', 'activo', 'recuperar', 'prospecto']))
   const [selected, setSelected] = useState(null)
   const [mapQ, setMapQ] = useState('')
@@ -364,6 +365,16 @@ export default function Ruta({ session }) {
         }
       }
       if (ep) console.warn('prospectos', ep.message)
+      // FILTER_BY_COMUNA_ZONE: zona de Places a veces incorrecta; manda comuna.
+      if (comunaSet.size) {
+        const before = pros.length
+        pros = pros.filter(p => {
+          const cz = normComuna(p.comuna)
+          if (cz) return comunaSet.has(cz)
+          return String(p.zona || '').toUpperCase().trim() === zonaNom
+        })
+        console.log('prospectos filtrados por comuna zona', zonaNom, before, '→', pros.length)
+      }
       let nPros = 0, nSkipGeo = 0
       ;(pros || []).forEach(p => {
         if (p.lat == null || p.lng == null) { nSkipGeo++; return }
@@ -992,7 +1003,7 @@ export default function Ruta({ session }) {
 
       {!loading && (
         <div style={{ padding: '14px 16px 0' }}>
-          <MisPedidosHoy ejecutivoId={uid} />
+          <MisPedidosHoy ejecutivoId={uid} onOpenPedido={(p) => setPedidoCliente({ cliente_key: p.cliente_key, nombre_cliente: p.nombre_cliente, _pedido: p })} />
         </div>
       )}
 
@@ -1602,13 +1613,14 @@ export default function Ruta({ session }) {
         </div>
       )}
 
-{pedidoFromMap && (
+{(pedidoFromMap || pedidoCliente) && (
         <PedidoSheet
-          cliente={pedidoFromMap}
+          initialPedido={pedidoCliente?._pedido || null}
+          cliente={pedidoCliente || pedidoFromMap}
           aReponer={[]}
           ejecutivoId={uid}
           ejecutivoNombre={eje?.nombre || eje?.zonaVista}
-          onClose={() => setPedidoFromMap(null)}
+          onClose={() => { setPedidoFromMap(null); setPedidoCliente(null) }}
         />
       )}
       {notaFromMap && (

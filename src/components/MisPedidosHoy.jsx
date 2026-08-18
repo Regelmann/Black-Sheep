@@ -4,7 +4,7 @@ import { listarPedidosHoy, folioPedido } from '../lib/pedido'
 /**
  * Lista compacta de pedidos guardados hoy (P0 terreno).
  */
-export default function MisPedidosHoy({ ejecutivoId }) {
+export default function MisPedidosHoy({ ejecutivoId, onOpenPedido }) {
   const [rows, setRows] = useState([])
   const [err, setErr] = useState('')
   const [open, setOpen] = useState(true)
@@ -46,7 +46,7 @@ export default function MisPedidosHoy({ ejecutivoId }) {
           )}
           {!err && rows.length === 0 && (
             <div style={{ fontSize: 13, color: '#a8a29e' }}>
-              Todavía no hay pedidos guardados hoy. Abrí un cliente → Pedido en terreno.
+              Todavía no hay pedidos hoy. Desde el cliente: Catálogo o Pedido interno.
             </div>
           )}
           {rows.map(p => {
@@ -55,14 +55,22 @@ export default function MisPedidosHoy({ ejecutivoId }) {
               ? new Date(p.creado_en).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
               : ''
             return (
-              <div
+              <button
                 key={p.id}
+                type="button"
+                onClick={() => onOpenPedido?.(p)}
                 style={{
+                  width: '100%',
+                  textAlign: 'left',
                   padding: '10px 0',
+                  border: 'none',
                   borderTop: '1px solid #ebe6df',
+                  background: 'transparent',
                   display: 'flex',
                   justifyContent: 'space-between',
                   gap: 8,
+                  cursor: onOpenPedido ? 'pointer' : 'default',
+                  fontFamily: 'inherit',
                 }}
               >
                 <div style={{ minWidth: 0 }}>
@@ -85,8 +93,9 @@ export default function MisPedidosHoy({ ejecutivoId }) {
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', whiteSpace: 'nowrap' }}>
                   {hora}
+                  {onOpenPedido ? ' · editar' : ''}
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>

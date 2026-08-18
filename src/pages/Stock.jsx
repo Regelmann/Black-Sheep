@@ -229,9 +229,9 @@ export default function Stock() {
           ))}
         </div>
 
-        {/* Alertas compactas — debajo de KPIs */}
+        {/* Alertas como chips (mismo lenguaje visual que filtros) */}
         {insights.length > 0 && (
-          <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ marginBottom: 12, display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
             {insights.map((ins, i) => (
               <button
                 key={i}
@@ -243,24 +243,20 @@ export default function Stock() {
                   else setFiltro('Todos')
                 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  width: '100%', textAlign: 'left',
-                  background: '#fff',
-                  borderRadius: 12,
-                  padding: '12px 14px',
-                  border: `1px solid ${ins.border || '#e7e5e4'}`,
-                  borderLeft: `4px solid ${ins.color}`,
-                  cursor: 'pointer', fontFamily: 'inherit',
+                  flex: '0 0 auto',
+                  borderRadius: 999,
+                  padding: '8px 12px',
+                  border: `1.5px solid ${ins.color}`,
+                  background: ins.bg || '#fff7ed',
+                  color: ins.color,
+                  fontWeight: 800,
+                  fontSize: 12,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: ins.color }}>{ins.title}</div>
-                  <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>{ins.accion}</div>
-                </div>
-                <div style={{
-                  fontSize: 11, fontWeight: 800, color: ins.color,
-                  background: ins.bg, padding: '6px 10px', borderRadius: 999, whiteSpace: 'nowrap',
-                }}>Ver →</div>
+                {ins.title}
               </button>
             ))}
           </div>

@@ -22,7 +22,7 @@ const money = n => {
  * Bottom sheet pedido en terreno.
  * Precio y cantidad desde historial del cliente; stock real.
  */
-export default function PedidoSheet({
+export default function PedidoSheet({ initialPedido, 
   cliente,
   aReponer = [],
   ejecutivoId,
@@ -34,10 +34,34 @@ export default function PedidoSheet({
     () => sugerirLineasDesdeCliente(cliente, aReponer).filter(l => l.nombre && l.nombre.trim().length > 1),
     [cliente, aReponer]
   )
-  const [lineas, setLineas] = useState(() =>
-    sugeridas.map(l => ({ ...l, cantidad: l.cantidad || 1 }))
-  )
-  const [nota, setNota] = useState('')
+  const [lineas, setLineas] = useState(() => {
+    if (initialPedido?.lineas?.length) {
+      return initialPedido.lineas.map(l => ({
+        sku_canon: l.sku || l.sku_canon,
+        nombre: l.nombre || l.producto_nombre,
+        producto_nombre: l.nombre || l.producto_nombre,
+        cantidad: Number(l.cantidad) || 1,
+        precio: Number(l.precio) || 0,
+      }))
+    }
+    return sugeridas.map(l => ({ ...l, cantidad: l.cantidad || 1 }))
+  })
+  const [nota, setNota] = useState(initialPedido?.nota || '')
+  const [pedidoExistenteId, setPedidoExistenteId] = useState(initialPedido?.id || null)
+  useEffect(() => {
+    if (!initialPedido?.id) return
+    if (initialPedido?.lineas?.length) {
+      setLineas(initialPedido.lineas.map(l => ({
+        sku_canon: l.sku || l.sku_canon,
+        nombre: l.nombre || l.producto_nombre,
+        producto_nombre: l.nombre || l.producto_nombre,
+        cantidad: Number(l.cantidad) || 1,
+        precio: Number(l.precio) || 0,
+      })))
+    }
+    setPedidoExistenteId(initialPedido.id || null)
+    if (initialPedido.nota) setNota(initialPedido.nota)
+  }, [initialPedido?.id])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [stock, setStock] = useState([])

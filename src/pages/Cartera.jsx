@@ -855,6 +855,12 @@ export default function Cartera({ session }) {
                             : `Sin comprar ${c.dias_sin_comprar} d`}
                         </span>
                       )}
+                      {c.ultima_compra && (
+                        <span>
+                          {(c.dias_sin_comprar != null) ? ' · ' : ''}
+                          Últ. venta {String(c.ultima_compra).slice(0, 10).split('-').reverse().join('/')}
+                        </span>
+                      )}
                     </div>
                   )}
 
@@ -880,13 +886,12 @@ export default function Cartera({ session }) {
                     </button>
                   </div>
 
-                  <button type="button" className="acc-btn acc-offer" onClick={e => { e.stopPropagation(); setOfertaCliente(c) }}>Oferta</button>
-
+                  {/* Un solo CTA comercial: catálogo permanente del cliente */}
                   <button
                     type="button"
                     onClick={e => {
                       e.stopPropagation()
-                      setPedidoCliente(c)
+                      setOfertaCliente(c)
                     }}
                     style={{
                       width: '100%',
@@ -903,7 +908,18 @@ export default function Cartera({ session }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Pedido en terreno
+                    Catálogo / precios del cliente
+                  </button>
+                  <button
+                    type="button"
+                    className="acc-btn"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setPedidoCliente(c)
+                    }}
+                    style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 10, border: '1px solid #e7e5e4', background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Pedido interno (bodega)
                   </button>
 
                   {/* Más detalle (colapsado) */}
