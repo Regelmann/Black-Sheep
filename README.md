@@ -96,8 +96,6 @@ scripts/
   SUPABASE_FIX_PROSPECTOS_RLS.sql
 ```
 
-## Dashboard gerencial
-Tras el deploy: https://TU-APP.vercel.app/dashboard
-Configurar anon key una vez en consola:
-  localStorage.setItem("bs_anon", "TU_ANON_KEY")
 
+## UX V56.1
+Capa visual de `Hoy` / Commercial Command Center. No modifica lógica de negocio ni esquema de Supabase.

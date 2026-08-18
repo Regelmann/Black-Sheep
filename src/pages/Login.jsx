@@ -42,7 +42,7 @@ export default function Login() {
           boxShadow: '0 12px 32px rgba(194,65,12,0.4)',
         }}>KF</div>
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em', color: '#1c1917' }}>
-          KeyFoods Field
+          Black Sheep Field
         </h1>
         <p style={{ margin: '8px 0 0', color: '#78716c', fontSize: 14, fontWeight: 500 }}>
           Tu día de terreno · ordenado por impacto

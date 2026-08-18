@@ -9,9 +9,10 @@ import Cartera from './pages/Cartera.jsx'
 import Stock from './pages/Stock.jsx'
 import Gerencia from './pages/Gerencia.jsx'
 import { NavBar } from './components.jsx'
+import { AppShell } from './components/layout/AppShell.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-UX-V57'
+export const BUILD_STAMP = 'v-BS-V56.2'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
@@ -34,14 +35,7 @@ function ZonaSelector({ todos, zonaVista, onChange }) {
     'ZONA SUR': '#ea580c',
   }
   return (
-    <div style={{
-      position: 'sticky', top: 0, zIndex: 200,
-      background: 'rgba(26,22,20,0.94)',
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      padding: '10px 14px', display: 'flex', gap: 8, overflowX: 'auto',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
-    }}>
+    <div className="kf-zone-bar" aria-label="Selector de zona">
       {todos.map(e => {
         const zona = e.zona || e.nombre
         const activo = zona === zonaVista
@@ -49,18 +43,9 @@ function ZonaSelector({ todos, zonaVista, onChange }) {
           <button
             key={e.id || zona}
             type="button"
-            style={{
-              flex: '0 0 auto', borderRadius: 999, padding: '9px 16px',
-              fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
-              border: activo ? 'none' : '1px solid rgba(255,255,255,0.12)',
-              cursor: 'pointer',
-              color: activo ? '#fff' : 'rgba(255,255,255,0.55)',
-              background: activo
-                ? (color[zona] || '#c2410c')
-                : 'rgba(255,255,255,0.06)',
-              boxShadow: activo ? '0 4px 14px rgba(0,0,0,0.25)' : 'none',
-              letterSpacing: '0.02em',
-            }}
+            className={'kf-zone-btn' + (activo ? ' is-active' : '')}
+            style={{ '--zone-color': color[zona] || '#c2410c' }}
+            aria-pressed={activo}
             onClick={() => onChange(zona)}
           >
             {zona}
@@ -190,13 +175,9 @@ export default function App() {
       {esGerente && todosEjecutivos.length > 0 && (
         <ZonaSelector todos={todosEjecutivos} zonaVista={zonaVista} onChange={cambiarZona} />
       )}
+      <AppShell>
       <div className="app-body">
-      <div className="build-stamp" style={{
-        position: 'fixed', bottom: 64, right: 8, zIndex: 50,
-        fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
-        color: '#fff', background: '#c2410c',
-        padding: '4px 10px', borderRadius: 8, pointerEvents: 'none',
-      }}>{BUILD_STAMP}</div>
+      <div className="build-stamp">{BUILD_STAMP}</div>
         <Routes>
           <Route path="/" element={<Hoy />} />
           <Route path="/mapa" element={<Ruta session={session} />} />
@@ -208,6 +189,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
+      </AppShell>
       <NavBar
         esGerente={esGerente}
         onLogout={async () => {

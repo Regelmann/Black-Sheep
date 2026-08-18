@@ -272,8 +272,8 @@ export default function Hoy() {
         </div>
       )}
 
-      <div className="page-hero">
-        <div className="eyebrow">KeyFoods · Mi día</div>
+      <div className="page-hero hoy-hero">
+        <div className="eyebrow">Black Sheep · Mi día</div>
         <h1>
           {saludo()}, {nombreCorto}
         </h1>
@@ -283,11 +283,11 @@ export default function Hoy() {
         </p>
       </div>
 
-      <div className="wrap">
+      <div className="wrap hoy-wrap">
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${m.totalClientes} clientes`} />}
 
         {/* Hero venta + meta integrada (antes tab Metas) */}
-        <div className="hero-metric">
+        <div className="hero-metric hoy-sales-hero">
           <div className="hm-label">Venta del mes</div>
           <div className="hm-value">{money(m.ventaMtd)}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
@@ -384,7 +384,7 @@ export default function Hoy() {
         {/* Focos del mes (ex-Metas) */}
         {focos.length > 0 && (
           <>
-            <div className="section-title">Focos del mes</div>
+            <div className="section-title hoy-section-title">Focos del mes</div>
             {focos.map((f, i) => {
               const vendido = Number(f.vendido_unidad) || 0
               const metaU   = Number(f.meta_unidad) || 0
@@ -450,7 +450,7 @@ export default function Hoy() {
         )}
 
         {/* Day Summary — 6 métricas en 3x2 */}
-        <div className="section-title">Hoy</div>
+        <div className="section-title hoy-section-title">Resumen de cartera</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
           {[
             { n: m.reponerHoy,  l: 'Reponer',    color: '#c2410c', route: '/cartera?filtro=ReponerHoy', bg: '#fff4eb' },
@@ -474,7 +474,7 @@ export default function Hoy() {
         </div>
 
         {/* Action Queue */}
-        <div className="section-title" style={{ marginBottom: 8 }}>Cola de acción</div>
+        <div className="section-title hoy-section-title" style={{ marginBottom: 8 }}>Tu foco de hoy</div>
         <button
           type="button"
           onClick={() => nav('/mapa')}

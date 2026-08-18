@@ -2,8 +2,5 @@
   "framework": "vite",
   "installCommand": "npm ci --legacy-peer-deps --no-audit --no-fund",
   "buildCommand": "npm run build",
-  "rewrites": [
-    { "source": "/dashboard", "destination": "/dashboard.html" },
-    { "source": "/((?!dashboard).*)", "destination": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
