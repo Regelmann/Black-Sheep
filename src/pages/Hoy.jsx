@@ -273,7 +273,7 @@ export default function Hoy() {
       )}
 
       <div className="page-hero hoy-hero">
-        <div className="eyebrow">Black Sheep · Mi día</div>
+        <div className="eyebrow">KeyFoods · Mi día</div>
         <h1>
           {saludo()}, {nombreCorto}
         </h1>

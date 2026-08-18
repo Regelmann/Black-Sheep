@@ -227,11 +227,11 @@ export default function PedidoSheet({
         style={{
           width: '100%',
           maxWidth: 480,
-          maxHeight: '90dvh',
+          maxHeight: '92dvh',
           overflow: 'auto',
           background: '#fffaf5',
           borderRadius: '20px 20px 0 0',
-          padding: '12px 16px calc(28px + env(safe-area-inset-bottom, 0px))',
+          padding: '12px 16px 24px',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
         }}
       >

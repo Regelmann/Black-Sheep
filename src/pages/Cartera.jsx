@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PedidoSheet from '../components/PedidoSheet.jsx'
-import Client360 from '../components/commercial/Client360.jsx'
+import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
 import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
@@ -124,6 +124,7 @@ export default function Cartera({ session }) {
   const [q, setQ] = useState(() => searchParams.get('q') || '')
   const [notaDe, setNotaDe] = useState(null)
   const [pedidoCliente, setPedidoCliente] = useState(null)
+  const [ofertaCliente, setOfertaCliente] = useState(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [expandido, setExpandido] = useState(null)
   const [show, setShow] = useState(PAGE)
@@ -727,15 +728,338 @@ export default function Cartera({ session }) {
                 </div>
               </div>
 
+              {/* ── Detalle ── */}
               {abierto && (
-                <Client360
-                  c={c}
-                  navUrl={nav}
-                  onPedido={setPedidoCliente}
-                  onNota={setNotaDe}
-                  onBloquear={bloquear}
-                  onDesbloquear={desbloquear}
-                />
+                <div style={{ padding: '0 16px 16px' }}>
+                  {/* Métricas simples */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 8,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: '#faf8f5',
+                        borderRadius: 12,
+                        padding: '12px 14px',
+                        border: '1px solid #ebe6e0',
+                      }}
+                    >
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', letterSpacing: '0.04em' }}>
+                        ESTE MES
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1614', marginTop: 2 }}>
+                        {money(mtd)}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        background: '#faf8f5',
+                        borderRadius: 12,
+                        padding: '12px 14px',
+                        border: '1px solid #ebe6e0',
+                      }}
+                    >
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', letterSpacing: '0.04em' }}>
+                        PROMEDIO
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1614', marginTop: 2 }}>
+                        {money(prom)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {pct != null && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#78716c',
+                          marginBottom: 6,
+                        }}
+                      >
+                        <span>Ritmo del mes</span>
+                        <span style={{ color: pct >= 100 ? '#15803d' : pct >= 50 ? '#b45309' : '#dc2626' }}>
+                          {pct}%
+                        </span>
+                      </div>
+                      <div className="progress-bg">
+                        <div
+                          className="progress-fill"
+                          style={{
+                            width: pctBar + '%',
+                            background: pct >= 100 ? '#16a34a' : pct >= 50 ? '#f59e0b' : '#ef4444',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Una sola acción prioritaria */}
+                  {(ofertaTxt || topReponer.length > 0) && (
+                    <div
+                      style={{
+                        background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                        border: '1.5px solid #fb923c',
+                        borderRadius: 12,
+                        padding: '12px 14px',
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          color: '#c2410c',
+                          letterSpacing: '0.06em',
+                          marginBottom: 4,
+                        }}
+                      >
+                        OFRECÉ HOY
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1614', lineHeight: 1.35 }}>
+                        {ofertaTxt ||
+                          topReponer.map(s => s.nombre).join(' · ')}
+                      </div>
+                      {topReponer.length > 0 && ofertaTxt && (
+                        <div style={{ fontSize: 12, color: '#9a3412', marginTop: 6, lineHeight: 1.35 }}>
+                          Reponer: {topReponer.map(s => s.nombre.split(' ').slice(0, 4).join(' ')).join(' · ')}
+                          {aReponer.length > 2 ? ` +${aReponer.length - 2}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Contacto breve */}
+                  {(c.persona_contacto || c.dias_sin_comprar != null) && (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: '#78716c',
+                        marginBottom: 12,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {c.persona_contacto && <span>{c.persona_contacto}</span>}
+                      {c.persona_contacto && c.dias_sin_comprar != null && <span> · </span>}
+                      {c.dias_sin_comprar != null && (
+                        <span>
+                          {Number(c.dias_sin_comprar) === 0
+                            ? 'Compró hoy'
+                            : `Sin comprar ${c.dias_sin_comprar} d`}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Acciones principales — botones separados (no texto pegado) */}
+                  <div className="cli-acciones" onClick={e => e.stopPropagation()}>
+                    {c.telefono ? (
+                      <a href={'tel:' + c.telefono} className="acc-btn acc-call">
+                        Llamar
+                      </a>
+                    ) : null}
+                    {c.link_whatsapp ? (
+                      <a href={c.link_whatsapp} target="_blank" rel="noreferrer" className="acc-btn acc-wsp">
+                        WhatsApp
+                      </a>
+                    ) : null}
+                    {nav ? (
+                      <a href={nav} target="_blank" rel="noreferrer" className="acc-btn acc-nav">
+                        Navegar
+                      </a>
+                    ) : null}
+                    <button type="button" className="acc-btn acc-note" onClick={() => setNotaDe(c)}>
+                      Nota
+                    </button>
+                  </div>
+
+                  <button type="button" className="acc-btn acc-offer" onClick={e => { e.stopPropagation(); setOfertaCliente(c) }}>Oferta</button>
+
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setPedidoCliente(c)
+                    }}
+                    style={{
+                      width: '100%',
+                      marginTop: 10,
+                      padding: '14px',
+                      borderRadius: 12,
+                      border: 'none',
+                      background: 'linear-gradient(180deg,#d14a12,#c2410c)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 14,
+                      fontFamily: 'inherit',
+                      boxShadow: '0 4px 14px rgba(194,65,12,0.25)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Pedido en terreno
+                  </button>
+
+                  {/* Más detalle (colapsado) */}
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setSkuOpen(s => ({ ...s, [c.cliente_key]: !s[c.cliente_key] }))
+                    }}
+                    style={{
+                      width: '100%',
+                      marginTop: 10,
+                      padding: '10px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#a8a29e',
+                      fontWeight: 700,
+                      fontSize: 12,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {skuOpen[c.cliente_key] ? 'Ocultar detalle ▴' : 'Ver mix y más ▾'}
+                  </button>
+
+                  {skuOpen[c.cliente_key] && (
+                    <div style={{ marginTop: 4 }}>
+                      {aReponer.length > 0 && (
+                        <div
+                          style={{
+                            background: 'linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%)',
+                            borderRadius: 14,
+                            padding: '12px 14px',
+                            marginBottom: 12,
+                            border: '1px solid #fecaca',
+                            fontSize: 12,
+                            color: '#7f1d1d',
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{ fontWeight: 800, fontSize: 13, color: '#b91c1c' }}>
+                              ⚠ Reposición vencida · {aReponer.length} SKU
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', background: '#fff', padding: '3px 8px', borderRadius: 999 }}>
+                              Acción hoy
+                            </div>
+                          </div>
+                          {aReponer.slice(0, 5).map((s, i) => (
+                            <div key={i} style={{
+                              display: 'flex', gap: 8, alignItems: 'flex-start',
+                              padding: '6px 0',
+                              borderTop: i === 0 ? 'none' : '1px solid #fecaca55',
+                            }}>
+                              <span style={{
+                                flexShrink: 0, width: 18, height: 18, borderRadius: 6,
+                                background: '#fee2e2', color: '#b91c1c',
+                                fontSize: 10, fontWeight: 800,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              }}>{i + 1}</span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, color: '#1c1917' }}>{s.nombre}</div>
+                                <div style={{ fontSize: 11, color: '#9a3412', marginTop: 1 }}>
+                                  {s.recompra?.label || (s.estadoRecompra === 'RECOMPRAR_HOY' ? 'Reponer hoy' : 'Atrasado')}
+                                  {s.falta > 0 ? ` · falta ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })}` : ''}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).length > 0 ? (
+                        skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).map((s, i) => {
+                          const p = pctRitmo(s.udMtd, s.promUd)
+                          const barPct = p != null ? Math.min(100, Math.max(0, p)) : 0
+                          const barColor = p == null ? '#d6d3d1' : p >= 100 ? '#22c55e' : p >= 50 ? '#f59e0b' : '#ef4444'
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                padding: '12px 0',
+                                borderBottom: '1px solid #f5f5f4',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1614', flex: 1, minWidth: 0 }}>
+                                  {s.nombre}
+                                </div>
+                                <span style={{ fontWeight: 800, fontSize: 13, color: barColor, whiteSpace: 'nowrap' }}>
+                                  {p != null ? p + '%' : '—'}
+                                </span>
+                              </div>
+                              {/* Barra de avance vs promedio */}
+                              <div style={{
+                                marginTop: 6, height: 6, borderRadius: 999, background: '#f5f5f4', overflow: 'hidden',
+                              }}>
+                                <div style={{
+                                  width: barPct + '%', height: '100%', borderRadius: 999,
+                                  background: barColor, transition: 'width .3s ease',
+                                }} />
+                              </div>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  fontSize: 11,
+                                  color: '#78716c',
+                                  marginTop: 5,
+                                  gap: 8,
+                                }}
+                              >
+                                <span>
+                                  Mes {Number(s.udMtd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud · {money(clpEfectivo(s))}
+                                </span>
+                                <span>
+                                  prom {Number(s.promUd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} · {money(s.promClp)}
+                                </span>
+                              </div>
+                              {(s.falta > 0 || s.estadoRecompra || s.cicloDias) && (
+                                <div style={{ fontSize: 11, color: s.estadoRecompra === 'RECOMPRAR_HOY' ? '#b91c1c' : '#a8a29e', marginTop: 3, fontWeight: 600 }}>
+                                  {s.estadoRecompra === 'RECOMPRAR_HOY' ? 'Reponer hoy' :
+                                   s.estadoRecompra === 'RECOMPRAR_PRONTO' ? 'Reponer pronto' :
+                                   s.cicloDias ? `Ciclo ~${s.cicloDias}d` : ''}
+                                  {s.falta > 0 ? ` · falta ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })}` : ''}
+                                  {s.diasPara != null && s.estadoRecompra === 'OK' ? ` · en ${s.diasPara}d` : ''}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="muted" style={{ fontSize: 12, padding: '8px 0' }}>
+                          Sin mix de productos cargado
+                        </div>
+                      )}
+
+                      <div className="cli-bloqueo" style={{ marginTop: 12 }}>
+                        {c.es_bloqueado ? (
+                          <button type="button" className="blq-btn blq-off" onClick={() => desbloquear(c)}>
+                            Desbloquear
+                          </button>
+                        ) : (
+                          <>
+                            <button type="button" className="blq-btn blq-on" onClick={() => bloquear(c, 'cerrado')}>
+                              Cerrado
+                            </button>
+                            <button type="button" className="blq-btn blq-on" onClick={() => bloquear(c, 'deuda')}>
+                              Deuda
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )
@@ -776,6 +1100,13 @@ export default function Cartera({ session }) {
       </div>
 
       {notaDe && <NotaModal cliente={notaDe} session={session} onClose={() => setNotaDe(null)} />}
+      {ofertaCliente && (
+        <OfertaClienteSheet
+          cliente={ofertaCliente}
+          ejecutivoId={eje?.eidVista || session.user.id}
+          onClose={() => setOfertaCliente(null)}
+        />
+      )}
       {pedidoCliente && (
         <PedidoSheet
           cliente={pedidoCliente}

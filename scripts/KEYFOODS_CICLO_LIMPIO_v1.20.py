@@ -1228,7 +1228,11 @@ def build_stock_rows(stock: pd.DataFrame, precios: pd.DataFrame, ventas: pd.Data
                     "categoria": _s(r.get("categoria")),
                     "descripcion": _s(r.get("descripcion")),
                     "precio_unidad": _f(r.get("precio_unidad")),
+                    "precio_kilo": _f(r.get("precio_kilo")),
+                    "precio_caja": _f(r.get("precio_caja")),
                     "kg_unidad": _f(r.get("kg_unidad")),
+                    "marca": _s(r.get("marca")),
+                    "unidad_venta": _s(r.get("unidad_venta")),
                 }
 
     rows = []
@@ -1270,6 +1274,13 @@ def build_stock_rows(stock: pd.DataFrame, precios: pd.DataFrame, ventas: pd.Data
                 "es_foco_mes": bool(foco_sku_map and sk in (foco_sku_map or {})),
                 "foco": (foco_sku_map or {}).get(sk),
                 "subfamilia": meta.get("categoria") or _s(r.get("familia")),
+                # Precios de lista para Commerce: se publican junto al stock para que
+                # la oferta permanente pueda heredar precio maestro sin duplicar el catálogo.
+                "precio_unidad": meta.get("precio_unidad"),
+                "precio_kilo": meta.get("precio_kilo"),
+                "precio_caja": meta.get("precio_caja"),
+                "marca": _s(r.get("marca")) or "",
+                "unidad_venta": _s(r.get("unidad_venta")) or "",
                 "fecha_snapshot": date.today().isoformat(),
             }
         )

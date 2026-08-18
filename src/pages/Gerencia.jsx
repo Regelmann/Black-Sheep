@@ -94,39 +94,6 @@ function canalDeCliente(d) {
   return normCanal(d?.ejecutivo || d?.canal || d?.zona || d?.zona_canal || d?.zona_vendedor)
 }
 
-
-function parseProductosTopLine(x) {
-  const s = String(x || '').trim()
-  if (s.length < 3) return null
-  // Prefer amount after $: "ACEITE NEO PROFRY 1X5L $2.92M"
-  const m = s.match(/^(.+?)\s+\$\s*([\d.,]+)\s*(M)?\b/i)
-  if (m) {
-    const raw = String(m[2] || '').trim()
-    let n = 0
-    if (String(m[3] || '').toUpperCase() === 'M') {
-      // $2.92M → 2.92 millones
-      n = (Number(String(raw).replace(',', '.')) || 0) * 1e6
-    } else if (/^\d{1,3}(\.\d{3})+$/.test(raw)) {
-      // $1.000.000 miles chilenos
-      n = Number(raw.replace(/\./g, '')) || 0
-    } else {
-      n = Number(String(raw).replace(',', '.')) || 0
-    }
-    return {
-      nombre: m[1].trim(),
-      clpMtd: n || 0,
-      udMtd: 0, promClp: 0, promUd: 0, cicloDias: null, ultima: null,
-    }
-  }
-  // No $ → only product name (never treat 32X as money)
-  const name = s.replace(/\s+\$?[\d.,]+\s*M?\s*$/i, '').trim() || s
-  if (name.length < 3) return null
-  return {
-    nombre: name.slice(0, 48),
-    clpMtd: 0, udMtd: 0, promClp: 0, promUd: 0, cicloDias: null, ultima: null,
-  }
-}
-
 export default function Gerencia({ esGerente }) {
   const eje = useEjecutivo() || {}
   const todosEjecutivos = eje.todosEjecutivos || []
@@ -760,7 +727,14 @@ export default function Gerencia({ esGerente }) {
     if (!skus.length && fromGer?.accion) {
       const topMatch = String(fromGer.accion).match(/TOP:\s*(.+)/i)
       if (topMatch) {
-        skus = topMatch[1].split(' | ').slice(0, 8).map(parseProductosTopLine).filter(Boolean)
+        skus = topMatch[1].split(' | ').slice(0, 8).map(x => {
+          const m = x.match(/^(.+?)\s+\$?([\d.,]+)\s*M?/i)
+          return {
+            nombre: m ? m[1].trim() : x.trim(),
+            clpMtd: m ? Number(String(m[2]).replace(/\./g,'').replace(',','.')) * (/M/i.test(x) ? 1e6 : 1) : 0,
+            udMtd: 0, promClp: 0, promUd: 0, cicloDias: null, ultima: null,
+          }
+        }).filter(s => s.nombre.length > 2)
       }
     }
 
@@ -1130,7 +1104,7 @@ export default function Gerencia({ esGerente }) {
               className="card"
               style={{
                 width: '100%', maxWidth: 480, margin: 0, borderRadius: '20px 20px 0 0',
-                maxHeight: '78vh', overflowY: 'auto', paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+                maxHeight: '78vh', overflowY: 'auto', paddingBottom: 28,
               }}
               onClick={e => e.stopPropagation()}
             >
@@ -1497,17 +1471,7 @@ export default function Gerencia({ esGerente }) {
                                         <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
                                       </div>
                                       <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
-                                        {(() => {
-                                          const clp = clpEfectivo(s) || Number(s.clpMtd) || 0
-                                          const ud = Number(s.udMtd) || 0
-                                          const pUd = Number(s.promUd) || 0
-                                          const parts = []
-                                          if (clp > 0) parts.push(money(clp))
-                                          if (ud > 0) parts.push(`${fmtStock(ud)} ud mes`)
-                                          if (pUd > 0) parts.push(`prom ${fmtStock(pUd)}`)
-                                          else if (Number(s.promClp) > 0) parts.push(`prom ${money(s.promClp)}`)
-                                          return parts.length ? parts.join(' · ') : 'Sin desglose de unidades'
-                                        })()}
+                                        Mes {fmtStock(s.udMtd)} ud · {money(clpEfectivo(s))} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
                                         <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
@@ -1671,17 +1635,7 @@ export default function Gerencia({ esGerente }) {
                                         <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
                                       </div>
                                       <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
-                                        {(() => {
-                                          const clp = clpEfectivo(s) || Number(s.clpMtd) || 0
-                                          const ud = Number(s.udMtd) || 0
-                                          const pUd = Number(s.promUd) || 0
-                                          const parts = []
-                                          if (clp > 0) parts.push(money(clp))
-                                          if (ud > 0) parts.push(`${fmtStock(ud)} ud mes`)
-                                          if (pUd > 0) parts.push(`prom ${fmtStock(pUd)}`)
-                                          else if (Number(s.promClp) > 0) parts.push(`prom ${money(s.promClp)}`)
-                                          return parts.length ? parts.join(' · ') : 'Sin desglose de unidades'
-                                        })()}
+                                        Mes {fmtStock(s.udMtd)} ud · {money(clpEfectivo(s))} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
                                         <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>

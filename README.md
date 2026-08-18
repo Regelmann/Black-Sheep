@@ -99,3 +99,6 @@ scripts/
 
 ## UX V56.1
 Capa visual de `Hoy` / Commercial Command Center. No modifica lógica de negocio ni esquema de Supabase.
+
+## V56.3 Commerce
+Ejecutar `scripts/SUPABASE_COMMERCE_V56_3.sql` en Supabase antes de probar `/catalogo/:token`.
