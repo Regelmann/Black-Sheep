@@ -56,3 +56,4 @@ Stamp: **`v-BS-PLATFORM-MT`**
 ## Documentación
 
 Ver [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
