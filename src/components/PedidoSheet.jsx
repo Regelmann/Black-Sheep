@@ -237,7 +237,7 @@ export default function PedidoSheet({ initialPedido,
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 400,
+        zIndex: 1100,
         background: 'rgba(15,23,42,0.45)',
         display: 'flex',
         alignItems: 'flex-end',
@@ -251,11 +251,11 @@ export default function PedidoSheet({ initialPedido,
         style={{
           width: '100%',
           maxWidth: 480,
-          maxHeight: '92dvh',
+          maxHeight: '94dvh',
           overflow: 'auto',
           background: '#fffaf5',
           borderRadius: '20px 20px 0 0',
-          padding: '12px 16px 24px',
+          padding: '12px 16px calc(24px + env(safe-area-inset-bottom, 0px) + 72px)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
         }}
       >

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
 import PedidoSheet from '../components/PedidoSheet.jsx'
+import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline'
 
@@ -51,6 +52,7 @@ function parseOfertaItems(oferta) {
 export default function Visita({ session }) {
   const eje = useEjecutivo()
   const [pedidoOpen, setPedidoOpen] = useState(false)
+  const [ofertaOpen, setOfertaOpen] = useState(false)
   const { id } = useParams()
   const nav = useNavigate()
   const location = useLocation()
@@ -698,7 +700,7 @@ export default function Visita({ session }) {
                 })}
                 <button
                   type="button"
-                  onClick={() => setPedidoOpen(true)}
+                  onClick={() => setOfertaOpen(true)}
                   style={{
                     width: '100%', marginTop: 12, minHeight: 48, borderRadius: 14, border: 'none',
                     background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
@@ -796,14 +798,14 @@ export default function Visita({ session }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <button
               type="button"
-              onClick={() => setPedidoOpen(true)}
+              onClick={() => setOfertaOpen(true)}
               style={{
                 minHeight: 48, borderRadius: 14, border: 'none',
                 background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
                 fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
-              Tomar pedido
+              Catálogo / pedir
             </button>
             <button
               type="button"
@@ -955,7 +957,14 @@ export default function Visita({ session }) {
         />
       )}
       {pedidoOpen && (cliente || visita) && (
-        <PedidoSheet
+        {ofertaOpen && cliente && (
+        <OfertaClienteSheet
+          cliente={cliente}
+          ejecutivoId={eje?.eidVista || session?.user?.id}
+          onClose={() => { setOfertaOpen(false); setPedidoOk(true) }}
+        />
+      )}
+      <PedidoSheet
           cliente={cliente || { nombre_cliente: visita.nombre_local, cliente_key: visita.cliente_key, telefono: visita.telefono, link_whatsapp: visita.link_whatsapp, comuna: visita.comuna }}
           aReponer={aReponer}
           ejecutivoId={eje?.eidVista || session?.user?.id}

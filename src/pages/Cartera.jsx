@@ -886,7 +886,7 @@ export default function Cartera({ session }) {
                     </button>
                   </div>
 
-                  {/* Un solo CTA comercial: catálogo permanente del cliente */}
+                  {/* Un solo CTA: catálogo web del cliente (pide ahí o el ejecutivo arma el link) */}
                   <button
                     type="button"
                     onClick={e => {
@@ -908,18 +908,7 @@ export default function Cartera({ session }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Catálogo / precios del cliente
-                  </button>
-                  <button
-                    type="button"
-                    className="acc-btn"
-                    onClick={e => {
-                      e.stopPropagation()
-                      setPedidoCliente(c)
-                    }}
-                    style={{ width: '100%', marginTop: 8, padding: '10px', borderRadius: 10, border: '1px solid #e7e5e4', background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    Pedido interno (bodega)
+                    Catálogo del cliente
                   </button>
 
                   {/* Más detalle (colapsado) */}

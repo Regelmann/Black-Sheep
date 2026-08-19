@@ -77,7 +77,25 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
           .select('*')
           .eq('oferta_id', o.id)
           .order('prioridad')
-        setItems(oi || [])
+        const stockMap = new Map((s || []).map(x => [String(x.sku_canon), x]))
+        const enriched = (oi || []).map(it => {
+          const st = stockMap.get(String(it.sku_canon))
+          const h = null // matched later by name in render
+          let lista = Number(it.precio_lista) || 0
+          let cli = Number(it.precio_cliente) || 0
+          if (lista <= 0 && st) {
+            for (const k of ['precio_unidad', 'precio_caja', 'precio_kilo', 'precio']) {
+              const v = Number(st[k])
+              if (v > 0) { lista = v; break }
+            }
+          }
+          return {
+            ...it,
+            precio_lista: lista > 0 ? lista : null,
+            precio_cliente: cli > 0 ? cli : null,
+          }
+        })
+        setItems(enriched)
       } else {
         // Solo habituales del cliente (no inundar con todo el catálogo)
         const habituales = hist.map(x => String(x.nombre || '').toLowerCase()).filter(Boolean)
@@ -128,7 +146,21 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
   }, [stock, q])
 
   function basePrice(s) {
-    return Number(s?.precio_unidad || s?.precio_caja || 0) || null
+    if (!s) return null
+    for (const k of ['precio_unidad', 'precio_caja', 'precio_kilo', 'precio_lista', 'precio']) {
+      const v = Number(s[k])
+      if (v > 0) return v
+    }
+    return null
+  }
+
+  function resolvePrices(s, histRow) {
+    const lista = basePrice(s)
+    const histPrice = histRow ? (Number(precioUnitarioDesdeSku(histRow)) || null) : null
+    // Si no hay lista, usar histórico como lista sugerida (editable)
+    const precio_lista = lista && lista > 0 ? lista : (histPrice && histPrice > 0 ? histPrice : null)
+    const precio_cliente = histPrice && histPrice > 0 && lista && histPrice !== lista ? Math.round(histPrice) : (histPrice && histPrice > 0 && !lista ? Math.round(histPrice) : null)
+    return { precio_lista, precio_cliente, ultima: histRow?.ultima || null }
   }
 
   function addProduct(s) {
@@ -342,8 +374,8 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
                         <input
                           type="number"
                           inputMode="decimal"
-                          value={i.precio_lista ?? ''}
-                          placeholder={basePrice(s) ? String(basePrice(s)) : '0'}
+                          value={i.precio_lista && Number(i.precio_lista) > 0 ? i.precio_lista : ''}
+                          placeholder={basePrice(s) ? String(basePrice(s)) : (i.precio_cliente ? String(i.precio_cliente) : 'sin precio')}
                           onChange={e =>
                             patchItem(i.sku_canon, {
                               precio_lista: e.target.value === '' ? null : Number(e.target.value),
@@ -356,7 +388,7 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
                         <input
                           type="number"
                           inputMode="decimal"
-                          value={i.precio_cliente ?? ''}
+                          value={i.precio_cliente && Number(i.precio_cliente) > 0 ? i.precio_cliente : ''}
                           placeholder="igual a lista"
                           onChange={e =>
                             patchItem(i.sku_canon, {
