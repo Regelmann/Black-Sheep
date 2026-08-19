@@ -886,7 +886,7 @@ export default function Cartera({ session }) {
                     </button>
                   </div>
 
-                  {/* Un solo CTA: catálogo web del cliente (pide ahí o el ejecutivo arma el link) */}
+                  {/* Un solo CTA comercial: catálogo permanente del cliente */}
                   <button
                     type="button"
                     onClick={e => {
@@ -908,8 +908,9 @@ export default function Cartera({ session }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Catálogo del cliente
+                    Catálogo / precios del cliente
                   </button>
+
 
                   {/* Más detalle (colapsado) */}
                   <button

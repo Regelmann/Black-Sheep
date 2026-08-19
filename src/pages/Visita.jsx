@@ -805,7 +805,7 @@ export default function Visita({ session }) {
                 fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
-              Catálogo / pedir
+              Tomar pedido
             </button>
             <button
               type="button"

@@ -80,7 +80,6 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
         const stockMap = new Map((s || []).map(x => [String(x.sku_canon), x]))
         const enriched = (oi || []).map(it => {
           const st = stockMap.get(String(it.sku_canon))
-          const h = null // matched later by name in render
           let lista = Number(it.precio_lista) || 0
           let cli = Number(it.precio_cliente) || 0
           if (lista <= 0 && st) {
@@ -89,10 +88,24 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
               if (v > 0) { lista = v; break }
             }
           }
+          const name = String(it.producto_nombre || st?.producto_nombre || '').toLowerCase()
+          let histPrice = null
+          let ultima = null
+          for (const h of parseSkuDetalle(cliente?.sku_detalle || '')) {
+            const k = String(h.nombre || '').toLowerCase().slice(0, 32)
+            if (k && (name.includes(k) || k.includes(name.slice(0, 28)))) {
+              histPrice = Number(precioUnitarioDesdeSku(h)) || null
+              ultima = h.ultima || null
+              break
+            }
+          }
+          if (lista <= 0 && histPrice > 0) lista = histPrice
+          if (cli <= 0 && histPrice > 0) cli = histPrice
           return {
             ...it,
-            precio_lista: lista > 0 ? lista : null,
-            precio_cliente: cli > 0 ? cli : null,
+            precio_lista: lista > 0 ? Math.round(lista) : null,
+            precio_cliente: cli > 0 ? Math.round(cli) : null,
+            ultima,
           }
         })
         setItems(enriched)
@@ -107,12 +120,12 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
           .slice(0, 20)
           .map((x, idx) => {
             const h = matchHist(x.producto_nombre)
-            const lista = Number(x.precio_unidad || x.precio_caja || 0) || null
-            const histPrice = h ? precioUnitarioDesdeSku(h) : null
+            const lista = basePrice(x)
+            const histPrice = h ? Number(precioUnitarioDesdeSku(h)) : null
             return {
               sku_canon: String(x.sku_canon),
               producto_nombre: x.producto_nombre,
-              precio_lista: lista,
+              precio_lista: (lista && lista > 0) ? lista : (histPrice > 0 ? Math.round(histPrice) : null),
               precio_cliente: histPrice > 0 ? Math.round(histPrice) : null,
               visible: true,
               destacado: true,
@@ -149,18 +162,9 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
     if (!s) return null
     for (const k of ['precio_unidad', 'precio_caja', 'precio_kilo', 'precio_lista', 'precio']) {
       const v = Number(s[k])
-      if (v > 0) return v
+      if (Number.isFinite(v) && v > 0) return v
     }
     return null
-  }
-
-  function resolvePrices(s, histRow) {
-    const lista = basePrice(s)
-    const histPrice = histRow ? (Number(precioUnitarioDesdeSku(histRow)) || null) : null
-    // Si no hay lista, usar histórico como lista sugerida (editable)
-    const precio_lista = lista && lista > 0 ? lista : (histPrice && histPrice > 0 ? histPrice : null)
-    const precio_cliente = histPrice && histPrice > 0 && lista && histPrice !== lista ? Math.round(histPrice) : (histPrice && histPrice > 0 && !lista ? Math.round(histPrice) : null)
-    return { precio_lista, precio_cliente, ultima: histRow?.ultima || null }
   }
 
   function addProduct(s) {
@@ -388,7 +392,7 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
                         <input
                           type="number"
                           inputMode="decimal"
-                          value={i.precio_cliente && Number(i.precio_cliente) > 0 ? i.precio_cliente : ''}
+                          value={i.precio_cliente ?? ''}
                           placeholder="igual a lista"
                           onChange={e =>
                             patchItem(i.sku_canon, {

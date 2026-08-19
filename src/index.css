@@ -652,7 +652,7 @@ a { color: inherit; text-decoration: none; }
 @media (min-width:900px) { .hoy-wrap { max-width:920px; margin:0 auto; } .hoy-sales-hero { padding:26px 28px; } }
 
 /* ================= V56.3 KEYFOODS COMMERCE ================= */
-.kf-sheet-backdrop{position:fixed;inset:0;background:rgba(20,15,12,.48);backdrop-filter:blur(5px);z-index:1100;display:flex;align-items:flex-end;justify-content:center}
+.kf-sheet-backdrop{position:fixed;inset:0;background:rgba(20,15,12,.48);backdrop-filter:blur(5px);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
 .kf-offer-sheet{width:min(1100px,100%);max-height:92vh;background:#f8f6f2;border-radius:28px 28px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;overflow:hidden}
 .kf-sheet-head{display:flex;justify-content:space-between;gap:20px;padding:22px 24px;background:#191513;color:#fff;border-bottom:3px solid #c2410c}.kf-sheet-head h2{margin:3px 0 5px;font-size:22px}.kf-sheet-head p{margin:0;color:#cfc8c1;font-size:12px}.kf-eyebrow{font-size:10px;font-weight:900;letter-spacing:.1em;color:#fb923c}.kf-close{border:0;background:rgba(255,255,255,.1);color:#fff;width:36px;height:36px;border-radius:50%;font-size:24px;cursor:pointer}.kf-offer-toolbar{display:flex;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid #e8e1da;background:#fff}.kf-offer-toolbar .search{flex:1}.kf-offer-count{font-size:12px;font-weight:800;color:#78716c}.kf-offer-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 20px;overflow:auto}.kf-product-picker,.kf-offer-selected{min-width:0}.kf-panel-title{font-size:10px;font-weight:900;letter-spacing:.08em;color:#78716c;margin:4px 2px 8px}.kf-product-pick{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left;padding:12px;border:1px solid #e8e1da;background:#fff;border-radius:14px;margin-bottom:7px;cursor:pointer;font-family:inherit}.kf-product-pick.selected{border-color:#c2410c;background:#fff7ed}.kf-product-pick strong,.kf-offer-item strong{display:block;font-size:13px;color:#211b18}.kf-product-pick span,.kf-offer-item-top span{display:block;font-size:10px;color:#928b84;margin-top:4px}.kf-product-pick-right{display:flex;gap:10px;align-items:center;font-weight:900;color:#c2410c}.kf-offer-item{background:#fff;border:1px solid #e8e1da;border-radius:15px;padding:12px;margin-bottom:8px}.kf-offer-item-top{display:flex;justify-content:space-between;gap:8px}.kf-offer-item-top button{border:0;background:#f5f5f4;border-radius:8px;width:28px;height:28px;cursor:pointer}.kf-price-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.kf-price-row label{font-size:10px;font-weight:800;color:#78716c}.kf-price-row input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px;border:1px solid #ddd6cf;border-radius:9px;font:inherit}.kf-item-options{display:flex;gap:14px;margin-top:9px;font-size:11px;color:#57514c}.kf-empty{padding:30px 15px;text-align:center;border:1px dashed #d8d0c8;border-radius:15px;color:#9a938c;background:#fff}.kf-offer-footer{padding:12px 20px;background:#fff;border-top:1px solid #e8e1da}.kf-link-box{display:flex;gap:8px;align-items:center;background:#f7f4ef;border:1px solid #e8e1da;border-radius:11px;padding:9px 10px;font-size:11px;color:#57514c;margin-bottom:9px}.kf-link-box span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kf-link-box button{border:0;background:#191513;color:#fff;border-radius:8px;padding:7px 10px;font-weight:800}.kf-footer-actions{display:flex;justify-content:flex-end;gap:8px}.kf-save-msg{font-size:11px;font-weight:800;color:#15803d;margin-top:7px}.acc-offer{background:#fff7ed!important;color:#9a3412!important;border-color:#fed7aa!important}.kf-offer-loading{padding:60px;text-align:center;color:#78716c}
 
@@ -763,12 +763,12 @@ a { color: inherit; text-decoration: none; }
 
 /* ── Oferta / catálogo sheet ───────────────────────── */
 .kf-sheet-backdrop {
-  position: fixed; inset: 0; z-index: 1100;
+  position: fixed; inset: 0; z-index: 80;
   background: rgba(15,23,42,.45);
   display: flex; align-items: flex-end; justify-content: center;
 }
 .kf-sheet {
-  width: 100%; max-width: 560px; max-height: 94dvh;
+  width: 100%; max-width: 560px; max-height: 92dvh;
   background: #f7f4ef; border-radius: 20px 20px 0 0;
   display: flex; flex-direction: column;
   box-shadow: 0 -12px 40px rgba(0,0,0,.2);
@@ -786,10 +786,8 @@ a { color: inherit; text-decoration: none; }
 }
 .kf-sheet-body { flex: 1; overflow: auto; padding: 12px 14px 8px; }
 .kf-sheet-foot {
-  /* Nav fija ~68px + safe area: los botones nunca quedan debajo */
-  padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px) + 78px);
+  padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 0px) + 64px);
   background: #fff; border-top: 1px solid #e8e2da;
-  flex-shrink: 0;
 }
 .kf-offer-search-wrap { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
 .kf-offer-search {
@@ -875,6 +873,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 
-/* sheet clear nav — global */
+/* sheets over nav */
 .kf-sheet-backdrop { z-index: 1100 !important; }
-.navbar { z-index: 100; }
+.kf-sheet-foot {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 78px) !important;
+}
