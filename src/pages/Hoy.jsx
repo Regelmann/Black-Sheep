@@ -6,6 +6,7 @@ import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics'
 import { listarPedidosHoy } from '../lib/pedido'
 import HistorialPedidos from '../components/HistorialPedidos.jsx'
+import OrderInbox from '../components/OrderInbox.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import {
   loadActionQueue,
@@ -45,6 +46,7 @@ export default function Hoy() {
   })
   const [showHistorial, setShowHistorial] = useState(false)
   const [pedidoEdit, setPedidoEdit] = useState(null)
+  const [inboxNuevos, setInboxNuevos] = useState(0)
   const [prep, setPrep] = useState(null) // item de Action Queue para sheet 10s
   const [hoyRes, setHoyRes] = useState(() => loadHoyResultados())
 
@@ -359,6 +361,16 @@ export default function Hoy() {
           </button>
         )}
 
+        {/* Order Bridge — pedidos catálogo web */}
+        {eidVista && (
+          <OrderInbox
+            ejecutivoId={eidVista}
+            ejecutivoNombre={nombre}
+            onCount={setInboxNuevos}
+            onOpenPedido={(p) => setPedidoEdit(p)}
+          />
+        )}
+
         {/* Actividad de terreno hoy — loop cerrado */}
         <div className="card" style={{ padding: '14px 16px' }}>
           <div className="card-label" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -389,7 +401,16 @@ export default function Hoy() {
               <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Check-ins</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--brand)' }}>{actividadHoy.pedidos}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--brand)', position: 'relative' }}>
+                {actividadHoy.pedidos}
+                {inboxNuevos > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -12,
+                    background: '#0d9488', color: '#fff', fontSize: 9, fontWeight: 800,
+                    borderRadius: 999, padding: '1px 5px',
+                  }}>{inboxNuevos}</span>
+                )}
+              </div>
               <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Pedidos</div>
             </div>
             <div style={{ textAlign: 'center' }}>
