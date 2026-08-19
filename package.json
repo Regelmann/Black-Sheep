@@ -2,10 +2,9 @@
   "name": "blacksheep-platform",
   "private": true,
   "version": "1.0.0",
-  "description": "Black Sheep Field — multi-tenant field sales platform",
   "scripts": {
-    "dev:field": "npm --prefix apps/field run dev",
-    "build:field": "npm --prefix apps/field run build",
-    "dev:web": "npx --yes serve apps/web -p 5174"
+    "dev": "npm --prefix apps/field run dev",
+    "build": "npm --prefix apps/field run build",
+    "build:field": "npm --prefix apps/field run build"
   }
 }
