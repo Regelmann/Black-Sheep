@@ -1,6 +1,0 @@
-{
-  "framework": "vite",
-  "installCommand": "npm ci --legacy-peer-deps --no-audit --no-fund",
-  "buildCommand": "npm run build",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}

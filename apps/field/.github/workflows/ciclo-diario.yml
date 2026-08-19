@@ -1,0 +1,49 @@
+# KeyFoods · Ciclo diario de producción (esqueleto)
+# Requiere secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY, GDRIVE_SA_JSON, GDRIVE_FOLDER_ID
+name: KeyFoods · Ciclo Diario
+
+on:
+  schedule:
+    - cron: "0 11 * * 1-5"  # 08:00 Chile aprox (UTC-3) lun-vie
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (no escribe)"
+        type: boolean
+        default: false
+      skip_bajada:
+        description: "Saltar bajada BQ"
+        type: boolean
+        default: false
+
+jobs:
+  ciclo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          pip install -q supabase openpyxl pandas google-api-python-client google-auth
+
+      # Placeholder: montar/descargar Excel y media desde Drive con SA
+      # - name: Download from Drive
+      #   env:
+      #     GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
+      #     GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+      #   run: python scripts/descargar_excel_drive.py
+
+      - name: Run ciclo producción
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          KF_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          KF_SKIP_BAJADA: ${{ inputs.skip_bajada && '1' || '0' }}
+          # KF_PRECIOS_XLSX: path tras download
+          # KF_MEDIA_DIR: path tras download
+        run: |
+          python scripts/KEYFOODS_CICLO_PRODUCCION.py
