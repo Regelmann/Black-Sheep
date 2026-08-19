@@ -138,7 +138,7 @@ export default function Stock() {
   const lista = useMemo(() => {
     let rows = stock
     if (filtro === 'Foco') rows = rows.filter(s => s.es_foco_mes)
-    if (filtro === 'Critico' || filtro === 'Corta')
+    if (filtro === 'Critico')
       rows = rows.filter(s => {
         const c = Number(s.cobertura_dias)
         const est = String(s.estado_stock || '').toUpperCase()
@@ -146,9 +146,7 @@ export default function Stock() {
           Number(s.stock_operativo) < 0 ||
           (!isNaN(c) && c < 7) ||
           est.includes('VENCID') ||
-          est.includes('CRITIC') ||
-          est.includes('LIQUID') ||
-          est.includes('CORTA')
+          est.includes('CRITIC')
         )
       })
     if (filtro === 'Alto')
@@ -156,8 +154,6 @@ export default function Stock() {
         const c = Number(s.cobertura_dias)
         return !isNaN(c) && c >= 30
       })
-    if (filtro === 'ConPrecio')
-      rows = rows.filter(s => Number(s.precio_unidad) > 0 || Number(s.precio_caja) > 0)
     if (q) {
       const qq = q.toLowerCase()
       rows = rows.filter(
@@ -186,9 +182,9 @@ export default function Stock() {
         <div style={{ fontSize: 11, fontWeight: 700, color: '#fdba74', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
           Inventario
         </div>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Stock diario · operativa</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Stock operativo</h1>
         <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-          {stock.length} SKU · lista Excel + cobertura · qué reponer / empujar / liquidar
+          {stock.length} SKU · kg · qué empujar / qué proteger
         </p>
       </div>
 
@@ -214,7 +210,7 @@ export default function Stock() {
               type="button"
               onClick={() =>
                 setFiltro(
-                  m.l === 'Foco' ? 'Foco' : m.l === 'Crítico' ? 'Corta' : m.l === 'Sobrestock' ? 'Alto' : 'Todos'
+                  m.l === 'Foco' ? 'Foco' : m.l === 'Crítico' ? 'Critico' : m.l === 'Sobrestock' ? 'Alto' : 'Todos'
                 )
               }
               style={{
@@ -346,9 +342,6 @@ export default function Stock() {
                       }}
                     >
                       {fmtNum(s.cobertura_dias)} días cob.
-                      {Number(s.precio_unidad) > 0
-                        ? ` · $${Number(s.precio_unidad).toLocaleString('es-CL')}`
-                        : ''}
                     </div>
                   )}
                 </div>

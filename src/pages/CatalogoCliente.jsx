@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp, labelOrigen } from '../lib/precios'
+import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios'
 
 const money = n => {
   const v = Number(n)
@@ -26,7 +26,6 @@ export default function CatalogoCliente() {
   const [err, setErr] = useState('')
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState('Todos')
-  const [sectionFilter, setSectionFilter] = useState('Todos') // Todos|Habituales|Ofertas|Liquidacion|Repetir
   const [cart, setCart] = useState([])
   const [cartOpen, setCartOpen] = useState(false)
   const [sent, setSent] = useState(false)
@@ -57,8 +56,6 @@ export default function CatalogoCliente() {
               precio_origen: r.origen,
               precio_lista: it.precio_lista || r.precio_lista,
               precio_cliente: it.precio_cliente || r.precio_hist,
-              ahorro_vs_lista: r.ahorro_vs_lista ?? null,
-              etiqueta_precio: r.etiqueta || labelOrigen(r.origen),
             }
           })
           setCatalogo({ ...data, items: itemsNorm })
@@ -90,34 +87,27 @@ export default function CatalogoCliente() {
         String(i.sku_canon || '').includes(x) ||
         String(i.marca || '').toLowerCase().includes(x)
       const matchCat = catFilter === 'Todos' || (i.subfamilia || 'General') === catFilter
-      if (!matchQ || !matchCat) return false
-      if (sectionFilter === 'Habituales') return Boolean(i.es_habitual) || Number(i.pedidos_previos) > 0
-      if (sectionFilter === 'Ofertas') return Boolean(i.es_oferta) || Boolean(i.destacado)
-      if (sectionFilter === 'Liquidacion') return Boolean(i.es_liquidacion)
-      if (sectionFilter === 'Repetir') return Number(i.cantidad_sugerida) > 0 && Number(i.pedidos_previos) > 0
-      return true
+      return matchQ && matchCat
     })
-  }, [items, q, catFilter, sectionFilter])
+  }, [items, q, catFilter])
 
-  const liquidacion = filtered.filter(i => i.es_liquidacion)
-  const ofertas = filtered.filter(i => (i.es_oferta || i.destacado) && !i.es_liquidacion)
-  const habituales = filtered.filter(
-    i => (i.es_habitual || Number(i.pedidos_previos) > 0) && !i.es_liquidacion && !(i.es_oferta || i.destacado)
-  )
-  const smartRepeat = filtered.filter(i => Number(i.cantidad_sugerida) > 0 && Number(i.pedidos_previos) > 0)
-  const rest = filtered.filter(i => {
-    if (i.es_liquidacion) return false
-    if (i.es_oferta || i.destacado) return false
-    if (i.es_habitual || Number(i.pedidos_previos) > 0) return false
-    return true
-  })
+  const available = filtered.filter(i => i.stock_disponible !== false)
+  const habituales = available.filter(i => i.es_habitual)
+  const reposicion = available.filter(i => i.es_reposicion && !i.es_habitual)
+  const ofertas = available.filter(i => i.es_oferta && !i.es_habitual && !i.es_reposicion)
+  const liquidacion = available.filter(i => i.es_liquidacion && !i.es_habitual && !i.es_reposicion && !i.es_oferta)
+  const used = new Set([...habituales, ...reposicion, ...ofertas, ...liquidacion].map(i => i.sku_canon))
+  const rest = available.filter(i => !used.has(i.sku_canon))
   const cartCount = cart.reduce((a, i) => a + Number(i.cantidad || 0), 0)
   const total = cart.reduce((a, i) => a + Number(i.precio || 0) * Number(i.cantidad || 0), 0)
 
   function add(i) {
-    if (!i.stock_disponible && i.stock_disponible !== undefined) {
-      // still allow if precio exists - soft gate
+    if (i.stock_disponible === false) {
+      setErr(`${i.producto_nombre}: producto sin stock disponible.`)
+      return
     }
+    const suggested = Number(i.cantidad_sugerida) > 0 ? Math.max(1, Math.round(i.cantidad_sugerida)) : 1
+    setErr('')
     setCart(prev => {
       const hit = prev.find(x => x.sku_canon === i.sku_canon)
       if (hit) {
@@ -125,16 +115,14 @@ export default function CatalogoCliente() {
           x.sku_canon === i.sku_canon ? { ...x, cantidad: x.cantidad + 1 } : x
         )
       }
-      return [
-        ...prev,
-        {
-          sku_canon: i.sku_canon,
-          producto_nombre: i.producto_nombre,
-          precio: Number(i.precio) > 0 ? Number(i.precio) : 0,
-          cantidad: Number(i.cantidad_sugerida) > 0 ? Math.max(1, Math.round(Number(i.cantidad_sugerida))) : 1,
-          unidad_venta: i.unidad_venta,
-        },
-      ]
+      return [{
+        sku_canon: i.sku_canon,
+        producto_nombre: i.producto_nombre,
+        precio: Number(i.precio) > 0 ? Number(i.precio) : 0,
+        cantidad: suggested,
+        unidad_venta: i.unidad_venta,
+        precio_origen: i.precio_origen,
+      }, ...prev]
     })
     setCartOpen(true)
   }
@@ -262,7 +250,7 @@ export default function CatalogoCliente() {
           <div className="kf-pub-brand">KEYFOODS · LISTA DE PRECIOS</div>
           <h1>{catalogo.nombre_cliente}</h1>
           <p>
-            {items.length} productos · tu reposición primero · lista Excel + tus precios
+            {items.length} productos · precios para vos
             {catalogo.actualizado_en
               ? ` · act. ${String(catalogo.actualizado_en).slice(0, 10)}`
               : ''}
@@ -288,26 +276,6 @@ export default function CatalogoCliente() {
         />
       </div>
 
-      <div className="kf-pub-cats" role="tablist" style={{ marginBottom: 8 }}>
-        {[
-          { id: 'Todos', label: 'Todos' },
-          { id: 'Habituales', label: 'Mis productos' },
-          { id: 'Ofertas', label: 'Ofertas y focos' },
-          { id: 'Liquidacion', label: 'Corta fecha' },
-          { id: 'Repetir', label: '↻ Repetir' },
-        ].map(s => (
-          <button
-            key={s.id}
-            type="button"
-            role="tab"
-            className={'kf-pub-cat' + (sectionFilter === s.id ? ' is-on' : '')}
-            onClick={() => setSectionFilter(s.id)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-
       <div className="kf-pub-cats" role="tablist">
         {categories.map(c => (
           <button
@@ -328,59 +296,57 @@ export default function CatalogoCliente() {
         </div>
       )}
 
-      {/* Orden comercial V56.15: reposición → ofertas → corta fecha → catálogo */}
-      {sectionFilter === 'Todos' && smartRepeat.length > 0 && (
-        <section className="kf-pub-section">
-          <h2>↻ Para repetir hoy</h2>
-          <div className="kf-pub-grid">
-            {smartRepeat.slice(0, 8).map(i => (
-              <ProductCard key={'r-'+i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
-            ))}
-          </div>
-        </section>
+      {habituales.length > 0 && (
+        <CatalogSection
+          title="↻ Para reponer"
+          subtitle="Lo que normalmente compras"
+          items={habituales}
+          onAdd={add}
+          onFicha={setFicha}
+          smart
+        />
       )}
 
-      {sectionFilter === 'Todos' && habituales.length > 0 && (
-        <section className="kf-pub-section">
-          <h2>📦 Mis productos · reposición</h2>
-          <div className="kf-pub-grid">
-            {habituales.map(i => (
-              <ProductCard key={'h-'+i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
-            ))}
-          </div>
-        </section>
+      {reposicion.length > 0 && (
+        <CatalogSection
+          title="🟠 Probablemente necesitas"
+          subtitle="Tu ritmo de compra indica que ya es momento de reponer"
+          items={reposicion}
+          onAdd={add}
+          onFicha={setFicha}
+          smart
+        />
       )}
 
-      {sectionFilter === 'Todos' && ofertas.length > 0 && (
-        <section className="kf-pub-section">
-          <h2>✨ Ofertas y focos del mes</h2>
-          <div className="kf-pub-grid">
-            {ofertas.map(i => (
-              <ProductCard key={'o-'+i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
-            ))}
-          </div>
-        </section>
+      {ofertas.length > 0 && (
+        <CatalogSection
+          title="⭐ Oportunidades para ti"
+          subtitle="Focos y ofertas disponibles para tu negocio"
+          items={ofertas}
+          onAdd={add}
+          onFicha={setFicha}
+        />
       )}
 
-      {sectionFilter === 'Todos' && liquidacion.length > 0 && (
-        <section className="kf-pub-section">
-          <h2>⏰ Corta fecha / liquidación</h2>
-          <div className="kf-pub-grid">
-            {liquidacion.map(i => (
-              <ProductCard key={i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
-            ))}
-          </div>
-        </section>
+      {liquidacion.length > 0 && (
+        <CatalogSection
+          title="⚡ Oportunidades especiales"
+          subtitle="Stock limitado o productos con cobertura corta"
+          items={liquidacion}
+          onAdd={add}
+          onFicha={setFicha}
+        />
       )}
 
-      <section className="kf-pub-section">
-        {sectionFilter === 'Todos' && <h2>📋 Catálogo completo (lista Excel)</h2>}
-        <div className="kf-pub-grid">
-          {(sectionFilter === 'Todos' ? rest : filtered).map(i => (
-            <ProductCard key={i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
-          ))}
-        </div>
-      </section>
+      {rest.length > 0 && (
+        <CatalogSection
+          title="Todos los productos disponibles"
+          subtitle="Stock operativo disponible para tu pedido"
+          items={rest}
+          onAdd={add}
+          onFicha={setFicha}
+        />
+      )}
 
       {filtered.length === 0 && items.length > 0 && (
         <p className="kf-pub-muted" style={{ textAlign: 'center', padding: 20 }}>
@@ -524,30 +490,29 @@ export default function CatalogoCliente() {
   )
 }
 
-function ProductCard({ item, onAdd, onFicha }) {
-  const hasPrice = Number(item.precio) > 0
-  const origen =
-    item.precio_origen ||
-    item.origen ||
-    (Number(item.precio) > 0 &&
-    Number(item.precio_cliente) > 0 &&
-    Math.abs(Number(item.precio) - Number(item.precio_cliente)) < 1
-      ? 'historico'
-      : 'lista')
-  const stl = estiloOrigenPrecio(origen)
-  const label =
-    item.etiqueta_precio ||
-    (origen === 'historico'
-      ? 'Tu precio'
-      : origen === 'lista'
-        ? 'Lista'
-        : origen === 'negociado'
-          ? 'Negociado'
-          : 'Consultar')
-  const ahorro = Number(item.ahorro_vs_lista) || 0
-  const lista = Number(item.precio_lista) || 0
+function CatalogSection({ title, subtitle, items, onAdd, onFicha, smart = false }) {
   return (
-    <article className={'kf-pub-card' + (item.stock_disponible ? '' : ' is-sin-stock')}>
+    <section className={'kf-pub-section' + (smart ? ' kf-pub-smart-section' : '')}>
+      <div className="kf-pub-section-head">
+        <div>
+          <h2>{title}</h2>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+        <span className="kf-pub-section-count">{items.length}</span>
+      </div>
+      <div className="kf-pub-grid">
+        {items.map(i => (
+          <ProductCard key={i.sku_canon} item={i} onAdd={onAdd} onFicha={onFicha} smart={smart} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ProductCard({ item, onAdd, onFicha, smart = false }) {
+  const hasPrice = Number(item.precio) > 0
+  return (
+    <article className="kf-pub-card">
       <button type="button" className="kf-pub-img" onClick={() => onFicha(item)}>
         <img
           src={item.imagen_url || PLACEHOLDER}
@@ -557,28 +522,14 @@ function ProductCard({ item, onAdd, onFicha }) {
             e.currentTarget.src = PLACEHOLDER
           }}
         />
-        {item.es_liquidacion && (
-          <span className="kf-pub-badge-hot" style={{ background: '#dc2626' }}>
-            Corta fecha
-          </span>
-        )}
-        {!item.es_liquidacion && (item.es_oferta || item.destacado) && (
-          <span className="kf-pub-badge-hot" style={{ background: '#d97706' }}>
-            Oferta
-          </span>
-        )}
-        {!item.es_liquidacion &&
-          !item.es_oferta &&
-          !item.destacado &&
-          (item.es_habitual || item.es_reposicion) && (
-            <span className="kf-pub-badge-hot" style={{ background: '#0f766e' }}>
-              Reposición
-            </span>
-          )}
+         {item.es_habitual && <span className="kf-pub-badge-smart">↻ Habitual</span>}
+        {!item.es_habitual && item.es_reposicion && <span className="kf-pub-badge-smart">🟠 Reponer</span>}
+        {!item.es_habitual && !item.es_reposicion && item.es_oferta && <span className="kf-pub-badge-hot">Para vos</span>}
+        {!item.es_habitual && !item.es_reposicion && !item.es_oferta && item.es_liquidacion && <span className="kf-pub-badge-smart">⚡ Especial</span>}
       </button>
       <div className="kf-pub-card-body">
         <div className="kf-pub-status">
-          {item.stock_disponible ? '🟢 Disponible' : '⚪ Consultar stock'}
+          {item.stock_disponible ? '🟢 Disponible' : '⚪ Consultar'}
         </div>
         <h3>{item.producto_nombre}</h3>
         <p className="kf-pub-meta">
@@ -592,43 +543,35 @@ function ProductCard({ item, onAdd, onFicha }) {
           </p>
         )}
         <div className="kf-pub-price">{hasPrice ? money(item.precio) : 'Consultar'}</div>
-        {lista > 0 && hasPrice && Math.abs(lista - Number(item.precio)) >= 1 && (
-          <div style={{ fontSize: 11, color: '#78716c', marginTop: 2 }}>
-            Lista {money(lista)}
-            {ahorro > 0 ? (
-              <span style={{ color: '#047857', fontWeight: 700 }}> · ahorrás {money(ahorro)}</span>
-            ) : ahorro < 0 ? (
-              <span style={{ color: '#c2410c', fontWeight: 700 }}> · +{money(-ahorro)} vs lista</span>
-            ) : null}
+        {smart && Number(item.cantidad_sugerida) > 0 && (
+          <div className="kf-pub-reorder">
+            <strong>Te sugerimos {Math.round(item.cantidad_sugerida)} {item.unidad_venta || 'unidades'}</strong>
+            {Number(item.dias_sin_comprar) > 0 && Number(item.cadencia_dias) > 0 && (
+              <span>Última compra hace {Math.round(item.dias_sin_comprar)} días · ritmo {Math.round(item.cadencia_dias)} días</span>
+            )}
           </div>
         )}
-        {Number(item.cantidad_sugerida) > 0 && (
-          <div style={{ fontSize: 11, color: '#0f766e', fontWeight: 700, marginTop: 4 }}>
-            ↻ Sugerimos {Math.round(Number(item.cantidad_sugerida))}
-            {item.motivo_sugerencia ? ` · ${item.motivo_sugerencia}` : ''}
+        {(item.precio_origen || item.origen || (Number(item.precio_cliente) > 0 ? 'historico' : Number(item.precio_lista) > 0 ? 'lista' : '')) && (
+          <div style={{ marginTop: 4 }}>
+            {(() => {
+              const origen = item.precio_origen || item.origen || (Number(item.precio) > 0 && Number(item.precio_cliente) > 0 && Number(item.precio) === Number(item.precio_cliente) ? 'historico' : 'lista')
+              const stl = estiloOrigenPrecio(origen)
+              const label = origen === 'historico' ? 'Tu precio' : origen === 'lista' ? 'Lista' : origen === 'negociado' ? 'Negociado' : 'Consultar'
+              return (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                  background: stl.bg, color: stl.color, border: `1px solid ${stl.border}`,
+                }}>{label}</span>
+              )
+            })()}
           </div>
         )}
-        <div style={{ marginTop: 4 }}>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              padding: '2px 7px',
-              borderRadius: 999,
-              background: stl.bg,
-              color: stl.color,
-              border: `1px solid ${stl.border}`,
-            }}
-          >
-            {label}
-          </span>
-        </div>
         <div className="kf-pub-card-actions">
           <button type="button" className="kf-pub-link" onClick={() => onFicha(item)}>
             Detalle
           </button>
           <button type="button" className="kf-pub-add" onClick={() => onAdd(item)}>
-            + Agregar
+            {smart && Number(item.cantidad_sugerida) > 0 ? `+ ${Math.round(item.cantidad_sugerida)} sugeridos` : '+ Agregar'}
           </button>
         </div>
       </div>

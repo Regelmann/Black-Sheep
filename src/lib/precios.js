@@ -1,17 +1,13 @@
 /**
- * Resolución canónica de precios — KEYFOODS Field V56.15
+ * Resolución canónica de precios — Black Sheep Field.
  *
- * Jerarquía de negocio (inmutable):
- *  P0 override      → origen 'negociado'   (ejecutivo fuerza precio en la oferta)
- *  P1 histórico     → origen 'historico'   (precio del cliente si existe y > 0)
- *  P2 lista Excel   → origen 'lista'       (stock.precio_unidad desde lista de precios)
- *  P3 sin precio    → origen 'consultar'   (nunca mostrar 0)
+ * Jerarquía (aplicada):
+ *  P0 override      → origen 'negociado'  (solo si el usuario/ejecutivo fuerza un precio)
+ *  P1 histórico     → origen 'historico'  (sku_detalle / precio_cliente del cliente)
+ *  P2 lista mes     → origen 'lista'      (stock.precio_unidad preferido)
+ *  P3 sin precio    → origen 'consultar'
  *
- * Regla comercial:
- *  - La lista de precios del mes (Excel → stock) es la base.
- *  - Si el cliente tiene precio histórico distinto, se muestra ese (reposición).
- *  - El ejecutivo puede negociar por encima/debajo → se marca 'negociado'.
- *  - Solo se ofrece producto con stock operativo (gate en catálogo/SQL).
+ * Nunca devolver 0: null + etiqueta Consultar.
  */
 
 import { parseSkuDetalle } from './coach'
@@ -22,8 +18,8 @@ export function numPos(v) {
 }
 
 /**
- * Precio de lista desde fila stock / Excel.
- * Prioriza unidad; caja/kilo solo si no hay unidad (evita tomar caja como unitario).
+ * Precio de lista desde fila stock.
+ * Prioriza unidad; caja/kilo solo si no hay unidad (evita tomar precio de caja como unitario).
  */
 export function precioDesdeLista(stockOrLista) {
   if (!stockOrLista) return null
@@ -31,6 +27,7 @@ export function precioDesdeLista(stockOrLista) {
     const v = numPos(stockOrLista[k])
     if (v) return Math.round(v)
   }
+  // fallback caja/kilo solo si son el único dato disponible
   for (const k of ['precio_caja', 'precio_kilo']) {
     const v = numPos(stockOrLista[k])
     if (v) return Math.round(v)
@@ -39,10 +36,12 @@ export function precioDesdeLista(stockOrLista) {
 }
 
 /**
- * Precio unitario desde histórico del cliente (sku_detalle, RPC, etc.)
+ * Precio unitario desde entrada parseSkuDetalle (promClp/promUd o clpMtd/udMtd)
+ * o desde objeto con campo precio directo.
  */
 export function precioDesdeHistSku(s) {
   if (!s) return null
+  // precio explícito (catálogo RPC / override histórico)
   for (const k of ['precio', 'precio_unitario', 'ultimo_precio', 'precio_cliente', 'p']) {
     const v = numPos(s[k])
     if (v) return Math.round(v)
@@ -51,6 +50,7 @@ export function precioDesdeHistSku(s) {
   const promClp = Number(s.promClp) || 0
   if (promUd > 0 && promClp > 0) {
     const unit = promClp / promUd
+    // sanity: evitar basura (ej. promClp mal parseado)
     if (unit > 0 && unit < 50_000_000) return Math.round(unit)
   }
   const udMtd = Number(s.udMtd) || 0
@@ -68,12 +68,14 @@ export function matchHistPorNombre(histList, nombre) {
     .trim()
   if (!name || !Array.isArray(histList) || !histList.length) return null
 
+  // 1) match exacto normalizado
   for (const h of histList) {
     const k = String(h.nombre || '')
       .toLowerCase()
       .trim()
     if (k && k === name) return h
   }
+  // 2) contains (nombre largo primero)
   const sorted = [...histList].sort(
     (a, b) => String(b.nombre || '').length - String(a.nombre || '').length
   )
@@ -94,8 +96,7 @@ export function matchHistPorNombre(histList, nombre) {
  *   precio_lista: number|null,
  *   precio_hist: number|null,
  *   fecha_hist: string|null,
- *   etiqueta: string,
- *   ahorro_vs_lista: number|null
+ *   etiqueta: string
  * }}
  */
 export function resolverPrecio(opts = {}) {
@@ -107,12 +108,6 @@ export function resolverPrecio(opts = {}) {
   const precio_lista = precioDesdeLista(stockItem)
   const fecha_hist = histSku?.ultima || histSku?.fecha || histSku?.ultima_compra || null
 
-  const ahorro = (shown) => {
-    if (shown == null || precio_lista == null) return null
-    const d = Math.round(precio_lista - shown)
-    return d !== 0 ? d : null
-  }
-
   if (override != null) {
     return {
       precio: Math.round(override),
@@ -121,7 +116,6 @@ export function resolverPrecio(opts = {}) {
       precio_hist,
       fecha_hist,
       etiqueta: 'Negociado',
-      ahorro_vs_lista: ahorro(override),
     }
   }
   if (precio_hist != null) {
@@ -132,7 +126,6 @@ export function resolverPrecio(opts = {}) {
       precio_hist,
       fecha_hist,
       etiqueta: fecha_hist ? 'Tu precio' : 'Promedio',
-      ahorro_vs_lista: ahorro(precio_hist),
     }
   }
   if (precio_lista != null) {
@@ -143,7 +136,6 @@ export function resolverPrecio(opts = {}) {
       precio_hist: null,
       fecha_hist: null,
       etiqueta: 'Lista',
-      ahorro_vs_lista: null,
     }
   }
   return {
@@ -153,28 +145,26 @@ export function resolverPrecio(opts = {}) {
     precio_hist: null,
     fecha_hist: null,
     etiqueta: 'Consultar',
-    ahorro_vs_lista: null,
   }
 }
 
 /**
  * Resuelve para un ítem de stock + cliente (sku_detalle).
- * precioClienteGuardado: precio ya persistido en oferta (no es override automático).
- * Si difiere de hist y de lista → negociado.
+ * precioClienteGuardado: precio_cliente ya persistido en oferta (NO es override).
+ * Si difiere de hist y de lista → se trata como negociado.
  */
 export function resolverPrecioCliente(stockItem, cliente, opts = {}) {
   const hist = parseSkuDetalle(cliente?.sku_detalle || '')
   const histSku =
     matchHistPorNombre(hist, stockItem?.producto_nombre || stockItem?.nombre) ||
-    hist.find(
-      (h) => String(h.sku || h.sku_canon || '') === String(stockItem?.sku_canon || '')
-    ) ||
+    hist.find(h => String(h.sku || h.sku_canon || '') === String(stockItem?.sku_canon || '')) ||
     null
 
   const guardado = numPos(opts.precioClienteGuardado)
   const rBase = resolverPrecio({ histSku, stockItem })
 
   if (guardado != null) {
+    // ¿es igual al histórico o a la lista? → no marcar negociado
     if (rBase.precio_hist != null && Math.abs(guardado - rBase.precio_hist) < 1) {
       return { ...rBase, precio: guardado }
     }
@@ -186,9 +176,9 @@ export function resolverPrecioCliente(stockItem, cliente, opts = {}) {
         precio_hist: rBase.precio_hist,
         fecha_hist: rBase.fecha_hist,
         etiqueta: 'Lista',
-        ahorro_vs_lista: null,
       }
     }
+    // precio editado a mano por el ejecutivo para esta oferta
     return resolverPrecio({
       override: guardado,
       histSku,
@@ -218,26 +208,25 @@ export function formatPrecioClp(n) {
   return '$' + Math.round(v).toLocaleString('es-CL')
 }
 
-/**
- * Precio que ve el cliente en catálogo público.
- * Preferencia: histórico del cliente > lista Excel > consultar.
- */
+/** Precio que ve el cliente en catálogo público (nunca negociado interno sin sentido) */
 export function precioPublicoItem(it) {
   const precioRpc = numPos(it?.precio)
   const precioCli = numPos(it?.precio_cliente)
   const precioLista = numPos(it?.precio_lista) || numPos(it?.precio_unidad)
+  const origenRpc = String(it?.precio_origen || '').toLowerCase()
 
+  // Preferir precio ya resuelto por RPC si es > 0
   if (precioRpc) {
-    let origen = it.precio_origen || 'lista'
-    if (precioCli && Math.abs(precioRpc - precioCli) < 1) origen = 'historico'
-    else if (precioLista && Math.abs(precioRpc - precioLista) < 1) origen = 'lista'
-    else if (it.precio_origen === 'negociado') origen = 'negociado'
-
+    let origen = origenRpc
+    if (!['negociado', 'historico', 'lista', 'consultar'].includes(origen)) {
+      if (precioCli && Math.abs(precioRpc - precioCli) < 1) origen = 'historico'
+      else if (precioLista && Math.abs(precioRpc - precioLista) < 1) origen = 'lista'
+      else origen = 'lista'
+    }
     const ahorro =
       precioLista != null && Math.abs(precioRpc - precioLista) >= 1
         ? Math.round(precioLista - precioRpc)
         : null
-
     return {
       precio: Math.round(precioRpc),
       origen,
@@ -257,27 +246,11 @@ export function precioPublicoItem(it) {
   }
 
   return resolverPrecio({
-    histSku: precioCli
-      ? { precio: precioCli, ultima: it?.ultima_compra || it?.ultima }
-      : null,
+    histSku: precioCli ? { precio: precioCli, ultima: it?.ultima_compra || it?.ultima } : null,
     stockItem: {
       precio_unidad: precioLista,
       precio_caja: it?.precio_caja,
       precio_kilo: it?.precio_kilo,
     },
   })
-}
-
-/** Texto corto para badge de origen */
-export function labelOrigen(origen) {
-  switch (origen) {
-    case 'historico':
-      return 'Tu precio'
-    case 'negociado':
-      return 'Negociado'
-    case 'lista':
-      return 'Lista'
-    default:
-      return 'Consultar'
-  }
 }

@@ -185,37 +185,7 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
     setQ('')
   }
 
-  /** Carga todo el stock con precio de lista (el web igual muestra catálogo completo vía SQL). */
-  function loadFullCatalog() {
-    const extra = []
-    for (const s of stock) {
-      const sku = String(s.sku_canon || '')
-      if (!sku || selectedSkus.has(sku)) continue
-      if (!basePrice(s)) continue
-      const h = matchHist(s.producto_nombre)
-      const r = resolveForStock(s)
-      extra.push({
-        sku_canon: sku,
-        producto_nombre: s.producto_nombre || sku,
-        precio_lista: r.precio_lista || r.precio,
-        precio_cliente: r.precio_hist,
-        precio_origen: r.origen,
-        precio_etiqueta: r.etiqueta,
-        visible: true,
-        destacado: Boolean(s.es_foco_mes) || Boolean(h),
-        prioridad: h ? 10 : 400,
-        ultima: r.fecha_hist || h?.ultima || null,
-      })
-    }
-    if (!extra.length) {
-      setMsg('No hay más SKUs con precio en stock. Corré el ciclo con la lista de precios.')
-      return
-    }
-    setItems(prev => [...prev, ...extra])
-    setMsg(`Se agregaron ${extra.length} productos con precio lista. Guardá para publicar.`)
-  }
-
-    function removeItem(sku) {
+  function removeItem(sku) {
     setItems(prev => prev.filter(i => String(i.sku_canon) !== String(sku)))
   }
 
@@ -325,28 +295,6 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
                 autoFocus
               />
               <span className="kf-offer-count">{items.length} en catálogo</span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={loadFullCatalog}
-                style={{
-                  border: '1px solid #fdba74',
-                  background: '#fff7ed',
-                  color: '#c2410c',
-                  borderRadius: 999,
-                  padding: '8px 12px',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                + Cargar lista completa (precios)
-              </button>
-              <span style={{ fontSize: 11, color: '#78716c', alignSelf: 'center' }}>
-                Habituales primero; el link web también muestra todo el stock con precio.
-              </span>
             </div>
 
             {q.trim().length >= 2 && (
