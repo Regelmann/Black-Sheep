@@ -1,24 +1,11 @@
 {
-  "name": "keyfoods-field",
-  "version": "56.16.0",
+  "name": "blacksheep-platform",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": "24.x"
-  },
+  "version": "1.0.0",
+  "description": "Black Sheep Field — multi-tenant field sales platform",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.0"
+    "dev:field": "npm --prefix apps/field run dev",
+    "build:field": "npm --prefix apps/field run build",
+    "dev:web": "npx --yes serve apps/web -p 5174"
   }
 }

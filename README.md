@@ -1,26 +1,28 @@
-# KeyFoods Field · V56.16 CANON
+# Black Sheep Field — Plataforma multi-empresa
 
-App PWA de terreno + catálogo público de reposición.
+Producto de **venta en ruta + catálogo + gerencia**.  
+**Black Sheep** es la marca y la puerta de entrada. Cada empresa (tenant) entra solo por aquí.
 
-**Build stamp:** `v-BS-V56.16-CANON`
+## Estructura
 
-## Stack
+```
+├── brand/                 # logos oficiales
+├── apps/
+│   ├── web/               # blacksheep.cl — marketing + login
+│   └── field/             # app.blacksheep.cl — Field multi-tenant
+├── docs/ARCHITECTURE.md   # diseño multi-empresa
+└── README.md
+```
 
-React 18 + Vite + Supabase + Google Maps · Deploy Vercel
+## Deploy
 
-## Pantallas field
+### 1. Sitio — blacksheep.cl
+- Vercel → root `apps/web`
+- En `login.html`: `window.BS_APP_URL = "https://app.blacksheep.cl"`
 
-| Ruta | Uso |
-|------|-----|
-| `/` | Ruta del día |
-| `/visita/:id` | Check-in / visita |
-| `/cartera` | Cartera + oferta |
-| `/metas` | Metas y focos |
-| `/stock` | Stock operativo |
-| `/gerencia` | Vista global |
-| `/c/:token` | Catálogo público del cliente |
-
-## Variables
+### 2. App — app.blacksheep.cl
+- Vercel → root `apps/field`
+- Env mínimas (tenant KeyFoods = default):
 
 ```
 VITE_SUPABASE_URL=...
@@ -28,15 +30,29 @@ VITE_SUPABASE_ANON_KEY=...
 VITE_GOOGLE_MAPS_API_KEY=...
 ```
 
-## Deploy
+Opcional segundo tenant:
 
-Ver `V56.16_CANON_RELEASE.md` (SQL → precios → front).
-
-## Producción de datos
-
-```bash
-# Colab / CI
-python scripts/KEYFOODS_CICLO_PRODUCCION.py
+```
+VITE_TENANT_DEMO_URL=...
+VITE_TENANT_DEMO_ANON_KEY=...
 ```
 
-Incluye bajada BQ, patch precios v5 y media opcional.
+### 3. Supabase por empresa
+En el proyecto de cada tenant, en orden:
+
+1. `apps/field/scripts/SUPABASE_FIX_STOCK_PRECIOS.sql`
+2. `apps/field/scripts/SUPABASE_COMMERCE_V56_16_CANON.sql`
+
+Precios: `KEYFOODS_PATCH_STOCK_PRECIOS.py` (v5) con service key de **ese** proyecto.
+
+## Login
+
+1. Usuario → blacksheep.cl → Ingresar  
+2. Elige empresa / se detecta por email  
+3. App resuelve tenant → Supabase correcto → sesión  
+
+Stamp: **`v-BS-PLATFORM-MT`**
+
+## Documentación
+
+Ver [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
