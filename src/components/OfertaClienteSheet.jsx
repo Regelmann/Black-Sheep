@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { parseSkuDetalle } from '../lib/coach'
 import { precioUnitarioDesdeSku } from '../lib/pedido'
+import { resolverPrecio, resolverPrecioCliente, estiloOrigenPrecio, formatPrecioClp, precioDesdeLista } from '../lib/precios'
 
 const money = n => {
   const v = Number(n)
@@ -79,33 +80,26 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
           .order('prioridad')
         const stockMap = new Map((s || []).map(x => [String(x.sku_canon), x]))
         const enriched = (oi || []).map(it => {
-          const st = stockMap.get(String(it.sku_canon))
-          let lista = Number(it.precio_lista) || 0
-          let cli = Number(it.precio_cliente) || 0
-          if (lista <= 0 && st) {
-            for (const k of ['precio_unidad', 'precio_caja', 'precio_kilo', 'precio']) {
-              const v = Number(st[k])
-              if (v > 0) { lista = v; break }
-            }
+          const st = stockMap.get(String(it.sku_canon)) || {
+            sku_canon: it.sku_canon,
+            producto_nombre: it.producto_nombre,
           }
-          const name = String(it.producto_nombre || st?.producto_nombre || '').toLowerCase()
-          let histPrice = null
-          let ultima = null
-          for (const h of parseSkuDetalle(cliente?.sku_detalle || '')) {
-            const k = String(h.nombre || '').toLowerCase().slice(0, 32)
-            if (k && (name.includes(k) || k.includes(name.slice(0, 28)))) {
-              histPrice = Number(precioUnitarioDesdeSku(h)) || null
-              ultima = h.ultima || null
-              break
-            }
-          }
-          if (lista <= 0 && histPrice > 0) lista = histPrice
-          if (cli <= 0 && histPrice > 0) cli = histPrice
+          if (!st.producto_nombre) st.producto_nombre = it.producto_nombre
+          const applied = resolverPrecioCliente(st, cliente, {
+            precioClienteGuardado: it.precio_cliente,
+          })
+          // precio_cliente en oferta = precio que ve el cliente (hist, lista o negociado)
+          const precioCliente =
+            Number(it.precio_cliente) > 0
+              ? Math.round(Number(it.precio_cliente))
+              : applied.precio_hist || (applied.origen === 'historico' ? applied.precio : null)
           return {
             ...it,
-            precio_lista: lista > 0 ? Math.round(lista) : null,
-            precio_cliente: cli > 0 ? Math.round(cli) : null,
-            ultima,
+            precio_lista: applied.precio_lista,
+            precio_cliente: precioCliente,
+            precio_origen: applied.origen,
+            precio_etiqueta: applied.etiqueta,
+            ultima: applied.fecha_hist || null,
           }
         })
         setItems(enriched)
@@ -120,17 +114,18 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
           .slice(0, 20)
           .map((x, idx) => {
             const h = matchHist(x.producto_nombre)
-            const lista = basePrice(x)
-            const histPrice = h ? Number(precioUnitarioDesdeSku(h)) : null
+            const r = resolverPrecio({ histSku: h, stockItem: x })
             return {
               sku_canon: String(x.sku_canon),
               producto_nombre: x.producto_nombre,
-              precio_lista: (lista && lista > 0) ? lista : (histPrice > 0 ? Math.round(histPrice) : null),
-              precio_cliente: histPrice > 0 ? Math.round(histPrice) : null,
+              precio_lista: r.precio_lista,
+              precio_cliente: r.precio_hist,
+              precio_origen: r.origen,
+              precio_etiqueta: r.etiqueta,
               visible: true,
               destacado: true,
               prioridad: idx,
-              ultima: h?.ultima || null,
+              ultima: r.fecha_hist || h?.ultima || null,
             }
           })
         setItems(seed)
@@ -159,30 +154,32 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
   }, [stock, q])
 
   function basePrice(s) {
-    if (!s) return null
-    for (const k of ['precio_unidad', 'precio_caja', 'precio_kilo', 'precio_lista', 'precio']) {
-      const v = Number(s[k])
-      if (Number.isFinite(v) && v > 0) return v
-    }
-    return null
+    return precioDesdeLista(s)
+  }
+
+  function resolveForStock(s, override = null) {
+    const h = matchHist(s?.producto_nombre)
+    return resolverPrecio({ override, histSku: h, stockItem: s })
   }
 
   function addProduct(s) {
     const sku = String(s.sku_canon)
     if (selectedSkus.has(sku)) return
     const h = matchHist(s.producto_nombre)
-    const histPrice = h ? precioUnitarioDesdeSku(h) : null
+    const r = resolveForStock(s)
     setItems(prev => [
       ...prev,
       {
         sku_canon: sku,
         producto_nombre: s.producto_nombre || sku,
-        precio_lista: basePrice(s),
-        precio_cliente: histPrice > 0 ? Math.round(histPrice) : null,
+        precio_lista: r.precio_lista,
+        precio_cliente: r.precio_hist || (r.origen === 'lista' ? r.precio : null),
+        precio_origen: r.origen,
+        precio_etiqueta: r.etiqueta,
         visible: true,
         destacado: Boolean(s.es_foco_mes) || Boolean(h),
         prioridad: prev.length,
-        ultima: h?.ultima || null,
+        ultima: r.fecha_hist || h?.ultima || null,
       },
     ])
     setQ('')
@@ -323,7 +320,7 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
                         <strong>{s.producto_nombre || s.sku_canon}</strong>
                         <span>
                           SKU {s.sku_canon}
-                          {precio ? ` · Lista ${money(precio)}` : ' · Sin precio lista'}
+                          {(() => { const r = resolveForStock(s); return r.precio ? ` · ${r.etiqueta} ${money(r.precio)}` : ' · Consultar' })()}
                           {h?.ultima ? ` · Últ. venta ${fmtFecha(h.ultima)}` : ''}
                         </span>
                       </div>
@@ -361,6 +358,21 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
                     <div className="kf-offer-item-top">
                       <div>
                         <strong>{i.producto_nombre}</strong>
+                        {(() => {
+                          const r = resolverPrecioCliente(s || { producto_nombre: i.producto_nombre, sku_canon: i.sku_canon }, cliente, {
+                            precioClienteGuardado: i.precio_cliente,
+                          })
+                          const stl = estiloOrigenPrecio(r.origen)
+                          return (
+                            <span style={{
+                              display: 'inline-block', marginLeft: 6, fontSize: 10, fontWeight: 800,
+                              padding: '2px 7px', borderRadius: 999,
+                              background: stl.bg, color: stl.color, border: `1px solid ${stl.border}`,
+                            }}>
+                              {r.etiqueta}{r.precio ? ` ${formatPrecioClp(r.precio)}` : ''}
+                            </span>
+                          )
+                        })()}
                         <div className="kf-muted">
                           SKU {i.sku_canon}
                           {s?.estado_stock ? ` · ${s.estado_stock}` : ''}

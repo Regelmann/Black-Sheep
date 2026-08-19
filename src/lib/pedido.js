@@ -1,3 +1,4 @@
+import { precioDesdeHistSku } from './precios'
 /**
  * Pedido en terreno → Supabase.pedidos + WhatsApp.
  * Precio dinámico: último / promedio del cliente (sku_detalle o ventas_lineas).
@@ -147,15 +148,75 @@ export async function listarPedidosHoy(ejecutivoId) {
  * 2) clpMtd / udMtd (mes en curso)
  * 3) null → se completa después con lista/stock
  */
+
+/** Historial de pedidos del ejecutivo (o de un cliente).
+ *  @param {{ ejecutivoId?: string, clienteKey?: string, dias?: number, limit?: number, estado?: string }} opts
+ */
+export async function listarPedidosHistorial(opts = {}) {
+  const { ejecutivoId, clienteKey, dias = 30, limit = 80, estado } = opts
+  let q = supabase
+    .from('pedidos')
+    .select('id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado,ejecutivo_id')
+    .order('creado_en', { ascending: false })
+    .limit(limit)
+
+  if (ejecutivoId) q = q.eq('ejecutivo_id', ejecutivoId)
+  if (clienteKey) q = q.eq('cliente_key', clienteKey)
+  if (estado) q = q.eq('estado', estado)
+  if (dias && dias > 0) {
+    const desde = new Date()
+    desde.setDate(desde.getDate() - dias)
+    desde.setHours(0, 0, 0, 0)
+    q = q.gte('creado_en', desde.toISOString())
+  }
+
+  const { data, error } = await q
+  return { data: data || [], error }
+}
+
+export async function getPedidoById(id) {
+  if (!id) return { data: null, error: null }
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select('id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado,ejecutivo_id')
+    .eq('id', id)
+    .maybeSingle()
+  return { data, error }
+}
+
+export function totalPedido(p) {
+  if (!p) return 0
+  if (Number(p.total_estimado) > 0) return Number(p.total_estimado)
+  const lineas = Array.isArray(p.lineas) ? p.lineas : []
+  return lineas.reduce((a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0), 0)
+}
+
+export function formatFechaPedido(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16)
+  const hoy = new Date()
+  const ayer = new Date()
+  ayer.setDate(hoy.getDate() - 1)
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  const hora = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+  if (sameDay(d, hoy)) return `Hoy ${hora}`
+  if (sameDay(d, ayer)) return `Ayer ${hora}`
+  return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }) + ' ' + hora
+}
+
+export function etiquetaEstadoPedido(estado, fuente) {
+  if (fuente === 'catalogo_publico') return { label: 'Catálogo web', color: '#0d9488' }
+  const e = String(estado || 'borrador').toLowerCase()
+  if (e === 'enviado' || e === 'recibido') return { label: e, color: '#15803d' }
+  if (e === 'confirmado' || e === 'entregado') return { label: e, color: '#2563eb' }
+  if (e === 'cancelado') return { label: e, color: '#b91c1c' }
+  return { label: e || 'borrador', color: '#a8a29e' }
+}
+
 export function precioUnitarioDesdeSku(s) {
-  if (!s) return null
-  const promUd = Number(s.promUd) || 0
-  const promClp = Number(s.promClp) || 0
-  if (promUd > 0 && promClp > 0) return promClp / promUd
-  const udMtd = Number(s.udMtd) || 0
-  const clpMtd = Number(s.clpMtd) || 0
-  if (udMtd > 0 && clpMtd > 0) return clpMtd / udMtd
-  return null
+  return precioDesdeHistSku(s)
 }
 
 export function cantidadSugeridaDesdeSku(s) {

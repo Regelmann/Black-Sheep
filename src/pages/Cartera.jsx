@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PedidoSheet from '../components/PedidoSheet.jsx'
+import HistorialPedidos from '../components/HistorialPedidos.jsx'
 import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
 import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
 import { money, DataAsOfBanner } from '../components.jsx'
@@ -114,6 +115,12 @@ export default function Cartera({ session }) {
   const [loading, setLoading] = useState(true)
   const [clientes, setClientes] = useState([])
   const [dataAsOf, setDataAsOf] = useState(null)
+  const [showAdvFiltros, setShowAdvFiltros] = useState(false)
+  const [advComuna, setAdvComuna] = useState('')
+  const [advDias, setAdvDias] = useState('') // '' | '0-7' | '8-30' | '31-60' | '60+'
+  const [advVentaMin, setAdvVentaMin] = useState('')
+  const [advSoloTel, setAdvSoloTel] = useState(false)
+  const [advOrden, setAdvOrden] = useState('venta') // venta | dias | nombre
   const [filtro, setFiltro] = useState(() => {
     const f = searchParams.get('filtro')
     if (!f) return 'Todos'
@@ -250,6 +257,15 @@ export default function Cartera({ session }) {
   const nActivosMes = clientes.filter(c => Number(c.venta_mtd) > 0).length
   const nSinVentaMes = clientes.filter(c => !(Number(c.venta_mtd) > 0)).length
   const nBloqueados = clientes.filter(c => c.es_bloqueado).length
+  const comunasOpts = useMemo(() => {
+    const s = new Set()
+    for (const c of clientes) {
+      const com = String(c.comuna || '').trim().toUpperCase()
+      if (com) s.add(com)
+    }
+    return Array.from(s).sort()
+  }, [clientes])
+  const nAdvActivos = [advComuna, advDias, advVentaMin !== '' ? advVentaMin : '', advSoloTel ? '1' : '', advOrden !== 'venta' ? advOrden : ''].filter(Boolean).length
 
   const reponerHoy = useMemo(() => {
     try {
@@ -320,7 +336,43 @@ export default function Cartera({ session }) {
         return tokens.every(t => hay.includes(t))
       })
     }
+    // Filtros avanzados
+    if (advComuna) {
+      rows = rows.filter(c => String(c.comuna || '').toUpperCase() === advComuna)
+    }
+    if (advDias) {
+      rows = rows.filter(c => {
+        const d = Number(c.dias_sin_comprar)
+        if (!Number.isFinite(d)) return advDias === '60+'
+        if (advDias === '0-7') return d >= 0 && d <= 7
+        if (advDias === '8-30') return d >= 8 && d <= 30
+        if (advDias === '31-60') return d >= 31 && d <= 60
+        if (advDias === '60+') return d > 60
+        return true
+      })
+    }
+    if (advVentaMin !== '' && advVentaMin != null) {
+      const min = Number(advVentaMin) || 0
+      rows = rows.filter(c => (Number(c.venta_mtd) || 0) >= min)
+    }
+    if (advSoloTel) {
+      rows = rows.filter(c => {
+        const tel = String(c.telefono || c.link_whatsapp || '').replace(/\D/g, '')
+        return tel.length >= 8
+      })
+    }
     return [...rows].sort((a, b) => {
+      if (advOrden === 'nombre') {
+        return String(a.nombre_cliente || '').localeCompare(String(b.nombre_cliente || ''), 'es')
+      }
+      if (advOrden === 'dias') {
+        const da = Number(a.dias_sin_comprar)
+        const db = Number(b.dias_sin_comprar)
+        const va = Number.isFinite(da) ? da : 9999
+        const vb = Number.isFinite(db) ? db : 9999
+        if (vb !== va) return vb - va
+      }
+
       if (filtro === 'Foco' || filtro === 'CerrarMeta') {
         const score = c => {
           let s = 0
@@ -347,7 +399,7 @@ export default function Cartera({ session }) {
       if (vb !== va) return vb - va
       return (Number(b.venta_mensual) || 0) - (Number(a.venta_mensual) || 0)
     })
-  }, [clientes, filtro, q, searchParams])
+  }, [clientes, filtro, q, searchParams, advComuna, advDias, advVentaMin, advSoloTel, advOrden])
 
   function exportarCSV(modo) {
     // modo: 'todo' | 'bloqueados' | 'fugados' | 'reponer'
@@ -539,6 +591,14 @@ export default function Cartera({ session }) {
           >
             Reponer ({reponerHoy.length})
           </button>
+          <button
+            type="button"
+            className={'filter-btn' + (showAdvFiltros || nAdvActivos > 0 ? ' active' : '')}
+            onClick={() => setShowAdvFiltros(v => !v)}
+            style={showAdvFiltros || nAdvActivos > 0 ? { background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' } : {}}
+          >
+            Más filtros{nAdvActivos > 0 ? ` (${nAdvActivos})` : ''}
+          </button>
           <div style={{ position: 'relative' }}>
             <button
               type="button"
@@ -599,6 +659,111 @@ export default function Cartera({ session }) {
           </div>
         </div>
 
+        {showAdvFiltros && (
+          <div style={{
+            background: '#fafaf9', border: '1px solid #e7e5e4', borderRadius: 14,
+            padding: 12, marginBottom: 12,
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#78716c' }}>
+                Comuna
+                <select
+                  value={advComuna}
+                  onChange={e => { setAdvComuna(e.target.value); setShow(PAGE) }}
+                  style={{
+                    display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box',
+                    border: '1px solid #e7e5e4', borderRadius: 10, padding: '10px 10px',
+                    font: 'inherit', fontSize: 13, background: '#fff',
+                  }}
+                >
+                  <option value="">Todas</option>
+                  {comunasOpts.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#78716c' }}>
+                Días sin compra
+                <select
+                  value={advDias}
+                  onChange={e => { setAdvDias(e.target.value); setShow(PAGE) }}
+                  style={{
+                    display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box',
+                    border: '1px solid #e7e5e4', borderRadius: 10, padding: '10px 10px',
+                    font: 'inherit', fontSize: 13, background: '#fff',
+                  }}
+                >
+                  <option value="">Cualquiera</option>
+                  <option value="0-7">0–7 días</option>
+                  <option value="8-30">8–30 días</option>
+                  <option value="31-60">31–60 días</option>
+                  <option value="60+">Más de 60</option>
+                </select>
+              </label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#78716c' }}>
+                Venta MTD mínima
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="Ej. 500000"
+                  value={advVentaMin}
+                  onChange={e => { setAdvVentaMin(e.target.value); setShow(PAGE) }}
+                  style={{
+                    display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box',
+                    border: '1px solid #e7e5e4', borderRadius: 10, padding: '10px 10px',
+                    font: 'inherit', fontSize: 13, background: '#fff',
+                  }}
+                />
+              </label>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#78716c' }}>
+                Ordenar por
+                <select
+                  value={advOrden}
+                  onChange={e => setAdvOrden(e.target.value)}
+                  style={{
+                    display: 'block', width: '100%', marginTop: 4, boxSizing: 'border-box',
+                    border: '1px solid #e7e5e4', borderRadius: 10, padding: '10px 10px',
+                    font: 'inherit', fontSize: 13, background: '#fff',
+                  }}
+                >
+                  <option value="venta">Venta MTD</option>
+                  <option value="dias">Días sin compra</option>
+                  <option value="nombre">Nombre</option>
+                </select>
+              </label>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#44403c' }}>
+                <input
+                  type="checkbox"
+                  checked={advSoloTel}
+                  onChange={e => { setAdvSoloTel(e.target.checked); setShow(PAGE) }}
+                />
+                Solo con teléfono / WhatsApp
+              </label>
+              {nAdvActivos > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdvComuna('')
+                    setAdvDias('')
+                    setAdvVentaMin('')
+                    setAdvSoloTel(false)
+                    setAdvOrden('venta')
+                    setShow(PAGE)
+                  }}
+                  style={{
+                    border: 'none', background: 'transparent', color: '#c2410c',
+                    fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginBottom: 12, marginTop: 4, gap: 8,
@@ -607,7 +772,7 @@ export default function Cartera({ session }) {
             {Math.min(show, lista.length)} de {lista.length}
             {filtro === 'ReponerHoy' ? ' · reposición vencida' : ''}
             {filtro === 'CerrarMeta' ? ' · para cerrar / superar meta' : ''}
-            {filtro === 'Foco' && q ? ` · foco: ${q}` : ''}
+            {filtro === 'Foco' && q ? ` · foco: ${q}` : ''}{nAdvActivos > 0 ? ` · ${nAdvActivos} filtro${nAdvActivos > 1 ? 's' : ''} adv.` : ''}
           </div>
           {reponerHoy.length > 0 && filtro !== 'ReponerHoy' && (
             <button
@@ -910,6 +1075,16 @@ export default function Cartera({ session }) {
                   >
                     Catálogo / precios del cliente
                   </button>
+                  <div style={{ marginTop: 12 }}>
+                    <HistorialPedidos
+                      ejecutivoId={eje?.eidVista || session?.user?.id}
+                      clienteKey={c.cliente_key}
+                      compact
+                      defaultDias={30}
+                      title="Pedidos de este cliente"
+                      onOpenPedido={(p) => setPedidoCliente({ ...c, _pedido: p })}
+                    />
+                  </div>
 
 
                   {/* Más detalle (colapsado) */}
@@ -1116,6 +1291,7 @@ export default function Cartera({ session }) {
       {pedidoCliente && (
         <PedidoSheet
           cliente={pedidoCliente}
+          initialPedido={pedidoCliente._pedido || null}
           aReponer={skusAReponer(pedidoCliente)}
           ejecutivoId={eje?.eidVista || session.user.id}
           ejecutivoNombre={eje?.nombre || eje?.zona}

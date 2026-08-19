@@ -956,15 +956,15 @@ export default function Visita({ session }) {
           }}
         />
       )}
-      {pedidoOpen && (cliente || visita) && (
-        {ofertaOpen && cliente && (
+      {ofertaOpen && cliente && (
         <OfertaClienteSheet
           cliente={cliente}
           ejecutivoId={eje?.eidVista || session?.user?.id}
           onClose={() => { setOfertaOpen(false); setPedidoOk(true) }}
         />
       )}
-      <PedidoSheet
+      {pedidoOpen && (cliente || visita) && (
+        <PedidoSheet
           cliente={cliente || { nombre_cliente: visita.nombre_local, cliente_key: visita.cliente_key, telefono: visita.telefono, link_whatsapp: visita.link_whatsapp, comuna: visita.comuna }}
           aReponer={aReponer}
           ejecutivoId={eje?.eidVista || session?.user?.id}

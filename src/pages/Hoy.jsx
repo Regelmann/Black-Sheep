@@ -5,6 +5,8 @@ import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics'
 import { listarPedidosHoy } from '../lib/pedido'
+import HistorialPedidos from '../components/HistorialPedidos.jsx'
+import PedidoSheet from '../components/PedidoSheet.jsx'
 import {
   loadActionQueue,
   flushActionQueue,
@@ -41,6 +43,8 @@ export default function Hoy() {
     totalPedidos: 0,
     colaOffline: 0,
   })
+  const [showHistorial, setShowHistorial] = useState(false)
+  const [pedidoEdit, setPedidoEdit] = useState(null)
   const [prep, setPrep] = useState(null) // item de Action Queue para sheet 10s
   const [hoyRes, setHoyRes] = useState(() => loadHoyResultados())
 
@@ -357,13 +361,27 @@ export default function Hoy() {
 
         {/* Actividad de terreno hoy — loop cerrado */}
         <div className="card" style={{ padding: '14px 16px' }}>
-          <div className="card-label" style={{ marginBottom: 8 }}>
-            Hoy en terreno
-            {actividadHoy.colaOffline > 0 && (
-              <span style={{ marginLeft: 8, color: '#92400e', fontWeight: 700 }}>
-                · {actividadHoy.colaOffline} en cola offline
-              </span>
-            )}
+          <div className="card-label" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>
+              Hoy en terreno
+              {actividadHoy.colaOffline > 0 && (
+                <span style={{ marginLeft: 8, color: '#92400e', fontWeight: 700 }}>
+                  · {actividadHoy.colaOffline} en cola offline
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowHistorial(v => !v)}
+              style={{
+                border: 'none', background: showHistorial ? '#c2410c' : '#f5f5f4',
+                color: showHistorial ? '#fff' : '#57534e',
+                borderRadius: 999, padding: '5px 10px', fontSize: 11, fontWeight: 800,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {showHistorial ? 'Ocultar historial' : 'Ver historial'}
+            </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             <div style={{ textAlign: 'center' }}>
@@ -380,6 +398,27 @@ export default function Hoy() {
             </div>
           </div>
         </div>
+
+        {showHistorial && (
+          <HistorialPedidos
+            ejecutivoId={eidVista}
+            defaultDias={30}
+            onOpenPedido={(p) => setPedidoEdit(p)}
+          />
+        )}
+        {pedidoEdit && (
+          <PedidoSheet
+            initialPedido={pedidoEdit}
+            cliente={{
+              cliente_key: pedidoEdit.cliente_key,
+              nombre_cliente: pedidoEdit.nombre_cliente,
+            }}
+            aReponer={[]}
+            ejecutivoId={eidVista}
+            onClose={() => setPedidoEdit(null)}
+            onSaved={() => setPedidoEdit(null)}
+          />
+        )}
 
         {/* Focos del mes (ex-Metas) */}
         {focos.length > 0 && (

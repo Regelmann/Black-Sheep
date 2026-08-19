@@ -91,7 +91,7 @@ as $$
       select jsonb_agg(jsonb_build_object(
         'sku_canon', i.sku_canon,
         'producto_nombre', coalesce(i.producto_nombre, s.producto_nombre, i.sku_canon),
-        'subfamilia', coalesce(s.subfamilia, s.familia, 'General'),
+        'subfamilia', coalesce(s.subfamilia, 'General'),
         'marca', s.marca,
         'precio', coalesce(nullif(i.precio_cliente,0), nullif(i.precio_lista,0), nullif(s.precio_unidad,0), nullif(s.precio_caja,0), 0),
         'precio_lista', coalesce(nullif(i.precio_lista,0), nullif(s.precio_unidad,0), nullif(s.precio_caja,0), 0),

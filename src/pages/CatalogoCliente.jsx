@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios'
 
-const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')
+const money = n => {
+  const v = Number(n)
+  if (!v || v <= 0) return 'Consultar'
+  return '$' + Math.round(v).toLocaleString('es-CL')
+}
+
 const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
       <rect fill="#f3efe8" width="400" height="400"/>
-      <text x="200" y="205" text-anchor="middle" fill="#a8a29e" font-family="system-ui" font-size="18">KeyFoods</text>
+      <text x="200" y="198" text-anchor="middle" fill="#c2410c" font-family="system-ui,sans-serif" font-size="16" font-weight="700">KEYFOODS</text>
+      <text x="200" y="222" text-anchor="middle" fill="#a8a29e" font-family="system-ui,sans-serif" font-size="12">producto</text>
     </svg>`
   )
 
@@ -16,19 +23,50 @@ export default function CatalogoCliente() {
   const { token } = useParams()
   const [catalogo, setCatalogo] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState('')
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState('Todos')
   const [cart, setCart] = useState([])
+  const [cartOpen, setCartOpen] = useState(false)
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [nota, setNota] = useState('')
   const [ficha, setFicha] = useState(null)
+  const [pedidoId, setPedidoId] = useState(null)
 
   useEffect(() => {
     let dead = false
     ;(async () => {
-      const { data, error } = await supabase.rpc('get_public_catalogo', { p_token: token })
-      if (!dead) {
-        setCatalogo(error ? null : data)
-        setLoading(false)
+      setLoading(true)
+      setErr('')
+      try {
+        const { data, error } = await supabase.rpc('get_public_catalogo', { p_token: token })
+        if (dead) return
+        if (error) {
+          setCatalogo(null)
+          setErr(error.message || 'No se pudo cargar el catálogo')
+        } else if (!data || !data.nombre_cliente) {
+          setCatalogo(null)
+        } else {
+          const itemsNorm = (data.items || []).map(it => {
+            const r = precioPublicoItem(it)
+            return {
+              ...it,
+              precio: r.precio != null ? r.precio : it.precio,
+              precio_origen: r.origen,
+              precio_lista: it.precio_lista || r.precio_lista,
+              precio_cliente: it.precio_cliente || r.precio_hist,
+            }
+          })
+          setCatalogo({ ...data, items: itemsNorm })
+        }
+      } catch (e) {
+        if (!dead) {
+          setCatalogo(null)
+          setErr(e.message || 'Error de red')
+        }
+      } finally {
+        if (!dead) setLoading(false)
       }
     })()
     return () => { dead = true }
@@ -55,16 +93,34 @@ export default function CatalogoCliente() {
 
   const recommended = filtered.filter(i => i.destacado)
   const rest = filtered.filter(i => !i.destacado)
+  const cartCount = cart.reduce((a, i) => a + Number(i.cantidad || 0), 0)
   const total = cart.reduce((a, i) => a + Number(i.precio || 0) * Number(i.cantidad || 0), 0)
 
   function add(i) {
+    if (!i.stock_disponible && i.stock_disponible !== undefined) {
+      // still allow if precio exists - soft gate
+    }
     setCart(prev => {
       const hit = prev.find(x => x.sku_canon === i.sku_canon)
-      return hit
-        ? prev.map(x => (x.sku_canon === i.sku_canon ? { ...x, cantidad: x.cantidad + 1 } : x))
-        : [...prev, { ...i, cantidad: 1 }]
+      if (hit) {
+        return prev.map(x =>
+          x.sku_canon === i.sku_canon ? { ...x, cantidad: x.cantidad + 1 } : x
+        )
+      }
+      return [
+        ...prev,
+        {
+          sku_canon: i.sku_canon,
+          producto_nombre: i.producto_nombre,
+          precio: Number(i.precio) > 0 ? Number(i.precio) : 0,
+          cantidad: 1,
+          unidad_venta: i.unidad_venta,
+        },
+      ]
     })
+    setCartOpen(true)
   }
+
   function change(sku, delta) {
     setCart(prev =>
       prev
@@ -72,48 +128,109 @@ export default function CatalogoCliente() {
         .filter(x => x.cantidad > 0)
     )
   }
+
+  function setQty(sku, qty) {
+    const n = Math.max(0, Math.floor(Number(qty) || 0))
+    setCart(prev =>
+      prev
+        .map(x => (x.sku_canon === sku ? { ...x, cantidad: n } : x))
+        .filter(x => x.cantidad > 0)
+    )
+  }
+
+  function buildWhatsAppText() {
+    const lines = cart.map(
+      i =>
+        `• ${i.producto_nombre} × ${i.cantidad}` +
+        (i.precio > 0 ? ` · ${money(i.precio)}` : '')
+    )
+    return [
+      `Pedido catálogo — ${catalogo?.nombre_cliente || ''}`,
+      '',
+      ...lines,
+      '',
+      total > 0 ? `Total estimado: ${money(total)}` : '',
+      nota ? `Nota: ${nota}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n')
+  }
+
   async function enviar() {
-    if (!cart.length) return
-    const { error } = await supabase.rpc('crear_pedido_publico', {
-      p_token: token,
-      p_lineas: cart.map(i => ({
-        sku: i.sku_canon,
-        nombre: i.producto_nombre,
-        cantidad: i.cantidad,
-        precio: i.precio,
-      })),
-    })
-    if (!error) setSent(true)
+    if (!cart.length || sending) return
+    setSending(true)
+    setErr('')
+    try {
+      const { data, error } = await supabase.rpc('crear_pedido_publico', {
+        p_token: token,
+        p_lineas: cart.map(i => ({
+          sku: i.sku_canon,
+          nombre: i.producto_nombre,
+          cantidad: i.cantidad,
+          precio: i.precio,
+        })),
+      })
+      if (error) throw error
+      setPedidoId(data || null)
+      setSent(true)
+      setCartOpen(false)
+    } catch (e) {
+      // Fallback: WhatsApp con texto listo
+      setErr(
+        (e.message || 'No se pudo enviar') +
+          ' · Podés copiar el pedido o enviarlo por WhatsApp.'
+      )
+    } finally {
+      setSending(false)
+    }
   }
 
   if (loading) {
     return (
       <div className="kf-pub">
-        <div className="kf-pub-loading">Cargando tu catálogo…</div>
+        <div className="kf-pub-loading">
+          <div className="kf-pub-brand">KEYFOODS</div>
+          <p>Cargando tu lista de precios…</p>
+        </div>
       </div>
     )
   }
+
   if (!catalogo) {
     return (
       <div className="kf-pub">
         <div className="kf-pub-empty">
           <div className="kf-pub-brand">KEYFOODS</div>
           <h1>Catálogo no disponible</h1>
-          <p>El enlace puede estar inactivo o haber cambiado.</p>
+          <p>{err || 'El enlace puede estar inactivo o haber vencido. Pedile uno nuevo a tu ejecutivo.'}</p>
         </div>
       </div>
     )
   }
+
   if (sent) {
     return (
       <div className="kf-pub">
         <div className="kf-pub-empty">
           <div className="kf-pub-brand">KEYFOODS</div>
           <div className="kf-pub-ok">✓</div>
-          <h1>Pedido recibido</h1>
-          <p>Tu pedido fue enviado a tu ejecutivo KeyFoods.</p>
-          <button type="button" className="kf-pub-btn" onClick={() => { setSent(false); setCart([]) }}>
-            Seguir comprando
+          <h1>¡Pedido recibido!</h1>
+          <p>
+            Tu pedido quedó registrado
+            {pedidoId ? ` (#${String(pedidoId).slice(0, 8)})` : ''}.
+            Tu ejecutivo KeyFoods lo va a confirmar.
+          </p>
+          <button
+            type="button"
+            className="kf-pub-btn"
+            onClick={() => {
+              setSent(false)
+              setCart([])
+              setNota('')
+              setPedidoId(null)
+            }}
+          >
+            Seguir viendo productos
           </button>
         </div>
       </div>
@@ -124,18 +241,41 @@ export default function CatalogoCliente() {
     <div className="kf-pub">
       <header className="kf-pub-head">
         <div>
-          <div className="kf-pub-brand">KEYFOODS</div>
-          <h1>Hola, {catalogo.nombre_cliente}</h1>
-          <p>Precios vigentes · productos disponibles para vos</p>
+          <div className="kf-pub-brand">KEYFOODS · LISTA DE PRECIOS</div>
+          <h1>{catalogo.nombre_cliente}</h1>
+          <p>
+            {items.length} productos · precios para vos
+            {catalogo.actualizado_en
+              ? ` · act. ${String(catalogo.actualizado_en).slice(0, 10)}`
+              : ''}
+          </p>
         </div>
-        <div className="kf-pub-cart-badge">🛒 {cart.reduce((a, i) => a + i.cantidad, 0)}</div>
+        <button
+          type="button"
+          className="kf-pub-cart-badge"
+          onClick={() => setCartOpen(o => !o)}
+          aria-label="Abrir carrito"
+        >
+          🛒 {cartCount}
+        </button>
       </header>
 
-      <div className="kf-pub-cats">
+      <div className="kf-pub-search-wrap">
+        <input
+          className="kf-pub-search"
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Buscar producto, marca o código…"
+          inputMode="search"
+        />
+      </div>
+
+      <div className="kf-pub-cats" role="tablist">
         {categories.map(c => (
           <button
             key={c}
             type="button"
+            role="tab"
             className={'kf-pub-cat' + (catFilter === c ? ' is-on' : '')}
             onClick={() => setCatFilter(c)}
           >
@@ -144,16 +284,15 @@ export default function CatalogoCliente() {
         ))}
       </div>
 
-      <input
-        className="kf-pub-search"
-        placeholder="Buscar producto, marca o SKU…"
-        value={q}
-        onChange={e => setQ(e.target.value)}
-      />
+      {!items.length && (
+        <div className="kf-pub-empty" style={{ padding: '24px 12px' }}>
+          <p>Tu ejecutivo todavía no cargó productos en este catálogo.</p>
+        </div>
+      )}
 
       {recommended.length > 0 && (
         <section className="kf-pub-section">
-          <h2>🔥 Recomendados para vos</h2>
+          <h2>Recomendados para vos</h2>
           <div className="kf-pub-grid">
             {recommended.map(i => (
               <ProductCard key={i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
@@ -162,48 +301,117 @@ export default function CatalogoCliente() {
         </section>
       )}
 
-      <section className="kf-pub-section">
-        <h2>Catálogo</h2>
-        <div className="kf-pub-grid">
-          {rest.map(i => (
-            <ProductCard key={i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
-          ))}
-        </div>
-        {!filtered.length && <p className="kf-pub-muted">No hay productos en este filtro.</p>}
-      </section>
-
-      {cart.length > 0 && (
-        <div className="kf-pub-checkout">
-          <div className="kf-pub-checkout-top">
-            <strong>{cart.reduce((a, i) => a + i.cantidad, 0)} productos</strong>
-            <span>{money(total)}</span>
+      {rest.length > 0 && (
+        <section className="kf-pub-section">
+          <h2>{recommended.length ? 'Todo el catálogo' : 'Productos'}</h2>
+          <div className="kf-pub-grid">
+            {rest.map(i => (
+              <ProductCard key={i.sku_canon} item={i} onAdd={add} onFicha={setFicha} />
+            ))}
           </div>
-          <div className="kf-pub-checkout-lines">
+        </section>
+      )}
+
+      {filtered.length === 0 && items.length > 0 && (
+        <p className="kf-pub-muted" style={{ textAlign: 'center', padding: 20 }}>
+          No hay resultados para “{q}”.
+        </p>
+      )}
+
+      {/* Checkout sticky */}
+      <div className={'kf-pub-checkout' + (cartOpen || cartCount > 0 ? ' is-open' : '')}>
+        <button
+          type="button"
+          className="kf-pub-checkout-toggle"
+          onClick={() => setCartOpen(o => !o)}
+        >
+          <span>
+            {cartCount > 0 ? `${cartCount} ítem${cartCount === 1 ? '' : 's'}` : 'Carrito vacío'}
+          </span>
+          <strong>{total > 0 ? money(total) : '—'}</strong>
+        </button>
+
+        {cartOpen && (
+          <div className="kf-pub-checkout-body">
+            {cart.length === 0 && <p className="kf-pub-muted">Agregá productos con + Agregar</p>}
             {cart.map(i => (
               <div key={i.sku_canon} className="kf-pub-line">
-                <span className="kf-pub-line-name">{i.producto_nombre}</span>
+                <div className="kf-pub-line-name">
+                  <div>{i.producto_nombre}</div>
+                  <small>{i.precio > 0 ? money(i.precio) + ' c/u' : 'precio a confirmar'}</small>
+                </div>
                 <div className="kf-pub-qty">
-                  <button type="button" onClick={() => change(i.sku_canon, -1)}>−</button>
-                  <b>{i.cantidad}</b>
-                  <button type="button" onClick={() => change(i.sku_canon, 1)}>+</button>
+                  <button type="button" onClick={() => change(i.sku_canon, -1)} aria-label="Menos">
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    value={i.cantidad}
+                    onChange={e => setQty(i.sku_canon, e.target.value)}
+                    aria-label="Cantidad"
+                  />
+                  <button type="button" onClick={() => change(i.sku_canon, 1)} aria-label="Más">
+                    +
+                  </button>
                 </div>
               </div>
             ))}
-          </div>
-          <button type="button" className="kf-pub-btn" onClick={enviar}>
-            Enviar pedido · {money(total)}
-          </button>
-        </div>
-      )}
 
+            {cart.length > 0 && (
+              <>
+                <textarea
+                  className="kf-pub-nota"
+                  rows={2}
+                  placeholder="Nota para tu ejecutivo (opcional)"
+                  value={nota}
+                  onChange={e => setNota(e.target.value)}
+                />
+                {err && <div className="kf-pub-err">{err}</div>}
+                <div className="kf-pub-checkout-actions">
+                  <button
+                    type="button"
+                    className="kf-pub-btn"
+                    disabled={sending || !cart.length}
+                    onClick={enviar}
+                  >
+                    {sending ? 'Enviando…' : 'Enviar pedido'}
+                  </button>
+                  <a
+                    className="kf-pub-btn-ghost"
+                    href={`https://wa.me/?text=${encodeURIComponent(buildWhatsAppText())}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    WhatsApp
+                  </a>
+                </div>
+                <p className="kf-pub-muted" style={{ marginTop: 8, fontSize: 11 }}>
+                  Al enviar, tu ejecutivo recibe el pedido en la app Black Sheep Field.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modal ficha */}
       {ficha && (
         <div className="kf-pub-modal" onClick={() => setFicha(null)}>
           <div className="kf-pub-modal-card" onClick={e => e.stopPropagation()}>
-            <div className="kf-pub-img-lg">
-              <img src={ficha.imagen_url || PLACEHOLDER} alt="" />
+            <img
+              className="kf-pub-modal-img"
+              src={ficha.imagen_url || PLACEHOLDER}
+              alt=""
+              onError={e => {
+                e.currentTarget.src = PLACEHOLDER
+              }}
+            />
+            <div className="kf-pub-status">
+              {ficha.stock_disponible ? '🟢 Disponible' : '⚪ Consultar disponibilidad'}
             </div>
-            <h3>{ficha.producto_nombre}</h3>
-            <p className="kf-pub-muted">
+            <h2>{ficha.producto_nombre}</h2>
+            <p className="kf-pub-meta">
               {ficha.subfamilia || 'Producto'}
               {ficha.marca ? ` · ${ficha.marca}` : ''}
               {ficha.unidad_venta ? ` · ${ficha.unidad_venta}` : ''}
@@ -211,20 +419,29 @@ export default function CatalogoCliente() {
             {ficha.resena && <p className="kf-pub-resena">{ficha.resena}</p>}
             <div className="kf-pub-price-lg">
               {Number(ficha.precio) > 0 ? money(ficha.precio) : 'Consultar precio'}
+              {Number(ficha.precio_lista) > 0 &&
+                Number(ficha.precio) > 0 &&
+                Number(ficha.precio) !== Number(ficha.precio_lista) && (
+                  <small style={{ display: 'block', fontSize: 12, color: '#78716c', fontWeight: 500 }}>
+                    Lista: {money(ficha.precio_lista)}
+                  </small>
+                )}
             </div>
             <div className="kf-pub-modal-actions">
               {ficha.ficha_url && (
                 <a className="kf-pub-btn-ghost" href={ficha.ficha_url} target="_blank" rel="noreferrer">
-                  Ver ficha técnica
+                  Ficha técnica
                 </a>
               )}
               <button
                 type="button"
                 className="kf-pub-btn"
-                disabled={!ficha.stock_disponible}
-                onClick={() => { add(ficha); setFicha(null) }}
+                onClick={() => {
+                  add(ficha)
+                  setFicha(null)
+                }}
               >
-                {ficha.stock_disponible ? 'Agregar al pedido' : 'Sin stock'}
+                Agregar al pedido
               </button>
             </div>
             <button type="button" className="kf-pub-close" onClick={() => setFicha(null)}>
@@ -238,6 +455,7 @@ export default function CatalogoCliente() {
 }
 
 function ProductCard({ item, onAdd, onFicha }) {
+  const hasPrice = Number(item.precio) > 0
   return (
     <article className="kf-pub-card">
       <button type="button" className="kf-pub-img" onClick={() => onFicha(item)}>
@@ -249,30 +467,45 @@ function ProductCard({ item, onAdd, onFicha }) {
             e.currentTarget.src = PLACEHOLDER
           }}
         />
+        {item.destacado && <span className="kf-pub-badge-hot">Para vos</span>}
       </button>
       <div className="kf-pub-card-body">
         <div className="kf-pub-status">
           {item.stock_disponible ? '🟢 Disponible' : '⚪ Consultar'}
-          {item.destacado ? ' · 🔥' : ''}
         </div>
         <h3>{item.producto_nombre}</h3>
         <p className="kf-pub-meta">
           {item.subfamilia || 'Producto'}
           {item.marca ? ` · ${item.marca}` : ''}
         </p>
-        {item.resena && <p className="kf-pub-resena-sm">{String(item.resena).slice(0, 90)}{String(item.resena).length > 90 ? '…' : ''}</p>}
-        <div className="kf-pub-price">{Number(item.precio) > 0 ? money(item.precio) : 'Consultar'}</div>
+        {item.resena && (
+          <p className="kf-pub-resena-sm">
+            {String(item.resena).slice(0, 80)}
+            {String(item.resena).length > 80 ? '…' : ''}
+          </p>
+        )}
+        <div className="kf-pub-price">{hasPrice ? money(item.precio) : 'Consultar'}</div>
+        {(item.precio_origen || item.origen || (Number(item.precio_cliente) > 0 ? 'historico' : Number(item.precio_lista) > 0 ? 'lista' : '')) && (
+          <div style={{ marginTop: 4 }}>
+            {(() => {
+              const origen = item.precio_origen || item.origen || (Number(item.precio) > 0 && Number(item.precio_cliente) > 0 && Number(item.precio) === Number(item.precio_cliente) ? 'historico' : 'lista')
+              const stl = estiloOrigenPrecio(origen)
+              const label = origen === 'historico' ? 'Tu precio' : origen === 'lista' ? 'Lista' : origen === 'negociado' ? 'Negociado' : 'Consultar'
+              return (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                  background: stl.bg, color: stl.color, border: `1px solid ${stl.border}`,
+                }}>{label}</span>
+              )
+            })()}
+          </div>
+        )}
         <div className="kf-pub-card-actions">
           <button type="button" className="kf-pub-link" onClick={() => onFicha(item)}>
             Detalle
           </button>
-          <button
-            type="button"
-            className="kf-pub-add"
-            disabled={!item.stock_disponible}
-            onClick={() => onAdd(item)}
-          >
-            {item.stock_disponible ? '+ Agregar' : 'Sin stock'}
+          <button type="button" className="kf-pub-add" onClick={() => onAdd(item)}>
+            + Agregar
           </button>
         </div>
       </div>
