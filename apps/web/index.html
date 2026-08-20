@@ -1,270 +1,859 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Black Sheep Field — Venta en ruta que sí se ve</title>
-  <meta name="description" content="Plataforma de field sales para distribuidores en Chile. Ruta, reposición, precio del cliente y gerencia en un solo flujo." />
-  <meta property="og:title" content="Black Sheep Field" />
-  <meta property="og:description" content="Más visitas productivas. Precio correcto. Visibilidad real." />
-  <meta property="og:image" content="brand/logo-master-1024.png" />
-  <link rel="icon" type="image/png" href="brand/logo-mark-32.png" />
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Black Sheep Field — Cero Excel. Solo pedidos.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050505;
+      --bg-card: #111111;
+      --bg-elevated: #181818;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --green: #a3e635;
+      --green-dim: rgba(163, 230, 53, 0.15);
+      --orange: #f97316;
+      --border: #27272a;
+      --radius: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(5,5,5,0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.65rem 1.25rem;
+    }
+
+    .header-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      background: #0a0a0a;
+      border: 1px solid #222;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .logo-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .logo-text {
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .logo-text span { color: var(--green); display: block; font-size: 0.82rem; font-weight: 600; }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    nav a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #0a0a0a;
+    }
+    .btn-primary:hover {
+      background: #b8f04a;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(163,230,53,0.25);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover {
+      border-color: #3f3f46;
+      background: var(--bg-elevated);
+    }
+
+    .hero {
+      padding: 7.5rem 1.25rem 3.5rem;
+      max-width: 1120px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    @media (max-width: 860px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 6rem;
+        text-align: center;
+        gap: 2.5rem;
+      }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--green);
+      background: var(--green-dim);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.35rem, 5.5vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+      margin-bottom: 1.15rem;
+    }
+
+    .hero h1 .line2 {
+      color: var(--green);
+    }
+
+    .hero-lead {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 440px;
+      margin-bottom: 1.75rem;
+    }
+
+    @media (max-width: 860px) {
+      .hero-lead { margin-left: auto; margin-right: auto; }
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 860px) {
+      .hero-actions { justify-content: center; }
+    }
+
+    .hero-proof {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem 1.25rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .hero-proof span {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .hero-proof .dot {
+      width: 5px; height: 5px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    .phone-wrap {
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+
+    .phone {
+      width: min(270px, 78vw);
+      background: #0c0c0c;
+      border-radius: 38px;
+      padding: 11px;
+      box-shadow:
+        0 0 0 1.5px #1f1f1f,
+        0 30px 60px -15px rgba(0,0,0,0.75),
+        0 0 100px rgba(163,230,53,0.07);
+      position: relative;
+    }
+
+    .phone::before {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 72px;
+      height: 20px;
+      background: #050505;
+      border-radius: 20px;
+      z-index: 3;
+    }
+
+    .phone-screen {
+      width: 100%;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #0a0a0a;
+      aspect-ratio: 9 / 19.2;
+    }
+
+    .phone-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      display: block;
+    }
+
+    .phone-tag {
+      position: absolute;
+      bottom: -10px;
+      right: -8px;
+      background: var(--green);
+      color: #0a0a0a;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      z-index: 5;
+    }
+
+    /* Floating labels around phone */
+    .float-label {
+      position: absolute;
+      background: rgba(24,24,24,0.92);
+      border: 1px solid #333;
+      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      white-space: nowrap;
+      z-index: 4;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      animation: floatY 4s ease-in-out infinite;
+    }
+
+    .float-label::before {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      left: -2px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .fl-1 {
+      top: 8%;
+      right: 78%;
+      animation-delay: 0s;
+    }
+    .fl-2 {
+      top: 32%;
+      left: 78%;
+      animation-delay: 0.6s;
+    }
+    .fl-3 {
+      top: 55%;
+      right: 82%;
+      animation-delay: 1.2s;
+    }
+    .fl-4 {
+      bottom: 14%;
+      left: 76%;
+      animation-delay: 1.8s;
+    }
+
+    @keyframes floatY {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    @media (max-width: 860px) {
+      .float-label { display: none; }
+    }
+
+    .stats {
+      max-width: 1120px;
+      margin: 0 auto 3.5rem;
+      padding: 0 1.25rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.85rem;
+    }
+
+    @media (max-width: 700px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .stat {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.35rem 1rem;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.2rem;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    section {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 3.5rem 1.25rem;
+    }
+
+    .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--green);
+      margin-bottom: 0.6rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.7rem, 3.8vw, 2.35rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 0.85rem;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 520px;
+      margin-bottom: 2.25rem;
+    }
+
+    .problems {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 780px) {
+      .problems { grid-template-columns: 1fr; }
+    }
+
+    .problem {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+
+    .problem-icon {
+      width: 40px; height: 40px;
+      background: rgba(249,115,22,0.12);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 1.2rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .problem h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .problem p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .features-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    @media (max-width: 860px) {
+      .features-layout { grid-template-columns: 1fr; }
+    }
+
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.35rem;
+    }
+
+    .feature {
+      display: flex;
+      gap: 0.9rem;
+    }
+
+    .feature-icon {
+      width: 44px; height: 44px;
+      min-width: 44px;
+      background: var(--green-dim);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 1.2rem;
+    }
+
+    .feature h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .feature p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .screens-wrap {
+      background: linear-gradient(180deg, #050505 0%, #0c0c0c 40%, #050505 100%);
+      padding: 4rem 0 3rem;
+      overflow: hidden;
+    }
+
+    .screens-header {
+      max-width: 1120px;
+      margin: 0 auto 2.25rem;
+      padding: 0 1.25rem;
+      text-align: center;
+    }
+
+    .screens-header .section-desc {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .screens-track {
+      display: flex;
+      gap: 1.15rem;
+      padding: 0 1.25rem 1.5rem;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .screens-track::-webkit-scrollbar { height: 5px; }
+    .screens-track::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 3px; }
+    .screens-track::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+    .screen-card {
+      flex: 0 0 240px;
+      scroll-snap-align: start;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .screen-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(0,0,0,0.45);
+    }
+
+    .screen-card img {
+      width: 100%;
+      height: 440px;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .screen-card .cap {
+      padding: 0.9rem 1rem;
+    }
+
+    .screen-card .cap h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+    }
+
+    .screen-card .cap p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .login-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    @media (max-width: 860px) {
+      .login-grid { grid-template-columns: 1fr; }
+    }
+
+    .login-copy .section-desc { margin-bottom: 1.5rem; }
+
+    .login-note {
+      margin-top: 1.25rem;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .login-note a { color: var(--green); text-decoration: none; }
+
+    .login-phone {
+      display: flex;
+      justify-content: center;
+    }
+
+    .login-phone .phone { width: min(250px, 72vw); }
+
+    .cta {
+      text-align: center;
+      padding: 4.5rem 1.25rem;
+      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(163,230,53,0.07) 0%, transparent 70%);
+    }
+
+    .cta h2 {
+      font-size: clamp(1.7rem, 3.8vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.75rem;
+    }
+
+    .cta p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 420px;
+      margin: 0 auto 1.75rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.75rem 1.25rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    footer a { color: var(--green); text-decoration: none; }
+
+    @media (max-width: 640px) {
+      nav a:not(.btn) { display: none; }
+    }
+  </style>
 </head>
 <body>
-  <div class="ambient" aria-hidden="true"></div>
 
-  <header class="nav">
-    <div class="nav-inner">
-      <a class="nav-brand" href="index.html">
-        <img class="mark" src="brand/logo-mark-192.png" alt="" width="36" height="36" />
-        <span class="nav-name">Black Sheep <em>Field</em></span>
-      </a>
-      <nav class="nav-links">
-        <a class="link hide-sm" href="#producto">Producto</a>
-        <a class="link hide-sm" href="#resultados">Resultados</a>
-        <a class="link hide-sm" href="#faq">FAQ</a>
-        <a class="btn btn-ghost" href="login.html">Ingresar</a>
-        <a class="btn btn-neon" href="login.html">Entrar al sistema</a>
-      </nav>
+<header>
+  <div class="header-inner">
+    <a href="#" class="logo">
+      <div class="logo-mark">
+        <img src="logo_real.png" alt="Black Sheep Field">
+      </div>
+      <div class="logo-text">Black Sheep<span>Field</span></div>
+    </a>
+    <nav>
+      <a href="#producto">Producto</a>
+      <a href="#pantallas">Pantallas</a>
+      <a href="#acceso">Acceso</a>
+      <a href="#acceso" class="btn btn-primary" style="padding:0.45rem 1rem;font-size:0.82rem;">Entrar al sistema</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="hero-badge">● 0 Excel · 0 papel · Multi-empresa</div>
+    <h1>
+      Cero Excel.<br>
+      <span class="line2">Solo pedidos.</span>
+    </h1>
+    <p class="hero-lead">
+      El vendedor cierra en la calle. La gerencia ve en el mismo segundo.
+      Ruta, precio del cliente, stock y pedido en una sola app.
+    </p>
+    <div class="hero-actions">
+      <a href="#acceso" class="btn btn-primary">Entrar al sistema</a>
+      <a href="#pantallas" class="btn btn-ghost">Ver cómo funciona</a>
     </div>
-  </header>
-
-  <main>
-    <!-- HERO: outcome + product UI (conversion pattern 2026) -->
-    <section class="hero-pro">
-      <div class="hero-pro-copy">
-        <p class="chip"><span class="dot"></span> Field sales · Chile</p>
-        <h1>
-          Vendé en la calle<br />
-          <span class="grad">con el control de la oficina.</span>
-        </h1>
-        <p class="lead">
-          Black Sheep Field alinea ruta, stock, precio del cliente y pedido.
-          El vendedor cierra. Gerencia ve. Sin Excel del viernes.
-        </p>
-        <div class="hero-cta">
-          <a class="btn btn-neon btn-lg magnetic" href="login.html">Entrar al sistema →</a>
-          <a class="btn btn-ghost btn-lg" href="#producto">Ver el producto</a>
-        </div>
-        <p class="trust-line">
-          En producción con equipos de distribución · Multi-empresa · Precio validado en servidor
-        </p>
-      </div>
-      <div class="hero-pro-visual">
-        <div class="device">
-          <div class="device-notch"></div>
-          <img src="assets/shot-pedido.jpg" alt="Pedido en terreno — Black Sheep Field" width="280" height="560" />
-        </div>
-        <div class="float-badge b1"><strong>Tu precio</strong><span>Histórico cliente</span></div>
-        <div class="float-badge b2"><strong>Stock OK</strong><span>Operativo</span></div>
-        <img class="hero-sheep" src="brand/logo-mark-192.png" alt="" width="64" height="64" />
-      </div>
-    </section>
-
-    <!-- Proof metrics -->
-    <section class="metrics" id="resultados">
-      <div class="metrics-inner">
-        <div class="metric">
-          <strong>1 flujo</strong>
-          <span>Ruta → pedido → gerencia</span>
-        </div>
-        <div class="metric">
-          <strong>3 precios</strong>
-          <span>Negociado · histórico · lista</span>
-        </div>
-        <div class="metric">
-          <strong>0 planillas</strong>
-          <span>Para cerrar el día</span>
-        </div>
-        <div class="metric">
-          <strong>N tenants</strong>
-          <span>Una plataforma, muchas empresas</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Problem → sell the pain -->
-    <section class="section">
-      <p class="kicker">El costo de no tenerlo</p>
-      <h2 class="h-display">Cada día en la calle sin sistema<br /><em>sale caro.</em></h2>
-      <div class="pain-row">
-        <div class="pain">
-          <h3>Precio improvisado</h3>
-          <p>Descuentos de memoria, márgenes que se evaporan, discusiones en el local.</p>
-        </div>
-        <div class="pain">
-          <h3>Reposición a ojo</h3>
-          <p>Se pierde venta o se sobre-estockea porque nadie ve la cadencia real.</p>
-        </div>
-        <div class="pain">
-          <h3>Gerencia a ciegas</h3>
-          <p>Hasta el reporte semanal no sabés qué pasó en cada zona.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Product sell -->
-    <section class="section" id="producto">
-      <p class="kicker">El producto</p>
-      <h2 class="h-display">Todo lo que importa<br /><em>en el bolsillo del vendedor.</em></h2>
-      <p class="section-lead">Diseñado para usarse de pie, entre un cliente y el siguiente.</p>
-
-      <div class="sell-grid">
-        <article class="sell-card">
-          <div class="sell-icon">📍</div>
-          <h3>Ruta del día</h3>
-          <p>A quién visitar, en qué orden, con contexto de la cuenta — no una lista suelta en WhatsApp.</p>
-        </article>
-        <article class="sell-card">
-          <div class="sell-icon">🛒</div>
-          <h3>Catálogo que vende</h3>
-          <p>El cliente ve su precio, focos y sugerencias de reposición. El pedido llega solo.</p>
-        </article>
-        <article class="sell-card">
-          <div class="sell-icon">🔒</div>
-          <h3>Precio a prueba de trampas</h3>
-          <p>Negociado → histórico → lista. El backend recalcula; el browser no manda.</p>
-        </article>
-        <article class="sell-card">
-          <div class="sell-icon">📡</div>
-          <h3>Gerencia en vivo</h3>
-          <p>Zonas, focos y cumplimiento sin esperar el cierre de mes.</p>
-        </article>
-      </div>
-    </section>
-
-    <!-- Product gallery - proof -->
-    <section class="section section-tight">
-      <p class="kicker">En el teléfono</p>
-      <h2 class="h-display">No es un mockup inventado.</h2>
-      <div class="phones">
-        <figure class="phone-card">
-          <img src="assets/shot-catalogo.jpg" alt="Catálogo" loading="lazy" />
-          <figcaption><strong>Catálogo</strong> · reposición y focos</figcaption>
-        </figure>
-        <figure class="phone-card phone-card-mid">
-          <img src="assets/shot-pedido.jpg" alt="Pedido" loading="lazy" />
-          <figcaption><strong>Pedido</strong> · total y envío</figcaption>
-        </figure>
-        <figure class="phone-card">
-          <img src="assets/shot-stock.jpg" alt="Stock" loading="lazy" />
-          <figcaption><strong>Stock</strong> · cobertura real</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <!-- Who it's for -->
-    <section class="section">
-      <p class="kicker">Para quién</p>
-      <h2 class="h-display">Distribuidores y fuerza de venta<br /><em>que viven de la ruta.</em></h2>
-      <div class="audience">
-        <div class="aud">
-          <h3>Alimentos &amp; CPG</h3>
-          <p>Reposición frecuente, focos semanales, precio por cliente.</p>
-        </div>
-        <div class="aud">
-          <h3>Insumos &amp; B2B</h3>
-          <p>Listas largas, negociado histórico, stock crítico.</p>
-        </div>
-        <div class="aud">
-          <h3>Multi-empresa</h3>
-          <p>Un núcleo Black Sheep; cada cliente es un tenant.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Quote -->
-    <section class="quote-block">
-      <blockquote>
-        “Necesitamos que el vendedor sepa <em>qué reponer hoy</em><br />
-        y que nosotros lo veamos en vivo.”
-      </blockquote>
-      <p class="quote-attr">— El brief con el que nació Field</p>
-    </section>
-
-    <!-- FAQ -->
-    <section class="section" id="faq">
-      <p class="kicker">Antes de decidir</p>
-      <h2 class="h-display">Preguntas que cierran la venta</h2>
-      <div class="faq">
-        <details open>
-          <summary>¿Reemplaza a mi ERP o CRM?</summary>
-          <p>No. Es la capa de ejecución en ruta. Convive con tu sistema central y le manda pedidos reales.</p>
-        </details>
-        <details>
-          <summary>¿Cuánto tarda en estar usable?</summary>
-          <p>Tenant + carga de stock/precios/clientes. KeyFoods ya opera; el siguiente cliente replica el mismo molde.</p>
-        </details>
-        <details>
-          <summary>¿Y si no somos alimentos?</summary>
-          <p>Sirve para cualquier ruta B2B con reposición y precio por cliente (insumos, tornillos, etc.).</p>
-        </details>
-        <details>
-          <summary>¿Cómo empiezo hoy?</summary>
-          <p>Si ya tenés usuario: <a href="login.html" style="color:var(--lime)">Ingresar</a>. Si no: escribí a hola@blacksheep.cl.</p>
-        </details>
-      </div>
-    </section>
-
-    <!-- Final CTA -->
-    <section class="cta-final">
-      <div class="cta-box">
-        <img src="brand/logo-mark-192.png" alt="" class="cta-mark" width="56" height="56" />
-        <h2>La calle no espera.<br />Tu sistema tampoco.</h2>
-        <p>Entrá con tu cuenta de empresa o pidamos acceso para tu equipo.</p>
-        <div class="hero-cta">
-          <a class="btn btn-neon btn-lg magnetic" href="login.html">Entrar al sistema</a>
-          <a class="btn btn-ghost btn-lg" href="mailto:hola@blacksheep.cl">Hablar con ventas</a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Mobile sticky CTA -->
-  <div class="mob-cta" aria-hidden="false">
-    <a class="btn btn-neon" href="login.html">Entrar al sistema</a>
+    <div class="hero-proof">
+      <span><span class="dot"></span> Cada visita = pedido</span>
+      <span><span class="dot"></span> Control en vivo</span>
+      <span><span class="dot"></span> Una empresa = un espacio</span>
+    </div>
   </div>
 
-  <footer class="foot">
-    <a class="nav-brand" href="index.html">
-      <img class="mark" src="brand/logo-mark-64.png" alt="" width="28" height="28" />
-      <span class="nav-name">Black Sheep <em>Field</em></span>
-    </a>
-    <p>© <span id="y"></span> · <a href="https://www.black-sheep.cl">black-sheep.cl</a></p>
-  </footer>
+  <div class="phone-wrap">
+    <div class="float-label fl-1">Meta del mes</div>
+    <div class="float-label fl-2">Check-ins</div>
+    <div class="float-label fl-3">Brecha</div>
+    <div class="float-label fl-4">Pedidos hoy</div>
+    <div class="phone">
+      <div class="phone-screen">
+        <img src="268790.jpg" alt="Vista del día - Black Sheep Field" loading="eager">
+      </div>
+      <div class="phone-tag">Hoy</div>
+    </div>
+  </div>
+</section>
 
-  <script>
-    document.getElementById("y").textContent = new Date().getFullYear();
-    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+<div class="stats">
+  <div class="stat">
+    <div class="stat-num">0</div>
+    <div class="stat-label">planillas Excel</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">1</div>
+    <div class="stat-label">flujo de venta</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">5</div>
+    <div class="stat-label">precios por cliente</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">∞</div>
+    <div class="stat-label">empresas / espacios</div>
+  </div>
+</div>
 
-    document.querySelectorAll('a[href^="#"]').forEach(function (a) {
-      a.addEventListener("click", function (e) {
-        var el = document.querySelector(a.getAttribute("href"));
-        if (!el) return;
-        e.preventDefault();
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
+<section id="producto">
+  <div class="label">El costo real</div>
+  <h2 class="section-title">Cada día con Excel se pierde plata.</h2>
+  <p class="section-desc">Descuentos de memoria, reposición a ojo y precios que nadie controla. El vendedor improvisa. La gerencia se entera tarde… o nunca.</p>
 
-    if (!reduce && !window.matchMedia("(pointer: coarse)").matches) {
-      document.querySelectorAll(".magnetic").forEach(function (btn) {
-        var raf = 0, tx = 0, ty = 0;
-        btn.addEventListener("pointermove", function (e) {
-          var r = btn.getBoundingClientRect();
-          tx = (e.clientX - r.left - r.width / 2) * 0.12;
-          ty = (e.clientY - r.top - r.height / 2) * 0.18;
-          if (raf) return;
-          raf = requestAnimationFrame(function () {
-            btn.style.transform = "translate3d(" + tx + "px," + ty + "px,0)";
-            raf = 0;
-          });
-        });
-        btn.addEventListener("pointerleave", function () {
-          btn.style.transform = "";
-        });
-      });
-    }
-  </script>
+  <div class="problems">
+    <div class="problem">
+      <div class="problem-icon">💸</div>
+      <h3>Precio imposible</h3>
+      <p>Negociaciones que se pierden, márgenes que se evaporan y descuentos que nadie puede justificar después.</p>
+    </div>
+    <div class="problem">
+      <div class="problem-icon">📦</div>
+      <h3>Reposición a ojo</h3>
+      <p>No se sabe qué hay en el camión ni qué le falta al cliente. Se pierde la venta del día y la del mes.</p>
+    </div>
+    <div class="problem">
+      <div class="problem-icon">📝</div>
+      <h3>Garantía a ciegas</h3>
+      <p>Sin historial ni prueba de entrega, cada reclamo se transforma en una discusión que nadie gana.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="label">El producto</div>
+  <h2 class="section-title">Todo lo que importa, en el bolsillo del vendedor.</h2>
+  <p class="section-desc">Una sola app. El vendedor vende. La gerencia controla. El stock se actualiza. El cliente tiene su catálogo.</p>
+
+  <div class="features-layout">
+    <div class="feature-list">
+      <div class="feature">
+        <div class="feature-icon">🗺️</div>
+        <div>
+          <h3>Ruta y mapa del día</h3>
+          <p>Clientes cercanos, estado de la ruta, en riesgo y activos. Check-ins con GPS. Todo en tiempo real.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🛒</div>
+        <div>
+          <h3>Catálogo que vende</h3>
+          <p>Precio lista + precio del cliente. Recomendados, visibles y stock por SKU. Un toque y se arma el pedido.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <div>
+          <h3>Vista gerencial</h3>
+          <p>Resultado del mes, brecha de terreno, clientes sin zona y tendencia de los últimos 12 meses.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🏢</div>
+        <div>
+          <h3>Cada empresa, su espacio</h3>
+          <p>Al entrar con tu usuario de empresa vas directo a la plataforma de tu organización. Datos aislados, sin mezclas.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone-wrap">
+      <div class="phone" style="width:min(250px,72vw)">
+        <div class="phone-screen">
+          <img src="268802.jpg" alt="Mapa de clientes - Black Sheep Field" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="screens-wrap" id="pantallas">
+  <div class="screens-header">
+    <div class="label">Pantallas reales</div>
+    <h2 class="section-title">No es un mockup inventado.</h2>
+    <p class="section-desc">Capturas actuales de la app en producción. Cada pantalla resuelve un problema real del terreno.</p>
+  </div>
+
+  <div class="screens-track">
+    <div class="screen-card">
+      <img src="268790.jpg" alt="Mi día" loading="lazy">
+      <div class="cap">
+        <h4>Mi día</h4>
+        <p>Meta, proyección, check-ins y focos del día.</p>
+      </div>
+    </div>
+    <div class="screen-card">
+      <img src="268802.jpg" alt="Mapa" loading="lazy">
+      <div class="cap">
+        <h4>Mapa y rutas</h4>
+        <p>Clientes cercanos, zonas y estado de la ruta.</p>
+      </div>
+    </div>
+    <div class="screen-card">
+      <img src="268793.jpg" alt="Cliente" loading="lazy">
+      <div class="cap">
+        <h4>Ficha del cliente</h4>
+        <p>Ventas del mes, ritmo, ofertas y catálogo.</p>
+      </div>
+    </div>
+    <div class="screen-card">
+      <img src="268796.jpg" alt="Catálogo" loading="lazy">
+      <div class="cap">
+        <h4>Catálogo del cliente</h4>
+        <p>Precios personalizados, stock y visibles.</p>
+      </div>
+    </div>
+    <div class="screen-card">
+      <img src="268799.jpg" alt="Gerencia" loading="lazy">
+      <div class="cap">
+        <h4>Vista gerencial</h4>
+        <p>Venta total, brecha de terreno y tendencia.</p>
+      </div>
+    </div>
+    <div class="screen-card">
+      <img src="268783.jpg" alt="Login" loading="lazy">
+      <div class="cap">
+        <h4>Acceso por empresa</h4>
+        <p>Cada usuario entra a su organización.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="acceso">
+  <div class="login-grid">
+    <div class="login-copy">
+      <div class="label">Acceso</div>
+      <h2 class="section-title">Entrá con tu usuario de empresa.</h2>
+      <p class="section-desc">
+        Cada usuario pertenece a una organización. Al autenticarte vas directo a la plataforma Field de tu compañía. 
+        Sin cuentas genéricas. Sin datos mezclados entre empresas.
+      </p>
+      <a href="#" class="btn btn-primary">Entrar al sistema</a>
+      <p class="login-note">¿No tenés acceso? <a href="mailto:hola@black-sheep.cl">Contactar</a></p>
+    </div>
+    <div class="login-phone">
+      <div class="phone">
+        <div class="phone-screen">
+          <img src="268783.jpg" alt="Login Black Sheep Field" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cta">
+  <h2>Listo para vender con control.</h2>
+  <p>Black Sheep Field conecta la calle con la oficina. Ruta, stock, precio y pedido en una sola app.</p>
+  <a href="#acceso" class="btn btn-primary" style="font-size:1rem;padding:0.8rem 1.7rem;">Entrar al sistema</a>
+</div>
+
+<footer>
+  <p>© 2026 Black Sheep Field · <a href="https://app.black-sheep.cl">app.black-sheep.cl</a></p>
+</footer>
+
 </body>
 </html>
