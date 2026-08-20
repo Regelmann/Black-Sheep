@@ -1,6 +1,6 @@
 # Black Sheep Field — Sitio web (marketing + ingreso)
 
-Landing negra / neón para **blacksheep.cl**.
+Landing negra / neón para **black-sheep.cl**.
 
 ## Contenido
 
@@ -16,14 +16,14 @@ Landing negra / neón para **blacksheep.cl**.
 
 1. Proyecto nuevo apuntando a esta carpeta (o repo `blacksheep-web`).
 2. Framework: Other (estático). Output: raíz.
-3. Dominio: `blacksheep.cl` / `www.blacksheep.cl`.
+3. Dominio: `black-sheep.cl` / `www.black-sheep.cl`.
 
 ## Conectar login → app Field
 
 En `login.html`, antes del cierre de `</body>` o en un snippet Vercel:
 
 ```html
-<script>window.BS_APP_URL = "https://app.blacksheep.cl";</script>
+<script>window.BS_APP_URL = "https://app.black-sheep.cl";</script>
 ```
 
 O el deploy actual de KeyFoods Field en Vercel. La app debe autenticar con Supabase y resolver el tenant del usuario.

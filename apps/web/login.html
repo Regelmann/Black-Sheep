@@ -1,3 +1,108 @@
+<<<<<<< HEAD
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ingresar — Black Sheep Field</title>
+  <meta name="description" content="Acceso a Black Sheep Field. Elegí tu empresa y entrá a la app." />
+  <link rel="icon" type="image/png" href="brand/logo-mark-32.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="login-body">
+  <div class="login-page">
+    <div class="login-card">
+      <div class="logo-wrap">
+        <img src="brand/logo-mark-192.png" alt="Black Sheep" width="88" height="88" />
+      </div>
+      <h1>Black Sheep <span class="neon-text">Field</span></h1>
+      <p class="sub">Elegí tu empresa y continuá a la app</p>
+
+      <form id="login-form" action="#" method="post">
+        <div class="field">
+          <label for="tenant">Empresa</label>
+          <select id="tenant" name="tenant" required>
+            <option value="keyfoods">KeyFoods</option>
+            <option value="demo">Demo Black Sheep</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="username"
+                 placeholder="tu@empresa.cl" required />
+        </div>
+        <button class="btn btn-neon" type="submit">Continuar a la app →</button>
+      </form>
+
+      <div class="login-note">
+        <strong style="color:#f4f4f5">black-sheep.cl</strong> es la puerta de entrada.
+        La contraseña la ingresás en la app Field de tu empresa (datos aislados por compañía).
+      </div>
+
+      <p class="login-foot">
+        <a href="index.html">← Volver al sitio</a>
+        · ¿Sin acceso? <a href="mailto:hola@black-sheep.cl">Contactar</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * URL pública de la app Field en Vercel.
+     * Ejemplo: https://field-xxxx.vercel.app  o  https://app.black-sheep.cl
+     * Cambiá SOLO esta línea con la URL real de tu deploy Field.
+     */
+    window.BS_APP_URL = window.BS_APP_URL || 'https://app.black-sheep.cl';
+
+    const emailEl = document.getElementById('email');
+    const tenantEl = document.getElementById('tenant');
+
+    function hintTenant(email) {
+      const e = (email || '').toLowerCase();
+      if (e.includes('keyfoods')) tenantEl.value = 'keyfoods';
+      else if (e.includes('demo') || e.includes('blacksheep')) tenantEl.value = 'demo';
+    }
+
+    emailEl.addEventListener('input', function () {
+      hintTenant(emailEl.value);
+    });
+
+    // Prellenar desde query (?email=&tenant=)
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get('email')) emailEl.value = q.get('email');
+      if (q.get('tenant')) tenantEl.value = q.get('tenant');
+    } catch (_) {}
+
+    document.getElementById('login-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const email = emailEl.value.trim();
+      const tenant = tenantEl.value || 'keyfoods';
+      if (!email) return;
+
+      const base = (window.BS_APP_URL || '').trim().replace(/\/$/, '');
+      if (!base || base.includes('app.black-sheep.cl') && !location.hostname.includes('blacksheep')) {
+        // Si todavía no configuraste dominio, igual redirigimos; el admin debe setear BS_APP_URL
+      }
+      if (!base) {
+        alert('Falta configurar window.BS_APP_URL (URL de la app Field).');
+        return;
+      }
+
+      try {
+        const url = new URL(base + '/');
+        url.searchParams.set('email', email);
+        url.searchParams.set('tenant', tenant);
+        window.location.href = url.toString();
+      } catch (err) {
+        window.location.href =
+          base + '/?email=' + encodeURIComponent(email) + '&tenant=' + encodeURIComponent(tenant);
+      }
+    });
+  </script>
+</body>
+</html>
+=======
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -51,3 +156,4 @@
   </script>
 </body>
 </html>
+>>>>>>> 7fddd20b45eb471aea2ae4a884c5b0a96fe35320
