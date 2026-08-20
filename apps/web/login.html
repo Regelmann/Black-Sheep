@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -102,58 +101,3 @@
   </script>
 </body>
 </html>
-=======
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ingresar — Black Sheep Field</title>
-  <link rel="icon" type="image/png" href="brand/logo-mark-32.png" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="ambient" aria-hidden="true"></div>
-  <div class="login-wrap">
-    <div class="login-card">
-      <img class="login-logo" src="brand/logo-master-1024.png" alt="Black Sheep" width="120" height="120" />
-      <h1>Black Sheep <em>Field</em></h1>
-      <p class="sub">Ingresá con tu usuario de empresa</p>
-      <form id="login-form">
-        <div class="field">
-          <label for="email">Email</label>
-          <input id="email" type="email" autocomplete="username" placeholder="tu@empresa.cl" required />
-        </div>
-        <div class="field">
-          <label for="password">Contraseña</label>
-          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
-        </div>
-        <button class="btn btn-neon" type="submit">Entrar al sistema</button>
-      </form>
-      <div class="login-note">
-        Cada usuario pertenece a un <strong style="color:#f4f4f5">tenant</strong>.
-        Al autenticarte vas a la plataforma Field de tu organización.
-      </div>
-      <p class="login-foot">
-        <a href="index.html">← Volver</a>
-        · <a href="mailto:hola@blacksheep.cl">Contactar</a>
-      </p>
-    </div>
-  </div>
-  <script>
-    const APP_URL = (window.BS_APP_URL || "").trim();
-    document.getElementById("login-form").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const email = document.getElementById("email").value.trim();
-      if (APP_URL) {
-        const u = new URL(APP_URL);
-        u.searchParams.set("email", email);
-        window.location.href = u.toString();
-        return;
-      }
-      alert("Definí window.BS_APP_URL = \"https://app.blacksheep.cl\" para ir a la app.\n\nUsuario: " + email);
-    });
-  </script>
-</body>
-</html>
->>>>>>> 7fddd20b45eb471aea2ae4a884c5b0a96fe35320
