@@ -5,11 +5,11 @@
 **Una marca, un producto, muchas empresas.**
 
 ```
-blacksheep.cl              → marketing + puerta de ingreso
+black-sheep.cl              → marketing + puerta de ingreso
         │
         ▼ login (elige / resuelve empresa)
         │
-app.blacksheep.cl          → misma app Field (código único)
+app.black-sheep.cl          → misma app Field (código único)
         │
         ├── tenant KeyFoods  → Supabase proyecto A (datos KeyFoods)
         ├── tenant Demo      → Supabase proyecto B
@@ -29,9 +29,9 @@ Cada empresa solo ve **sus** datos.
 
 ## Flujo de login
 
-1. Usuario entra a **blacksheep.cl** → Ingresar.
+1. Usuario entra a **black-sheep.cl** → Ingresar.
 2. Elige empresa (o se infiere por correo `@keyfoods.cl`).
-3. Redirige a **app.blacksheep.cl?tenant=keyfoods&email=...**
+3. Redirige a **app.black-sheep.cl?tenant=keyfoods&email=...**
 4. La app hace `initSupabase(tenant)` y `signInWithPassword` contra el Supabase de esa empresa.
 5. Sesión persistida por tenant (`bs-auth-keyfoods`, etc.).
 
@@ -75,7 +75,7 @@ Cada empresa solo ve **sus** datos.
 ## Qué sí se comparte
 
 - Código de la app Field
-- Landing blacksheep.cl
+- Landing black-sheep.cl
 - Brand Black Sheep
 - Lógica de precios, catálogo, reposición
 
@@ -83,7 +83,7 @@ Cada empresa solo ve **sus** datos.
 
 | Host | Proyecto Vercel | Root |
 |------|-----------------|------|
-| blacksheep.cl | web | `apps/web` |
-| app.blacksheep.cl | field | `apps/field` |
+| black-sheep.cl | web | `apps/web` |
+| app.black-sheep.cl | field | `apps/field` |
 
-Opcional después: `keyfoods.app.blacksheep.cl` (subdominio = tenant).
+Opcional después: `keyfoods.app.black-sheep.cl` (subdominio = tenant).

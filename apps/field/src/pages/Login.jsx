@@ -13,7 +13,13 @@ export default function Login() {
     }
   })
   const [password, setPassword] = useState('')
-  const [tenantId, setTenantId] = useState(initial?.id || tenants[0]?.id || 'keyfoods')
+  const [tenantId, setTenantId] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get('tenant')
+      if (q && tenants.some(x => x.id === q || x.slug === q)) return q
+    } catch {}
+    return initial?.id || tenants[0]?.id || 'keyfoods'
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -229,7 +235,7 @@ export default function Login() {
       </div>
 
       <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#52525b' }}>
-        blacksheep.cl · control central de empresas
+        black-sheep.cl · control central de empresas
       </p>
     </div>
   )

@@ -69,7 +69,7 @@ Objetivo: `con_precio` >> 0 (antes ~90/144).
 | 7 | Stock muestra precios | |
 | 8 | Gerencia zona abre | |
 
-### E. Sitio blacksheep.cl (segundo proyecto Vercel)
+### E. Sitio black-sheep.cl (segundo proyecto Vercel)
 
 - Root: `apps/web`
 - En `login.html`: `window.BS_APP_URL = "https://TU-APP.vercel.app"`

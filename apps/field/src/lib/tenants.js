@@ -2,7 +2,7 @@
  * Black Sheep Field — registro de tenants (empresas).
  *
  * Fase 1: un proyecto Supabase por empresa (aislamiento fuerte).
- * El login de blacksheep.cl resuelve el tenant y la app se conecta
+ * El login de black-sheep.cl resuelve el tenant y la app se conecta
  * a ese Supabase. KeyFoods es el primer cliente; Demo valida el producto.
  *
  * Env (Vercel / .env):
@@ -48,7 +48,7 @@ export const TENANTS = [
     id: 'demo',
     name: 'Demo Black Sheep',
     slug: 'demo',
-    domains: ['demo.blacksheep.cl', 'blacksheep.cl'],
+    domains: ['demo.black-sheep.cl', 'black-sheep.cl'],
     emailHints: ['demo', 'blacksheep'],
     supabaseUrl: env('VITE_TENANT_DEMO_URL', env('VITE_SUPABASE_URL')),
     supabaseAnon: env('VITE_TENANT_DEMO_ANON_KEY', env('VITE_SUPABASE_ANON_KEY')),
@@ -71,7 +71,7 @@ export function getTenantById(id) {
 /**
  * Resuelve tenant por email (dominio o hint en local-part).
  * Ej: juan@keyfoods.cl → keyfoods
- *     demo@blacksheep.cl → demo
+ *     demo@black-sheep.cl → demo
  */
 export function resolveTenantFromEmail(email) {
   const e = String(email || '').trim().toLowerCase()
@@ -112,7 +112,7 @@ export function resolveTenantFromUrl() {
     const u = new URL(window.location.href)
     const q = u.searchParams.get('tenant') || u.searchParams.get('empresa')
     if (q) return getTenantById(q)
-    // subdominio: keyfoods.app.blacksheep.cl
+    // subdominio: keyfoods.app.black-sheep.cl
     const host = u.hostname || ''
     const parts = host.split('.')
     if (parts.length >= 3) {

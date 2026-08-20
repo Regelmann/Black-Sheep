@@ -8,19 +8,19 @@ Producto de **venta en ruta + catálogo + gerencia**.
 ```
 ├── brand/                 # logos oficiales
 ├── apps/
-│   ├── web/               # blacksheep.cl — marketing + login
-│   └── field/             # app.blacksheep.cl — Field multi-tenant
+│   ├── web/               # black-sheep.cl — marketing + login
+│   └── field/             # app.black-sheep.cl — Field multi-tenant
 ├── docs/ARCHITECTURE.md   # diseño multi-empresa
 └── README.md
 ```
 
 ## Deploy
 
-### 1. Sitio — blacksheep.cl
+### 1. Sitio — black-sheep.cl
 - Vercel → root `apps/web`
-- En `login.html`: `window.BS_APP_URL = "https://app.blacksheep.cl"`
+- En `login.html`: `window.BS_APP_URL = "https://app.black-sheep.cl"`
 
-### 2. App — app.blacksheep.cl
+### 2. App — app.black-sheep.cl
 - Vercel → root `apps/field`
 - Env mínimas (tenant KeyFoods = default):
 
@@ -47,7 +47,7 @@ Precios: `KEYFOODS_PATCH_STOCK_PRECIOS.py` (v5) con service key de **ese** proye
 
 ## Login
 
-1. Usuario → blacksheep.cl → Ingresar  
+1. Usuario → black-sheep.cl → Ingresar  
 2. Elige empresa / se detecta por email  
 3. App resuelve tenant → Supabase correcto → sesión  
 
