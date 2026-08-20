@@ -4,93 +4,49 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ingresar — Black Sheep Field</title>
-  <meta name="description" content="Acceso a Black Sheep Field. Cada usuario entra a su empresa." />
   <link rel="icon" type="image/png" href="brand/logo-mark-32.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="login-body">
-  <div class="login-page">
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="login-wrap">
     <div class="login-card">
-      <div class="logo-wrap">
-        <img src="brand/logo-mark-192.png" alt="Black Sheep" width="88" height="88" />
-      </div>
-      <h1>Black Sheep <span class="neon-text">Field</span></h1>
+      <img class="login-logo" src="brand/logo-master-1024.png" alt="Black Sheep" width="120" height="120" />
+      <h1>Black Sheep <em>Field</em></h1>
       <p class="sub">Ingresá con tu usuario de empresa</p>
-
-      <form id="login-form" action="#" method="post">
-        <div class="field">
-          <label for="tenant">Empresa</label>
-          <select id="tenant" name="tenant">
-            <option value="keyfoods">KeyFoods</option>
-            <option value="demo">Demo Black Sheep</option>
-          </select>
-        </div>
+      <form id="login-form">
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="username"
-                 placeholder="tu@empresa.cl" required />
+          <input id="email" type="email" autocomplete="username" placeholder="tu@empresa.cl" required />
         </div>
         <div class="field">
           <label for="password">Contraseña</label>
-          <input id="password" name="password" type="password" autocomplete="current-password"
-                 placeholder="••••••••" required />
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
         </div>
         <button class="btn btn-neon" type="submit">Entrar al sistema</button>
       </form>
-
       <div class="login-note">
-        Una sola puerta: <strong style="color:#f4f4f5">blacksheep.cl</strong>.
-        Al autenticarte vas a la plataforma Field de <em>tu</em> organización.
-        KeyFoods y las próximas empresas viven bajo el mismo producto.
+        Cada usuario pertenece a un <strong style="color:#f4f4f5">tenant</strong>.
+        Al autenticarte vas a la plataforma Field de tu organización.
       </div>
-
       <p class="login-foot">
-        <a href="index.html">← Volver al sitio</a>
-        · ¿Sin acceso? <a href="mailto:hola@blacksheep.cl">Contactar</a>
+        <a href="index.html">← Volver</a>
+        · <a href="mailto:hola@blacksheep.cl">Contactar</a>
       </p>
     </div>
   </div>
-
   <script>
-    // URL de la app Field (Vercel / app.blacksheep.cl)
-    window.BS_APP_URL = window.BS_APP_URL || 'https://app.black-sheep.cl';
-
-    const emailEl = document.getElementById('email');
-    const tenantEl = document.getElementById('tenant');
-
-    function hintTenant(email) {
-      const e = (email || '').toLowerCase();
-      if (e.includes('keyfoods')) tenantEl.value = 'keyfoods';
-      else if (e.includes('demo') || e.includes('blacksheep')) tenantEl.value = 'demo';
-    }
-
-    emailEl.addEventListener('input', function () {
-      hintTenant(emailEl.value);
-    });
-
-    document.getElementById('login-form').addEventListener('submit', function (e) {
+    const APP_URL = (window.BS_APP_URL || "").trim();
+    document.getElementById("login-form").addEventListener("submit", function (e) {
       e.preventDefault();
-      const email = emailEl.value.trim();
-      const tenant = tenantEl.value || 'keyfoods';
-      if (!email) return;
-
-      const base = (window.BS_APP_URL || '').trim();
-      if (!base) {
-        alert('Definí window.BS_APP_URL con la URL de la app Field.');
+      const email = document.getElementById("email").value.trim();
+      if (APP_URL) {
+        const u = new URL(APP_URL);
+        u.searchParams.set("email", email);
+        window.location.href = u.toString();
         return;
       }
-
-      // La app Field hace el auth real (Supabase del tenant).
-      // Pasamos email + tenant para preselección.
-      try {
-        const url = new URL(base.replace(/\/$/, '') + '/');
-        // Hash router / query — la app lee ?email=&tenant=
-        url.searchParams.set('email', email);
-        url.searchParams.set('tenant', tenant);
-        window.location.href = url.toString();
-      } catch (err) {
-        window.location.href = base + '?email=' + encodeURIComponent(email) + '&tenant=' + encodeURIComponent(tenant);
-      }
+      alert("Definí window.BS_APP_URL = \"https://app.blacksheep.cl\" para ir a la app.\n\nUsuario: " + email);
     });
   </script>
 </body>
