@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import {
 import { productTitle, productLabel } from '../lib/productDisplay'
+import {
   buildWhatsAppPedido,
   buildWhatsAppBodega,
   guardarPedido,
