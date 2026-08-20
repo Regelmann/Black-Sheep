@@ -10,12 +10,14 @@ const money = n => {
   return '$' + Math.round(v).toLocaleString('es-CL')
 }
 
+const PUBLIC_BRAND = (import.meta.env.VITE_PUBLIC_BRAND || 'KEYFOODS').toString()
+
 const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
       <rect fill="#f3efe8" width="400" height="400"/>
-      <text x="200" y="198" text-anchor="middle" fill="#c2410c" font-family="system-ui,sans-serif" font-size="16" font-weight="700">KEYFOODS</text>
+      <text x="200" y="198" text-anchor="middle" fill="#c2410c" font-family="system-ui,sans-serif" font-size="16" font-weight="700">{PUBLIC_BRAND}</text>
       <text x="200" y="222" text-anchor="middle" fill="#a8a29e" font-family="system-ui,sans-serif" font-size="12">producto</text>
     </svg>`
   )
@@ -196,7 +198,7 @@ export default function CatalogoCliente() {
     return (
       <div className="kf-pub">
         <div className="kf-pub-loading">
-          <div className="kf-pub-brand">KEYFOODS</div>
+          <div className="kf-pub-brand">{PUBLIC_BRAND}</div>
           <p>Cargando tu lista de precios…</p>
         </div>
       </div>
@@ -207,7 +209,7 @@ export default function CatalogoCliente() {
     return (
       <div className="kf-pub">
         <div className="kf-pub-empty">
-          <div className="kf-pub-brand">KEYFOODS</div>
+          <div className="kf-pub-brand">{PUBLIC_BRAND}</div>
           <h1>Catálogo no disponible</h1>
           <p>{err || 'El enlace puede estar inactivo o haber vencido. Pedile uno nuevo a tu ejecutivo.'}</p>
         </div>
@@ -219,7 +221,7 @@ export default function CatalogoCliente() {
     return (
       <div className="kf-pub">
         <div className="kf-pub-empty">
-          <div className="kf-pub-brand">KEYFOODS</div>
+          <div className="kf-pub-brand">{PUBLIC_BRAND}</div>
           <div className="kf-pub-ok">✓</div>
           <h1>¡Pedido recibido!</h1>
           <p>
@@ -248,7 +250,7 @@ export default function CatalogoCliente() {
     <div className="kf-pub">
       <header className="kf-pub-head">
         <div>
-          <div className="kf-pub-brand">KEYFOODS · LISTA DE PRECIOS</div>
+          <div className="kf-pub-brand">{PUBLIC_BRAND} · LISTA DE PRECIOS</div>
           <h1>{catalogo.nombre_cliente}</h1>
           <p>
             {items.length} productos · precios para vos

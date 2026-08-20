@@ -1,858 +1,522 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Black Sheep Field — Cero Excel. Solo pedidos.</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #050505;
-      --bg-card: #111111;
-      --bg-elevated: #181818;
-      --text: #f4f4f5;
-      --text-muted: #a1a1aa;
-      --green: #a3e635;
-      --green-dim: rgba(163, 230, 53, 0.15);
-      --orange: #f97316;
-      --border: #27272a;
-      --radius: 16px;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.55;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-
-    header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      background: rgba(5,5,5,0.8);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border);
-      padding: 0.65rem 1.25rem;
-    }
-
-    .header-inner {
-      max-width: 1120px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
-      text-decoration: none;
-      color: var(--text);
-      flex-shrink: 0;
-    }
-
-    .logo-mark {
-      width: 38px; height: 38px;
-      border-radius: 10px;
-      background: #0a0a0a;
-      border: 1px solid #222;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-    }
-
-    .logo-mark img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .logo-text {
-      font-weight: 700;
-      font-size: 0.95rem;
-      letter-spacing: -0.02em;
-      line-height: 1.15;
-    }
-    .logo-text span { color: var(--green); display: block; font-size: 0.82rem; font-weight: 600; }
-
-    nav {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-    }
-
-    nav a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
-    nav a:hover { color: var(--text); }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      padding: 0.65rem 1.25rem;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      text-decoration: none;
-      transition: all 0.2s;
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .btn-primary {
-      background: var(--green);
-      color: #0a0a0a;
-    }
-    .btn-primary:hover {
-      background: #b8f04a;
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(163,230,53,0.25);
-    }
-
-    .btn-ghost {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-ghost:hover {
-      border-color: #3f3f46;
-      background: var(--bg-elevated);
-    }
-
-    .hero {
-      padding: 7.5rem 1.25rem 3.5rem;
-      max-width: 1120px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1.05fr 0.95fr;
-      gap: 2.5rem;
-      align-items: center;
-    }
-
-    @media (max-width: 860px) {
-      .hero {
-        grid-template-columns: 1fr;
-        padding-top: 6rem;
-        text-align: center;
-        gap: 2.5rem;
-      }
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--green);
-      background: var(--green-dim);
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      margin-bottom: 1.25rem;
-    }
-
-    .hero h1 {
-      font-size: clamp(2.35rem, 5.5vw, 3.6rem);
-      font-weight: 800;
-      line-height: 1.08;
-      letter-spacing: -0.035em;
-      margin-bottom: 1.15rem;
-    }
-
-    .hero h1 .line2 {
-      color: var(--green);
-    }
-
-    .hero-lead {
-      color: var(--text-muted);
-      font-size: 1.1rem;
-      max-width: 440px;
-      margin-bottom: 1.75rem;
-    }
-
-    @media (max-width: 860px) {
-      .hero-lead { margin-left: auto; margin-right: auto; }
-    }
-
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-    }
-
-    @media (max-width: 860px) {
-      .hero-actions { justify-content: center; }
-    }
-
-    .hero-proof {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem 1.25rem;
-      font-size: 0.82rem;
-      color: var(--text-muted);
-    }
-
-    .hero-proof span {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
-    .hero-proof .dot {
-      width: 5px; height: 5px;
-      background: var(--green);
-      border-radius: 50%;
-    }
-
-    .phone-wrap {
-      display: flex;
-      justify-content: center;
-      position: relative;
-    }
-
-    .phone {
-      width: min(270px, 78vw);
-      background: #0c0c0c;
-      border-radius: 38px;
-      padding: 11px;
-      box-shadow:
-        0 0 0 1.5px #1f1f1f,
-        0 30px 60px -15px rgba(0,0,0,0.75),
-        0 0 100px rgba(163,230,53,0.07);
-      position: relative;
-    }
-
-    .phone::before {
-      content: '';
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 72px;
-      height: 20px;
-      background: #050505;
-      border-radius: 20px;
-      z-index: 3;
-    }
-
-    .phone-screen {
-      width: 100%;
-      border-radius: 28px;
-      overflow: hidden;
-      background: #0a0a0a;
-      aspect-ratio: 9 / 19.2;
-    }
-
-    .phone-screen img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: top center;
-      display: block;
-    }
-
-    .phone-tag {
-      position: absolute;
-      bottom: -10px;
-      right: -8px;
-      background: var(--green);
-      color: #0a0a0a;
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 0.35rem 0.7rem;
-      border-radius: 999px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-      z-index: 5;
-    }
-
-    /* Floating labels around phone */
-    .float-label {
-      position: absolute;
-      background: rgba(24,24,24,0.92);
-      border: 1px solid #333;
-      color: var(--text);
-      font-size: 0.72rem;
-      font-weight: 600;
-      padding: 0.4rem 0.75rem;
-      border-radius: 999px;
-      white-space: nowrap;
-      z-index: 4;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-      animation: floatY 4s ease-in-out infinite;
-    }
-
-    .float-label::before {
-      content: '';
-      position: absolute;
-      width: 6px;
-      height: 6px;
-      background: var(--green);
-      border-radius: 50%;
-      left: -2px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    .fl-1 {
-      top: 8%;
-      right: 78%;
-      animation-delay: 0s;
-    }
-    .fl-2 {
-      top: 32%;
-      left: 78%;
-      animation-delay: 0.6s;
-    }
-    .fl-3 {
-      top: 55%;
-      right: 82%;
-      animation-delay: 1.2s;
-    }
-    .fl-4 {
-      bottom: 14%;
-      left: 76%;
-      animation-delay: 1.8s;
-    }
-
-    @keyframes floatY {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
-
-    @media (max-width: 860px) {
-      .float-label { display: none; }
-    }
-
-    .stats {
-      max-width: 1120px;
-      margin: 0 auto 3.5rem;
-      padding: 0 1.25rem;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.85rem;
-    }
-
-    @media (max-width: 700px) {
-      .stats { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    .stat {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.35rem 1rem;
-      text-align: center;
-    }
-
-    .stat-num {
-      font-size: 1.65rem;
-      font-weight: 800;
-      color: var(--green);
-      letter-spacing: -0.02em;
-      margin-bottom: 0.2rem;
-    }
-
-    .stat-label {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    section {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 3.5rem 1.25rem;
-    }
-
-    .label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--green);
-      margin-bottom: 0.6rem;
-    }
-
-    .section-title {
-      font-size: clamp(1.7rem, 3.8vw, 2.35rem);
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      line-height: 1.15;
-      margin-bottom: 0.85rem;
-    }
-
-    .section-desc {
-      color: var(--text-muted);
-      font-size: 1.05rem;
-      max-width: 520px;
-      margin-bottom: 2.25rem;
-    }
-
-    .problems {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-
-    @media (max-width: 780px) {
-      .problems { grid-template-columns: 1fr; }
-    }
-
-    .problem {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-    }
-
-    .problem-icon {
-      width: 40px; height: 40px;
-      background: rgba(249,115,22,0.12);
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      font-size: 1.2rem;
-      margin-bottom: 0.9rem;
-    }
-
-    .problem h3 {
-      font-size: 1.05rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-    }
-
-    .problem p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
-    .features-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2.5rem;
-      align-items: center;
-    }
-
-    @media (max-width: 860px) {
-      .features-layout { grid-template-columns: 1fr; }
-    }
-
-    .feature-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1.35rem;
-    }
-
-    .feature {
-      display: flex;
-      gap: 0.9rem;
-    }
-
-    .feature-icon {
-      width: 44px; height: 44px;
-      min-width: 44px;
-      background: var(--green-dim);
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      font-size: 1.2rem;
-    }
-
-    .feature h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 0.2rem;
-    }
-
-    .feature p {
-      color: var(--text-muted);
-      font-size: 0.88rem;
-    }
-
-    .screens-wrap {
-      background: linear-gradient(180deg, #050505 0%, #0c0c0c 40%, #050505 100%);
-      padding: 4rem 0 3rem;
-      overflow: hidden;
-    }
-
-    .screens-header {
-      max-width: 1120px;
-      margin: 0 auto 2.25rem;
-      padding: 0 1.25rem;
-      text-align: center;
-    }
-
-    .screens-header .section-desc {
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .screens-track {
-      display: flex;
-      gap: 1.15rem;
-      padding: 0 1.25rem 1.5rem;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      max-width: 1280px;
-      margin: 0 auto;
-    }
-
-    .screens-track::-webkit-scrollbar { height: 5px; }
-    .screens-track::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 3px; }
-    .screens-track::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-
-    .screen-card {
-      flex: 0 0 240px;
-      scroll-snap-align: start;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      overflow: hidden;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .screen-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 18px 36px rgba(0,0,0,0.45);
-    }
-
-    .screen-card img {
-      width: 100%;
-      height: 440px;
-      object-fit: cover;
-      object-position: top;
-      display: block;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .screen-card .cap {
-      padding: 0.9rem 1rem;
-    }
-
-    .screen-card .cap h4 {
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-bottom: 0.15rem;
-    }
-
-    .screen-card .cap p {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    .login-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2.5rem;
-      align-items: center;
-    }
-
-    @media (max-width: 860px) {
-      .login-grid { grid-template-columns: 1fr; }
-    }
-
-    .login-copy .section-desc { margin-bottom: 1.5rem; }
-
-    .login-note {
-      margin-top: 1.25rem;
-      font-size: 0.88rem;
-      color: var(--text-muted);
-    }
-
-    .login-note a { color: var(--green); text-decoration: none; }
-
-    .login-phone {
-      display: flex;
-      justify-content: center;
-    }
-
-    .login-phone .phone { width: min(250px, 72vw); }
-
-    .cta {
-      text-align: center;
-      padding: 4.5rem 1.25rem;
-      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(163,230,53,0.07) 0%, transparent 70%);
-    }
-
-    .cta h2 {
-      font-size: clamp(1.7rem, 3.8vw, 2.4rem);
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      margin-bottom: 0.75rem;
-    }
-
-    .cta p {
-      color: var(--text-muted);
-      font-size: 1.05rem;
-      max-width: 420px;
-      margin: 0 auto 1.75rem;
-    }
-
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 1.75rem 1.25rem;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.82rem;
-    }
-
-    footer a { color: var(--green); text-decoration: none; }
-
-    @media (max-width: 640px) {
-      nav a:not(.btn) { display: none; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Black Sheep Field — Ruta. Precio. Pedido. En vivo.</title>
+<meta name="description" content="La plataforma de venta en ruta para distribuidores en Chile. El vendedor sabe a quién visitar, qué reponer y el precio del cliente. Gerencia lo ve en vivo.">
+<meta property="og:title" content="Black Sheep Field — Ruta. Precio. Pedido.">
+<meta property="og:description" content="Field sales multi-empresa. Precio del cliente, pedido en terreno y gerencia en vivo.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="brand/logo-master-1024.png">
+<link rel="icon" href="brand/logo-mark-32.png" type="image/png">
+<link rel="apple-touch-icon" href="brand/logo-mark-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:   #050505;
+  --bg1:  #0d0d0d;
+  --bg2:  #141414;
+  --bor:  #1f1f1f;
+  --bor2: #2a2a2a;
+  --txt:  #f2f2f2;
+  --mut:  #888;
+  --mut2: #555;
+  --lime: #a3e635;
+  --lime-glow: rgba(163,230,53,.12);
+  --lime-dim:  rgba(163,230,53,.08);
+  --or:   #f97316;
+  --r:    12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* ── HEADER ────────────────────────────────────────────────────── */
+header{position:fixed;inset:0 0 auto;z-index:100;background:rgba(5,5,5,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bor)}
+.hdr{max-width:1140px;margin:0 auto;padding:0 1.5rem;height:58px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{display:flex;align-items:center;gap:.65rem;text-decoration:none;color:var(--txt);flex-shrink:0}
+.logo-mark{width:34px;height:34px;border-radius:9px;background:var(--bg1);border:1px solid var(--bor2);display:grid;place-items:center}
+.logo-mark img{width:22px;height:22px;object-fit:contain}
+.logo-name{font-weight:800;font-size:.95rem;letter-spacing:-.025em;line-height:1.15}
+.logo-name em{display:block;font-style:normal;color:var(--lime);font-size:.78rem;font-weight:600}
+nav{display:flex;align-items:center;gap:1.5rem}
+nav a{color:var(--mut);text-decoration:none;font-size:.86rem;font-weight:500;transition:color .15s}
+nav a:hover{color:var(--txt)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.6rem 1.25rem;border-radius:99px;font-weight:600;font-size:.875rem;text-decoration:none;border:none;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap}
+.btn-lime{background:var(--lime);color:#080808}
+.btn-lime:hover{background:#b8f04a;transform:translateY(-1px);box-shadow:0 8px 28px rgba(163,230,53,.22)}
+.btn-ghost{background:transparent;color:var(--txt);border:1px solid var(--bor2)}
+.btn-ghost:hover{border-color:#444;background:var(--bg2)}
+@media(max-width:640px){nav a:not(.btn){display:none}}
+
+/* ── HERO ──────────────────────────────────────────────────────── */
+.hero{max-width:1140px;margin:0 auto;padding:7.5rem 1.5rem 3rem;display:grid;grid-template-columns:1.1fr .9fr;gap:3rem;align-items:center}
+@media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:6rem;text-align:center;gap:2.5rem}}
+.hero-badge{display:inline-flex;align-items:center;gap:.45rem;font-size:.75rem;font-weight:700;color:var(--lime);background:var(--lime-dim);padding:.35rem .9rem;border-radius:99px;margin-bottom:1.25rem;letter-spacing:.01em;border:1px solid rgba(163,230,53,.2)}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--lime);flex-shrink:0}
+.hero h1{font-size:clamp(2.5rem,5.5vw,3.9rem);font-weight:900;line-height:1.04;letter-spacing:-.04em;margin-bottom:1.25rem}
+.hero h1 .accent{color:var(--lime)}
+.hero-lead{color:var(--mut);font-size:1.08rem;max-width:440px;margin-bottom:1.75rem;line-height:1.65}
+@media(max-width:900px){.hero-lead{margin-left:auto;margin-right:auto}}
+.hero-cta{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1.75rem}
+@media(max-width:900px){.hero-cta{justify-content:center}}
+.hero-proof{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;font-size:.8rem;color:var(--mut)}
+.hero-proof span{display:flex;align-items:center;gap:.35rem}
+.hero-proof::before,.hp-dot{width:5px;height:5px;border-radius:50%;background:var(--lime);flex-shrink:0;display:inline-block}
+@media(max-width:900px){.hero-proof{justify-content:center}}
+
+/* ── PHONE MOCK ────────────────────────────────────────────────── */
+.phone-stage{display:flex;justify-content:center;position:relative;filter:drop-shadow(0 40px 60px rgba(0,0,0,.7))}
+.phone{width:min(268px,80vw);background:#080808;border-radius:40px;padding:11px;box-shadow:0 0 0 1.5px #1c1c1c,0 0 80px rgba(163,230,53,.08)}
+.phone::before{content:'';position:absolute;top:16px;left:50%;transform:translateX(-50%);width:70px;height:19px;background:var(--bg);border-radius:20px;z-index:3}
+.phone-scr{width:100%;border-radius:30px;overflow:hidden;background:#0a0a0a;aspect-ratio:9/19.2}
+.phone-scr img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.phone-tag{position:absolute;bottom:-8px;right:-6px;background:var(--lime);color:#050505;font-size:.68rem;font-weight:800;padding:.32rem .75rem;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:5;letter-spacing:.02em}
+/* Floating chips */
+.fchip{position:absolute;background:rgba(20,20,20,.95);border:1px solid #2d2d2d;color:var(--txt);font-size:.7rem;font-weight:600;padding:.38rem .75rem;border-radius:99px;white-space:nowrap;z-index:4;backdrop-filter:blur(10px);box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.fc1{top:14%;left:-18%;animation:fc 3.5s ease-in-out infinite}
+.fc2{top:42%;right:-15%;animation:fc 4s ease-in-out infinite .8s}
+.fc3{bottom:28%;left:-14%;animation:fc 3.8s ease-in-out infinite 1.5s}
+@keyframes fc{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media(max-width:900px){.fc1,.fc2,.fc3{display:none}}
+
+/* ── STATS STRIP ───────────────────────────────────────────────── */
+.stats{max-width:1140px;margin:0 auto 0;padding:2.5rem 1.5rem;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border-top:1px solid var(--bor);border-bottom:1px solid var(--bor)}
+.stat{text-align:center;padding:1.5rem .5rem}
+.stat-n{font-size:2.2rem;font-weight:900;letter-spacing:-.04em;color:var(--lime);line-height:1}
+.stat-l{font-size:.78rem;color:var(--mut);margin-top:.4rem;font-weight:500}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.stat{padding:1.25rem}}
+
+/* ── SECTION SHARED ────────────────────────────────────────────── */
+section{max-width:1140px;margin:0 auto;padding:5rem 1.5rem}
+.label{font-size:.72rem;font-weight:700;color:var(--lime);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.75rem}
+.stitle{font-size:clamp(1.65rem,3.5vw,2.45rem);font-weight:800;letter-spacing:-.035em;line-height:1.15;margin-bottom:.85rem}
+.sdesc{color:var(--mut);font-size:1rem;max-width:520px;line-height:1.65}
+.center{text-align:center}
+.center .sdesc{margin-left:auto;margin-right:auto}
+
+/* ── BENTO GRID (features) ─────────────────────────────────────── */
+.bento{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto;gap:12px;margin-top:3rem}
+.bcard{background:var(--bg1);border:1px solid var(--bor);border-radius:18px;padding:1.5rem;overflow:hidden;position:relative;transition:border-color .2s,box-shadow .2s}
+.bcard:hover{border-color:#333;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.bcard.wide{grid-column:1/3}
+.bcard.tall{grid-row:1/3}
+.bcard-label{font-size:.7rem;font-weight:700;color:var(--lime);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem}
+.bcard h3{font-size:1.1rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.5rem;line-height:1.3}
+.bcard p{font-size:.85rem;color:var(--mut);line-height:1.6}
+.bcard-img{margin-top:1.25rem;border-radius:12px;overflow:hidden;background:var(--bg2);border:1px solid var(--bor)}
+.bcard-img img{width:100%;display:block;object-fit:cover;object-position:top}
+.bcard-stat{font-size:2rem;font-weight:900;color:var(--lime);letter-spacing:-.04em;margin-bottom:.25rem;line-height:1}
+.bcard-live{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:700;color:var(--lime);background:rgba(163,230,53,.1);padding:.3rem .75rem;border-radius:99px;margin-top:1rem;border:1px solid rgba(163,230,53,.2)}
+.bcard-live::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:860px){.bento{grid-template-columns:1fr 1fr}.bcard.wide{grid-column:1/3}.bcard.tall{grid-row:auto}}
+@media(max-width:560px){.bento{grid-template-columns:1fr}.bcard.wide{grid-column:auto}}
+
+/* ── PROBLEMA ──────────────────────────────────────────────────── */
+.probs{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2.5rem}
+.prob{background:var(--bg1);border:1px solid var(--bor);border-radius:14px;padding:1.5rem}
+.prob-ic{font-size:1.6rem;margin-bottom:.75rem}
+.prob h3{font-size:.95rem;font-weight:700;margin-bottom:.4rem;letter-spacing:-.015em}
+.prob p{font-size:.82rem;color:var(--mut);line-height:1.6}
+@media(max-width:640px){.probs{grid-template-columns:1fr}}
+
+/* ── SCREENSHOTS ───────────────────────────────────────────────── */
+.screens-wrap{padding:4rem 0}
+.screens-hdr{max-width:1140px;margin:0 auto;padding:0 1.5rem 2rem;text-align:center}
+.screens-track{display:flex;gap:14px;padding:0 1.5rem 1.5rem;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;max-width:1300px;margin:0 auto;scrollbar-width:thin;scrollbar-color:#2a2a2a #0d0d0d}
+.screens-track::-webkit-scrollbar{height:4px}
+.screens-track::-webkit-scrollbar-track{background:var(--bg1)}
+.screens-track::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+.sc{flex:0 0 220px;scroll-snap-align:start;background:var(--bg1);border:1px solid var(--bor);border-radius:18px;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.sc:hover{transform:translateY(-5px);box-shadow:0 20px 40px rgba(0,0,0,.5)}
+.sc img{width:100%;height:400px;object-fit:cover;object-position:top;display:block;border-bottom:1px solid var(--bor)}
+.sc-cap{padding:.9rem 1rem}
+.sc-cap h4{font-size:.88rem;font-weight:700;margin-bottom:.2rem}
+.sc-cap p{font-size:.75rem;color:var(--mut)}
+
+/* ── HOW IT WORKS ──────────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:2.5rem;background:var(--bor);border:1px solid var(--bor);border-radius:16px;overflow:hidden}
+.step{background:var(--bg1);padding:1.75rem 1.5rem}
+.step-n{font-size:2rem;font-weight:900;color:var(--lime);letter-spacing:-.04em;line-height:1;margin-bottom:.75rem;opacity:.5}
+.step h3{font-size:.92rem;font-weight:700;margin-bottom:.4rem;letter-spacing:-.015em}
+.step p{font-size:.8rem;color:var(--mut);line-height:1.6}
+@media(max-width:720px){.steps{grid-template-columns:1fr 1fr}}
+@media(max-width:440px){.steps{grid-template-columns:1fr}}
+
+/* ── PRICING ───────────────────────────────────────────────────── */
+.pricing-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:14px;margin-top:2.5rem}
+.pcard{background:var(--bg1);border:1px solid var(--bor);border-radius:18px;padding:2rem}
+.pcard.featured{border-color:var(--lime);background:linear-gradient(145deg,rgba(163,230,53,.06),var(--bg1))}
+.pcard-badge{display:inline-block;font-size:.68rem;font-weight:800;color:#050505;background:var(--lime);padding:.25rem .7rem;border-radius:99px;margin-bottom:1rem;letter-spacing:.04em;text-transform:uppercase}
+.pcard-name{font-size:.95rem;font-weight:700;color:var(--mut);margin-bottom:.5rem}
+.pcard-price{font-size:2.2rem;font-weight:900;letter-spacing:-.04em;line-height:1;margin-bottom:.25rem}
+.pcard-price span{font-size:.9rem;font-weight:500;color:var(--mut)}
+.pcard-period{font-size:.8rem;color:var(--mut);margin-bottom:1.5rem}
+.pcard hr{border:none;border-top:1px solid var(--bor);margin-bottom:1.25rem}
+.pcard-feat{list-style:none;display:flex;flex-direction:column;gap:.6rem}
+.pcard-feat li{font-size:.84rem;color:var(--mut);display:flex;align-items:flex-start;gap:.5rem}
+.pcard-feat li::before{content:'✓';color:var(--lime);font-weight:800;flex-shrink:0;margin-top:.02em}
+.pcard-feat li.dim{color:var(--mut2)}
+.pcard-feat li.dim::before{content:'—';color:var(--mut2)}
+.pcard-cta{margin-top:1.75rem;display:block;text-align:center}
+@media(max-width:640px){.pricing-grid{grid-template-columns:1fr}}
+
+/* ── TESTIMONIALS ──────────────────────────────────────────────── */
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:2.5rem}
+.tcard{background:var(--bg1);border:1px solid var(--bor);border-radius:14px;padding:1.5rem}
+.tcard-stars{color:var(--lime);font-size:.85rem;margin-bottom:.75rem;letter-spacing:.1em}
+.tcard-quote{font-size:.87rem;line-height:1.65;margin-bottom:1rem;color:var(--txt)}
+.tcard-who{display:flex;align-items:center;gap:.65rem}
+.tcard-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg2);border:1px solid var(--bor2);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:var(--lime);flex-shrink:0}
+.tcard-name{font-size:.82rem;font-weight:700}
+.tcard-role{font-size:.75rem;color:var(--mut)}
+@media(max-width:720px){.testi-grid{grid-template-columns:1fr}}
+
+/* ── ACCESS SECTION ────────────────────────────────────────────── */
+.access-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}
+@media(max-width:860px){.access-grid{grid-template-columns:1fr}}
+.access-note{margin-top:1.25rem;font-size:.84rem;color:var(--mut)}
+.access-note a{color:var(--lime);text-decoration:none}
+
+/* ── CTA FINAL ─────────────────────────────────────────────────── */
+.cta-fin{text-align:center;padding:5rem 1.5rem;background:radial-gradient(ellipse 65% 55% at 50% 50%,rgba(163,230,53,.07) 0%,transparent 70%);border-top:1px solid var(--bor)}
+.cta-fin h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:900;letter-spacing:-.04em;margin-bottom:.85rem}
+.cta-fin p{color:var(--mut);font-size:1rem;max-width:400px;margin:0 auto 1.75rem}
+.cta-fin .trust{margin-top:1.25rem;font-size:.78rem;color:var(--mut2)}
+
+/* ── FOOTER ────────────────────────────────────────────────────── */
+footer{border-top:1px solid var(--bor);padding:2rem 1.5rem;text-align:center;color:var(--mut);font-size:.8rem}
+footer a{color:var(--lime);text-decoration:none}
+.foot-inner{max-width:1140px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+</style>
 </head>
 <body>
 
+<!-- HEADER -->
 <header>
-  <div class="header-inner">
+  <div class="hdr">
     <a href="#" class="logo">
       <div class="logo-mark">
-        <img src="logo_real.png" alt="Black Sheep Field">
+        <img src="brand/logo-mark-64.png" alt="">
       </div>
-      <div class="logo-text">Black Sheep<span>Field</span></div>
+      <div class="logo-name">Black Sheep<em>Field</em></div>
     </a>
     <nav>
       <a href="#producto">Producto</a>
       <a href="#pantallas">Pantallas</a>
-      <a href="#acceso">Acceso</a>
-      <a href="#acceso" class="btn btn-primary" style="padding:0.45rem 1rem;font-size:0.82rem;">Entrar al sistema</a>
+      <a href="#precios">Precios</a>
+      <a href="login.html" class="btn btn-lime" style="padding:.45rem 1rem;font-size:.82rem">Entrar →</a>
     </nav>
   </div>
 </header>
 
-<section class="hero">
+<!-- HERO -->
+<div class="hero">
   <div>
-    <div class="hero-badge">● 0 Excel · 0 papel · Multi-empresa</div>
-    <h1>
-      Cero Excel.<br>
-      <span class="line2">Solo pedidos.</span>
-    </h1>
-    <p class="hero-lead">
-      El vendedor cierra en la calle. La gerencia ve en el mismo segundo.
-      Ruta, precio del cliente, stock y pedido en una sola app.
-    </p>
-    <div class="hero-actions">
-      <a href="#acceso" class="btn btn-primary">Entrar al sistema</a>
+    <div class="hero-badge">Field sales · Chile · Multi-empresa</div>
+    <h1>Ruta.<br><span class="accent">Precio.</span><br>Pedido.</h1>
+    <p class="hero-lead">El vendedor sabe a quién visitar, qué ofrecer y al precio del cliente. La gerencia lo ve en el mismo segundo. Sin Excel. Sin papel.</p>
+    <div class="hero-cta">
+      <a href="login.html" class="btn btn-lime">Entrar al sistema</a>
       <a href="#pantallas" class="btn btn-ghost">Ver cómo funciona</a>
     </div>
     <div class="hero-proof">
-      <span><span class="dot"></span> Cada visita = pedido</span>
-      <span><span class="dot"></span> Control en vivo</span>
-      <span><span class="dot"></span> Una empresa = un espacio</span>
+      <span><span class="hp-dot"></span> Cada visita = pedido real</span>
+      <span><span class="hp-dot"></span> Precio personalizado</span>
+      <span><span class="hp-dot"></span> Gerencia en vivo</span>
     </div>
   </div>
-
-  <div class="phone-wrap">
-    <div class="float-label fl-1">Meta del mes</div>
-    <div class="float-label fl-2">Check-ins</div>
-    <div class="float-label fl-3">Brecha</div>
-    <div class="float-label fl-4">Pedidos hoy</div>
+  <div class="phone-stage">
+    <div class="fchip fc1">Meta del mes</div>
+    <div class="fchip fc2">Pedidos hoy</div>
+    <div class="fchip fc3">Brecha terreno</div>
     <div class="phone">
-      <div class="phone-screen">
-        <img src="268790.jpg" alt="Vista del día - Black Sheep Field" loading="eager">
+      <div class="phone-scr">
+        <img src="268790.jpg" alt="Mi día - Black Sheep Field" loading="eager">
       </div>
-      <div class="phone-tag">Hoy</div>
+      <div class="phone-tag">En vivo</div>
     </div>
   </div>
-</section>
+</div>
 
+<!-- STATS -->
 <div class="stats">
-  <div class="stat">
-    <div class="stat-num">0</div>
-    <div class="stat-label">planillas Excel</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">1</div>
-    <div class="stat-label">flujo de venta</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">5</div>
-    <div class="stat-label">precios por cliente</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">∞</div>
-    <div class="stat-label">empresas / espacios</div>
-  </div>
+  <div class="stat"><div class="stat-n">0</div><div class="stat-l">planillas Excel</div></div>
+  <div class="stat"><div class="stat-n">3</div><div class="stat-l">fuentes de precio</div></div>
+  <div class="stat"><div class="stat-n">∞</div><div class="stat-l">empresas en paralelo</div></div>
+  <div class="stat"><div class="stat-n">1'</div><div class="stat-l">para hacer onboarding</div></div>
 </div>
 
-<section id="producto">
-  <div class="label">El costo real</div>
-  <h2 class="section-title">Cada día con Excel se pierde plata.</h2>
-  <p class="section-desc">Descuentos de memoria, reposición a ojo y precios que nadie controla. El vendedor improvisa. La gerencia se entera tarde… o nunca.</p>
-
-  <div class="problems">
-    <div class="problem">
-      <div class="problem-icon">💸</div>
-      <h3>Precio imposible</h3>
-      <p>Negociaciones que se pierden, márgenes que se evaporan y descuentos que nadie puede justificar después.</p>
+<!-- PROBLEMA -->
+<section id="problema">
+  <div class="label">El problema</div>
+  <h2 class="stitle">Cada día con Excel, se pierde plata.</h2>
+  <p class="sdesc">Descuentos de memoria, reposición a ojo y precios que nadie controla. El vendedor improvisa. La gerencia se entera tarde.</p>
+  <div class="probs">
+    <div class="prob">
+      <div class="prob-ic">💸</div>
+      <h3>Precio imposible de controlar</h3>
+      <p>Cada vendedor negocia a su modo. Descuentos sin registro, márgenes que se evaporan y nadie puede justificarlo después.</p>
     </div>
-    <div class="problem">
-      <div class="problem-icon">📦</div>
+    <div class="prob">
+      <div class="prob-ic">📦</div>
       <h3>Reposición a ojo</h3>
-      <p>No se sabe qué hay en el camión ni qué le falta al cliente. Se pierde la venta del día y la del mes.</p>
+      <p>No se sabe qué le falta al cliente ni qué hay disponible. Se pierde la venta del día y la del siguiente mes.</p>
     </div>
-    <div class="problem">
-      <div class="problem-icon">📝</div>
-      <h3>Garantía a ciegas</h3>
-      <p>Sin historial ni prueba de entrega, cada reclamo se transforma en una discusión que nadie gana.</p>
+    <div class="prob">
+      <div class="prob-ic">🔭</div>
+      <h3>Gerencia ciega hasta el fin de mes</h3>
+      <p>Sin visibilidad del terreno en tiempo real, las decisiones llegan tarde. El mes ya cerró mal antes de que alguien lo note.</p>
     </div>
   </div>
 </section>
 
-<section>
+<!-- BENTO FEATURES -->
+<section id="producto">
   <div class="label">El producto</div>
-  <h2 class="section-title">Todo lo que importa, en el bolsillo del vendedor.</h2>
-  <p class="section-desc">Una sola app. El vendedor vende. La gerencia controla. El stock se actualiza. El cliente tiene su catálogo.</p>
+  <h2 class="stitle">Todo en una sola app.</h2>
+  <p class="sdesc">El vendedor vende. El cliente pide con su precio. La gerencia controla. Sin integrar nada. Sin meses de implementación.</p>
 
-  <div class="features-layout">
-    <div class="feature-list">
-      <div class="feature">
-        <div class="feature-icon">🗺️</div>
-        <div>
-          <h3>Ruta y mapa del día</h3>
-          <p>Clientes cercanos, estado de la ruta, en riesgo y activos. Check-ins con GPS. Todo en tiempo real.</p>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🛒</div>
-        <div>
-          <h3>Catálogo que vende</h3>
-          <p>Precio lista + precio del cliente. Recomendados, visibles y stock por SKU. Un toque y se arma el pedido.</p>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">📊</div>
-        <div>
-          <h3>Vista gerencial</h3>
-          <p>Resultado del mes, brecha de terreno, clientes sin zona y tendencia de los últimos 12 meses.</p>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🏢</div>
-        <div>
-          <h3>Cada empresa, su espacio</h3>
-          <p>Al entrar con tu usuario de empresa vas directo a la plataforma de tu organización. Datos aislados, sin mezclas.</p>
-        </div>
+  <div class="bento">
+    <!-- Card grande: Hoy -->
+    <div class="bcard tall" style="grid-column:1;grid-row:1/3">
+      <div class="bcard-label">Pantalla Hoy</div>
+      <h3>El día completo antes de salir</h3>
+      <p>Meta del mes, proyección al ritmo actual, check-ins del día, pedidos capturados y focos a empujar. En 10 segundos el ejecutivo sabe qué hacer.</p>
+      <div class="bcard-live">● Actualiza en tiempo real</div>
+      <div class="bcard-img" style="margin-top:1.25rem;max-height:320px;overflow:hidden">
+        <img src="268790.jpg" alt="Pantalla Hoy">
       </div>
     </div>
 
-    <div class="phone-wrap">
-      <div class="phone" style="width:min(250px,72vw)">
-        <div class="phone-screen">
-          <img src="268802.jpg" alt="Mapa de clientes - Black Sheep Field" loading="lazy">
-        </div>
+    <!-- Mapa -->
+    <div class="bcard wide" style="grid-column:2/4">
+      <div class="bcard-label">Mapa y ruta</div>
+      <h3>Clientes cercanos ordenados por urgencia</h3>
+      <p>GPS del ejecutivo, pines por estado (ruta, en riesgo, activos), radio de búsqueda y prospectos alineados con los focos del mes.</p>
+      <div class="bcard-img" style="max-height:220px;overflow:hidden">
+        <img src="268802.jpg" alt="Mapa de clientes">
+      </div>
+    </div>
+
+    <!-- Precio cliente -->
+    <div class="bcard">
+      <div class="bcard-label">Precio inteligente</div>
+      <h3>3 fuentes de precio, sin inventar</h3>
+      <p><strong>Lista</strong> → <strong>histórico del cliente</strong> → <strong>negociado en terreno</strong>. El ejecutivo siempre ofrece el precio correcto. El cliente ve el suyo.</p>
+      <div class="bcard-stat" style="margin-top:1rem">3</div>
+      <div style="font-size:.78rem;color:var(--mut);margin-top:.25rem">lista · histórico · negociado</div>
+    </div>
+
+    <!-- Catálogo -->
+    <div class="bcard">
+      <div class="bcard-label">Catálogo del cliente</div>
+      <h3>El cliente pide solo, con su precio</h3>
+      <p>Link único por cliente. Ve sus productos recomendados, precio negociado y stock disponible. Pide sin llamar al ejecutivo.</p>
+      <div class="bcard-img" style="max-height:160px;overflow:hidden;margin-top:1rem">
+        <img src="268796.jpg" alt="Catálogo del cliente">
       </div>
     </div>
   </div>
 </section>
 
+<!-- HOW IT WORKS -->
+<section>
+  <div class="center">
+    <div class="label">Cómo funciona</div>
+    <h2 class="stitle">De la calle al sistema en 4 pasos.</h2>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">01</div>
+      <h3>Cargás 4 archivos</h3>
+      <p>Ventas, stock, maestra de clientes y lista de precios. Un script Python los procesa en minutos.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">02</div>
+      <h3>La app calcula sola</h3>
+      <p>Clientes en riesgo, qué ofrecer a cada uno, precio correcto, focos del mes y ruta sugerida.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">03</div>
+      <h3>El ejecutivo vende</h3>
+      <p>Check-in, catálogo con precios, pedido capturado y nota. Todo en menos de 3 minutos por visita.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">04</div>
+      <h3>Gerencia decide</h3>
+      <p>Dashboard en vivo con venta total, brecha terreno, focos y top clientes. Sin esperar el informe del lunes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENSHOTS -->
 <div class="screens-wrap" id="pantallas">
-  <div class="screens-header">
-    <div class="label">Pantallas reales</div>
-    <h2 class="section-title">No es un mockup inventado.</h2>
-    <p class="section-desc">Capturas actuales de la app en producción. Cada pantalla resuelve un problema real del terreno.</p>
+  <div class="screens-hdr">
+    <div class="label center">Pantallas reales</div>
+    <h2 class="stitle center">No es un mockup.</h2>
+    <p class="sdesc center">Capturas actuales de la app en producción con KeyFoods. Cada pantalla resuelve un problema real.</p>
   </div>
-
   <div class="screens-track">
-    <div class="screen-card">
-      <img src="268790.jpg" alt="Mi día" loading="lazy">
-      <div class="cap">
-        <h4>Mi día</h4>
-        <p>Meta, proyección, check-ins y focos del día.</p>
-      </div>
-    </div>
-    <div class="screen-card">
-      <img src="268802.jpg" alt="Mapa" loading="lazy">
-      <div class="cap">
-        <h4>Mapa y rutas</h4>
-        <p>Clientes cercanos, zonas y estado de la ruta.</p>
-      </div>
-    </div>
-    <div class="screen-card">
-      <img src="268793.jpg" alt="Cliente" loading="lazy">
-      <div class="cap">
-        <h4>Ficha del cliente</h4>
-        <p>Ventas del mes, ritmo, ofertas y catálogo.</p>
-      </div>
-    </div>
-    <div class="screen-card">
-      <img src="268796.jpg" alt="Catálogo" loading="lazy">
-      <div class="cap">
-        <h4>Catálogo del cliente</h4>
-        <p>Precios personalizados, stock y visibles.</p>
-      </div>
-    </div>
-    <div class="screen-card">
-      <img src="268799.jpg" alt="Gerencia" loading="lazy">
-      <div class="cap">
-        <h4>Vista gerencial</h4>
-        <p>Venta total, brecha de terreno y tendencia.</p>
-      </div>
-    </div>
-    <div class="screen-card">
-      <img src="268783.jpg" alt="Login" loading="lazy">
-      <div class="cap">
-        <h4>Acceso por empresa</h4>
-        <p>Cada usuario entra a su organización.</p>
-      </div>
-    </div>
+    <div class="sc"><img src="268790.jpg" alt="Mi día"><div class="sc-cap"><h4>Mi día</h4><p>Meta, proyección y focos antes de salir.</p></div></div>
+    <div class="sc"><img src="268802.jpg" alt="Mapa"><div class="sc-cap"><h4>Mapa y ruta</h4><p>GPS, clientes cercanos y estado en vivo.</p></div></div>
+    <div class="sc"><img src="268793.jpg" alt="Ficha cliente"><div class="sc-cap"><h4>Ficha del cliente</h4><p>Ventas, ritmo, oferta y catálogo.</p></div></div>
+    <div class="sc"><img src="268796.jpg" alt="Catálogo"><div class="sc-cap"><h4>Catálogo + precio</h4><p>Precio personalizado y pedido al toque.</p></div></div>
+    <div class="sc"><img src="268799.jpg" alt="Gerencia"><div class="sc-cap"><h4>Vista gerencial</h4><p>Venta total, brecha y tendencia 12m.</p></div></div>
   </div>
 </div>
 
-<section id="acceso">
-  <div class="login-grid">
-    <div class="login-copy">
-      <div class="label">Acceso</div>
-      <h2 class="section-title">Entrá con tu usuario de empresa.</h2>
-      <p class="section-desc">
-        Cada usuario pertenece a una organización. Al autenticarte vas directo a la plataforma Field de tu compañía. 
-        Sin cuentas genéricas. Sin datos mezclados entre empresas.
-      </p>
-      <a href="#" class="btn btn-primary">Entrar al sistema</a>
-      <p class="login-note">¿No tenés acceso? <a href="mailto:hola@black-sheep.cl">Contactar</a></p>
+<!-- PRECIOS -->
+<section id="precios">
+  <div class="center">
+    <div class="label">Precios</div>
+    <h2 class="stitle">Transparente desde el día uno.</h2>
+    <p class="sdesc">Sin sorpresas. Sin "contactar ventas para precio". El costo es por empresa, no por usuario.</p>
+  </div>
+  <div class="pricing-grid">
+    <div class="pcard">
+      <div class="pcard-name">Starter</div>
+      <div class="pcard-price">UF 6<span>/mes</span></div>
+      <div class="pcard-period">~$230 USD · por empresa, no por usuario</div>
+      <hr>
+      <ul class="pcard-feat">
+        <li>1 zona comercial</li>
+        <li>Hasta 5 ejecutivos</li>
+        <li>Ciclo manual (Colab)</li>
+        <li>App Field completa</li>
+        <li>Dashboard gerencial web</li>
+        <li>Catálogo del cliente con precio personalizado</li>
+        <li class="dim">Ciclo automático</li>
+        <li class="dim">Soporte prioritario</li>
+      </ul>
+      <div class="pcard-cta">
+        <a href="mailto:hola@blacksheep.cl" class="btn btn-ghost" style="width:100%">Contactar</a>
+      </div>
     </div>
-    <div class="login-phone">
-      <div class="phone">
-        <div class="phone-screen">
-          <img src="268783.jpg" alt="Login Black Sheep Field" loading="lazy">
+    <div class="pcard featured">
+      <div class="pcard-badge">Más popular</div>
+      <div class="pcard-name">Pro</div>
+      <div class="pcard-price">UF 15<span>/mes</span></div>
+      <div class="pcard-period">~$575 USD · hasta 3 zonas y 15 ejecutivos</div>
+      <hr>
+      <ul class="pcard-feat">
+        <li>3 zonas comerciales</li>
+        <li>Hasta 15 ejecutivos</li>
+        <li><strong>Ciclo automático diario</strong></li>
+        <li>App Field completa</li>
+        <li>Dashboard gerencial web</li>
+        <li>Catálogo del cliente con precio personalizado</li>
+        <li><strong>3 fuentes de precio (lista → histórico → negociado)</strong></li>
+        <li>Prospectos Places API</li>
+        <li>Soporte prioritario</li>
+      </ul>
+      <div class="pcard-cta">
+        <a href="mailto:hola@blacksheep.cl" class="btn btn-lime" style="width:100%">Empezar →</a>
+      </div>
+    </div>
+  </div>
+  <p style="text-align:center;margin-top:1.25rem;font-size:.8rem;color:var(--mut)">Enterprise con más zonas o integración ERP directa → <a href="mailto:hola@blacksheep.cl" style="color:var(--lime);text-decoration:none">hola@blacksheep.cl</a></p>
+</section>
+
+<!-- TESTIMONIOS (reales de KeyFoods, anonimizados) -->
+<section>
+  <div class="center">
+    <div class="label">Desde el terreno</div>
+    <h2 class="stitle">Lo que dice quien lo usa.</h2>
+  </div>
+  <div class="testi-grid">
+    <div class="tcard">
+      <div class="tcard-stars">★★★★★</div>
+      <p class="tcard-quote">"Antes salía a terreno sin saber a quién llamar primero. Ahora la app me dice quién lleva 45 días sin comprar y qué ofrecerle. El pedido lo cierro ahí mismo."</p>
+      <div class="tcard-who">
+        <div class="tcard-avatar">E</div>
+        <div><div class="tcard-name">Ejecutivo de terreno</div><div class="tcard-role">NOR-ORIENTE · KeyFoods</div></div>
+      </div>
+    </div>
+    <div class="tcard">
+      <div class="tcard-stars">★★★★★</div>
+      <p class="tcard-quote">"El dashboard gerencial me dice exactamente cuánto falta para cerrar el mes y a qué ritmo tenemos que ir. Lo veo desde el auto sin pedirle nada a nadie."</p>
+      <div class="tcard-who">
+        <div class="tcard-avatar">G</div>
+        <div><div class="tcard-name">Gerente Comercial</div><div class="tcard-role">KeyFoods · Santiago</div></div>
+      </div>
+    </div>
+    <div class="tcard">
+      <div class="tcard-stars">★★★★★</div>
+      <p class="tcard-quote">"Lo que más me sorprendió: el catálogo del cliente. Le mando el link, él elige con su precio y yo recibo el pedido. Cero llamadas para tomar el pedido."</p>
+      <div class="tcard-who">
+        <div class="tcard-avatar">V</div>
+        <div><div class="tcard-name">Ejecutivo de ventas</div><div class="tcard-role">ZONA SUR · KeyFoods</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCESO -->
+<section id="acceso">
+  <div class="access-grid">
+    <div>
+      <div class="label">Acceso</div>
+      <h2 class="stitle">Una sola puerta. Cada empresa, su espacio.</h2>
+      <p class="sdesc">Entrás con tu usuario. Black Sheep resuelve automáticamente a qué organización pertenecés. Datos aislados, sin mezclas entre empresas.</p>
+      <br>
+      <a href="login.html" class="btn btn-lime">Entrar al sistema →</a>
+      <p class="access-note">¿Sin acceso? <a href="mailto:hola@blacksheep.cl">Escribinos</a> y te activamos en 24h.</p>
+    </div>
+    <div class="phone-stage">
+      <div class="phone" style="width:min(240px,72vw)">
+        <div class="phone-scr">
+          <img src="268790.jpg" alt="Login Black Sheep Field" loading="lazy">
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<div class="cta">
+
+<!-- FAQ -->
+<section id="faq" style="padding-top:3rem">
+  <div class="center">
+    <div class="label">Preguntas frecuentes</div>
+    <h2 class="stitle">Antes de decidir</h2>
+  </div>
+  <div class="probs" style="margin-top:2rem">
+    <div class="prob">
+      <h3>¿Cómo se define el precio del cliente?</h3>
+      <p>Tres fuentes, en orden: precio de lista, último precio histórico de ese cliente y precio negociado en terreno. Sin tablas paralelas ni Excel aparte.</p>
+    </div>
+    <div class="prob">
+      <h3>¿Cuánto tarda el onboarding?</h3>
+      <p>Con ventas, stock, maestra y lista de precios, el ciclo deja la app operativa el mismo día. Sin integraciones ERP obligatorias para empezar.</p>
+    </div>
+    <div class="prob">
+      <h3>¿Los datos de cada empresa están separados?</h3>
+      <p>Sí. Cada empresa entra por blacksheep.cl y trabaja en su propio espacio. No se mezclan carteras ni precios entre clientes de Black Sheep.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<div class="cta-fin">
   <h2>Listo para vender con control.</h2>
-  <p>Black Sheep Field conecta la calle con la oficina. Ruta, stock, precio y pedido en una sola app.</p>
-  <a href="#acceso" class="btn btn-primary" style="font-size:1rem;padding:0.8rem 1.7rem;">Entrar al sistema</a>
+  <p>Black Sheep Field conecta la calle con la oficina. Ruta, precio, stock y pedido en una sola app.</p>
+  <a href="login.html" class="btn btn-lime" style="font-size:1rem;padding:.85rem 2rem">Entrar al sistema →</a>
+  <div class="trust">Sin tarjeta de crédito · Onboarding en 1 hora · Soporte en español</div>
 </div>
 
+<!-- FOOTER -->
 <footer>
-  <p>© 2026 Black Sheep Field · <a href="https://app.black-sheep.cl">app.black-sheep.cl</a></p>
+  <div class="foot-inner">
+    <a href="#" class="logo" style="text-decoration:none;color:inherit">
+      <div class="logo-mark"><img src="brand/logo-mark-64.png" alt="" width="22" height="22"></div>
+      <div class="logo-name" style="font-size:.85rem">Black Sheep<em>Field</em></div>
+    </a>
+    <div style="font-size:.78rem;color:var(--mut2)">© 2026 Black Sheep Field · <a href="https://app.black-sheep.cl">app.black-sheep.cl</a> · <a href="mailto:hola@blacksheep.cl">hola@blacksheep.cl</a></div>
+  </div>
 </footer>
 
 </body>

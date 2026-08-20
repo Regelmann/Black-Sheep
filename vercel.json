@@ -1,0 +1,9 @@
+{
+  "installCommand": "npm ci --legacy-peer-deps --no-audit --no-fund --prefix apps/field",
+  "buildCommand": "npm run build --prefix apps/field",
+  "outputDirectory": "apps/field/dist",
+  "framework": null,
+  "rewrites": [
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
+}
