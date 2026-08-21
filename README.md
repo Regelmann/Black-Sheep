@@ -1,58 +1,38 @@
-# Black Sheep Field — Plataforma multi-empresa
+# Black Sheep Field — Sitio web (marketing + ingreso)
 
-Producto de **venta en ruta + catálogo + gerencia**.  
-**Black Sheep** es la marca y la puerta de entrada. Cada empresa (tenant) entra solo por aquí.
+Landing negra / neón para **black-sheep.cl**.
 
-## Estructura
+## Contenido
 
-```
-├── brand/                 # logos oficiales
-├── apps/
-│   ├── web/               # black-sheep.cl — marketing + login
-│   └── field/             # app.black-sheep.cl — Field multi-tenant
-├── docs/ARCHITECTURE.md   # diseño multi-empresa
-└── README.md
-```
+| Archivo | Uso |
+|---------|-----|
+| `index.html` | Home: producto, capturas reales, CTA |
+| `login.html` | Ingreso usuario → plataforma Field |
+| `styles.css` | Design system void + neon `#39ff14` |
+| `brand/` | Logo oveja (SVG + PNG) |
+| `assets/` | Screenshots del producto en vivo |
 
-## Deploy
+## Deploy en Vercel
 
-### 1. Sitio — black-sheep.cl
-- Vercel → root `apps/web`
-- En `login.html`: `window.BS_APP_URL = "https://app.black-sheep.cl"`
+1. Proyecto nuevo apuntando a esta carpeta (o repo `blacksheep-web`).
+2. Framework: Other (estático). Output: raíz.
+3. Dominio: `black-sheep.cl` / `www.black-sheep.cl`.
 
-### 2. App — app.black-sheep.cl
-- Vercel → root `apps/field`
-- Env mínimas (tenant KeyFoods = default):
+## Conectar login → app Field
 
-```
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-VITE_GOOGLE_MAPS_API_KEY=...
+En `login.html`, antes del cierre de `</body>` o en un snippet Vercel:
+
+```html
+<script>window.BS_APP_URL = "https://app.black-sheep.cl";</script>
 ```
 
-Opcional segundo tenant:
+O el deploy actual de KeyFoods Field en Vercel. La app debe autenticar con Supabase y resolver el tenant del usuario.
 
-```
-VITE_TENANT_DEMO_URL=...
-VITE_TENANT_DEMO_ANON_KEY=...
-```
+## Colores
 
-### 3. Supabase por empresa
-En el proyecto de cada tenant, en orden:
+- Fondo: `#050505` / `#0a0a0a`
+- Neón: `#39ff14`
+- Texto: `#f4f4f5`
+- Muted: `#a1a1aa`
 
-1. `apps/field/scripts/SUPABASE_FIX_STOCK_PRECIOS.sql`
-2. `apps/field/scripts/SUPABASE_COMMERCE_V56_16_CANON.sql`
-
-Precios: `KEYFOODS_PATCH_STOCK_PRECIOS.py` (v5) con service key de **ese** proyecto.
-
-## Login
-
-1. Usuario → black-sheep.cl → Ingresar  
-2. Elige empresa / se detecta por email  
-3. App resuelve tenant → Supabase correcto → sesión  
-
-Stamp: **`v-BS-PLATFORM-MT`**
-
-## Documentación
-
-Ver [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Logo oficial: `brand/logo-mark.svg` (oveja circuit neón).

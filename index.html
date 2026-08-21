@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Black Sheep Field — Ruta. Precio. Pedido. En vivo.</title>
+<meta name="description" content="La plataforma de venta en ruta para distribuidores en Chile. El vendedor sabe a quién visitar, qué reponer y el precio del cliente. Gerencia lo ve en vivo.">
+<meta property="og:title" content="Black Sheep Field — Ruta. Precio. Pedido.">
+<meta property="og:description" content="Field sales multi-empresa. Precio del cliente, pedido en terreno y gerencia en vivo.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="brand/logo-master-1024.png">
+<link rel="icon" href="brand/logo-mark-32.png" type="image/png">
+<link rel="apple-touch-icon" href="brand/logo-mark-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:   #050505;
+  --bg1:  #0d0d0d;
+  --bg2:  #141414;
+  --bor:  #1f1f1f;
+  --bor2: #2a2a2a;
+  --txt:  #f2f2f2;
+  --mut:  #888;
+  --mut2: #555;
+  --lime: #a3e635;
+  --lime-glow: rgba(163,230,53,.12);
+  --lime-dim:  rgba(163,230,53,.08);
+  --or:   #f97316;
+  --r:    12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+html{overflow-x:hidden;max-width:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* ── HEADER ────────────────────────────────────────────────────── */
+header{position:fixed;inset:0 0 auto;z-index:100;background:rgba(5,5,5,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bor)}
+.hdr{max-width:1140px;margin:0 auto;padding:0 1.5rem;height:58px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.logo{display:flex;align-items:center;gap:.65rem;text-decoration:none;color:var(--txt);flex-shrink:0}
+.logo-mark{width:34px;height:34px;border-radius:9px;background:var(--bg1);border:1px solid var(--bor2);display:grid;place-items:center}
+.logo-mark img{width:22px;height:22px;object-fit:contain}
+.logo-name{font-weight:800;font-size:.95rem;letter-spacing:-.025em;line-height:1.15}
+.logo-name em{display:block;font-style:normal;color:var(--lime);font-size:.78rem;font-weight:600}
+nav{display:flex;align-items:center;gap:1.5rem}
+nav a{color:var(--mut);text-decoration:none;font-size:.86rem;font-weight:500;transition:color .15s}
+nav a:hover{color:var(--txt)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.6rem 1.25rem;border-radius:99px;font-weight:600;font-size:.875rem;text-decoration:none;border:none;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap}
+.btn-lime{background:var(--lime);color:#080808}
+.btn-lime:hover{background:#b8f04a;transform:translateY(-1px);box-shadow:0 8px 28px rgba(163,230,53,.22)}
+.btn-ghost{background:transparent;color:var(--txt);border:1px solid var(--bor2)}
+.btn-ghost:hover{border-color:#444;background:var(--bg2)}
+@media(max-width:640px){nav a:not(.btn){display:none}}
+
+/* ── HERO ──────────────────────────────────────────────────────── */
+.hero{max-width:1140px;margin:0 auto;padding:7.5rem 1.5rem 3rem;display:grid;grid-template-columns:1.1fr .9fr;gap:3rem;align-items:center}
+@media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:6rem;text-align:center;gap:2.5rem}}
+.hero-badge{display:inline-flex;align-items:center;gap:.45rem;font-size:.75rem;font-weight:700;color:var(--lime);background:var(--lime-dim);padding:.35rem .9rem;border-radius:99px;margin-bottom:1.25rem;letter-spacing:.01em;border:1px solid rgba(163,230,53,.2)}
+.hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--lime);flex-shrink:0}
+.hero h1{font-size:clamp(2.5rem,5.5vw,3.9rem);font-weight:900;line-height:1.04;letter-spacing:-.04em;margin-bottom:1.25rem}
+.hero h1 .accent{color:var(--lime)}
+.hero-lead{color:var(--mut);font-size:1.08rem;max-width:440px;margin-bottom:1.75rem;line-height:1.65}
+@media(max-width:900px){.hero-lead{margin-left:auto;margin-right:auto}}
+.hero-cta{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1.75rem}
+@media(max-width:900px){.hero-cta{justify-content:center}}
+.hero-proof{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;font-size:.8rem;color:var(--mut)}
+.hero-proof span{display:flex;align-items:center;gap:.35rem}
+.hero-proof::before,.hp-dot{width:5px;height:5px;border-radius:50%;background:var(--lime);flex-shrink:0;display:inline-block}
+@media(max-width:900px){.hero-proof{justify-content:center}}
+
+/* ── PHONE MOCK ────────────────────────────────────────────────── */
+.phone-stage{display:flex;justify-content:center;position:relative;filter:drop-shadow(0 40px 60px rgba(0,0,0,.7))}
+.phone{width:min(268px,80vw);background:#080808;border-radius:40px;padding:11px;box-shadow:0 0 0 1.5px #1c1c1c,0 0 80px rgba(163,230,53,.08)}
+.phone::before{content:'';position:absolute;top:16px;left:50%;transform:translateX(-50%);width:70px;height:19px;background:var(--bg);border-radius:20px;z-index:3}
+.phone-scr{width:100%;border-radius:30px;overflow:hidden;background:#0a0a0a;aspect-ratio:9/19.2}
+.phone-scr img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.phone-tag{position:absolute;bottom:-8px;right:-6px;background:var(--lime);color:#050505;font-size:.68rem;font-weight:800;padding:.32rem .75rem;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:5;letter-spacing:.02em}
+/* Floating chips */
+.fchip{position:absolute;background:rgba(20,20,20,.95);border:1px solid #2d2d2d;color:var(--txt);font-size:.7rem;font-weight:600;padding:.38rem .75rem;border-radius:99px;white-space:nowrap;z-index:4;backdrop-filter:blur(10px);box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.fc1{top:14%;left:-18%;animation:fc 3.5s ease-in-out infinite}
+.fc2{top:42%;right:-15%;animation:fc 4s ease-in-out infinite .8s}
+.fc3{bottom:28%;left:-14%;animation:fc 3.8s ease-in-out infinite 1.5s}
+@keyframes fc{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media(max-width:900px){.fc1,.fc2,.fc3{display:none}}
+
+/* ── STATS STRIP ───────────────────────────────────────────────── */
+.stats{max-width:1140px;margin:0 auto 0;padding:2.5rem 1.5rem;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border-top:1px solid var(--bor);border-bottom:1px solid var(--bor)}
+.stat{text-align:center;padding:1.5rem .5rem}
+.stat-n{font-size:2.2rem;font-weight:900;letter-spacing:-.04em;color:var(--lime);line-height:1}
+.stat-l{font-size:.78rem;color:var(--mut);margin-top:.4rem;font-weight:500}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.stat{padding:1.25rem}}
+
+/* ── SECTION SHARED ────────────────────────────────────────────── */
+section{max-width:1140px;margin:0 auto;padding:5rem 1.5rem}
+.label{font-size:.72rem;font-weight:700;color:var(--lime);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.75rem}
+.stitle{font-size:clamp(1.65rem,3.5vw,2.45rem);font-weight:800;letter-spacing:-.035em;line-height:1.15;margin-bottom:.85rem}
+.sdesc{color:var(--mut);font-size:1rem;max-width:520px;line-height:1.65}
+.center{text-align:center}
+.center .sdesc{margin-left:auto;margin-right:auto}
+
+/* ── BENTO GRID (features) ─────────────────────────────────────── */
+.bento{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto;gap:12px;margin-top:3rem;width:100%;max-width:100%;min-width:0}
+.bcard{background:var(--bg1);border:1px solid var(--bor);border-radius:18px;padding:1.5rem;overflow:hidden;position:relative;transition:border-color .2s,box-shadow .2s;min-width:0;max-width:100%;box-sizing:border-box}
+.bcard:hover{border-color:#333;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.bcard.wide{grid-column:1/3}
+.bcard.tall{grid-row:1/3}
+.bcard-label{font-size:.7rem;font-weight:700;color:var(--lime);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem}
+.bcard h3{font-size:1.1rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.5rem;line-height:1.3}
+.bcard p{font-size:.85rem;color:var(--mut);line-height:1.6}
+.bcard-img{margin-top:1.25rem;border-radius:12px;overflow:hidden;background:var(--bg2);border:1px solid var(--bor)}
+.bcard-img img{width:100%;display:block;object-fit:cover;object-position:top}
+.bcard-stat{font-size:2rem;font-weight:900;color:var(--lime);letter-spacing:-.04em;margin-bottom:.25rem;line-height:1}
+.bcard-live{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:700;color:var(--lime);background:rgba(163,230,53,.1);padding:.3rem .75rem;border-radius:99px;margin-top:1rem;border:1px solid rgba(163,230,53,.2)}
+.bcard-live::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* Mobile/tablet: una columna — evita solape y scroll horizontal */
+@media(max-width:900px){
+  .bento{grid-template-columns:1fr!important;gap:12px}
+  .bcard,.bcard.wide,.bcard.tall{
+    grid-column:1/-1!important;
+    grid-row:auto!important;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    box-sizing:border-box;
+  }
+  .bcard-img{max-height:220px!important}
+  .bcard-img img{width:100%;max-width:100%;height:auto}
+  .hero{padding-left:1rem;padding-right:1rem}
+  .phone{width:min(240px,72vw)}
+  section{overflow-x:hidden;max-width:100%}
+  .bento{overflow:hidden}
+}
+@media(max-width:560px){
+  .bcard{padding:1.15rem}
+  .bcard h3{font-size:1.02rem}
+  .bcard-img{max-height:180px!important}
+}
+
+/* ── PROBLEMA ──────────────────────────────────────────────────── */
+.probs{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2.5rem}
+.prob{background:var(--bg1);border:1px solid var(--bor);border-radius:14px;padding:1.5rem}
+.prob-ic{font-size:1.6rem;margin-bottom:.75rem}
+.prob h3{font-size:.95rem;font-weight:700;margin-bottom:.4rem;letter-spacing:-.015em}
+.prob p{font-size:.82rem;color:var(--mut);line-height:1.6}
+@media(max-width:640px){.probs{grid-template-columns:1fr}}
+
+/* ── SCREENSHOTS ───────────────────────────────────────────────── */
+.screens-wrap{padding:4rem 0}
+.screens-hdr{max-width:1140px;margin:0 auto;padding:0 1.5rem 2rem;text-align:center}
+.screens-track{display:flex;gap:14px;padding:0 1.5rem 1.5rem;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;max-width:1300px;margin:0 auto;scrollbar-width:thin;scrollbar-color:#2a2a2a #0d0d0d}
+.screens-track::-webkit-scrollbar{height:4px}
+.screens-track::-webkit-scrollbar-track{background:var(--bg1)}
+.screens-track::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+.sc{flex:0 0 220px;scroll-snap-align:start;background:var(--bg1);border:1px solid var(--bor);border-radius:18px;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.sc:hover{transform:translateY(-5px);box-shadow:0 20px 40px rgba(0,0,0,.5)}
+.sc img{width:100%;height:400px;object-fit:cover;object-position:top;display:block;border-bottom:1px solid var(--bor)}
+.sc-cap{padding:.9rem 1rem}
+.sc-cap h4{font-size:.88rem;font-weight:700;margin-bottom:.2rem}
+.sc-cap p{font-size:.75rem;color:var(--mut)}
+
+/* ── HOW IT WORKS ──────────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:2.5rem;background:var(--bor);border:1px solid var(--bor);border-radius:16px;overflow:hidden}
+.step{background:var(--bg1);padding:1.75rem 1.5rem}
+.step-n{font-size:2rem;font-weight:900;color:var(--lime);letter-spacing:-.04em;line-height:1;margin-bottom:.75rem;opacity:.5}
+.step h3{font-size:.92rem;font-weight:700;margin-bottom:.4rem;letter-spacing:-.015em}
+.step p{font-size:.8rem;color:var(--mut);line-height:1.6}
+@media(max-width:720px){.steps{grid-template-columns:1fr 1fr}}
+@media(max-width:440px){.steps{grid-template-columns:1fr}}
+
+/* ── PRICING ───────────────────────────────────────────────────── */
+.pricing-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:14px;margin-top:2.5rem}
+.pcard{background:var(--bg1);border:1px solid var(--bor);border-radius:18px;padding:2rem}
+.pcard.featured{border-color:var(--lime);background:linear-gradient(145deg,rgba(163,230,53,.06),var(--bg1))}
+.pcard-badge{display:inline-block;font-size:.68rem;font-weight:800;color:#050505;background:var(--lime);padding:.25rem .7rem;border-radius:99px;margin-bottom:1rem;letter-spacing:.04em;text-transform:uppercase}
+.pcard-name{font-size:.95rem;font-weight:700;color:var(--mut);margin-bottom:.5rem}
+.pcard-price{font-size:2.2rem;font-weight:900;letter-spacing:-.04em;line-height:1;margin-bottom:.25rem}
+.pcard-price span{font-size:.9rem;font-weight:500;color:var(--mut)}
+.pcard-period{font-size:.8rem;color:var(--mut);margin-bottom:1.5rem}
+.pcard hr{border:none;border-top:1px solid var(--bor);margin-bottom:1.25rem}
+.pcard-feat{list-style:none;display:flex;flex-direction:column;gap:.6rem}
+.pcard-feat li{font-size:.84rem;color:var(--mut);display:flex;align-items:flex-start;gap:.5rem}
+.pcard-feat li::before{content:'✓';color:var(--lime);font-weight:800;flex-shrink:0;margin-top:.02em}
+.pcard-feat li.dim{color:var(--mut2)}
+.pcard-feat li.dim::before{content:'—';color:var(--mut2)}
+.pcard-cta{margin-top:1.75rem;display:block;text-align:center}
+@media(max-width:640px){.pricing-grid{grid-template-columns:1fr}}
+
+/* ── TESTIMONIALS ──────────────────────────────────────────────── */
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:2.5rem}
+.tcard{background:var(--bg1);border:1px solid var(--bor);border-radius:14px;padding:1.5rem}
+.tcard-stars{color:var(--lime);font-size:.85rem;margin-bottom:.75rem;letter-spacing:.1em}
+.tcard-quote{font-size:.87rem;line-height:1.65;margin-bottom:1rem;color:var(--txt)}
+.tcard-who{display:flex;align-items:center;gap:.65rem}
+.tcard-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg2);border:1px solid var(--bor2);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:var(--lime);flex-shrink:0}
+.tcard-name{font-size:.82rem;font-weight:700}
+.tcard-role{font-size:.75rem;color:var(--mut)}
+@media(max-width:720px){.testi-grid{grid-template-columns:1fr}}
+
+/* ── ACCESS SECTION ────────────────────────────────────────────── */
+.access-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}
+@media(max-width:860px){.access-grid{grid-template-columns:1fr}}
+.access-note{margin-top:1.25rem;font-size:.84rem;color:var(--mut)}
+.access-note a{color:var(--lime);text-decoration:none}
+
+/* ── CTA FINAL ─────────────────────────────────────────────────── */
+.cta-fin{text-align:center;padding:5rem 1.5rem;background:radial-gradient(ellipse 65% 55% at 50% 50%,rgba(163,230,53,.07) 0%,transparent 70%);border-top:1px solid var(--bor)}
+.cta-fin h2{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:900;letter-spacing:-.04em;margin-bottom:.85rem}
+.cta-fin p{color:var(--mut);font-size:1rem;max-width:400px;margin:0 auto 1.75rem}
+.cta-fin .trust{margin-top:1.25rem;font-size:.78rem;color:var(--mut2)}
+
+/* ── FOOTER ────────────────────────────────────────────────────── */
+footer{border-top:1px solid var(--bor);padding:2rem 1.5rem;text-align:center;color:var(--mut);font-size:.8rem}
+footer a{color:var(--lime);text-decoration:none}
+.foot-inner{max-width:1140px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+
+/* WhatsApp float */
+.wa-float{position:fixed;right:16px;bottom:20px;z-index:200;display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:#25D366;color:#fff;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:28px;line-height:1}
+.wa-float:hover{transform:scale(1.06);background:#20bd5a}
+@media(max-width:560px){.wa-float{right:14px;bottom:18px;width:52px;height:52px}}
+
+
+/* ═══ MOTION / 2026 polish ═══════════════════════════════════════ */
+:root{
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .reveal,.reveal-left,.reveal-right,.reveal-scale{opacity:1!important;transform:none!important}
+  .reveal-stagger.is-in > *{animation:none!important}
+}
+
+/* Nav glass on scroll */
+.nav{
+  transition: background .35s var(--ease-soft), border-color .35s, backdrop-filter .35s, box-shadow .35s;
+}
+.nav.is-scrolled{
+  background: rgba(8,8,8,.82);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  box-shadow: 0 8px 32px rgba(0,0,0,.35);
+}
+
+/* Ambient glow behind hero */
+.hero{position:relative}
+.hero::before{
+  content:'';
+  position:absolute;
+  inset:-20% -10% auto -10%;
+  height:70%;
+  background:
+    radial-gradient(ellipse 50% 60% at 20% 40%, rgba(163,230,53,.12), transparent 60%),
+    radial-gradient(ellipse 40% 50% at 80% 30%, rgba(163,230,53,.06), transparent 55%);
+  pointer-events:none;
+  z-index:0;
+  animation: glow-drift 12s ease-in-out infinite alternate;
+}
+.hero > *{position:relative;z-index:1}
+@keyframes glow-drift{
+  from{transform:translate(0,0) scale(1);opacity:.9}
+  to{transform:translate(2%,3%) scale(1.05);opacity:1}
+}
+
+/* Hero entrance */
+.hero-badge,.hero h1,.hero-lead,.hero-cta,.hero-proof{
+  animation: rise-in .9s var(--ease-out) both;
+}
+.hero h1{animation-delay:.08s}
+.hero-lead{animation-delay:.16s}
+.hero-cta{animation-delay:.24s}
+.hero-proof{animation-delay:.32s}
+@keyframes rise-in{
+  from{opacity:0;transform:translateY(22px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* Phone float + soft shine */
+.phone-wrap,.phone{
+  animation: phone-float 7s ease-in-out infinite;
+}
+@keyframes phone-float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-12px)}
+}
+.phone{position:relative}
+.phone::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background: linear-gradient(125deg, transparent 40%, rgba(163,230,53,.08) 50%, transparent 60%);
+  background-size: 200% 200%;
+  animation: shine 5s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes shine{
+  0%,100%{background-position:100% 50%}
+  50%{background-position:0% 50%}
+}
+
+/* Scroll reveal system */
+.reveal{
+  opacity:0;
+  transform:translateY(28px);
+  transition: opacity .7s var(--ease-out), transform .7s var(--ease-out);
+  will-change: opacity, transform;
+}
+.reveal.is-in{
+  opacity:1;
+  transform:translateY(0);
+}
+.reveal-d1{transition-delay:.08s}
+.reveal-d2{transition-delay:.16s}
+.reveal-d3{transition-delay:.24s}
+.reveal-d4{transition-delay:.32s}
+.reveal-d5{transition-delay:.40s}
+.reveal-left{opacity:0;transform:translateX(-28px);transition:opacity .75s var(--ease-out),transform .75s var(--ease-out);will-change:opacity,transform}
+.reveal-left.is-in{opacity:1;transform:translateX(0)}
+.reveal-right{opacity:0;transform:translateX(28px);transition:opacity .75s var(--ease-out),transform .75s var(--ease-out);will-change:opacity,transform}
+.reveal-right.is-in{opacity:1;transform:translateX(0)}
+.reveal-scale{opacity:0;transform:scale(.96);transition:opacity .7s var(--ease-out),transform .7s var(--ease-out);will-change:opacity,transform}
+.reveal-scale.is-in{opacity:1;transform:scale(1)}
+.reveal-stagger.is-in > *{animation:stagger-rise .65s var(--ease-out) both}
+.reveal-stagger.is-in > *:nth-child(1){animation-delay:.05s}
+.reveal-stagger.is-in > *:nth-child(2){animation-delay:.12s}
+.reveal-stagger.is-in > *:nth-child(3){animation-delay:.19s}
+.reveal-stagger.is-in > *:nth-child(4){animation-delay:.26s}
+.reveal-stagger.is-in > *:nth-child(5){animation-delay:.33s}
+.reveal-stagger.is-in > *:nth-child(6){animation-delay:.40s}
+@keyframes stagger-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* Cards: lift + border glow */
+.bcard,.prob,.price-card,.sc,.step{
+  transition: transform .35s var(--ease-out), border-color .35s, box-shadow .35s;
+}
+.bcard:hover,.prob:hover,.price-card:hover{
+  transform: translateY(-4px);
+  border-color: rgba(163,230,53,.28);
+  box-shadow: 0 16px 48px rgba(0,0,0,.45), 0 0 0 1px rgba(163,230,53,.08);
+}
+.bcard-img img{
+  transition: transform .6s var(--ease-out);
+}
+.bcard:hover .bcard-img img{
+  transform: scale(1.03);
+}
+
+/* Stats counter feel */
+.stat strong,.stat .n, .stats .stat > div:first-child{
+  transition: color .3s, transform .3s;
+}
+.stat:hover{
+  background: rgba(163,230,53,.03);
+}
+
+/* Buttons micro */
+.btn{
+  transition: transform .2s var(--ease-out), background .2s, box-shadow .25s, border-color .2s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn-lime{
+  box-shadow: 0 0 0 0 rgba(163,230,53,.35);
+}
+.btn-lime:hover{
+  box-shadow: 0 8px 28px rgba(163,230,53,.25);
+}
+
+/* WA float pulse */
+.wa-float{
+  transition: transform .25s var(--ease-out), box-shadow .25s;
+  animation: wa-in .6s var(--ease-out) .8s both;
+}
+.wa-float:hover{transform:scale(1.08)}
+@keyframes wa-in{
+  from{opacity:0;transform:scale(.6) translateY(12px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+.wa-float::before{
+  content:'';
+  position:absolute;
+  inset:-4px;
+  border-radius:50%;
+  border:2px solid rgba(37,211,102,.45);
+  animation: ring-pulse 2.4s ease-out infinite;
+}
+@keyframes ring-pulse{
+  0%{transform:scale(.9);opacity:.7}
+  100%{transform:scale(1.35);opacity:0}
+}
+
+/* Accent underline on section labels */
+.label{
+  position:relative;
+  display:inline-block;
+}
+.label::after{
+  content:'';
+  display:block;
+  width:28px;
+  height:2px;
+  margin-top:8px;
+  background: var(--lime);
+  border-radius:2px;
+  transform-origin:left;
+  animation: line-grow .8s var(--ease-out) both;
+}
+@keyframes line-grow{
+  from{transform:scaleX(0)}
+  to{transform:scaleX(1)}
+}
+
+/* Pricing highlight breathe */
+.price-card.featured, .pricing-grid .price-card:nth-child(2){
+  position:relative;
+}
+.price-card.featured::before, .pricing-grid > div:nth-child(2)::before{
+  content:'';
+  position:absolute;
+  inset:-1px;
+  border-radius:inherit;
+  background: linear-gradient(135deg, rgba(163,230,53,.25), transparent 40%, rgba(163,230,53,.12));
+  z-index:-1;
+  opacity:.6;
+  animation: border-glow 4s ease-in-out infinite alternate;
+}
+@keyframes border-glow{
+  from{opacity:.35}
+  to{opacity:.85}
+}
+
+/* Screens horizontal track: snap polish */
+.screens-track{scroll-behavior:smooth}
+.sc{transition: transform .3s var(--ease-out), box-shadow .3s}
+.sc:hover{transform:translateY(-6px) scale(1.02)}
+
+/* Mobile safety */
+@media(max-width:900px){
+  .hero::before{height:50%}
+  .phone-wrap,.phone{animation-duration:9s}
+  .bcard:hover{transform:none}
+}
+
+
+/* ═══ PREMIUM 2026 — Awwwards-inspired ═══════════════════════════ */
+/* Aurora mesh background (Stripe-like animated gradients) */
+.aurora{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+}
+.aurora span{
+  position:absolute;border-radius:50%;filter:blur(80px);opacity:.35;
+  animation:aurora-move 18s ease-in-out infinite alternate;
+}
+.aurora span:nth-child(1){
+  width:55vw;height:55vw;left:-10%;top:-15%;
+  background:radial-gradient(circle,rgba(163,230,53,.22),transparent 70%);
+}
+.aurora span:nth-child(2){
+  width:40vw;height:40vw;right:-5%;top:20%;
+  background:radial-gradient(circle,rgba(34,197,94,.12),transparent 70%);
+  animation-delay:-6s;animation-duration:22s;
+}
+.aurora span:nth-child(3){
+  width:45vw;height:45vw;left:30%;bottom:-20%;
+  background:radial-gradient(circle,rgba(163,230,53,.1),transparent 70%);
+  animation-delay:-12s;animation-duration:26s;
+}
+@keyframes aurora-move{
+  0%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(4%,6%) scale(1.08)}
+  100%{transform:translate(-3%,4%) scale(.95)}
+}
+body > *:not(.aurora){position:relative;z-index:1}
+.nav{z-index:100}
+
+/* Kinetic headline — word cascade */
+.hero h1 .kw{
+  display:inline-block;
+  opacity:0;
+  transform:translateY(110%) rotateX(-40deg);
+  transform-origin:bottom;
+  animation:kw-in .9s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.hero h1 .kw:nth-child(1){animation-delay:.15s}
+.hero h1 .kw:nth-child(2){animation-delay:.32s}
+.hero h1 .kw:nth-child(3){animation-delay:.48s}
+@keyframes kw-in{
+  to{opacity:1;transform:translateY(0) rotateX(0)}
+}
+.hero h1{perspective:600px}
+
+/* Cursor spotlight (desktop) */
+.cursor-glow{
+  position:fixed;width:420px;height:420px;border-radius:50%;
+  pointer-events:none;z-index:50;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(163,230,53,.09) 0%,transparent 70%);
+  transform:translate(-50%,-50%);
+  opacity:0;transition:opacity .4s;
+  will-change:left,top;
+}
+body.has-pointer .cursor-glow{opacity:1}
+
+/* Scroll progress bar */
+.scroll-progress{
+  position:fixed;top:0;left:0;height:2px;width:0%;z-index:200;
+  background:linear-gradient(90deg,#a3e635,#4ade80);
+  box-shadow:0 0 12px rgba(163,230,53,.55);
+  transition:width .05s linear;
+}
+
+/* Infinite marquee strip */
+.marquee-wrap{
+  overflow:hidden;border-top:1px solid var(--bor);border-bottom:1px solid var(--bor);
+  background:rgba(163,230,53,.03);padding:.85rem 0;margin:0;
+}
+.marquee-track{
+  display:flex;width:max-content;gap:2.5rem;
+  animation:marquee 32s linear infinite;
+}
+.marquee-track span{
+  font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mut);white-space:nowrap;
+}
+.marquee-track span em{font-style:normal;color:var(--lime)}
+@keyframes marquee{
+  from{transform:translateX(0)}
+  to{transform:translateX(-50%)}
+}
+.marquee-wrap:hover .marquee-track{animation-play-state:paused}
+
+/* Magnetic CTA pulse ring */
+.btn-lime{position:relative;overflow:hidden}
+.btn-lime::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.25) 50%,transparent 60%);
+  background-size:200% 100%;
+  animation:btn-shine 4s ease-in-out infinite;
+}
+@keyframes btn-shine{
+  0%,100%{background-position:120% 0}
+  50%{background-position:-20% 0}
+}
+
+/* Card spotlight follows mouse via CSS var */
+.bcard,.pcard,.prob{
+  --mx:50%;--my:50%;
+  background-image:radial-gradient(500px circle at var(--mx) var(--my),rgba(163,230,53,.07),transparent 45%);
+}
+
+/* Noise texture overlay — premium film grain */
+body::after{
+  content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Stat number pop when revealed */
+.stat-n{display:inline-block}
+.stats.reveal.is-in .stat-n{
+  animation:stat-pop .6s cubic-bezier(0.16,1,0.3,1) both;
+}
+.stats.reveal.is-in .stat:nth-child(2) .stat-n{animation-delay:.1s}
+.stats.reveal.is-in .stat:nth-child(3) .stat-n{animation-delay:.2s}
+.stats.reveal.is-in .stat:nth-child(4) .stat-n{animation-delay:.3s}
+@keyframes stat-pop{
+  from{opacity:0;transform:translateY(16px) scale(.85)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+/* Line draw under section titles */
+.stitle.reveal.is-in{
+  background-image:linear-gradient(var(--lime),var(--lime));
+  background-size:48px 2px;background-repeat:no-repeat;background-position:0 100%;
+  padding-bottom:10px;
+  animation: none;
+}
+.stitle.reveal.is-in{
+  /* line grows via background-size transition when is-in */
+  transition:opacity .75s var(--ease-out),transform .75s var(--ease-out),background-size .9s var(--ease-out) .2s;
+  background-size:0 2px;
+}
+.stitle.reveal.is-in{background-size:48px 2px}
+
+/* Floating chips around phone — more life */
+.fchip{animation:chip-float 5s ease-in-out infinite}
+.fc1{animation-delay:0s}
+.fc2{animation-delay:1.2s}
+.fc3{animation-delay:2.1s}
+@keyframes chip-float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-8px)}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .aurora span,.marquee-track,.btn-lime::after,.hero h1 .kw,.fchip{animation:none!important}
+  .hero h1 .kw{opacity:1;transform:none}
+  .cursor-glow,.scroll-progress{display:none}
+}
+@media (max-width:900px){
+  .cursor-glow{display:none}
+  .aurora span{filter:blur(60px);opacity:.25}
+}
+
+</style>
+</head>
+<body>
+<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+<div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+
+<!-- HEADER -->
+<header>
+  <div class="hdr">
+    <a href="#" class="logo">
+      <div class="logo-mark">
+        <img src="brand/logo-mark-64.png" alt="">
+      </div>
+      <div class="logo-name">Black Sheep<em>Field</em></div>
+    </a>
+    <nav>
+      <a href="#producto">Producto</a>
+      <a href="#pantallas">Pantallas</a>
+      <a href="#precios">Precios</a>
+      <a href="/login" class="btn btn-lime" style="padding:.45rem 1rem;font-size:.82rem">Entrar →</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div>
+    <div class="hero-badge">Field sales · Chile · Multi-empresa</div>
+    <h1><span class="kw">Ruta.</span><br><span class="kw accent">Precio.</span><br><span class="kw">Pedido.</span></h1>
+    <p class="hero-lead">El vendedor sabe a quién visitar, qué ofrecer y al precio del cliente. La gerencia lo ve en el mismo segundo. Sin Excel. Sin papel.</p>
+    <div class="hero-cta">
+      <a href="/login" class="btn btn-lime">Entrar al sistema</a>
+      <a href="#pantallas" class="btn btn-ghost">Ver cómo funciona</a>
+    </div>
+    <div class="hero-proof">
+      <span><span class="hp-dot"></span> Cada visita = pedido real</span>
+      <span><span class="hp-dot"></span> Precio personalizado</span>
+      <span><span class="hp-dot"></span> Gerencia en vivo</span>
+    </div>
+  </div>
+  <div class="phone-stage">
+    <div class="fchip fc1">Meta del mes</div>
+    <div class="fchip fc2">Pedidos hoy</div>
+    <div class="fchip fc3">Brecha terreno</div>
+    <div class="phone">
+      <div class="phone-scr">
+        <img src="268790.jpg" alt="Mi día - Black Sheep Field" loading="eager">
+      </div>
+      <div class="phone-tag">En vivo</div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats reveal reveal-stagger">
+  <div class="stat"><div class="stat-n">0</div><div class="stat-l">planillas Excel</div></div>
+  <div class="stat"><div class="stat-n">3</div><div class="stat-l">fuentes de precio</div></div>
+  <div class="stat"><div class="stat-n">∞</div><div class="stat-l">empresas en paralelo</div></div>
+  <div class="stat"><div class="stat-n">1'</div><div class="stat-l">para hacer onboarding</div></div>
+</div>
+
+<!-- PROBLEMA -->
+
+<div class="marquee-wrap" aria-hidden="true">
+  <div class="marquee-track">
+    <span>Ruta inteligente</span><span><em>●</em></span>
+    <span>3 fuentes de precio</span><span><em>●</em></span>
+    <span>Pedido en terreno</span><span><em>●</em></span>
+    <span>Gerencia en vivo</span><span><em>●</em></span>
+    <span>Multi-empresa</span><span><em>●</em></span>
+    <span>Sin Excel</span><span><em>●</em></span>
+    <span>Ruta inteligente</span><span><em>●</em></span>
+    <span>3 fuentes de precio</span><span><em>●</em></span>
+    <span>Pedido en terreno</span><span><em>●</em></span>
+    <span>Gerencia en vivo</span><span><em>●</em></span>
+    <span>Multi-empresa</span><span><em>●</em></span>
+    <span>Sin Excel</span><span><em>●</em></span>
+  </div>
+</div>
+
+<section id="problema">
+  <div class="label reveal">El problema</div>
+  <h2 class="stitle reveal reveal-d1">Cada día con Excel, se pierde plata.</h2>
+  <p class="sdesc reveal reveal-d2">Descuentos de memoria, reposición a ojo y precios que nadie controla. El vendedor improvisa. La gerencia se entera tarde.</p>
+  <div class="probs reveal-stagger">
+    <div class="prob reveal">
+      <div class="prob-ic">💸</div>
+      <h3>Precio imposible de controlar</h3>
+      <p>Cada vendedor negocia a su modo. Descuentos sin registro, márgenes que se evaporan y nadie puede justificarlo después.</p>
+    </div>
+    <div class="prob reveal">
+      <div class="prob-ic">📦</div>
+      <h3>Reposición a ojo</h3>
+      <p>No se sabe qué le falta al cliente ni qué hay disponible. Se pierde la venta del día y la del siguiente mes.</p>
+    </div>
+    <div class="prob reveal">
+      <div class="prob-ic">🔭</div>
+      <h3>Gerencia ciega hasta el fin de mes</h3>
+      <p>Sin visibilidad del terreno en tiempo real, las decisiones llegan tarde. El mes ya cerró mal antes de que alguien lo note.</p>
+    </div>
+  </div>
+</section>
+
+<!-- BENTO FEATURES -->
+<section id="producto" style="overflow:hidden;max-width:100%">
+  <div class="label reveal">El producto</div>
+  <h2 class="stitle reveal reveal-d1">Todo en una sola app.</h2>
+  <p class="sdesc reveal reveal-d2">El vendedor vende. El cliente pide con su precio. La gerencia controla. Sin integrar nada. Sin meses de implementación.</p>
+
+  <div class="bento reveal-stagger">
+    <!-- Card grande: Hoy -->
+    <div class="bcard tall reveal">
+      <div class="bcard-label">Pantalla Hoy</div>
+      <h3>El día completo antes de salir</h3>
+      <p>Meta del mes, proyección al ritmo actual, check-ins del día, pedidos capturados y focos a empujar. En 10 segundos el ejecutivo sabe qué hacer.</p>
+      <div class="bcard-live">● Actualiza en tiempo real</div>
+      <div class="bcard-img" style="margin-top:1.25rem;max-height:320px;overflow:hidden">
+        <img src="268790.jpg" alt="Pantalla Hoy">
+      </div>
+    </div>
+
+    <!-- Mapa -->
+    <div class="bcard wide reveal reveal-d1">
+      <div class="bcard-label">Mapa y ruta</div>
+      <h3>Clientes cercanos ordenados por urgencia</h3>
+      <p>GPS del ejecutivo, pines por estado (ruta, en riesgo, activos), radio de búsqueda y prospectos alineados con los focos del mes.</p>
+      <div class="bcard-img" style="max-height:220px;overflow:hidden">
+        <img src="268802.jpg" alt="Mapa de clientes">
+      </div>
+    </div>
+
+    <!-- Precio cliente -->
+    <div class="bcard reveal reveal-d2">
+      <div class="bcard-label">Precio inteligente</div>
+      <h3>3 fuentes de precio, sin inventar</h3>
+      <p><strong>Lista</strong> → <strong>histórico del cliente</strong> → <strong>negociado en terreno</strong>. El ejecutivo siempre ofrece el precio correcto. El cliente ve el suyo.</p>
+      <div class="bcard-stat" style="margin-top:1rem">3</div>
+      <div style="font-size:.78rem;color:var(--mut);margin-top:.25rem">lista · histórico · negociado</div>
+    </div>
+
+    <!-- Catálogo -->
+    <div class="bcard reveal reveal-d3">
+      <div class="bcard-label">Catálogo del cliente</div>
+      <h3>El cliente pide solo, con su precio</h3>
+      <p>Link único por cliente. Ve sus productos recomendados, precio negociado y stock disponible. Pide sin llamar al ejecutivo.</p>
+      <div class="bcard-img" style="max-height:160px;overflow:hidden;margin-top:1rem">
+        <img src="268796.jpg" alt="Catálogo del cliente">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section>
+  <div class="center">
+    <div class="label reveal">Cómo funciona</div>
+    <h2 class="stitle reveal reveal-d1">De la calle al sistema en 4 pasos.</h2>
+  </div>
+  <div class="steps reveal reveal-stagger">
+    <div class="step reveal">
+      <div class="step-n">01</div>
+      <h3>Cargás 4 archivos</h3>
+      <p>Ventas, stock, maestra de clientes y lista de precios. Un script Python los procesa en minutos.</p>
+    </div>
+    <div class="step reveal">
+      <div class="step-n">02</div>
+      <h3>La app calcula sola</h3>
+      <p>Clientes en riesgo, qué ofrecer a cada uno, precio correcto, focos del mes y ruta sugerida.</p>
+    </div>
+    <div class="step reveal">
+      <div class="step-n">03</div>
+      <h3>El ejecutivo vende</h3>
+      <p>Check-in, catálogo con precios, pedido capturado y nota. Todo en menos de 3 minutos por visita.</p>
+    </div>
+    <div class="step reveal">
+      <div class="step-n">04</div>
+      <h3>Gerencia decide</h3>
+      <p>Dashboard en vivo con venta total, brecha terreno, focos y top clientes. Sin esperar el informe del lunes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENSHOTS -->
+<div class="screens-wrap" id="pantallas">
+  <div class="screens-hdr reveal">
+    <div class="label center reveal">Pantallas reales</div>
+    <h2 class="stitle center reveal reveal-d1">No es un mockup.</h2>
+    <p class="sdesc center reveal reveal-d2">Capturas actuales de la app en producción con KeyFoods. Cada pantalla resuelve un problema real.</p>
+  </div>
+  <div class="screens-track reveal">
+    <div class="sc reveal"><img src="268790.jpg" alt="Mi día"><div class="sc-cap"><h4>Mi día</h4><p>Meta, proyección y focos antes de salir.</p></div></div>
+    <div class="sc reveal"><img src="268802.jpg" alt="Mapa"><div class="sc-cap"><h4>Mapa y ruta</h4><p>GPS, clientes cercanos y estado en vivo.</p></div></div>
+    <div class="sc reveal"><img src="268793.jpg" alt="Ficha cliente"><div class="sc-cap"><h4>Ficha del cliente</h4><p>Ventas, ritmo, oferta y catálogo.</p></div></div>
+    <div class="sc reveal"><img src="268796.jpg" alt="Catálogo"><div class="sc-cap"><h4>Catálogo + precio</h4><p>Precio personalizado y pedido al toque.</p></div></div>
+    <div class="sc reveal"><img src="268799.jpg" alt="Gerencia"><div class="sc-cap"><h4>Vista gerencial</h4><p>Venta total, brecha y tendencia 12m.</p></div></div>
+  </div>
+</div>
+
+<!-- PRECIOS -->
+<section id="precios">
+  <div class="center">
+    <div class="label reveal">Precios</div>
+    <h2 class="stitle reveal reveal-d1">Transparente desde el día uno.</h2>
+    <p class="sdesc reveal reveal-d2">Sin sorpresas. Sin "contactar ventas para precio". El costo es por empresa, no por usuario.</p>
+  </div>
+  <div class="pricing-grid reveal-stagger">
+    <div class="pcard reveal">
+      <div class="pcard-name reveal">Starter</div>
+      <div class="pcard-price reveal">UF 6<span>/mes</span></div>
+      <div class="pcard-period reveal">~$230 USD · por empresa, no por usuario</div>
+      <hr>
+      <ul class="pcard-feat reveal">
+        <li>1 zona comercial</li>
+        <li>Hasta 5 ejecutivos</li>
+        <li>Ciclo manual (Colab)</li>
+        <li>App Field completa</li>
+        <li>Dashboard gerencial web</li>
+        <li>Catálogo del cliente con precio personalizado</li>
+        <li class="dim">Ciclo automático</li>
+        <li class="dim">Soporte prioritario</li>
+      </ul>
+      <div class="pcard-cta reveal">
+        <a href="https://wa.me/56932188569?text=Hola%2C%20quiero%20el%20plan%20Starter" class="btn btn-ghost" style="width:100%" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+    <div class="pcard featured reveal">
+      <div class="pcard-badge reveal">Más popular</div>
+      <div class="pcard-name reveal">Pro</div>
+      <div class="pcard-price reveal">UF 15<span>/mes</span></div>
+      <div class="pcard-period reveal">~$575 USD · hasta 3 zonas y 15 ejecutivos</div>
+      <hr>
+      <ul class="pcard-feat reveal">
+        <li>3 zonas comerciales</li>
+        <li>Hasta 15 ejecutivos</li>
+        <li><strong>Ciclo automático diario</strong></li>
+        <li>App Field completa</li>
+        <li>Dashboard gerencial web</li>
+        <li>Catálogo del cliente con precio personalizado</li>
+        <li><strong>3 fuentes de precio (lista → histórico → negociado)</strong></li>
+        <li>Prospectos Places API</li>
+        <li>Soporte prioritario</li>
+      </ul>
+      <div class="pcard-cta reveal">
+        <a href="https://wa.me/56932188569?text=Hola%2C%20quiero%20el%20plan%20Pro" class="btn btn-lime" style="width:100%" target="_blank" rel="noopener">WhatsApp →</a>
+      </div>
+    </div>
+  </div>
+  <p style="text-align:center;margin-top:1.25rem;font-size:.8rem;color:var(--mut)">Enterprise con más zonas o integración ERP directa → <a href="mailto:hola@black-sheep.cl" style="color:var(--lime);text-decoration:none">hola@black-sheep.cl</a></p>
+</section>
+
+<!-- TESTIMONIOS (reales de KeyFoods, anonimizados) -->
+<section>
+  <div class="center">
+    <div class="label reveal">Desde el terreno</div>
+    <h2 class="stitle reveal reveal-d1">Lo que dice quien lo usa.</h2>
+  </div>
+  <div class="testi-grid reveal-stagger">
+    <div class="tcard">
+      <div class="tcard-stars">★★★★★</div>
+      <p class="tcard-quote">"Antes salía a terreno sin saber a quién llamar primero. Ahora la app me dice quién lleva 45 días sin comprar y qué ofrecerle. El pedido lo cierro ahí mismo."</p>
+      <div class="tcard-who">
+        <div class="tcard-avatar">E</div>
+        <div><div class="tcard-name">Ejecutivo de terreno</div><div class="tcard-role">NOR-ORIENTE · KeyFoods</div></div>
+      </div>
+    </div>
+    <div class="tcard">
+      <div class="tcard-stars">★★★★★</div>
+      <p class="tcard-quote">"El dashboard gerencial me dice exactamente cuánto falta para cerrar el mes y a qué ritmo tenemos que ir. Lo veo desde el auto sin pedirle nada a nadie."</p>
+      <div class="tcard-who">
+        <div class="tcard-avatar">G</div>
+        <div><div class="tcard-name">Gerente Comercial</div><div class="tcard-role">KeyFoods · Santiago</div></div>
+      </div>
+    </div>
+    <div class="tcard">
+      <div class="tcard-stars">★★★★★</div>
+      <p class="tcard-quote">"Lo que más me sorprendió: el catálogo del cliente. Le mando el link, él elige con su precio y yo recibo el pedido. Cero llamadas para tomar el pedido."</p>
+      <div class="tcard-who">
+        <div class="tcard-avatar">V</div>
+        <div><div class="tcard-name">Ejecutivo de ventas</div><div class="tcard-role">ZONA SUR · KeyFoods</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCESO -->
+<section id="acceso">
+  <div class="access-grid reveal">
+    <div>
+      <div class="label reveal">Acceso</div>
+      <h2 class="stitle reveal reveal-d1">Una sola puerta. Cada empresa, su espacio.</h2>
+      <p class="sdesc reveal reveal-d2">Entrás con tu usuario. Black Sheep resuelve automáticamente a qué organización pertenecés. Datos aislados, sin mezclas entre empresas.</p>
+      <br>
+      <a href="/login" class="btn btn-lime">Entrar al sistema →</a>
+      <p class="access-note">¿Sin acceso? <a href="mailto:hola@black-sheep.cl">Escribinos</a> y te activamos en 24h.</p>
+    </div>
+    <div class="phone-stage">
+      <div class="phone" style="width:min(240px,72vw)">
+        <div class="phone-scr">
+          <img src="268790.jpg" alt="Login Black Sheep Field" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- FAQ -->
+<section id="faq" style="padding-top:3rem">
+  <div class="center">
+    <div class="label reveal">Preguntas frecuentes</div>
+    <h2 class="stitle reveal reveal-d1">Antes de decidir</h2>
+  </div>
+  <div class="probs reveal-stagger" style="margin-top:2rem">
+    <div class="prob reveal">
+      <h3>¿Cómo se define el precio del cliente?</h3>
+      <p>Tres fuentes, en orden: precio de lista, último precio histórico de ese cliente y precio negociado en terreno. Sin tablas paralelas ni Excel aparte.</p>
+    </div>
+    <div class="prob reveal">
+      <h3>¿Cuánto tarda el onboarding?</h3>
+      <p>Con ventas, stock, maestra y lista de precios, el ciclo deja la app operativa el mismo día. Sin integraciones ERP obligatorias para empezar.</p>
+    </div>
+    <div class="prob reveal">
+      <h3>¿Los datos de cada empresa están separados?</h3>
+      <p>Sí. Cada empresa entra por black-sheep.cl y trabaja en su propio espacio. No se mezclan carteras ni precios entre clientes de Black Sheep.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<div class="cta-fin reveal">
+  <h2>Listo para vender con control.</h2>
+  <p>Black Sheep Field conecta la calle con la oficina. Ruta, precio, stock y pedido en una sola app.</p>
+  <a href="/login" class="btn btn-lime" style="font-size:1rem;padding:.85rem 2rem">Entrar al sistema →</a>
+  <div class="trust">Sin tarjeta de crédito · Onboarding en 1 hora · Soporte en español</div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-inner">
+    <a href="#" class="logo" style="text-decoration:none;color:inherit">
+      <div class="logo-mark"><img src="brand/logo-mark-64.png" alt="" width="22" height="22"></div>
+      <div class="logo-name" style="font-size:.85rem">Black Sheep<em>Field</em></div>
+    </a>
+    <div style="font-size:.78rem;color:var(--mut2)">© 2026 Black Sheep Field · <a href="https://app.black-sheep.cl">app.black-sheep.cl</a> · <a href="mailto:hola@black-sheep.cl">hola@black-sheep.cl</a></div>
+  </div>
+</footer>
+
+
+<a class="wa-float" href="https://wa.me/56932188569?text=Hola%20Black%20Sheep%20Field%2C%20quiero%20información" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+
+<script>
+(function(){
+  // Reduced motion
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Nav scroll state
+  var nav = document.querySelector('.nav');
+  function onScroll(){
+    if (!nav) return;
+    if (window.scrollY > 24) nav.classList.add('is-scrolled');
+    else nav.classList.remove('is-scrolled');
+  }
+  onScroll();
+  window.addEventListener('scroll', onScroll, {passive:true});
+
+  // Reveal on scroll
+  if (!reduce && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) {
+          e.target.classList.add('is-in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale, .reveal-stagger').forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale, .reveal-stagger').forEach(function(el){ el.classList.add('is-in'); });
+  }
+
+  // Soft parallax on phone (desktop only)
+  if (!reduce && window.matchMedia('(min-width:901px)').matches) {
+    var phone = document.querySelector('.phone-wrap, .phone');
+    if (phone) {
+      window.addEventListener('scroll', function(){
+        var y = window.scrollY;
+        if (y < 700) {
+          phone.style.transform = 'translateY(' + (y * -0.06) + 'px)';
+        }
+      }, {passive:true});
+    }
+  }
+})();
+</script>
+
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Scroll progress
+  var bar = document.getElementById('scroll-progress');
+  function progress(){
+    if (!bar) return;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    bar.style.width = p + '%';
+  }
+  window.addEventListener('scroll', progress, {passive:true});
+  progress();
+
+  // Cursor glow (desktop pointer only)
+  var glow = document.getElementById('cursor-glow');
+  if (glow && window.matchMedia('(pointer:fine)').matches && !reduce) {
+    document.body.classList.add('has-pointer');
+    var gx = 0, gy = 0, tx = 0, ty = 0;
+    window.addEventListener('mousemove', function(e){
+      tx = e.clientX; ty = e.clientY;
+    }, {passive:true});
+    (function tick(){
+      gx += (tx - gx) * 0.12;
+      gy += (ty - gy) * 0.12;
+      glow.style.left = gx + 'px';
+      glow.style.top = gy + 'px';
+      requestAnimationFrame(tick);
+    })();
+  }
+
+  // Card spotlight follows mouse
+  if (!reduce && window.matchMedia('(pointer:fine)').matches) {
+    document.querySelectorAll('.bcard, .pcard, .prob').forEach(function(card){
+      card.addEventListener('mousemove', function(e){
+        var r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

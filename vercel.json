@@ -1,9 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build --prefix apps/field",
-  "installCommand": "npm install --legacy-peer-deps --no-audit --no-fund --prefix apps/field",
-  "outputDirectory": "apps/field/dist",
-  "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
-  ]
+  "cleanUrls": true,
+  "rewrites": [{ "source": "/login", "destination": "/login.html" }]
 }
