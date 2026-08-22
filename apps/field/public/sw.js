@@ -1,6 +1,6 @@
-/* KeyFoods Field — shell offline mínimo */
-const CACHE = 'kf-shell-v1'
-const SHELL = ['/', '/index.html', '/manifest.json']
+/* Black Sheep Field — shell offline */
+const CACHE = 'bs-shell-v4'
+const SHELL = ['/', '/index.html', '/manifest.json', '/brand/logo-mark-192.png', '/brand/logo-mark-512.png']
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()))

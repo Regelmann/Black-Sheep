@@ -102,7 +102,7 @@ function TabClientes({ onFlash }) {
     try {
       let query = supabase
         .from('cartera')
-        .select('cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,venta_mtd')
+        .select('cliente_key,nombre_cliente,razon_social,comuna,ejecutivo_id,venta_mtd')
         .order('nombre_cliente')
         .limit(200)
       const term = q.trim()
@@ -111,7 +111,8 @@ function TabClientes({ onFlash }) {
           `nombre_cliente.ilike.%${term}%,cliente_key.ilike.%${term}%,comuna.ilike.%${term}%`
         )
       }
-      if (zonaFiltro !== 'Todas') query = query.eq('zona', zonaFiltro)
+      // zona no existe como columna directa en cartera - filtrar en JS después de cargar
+      // if (zonaFiltro !== 'Todas') query = query.eq('zona', zonaFiltro)
       const { data, error } = await query
       if (error) throw error
       setRows(data || [])
@@ -144,8 +145,7 @@ function TabClientes({ onFlash }) {
       if (error) throw error
       try {
         await supabase.from('gerencia_clientes').update({
-          ejecutivo: body.zona || c.zona,
-          zona: body.zona || c.zona,
+          ejecutivo: body.zona,
           comuna: body.comuna || c.comuna,
         }).eq('cliente_key', c.cliente_key)
       } catch { /* */ }
@@ -182,7 +182,7 @@ function TabClientes({ onFlash }) {
               onBlur={e => { if (e.target.value.trim() !== (c.comuna || '')) saveRow(c, { comuna: e.target.value.trim() }) }} />
           </label>
           <label style={lbl}>Zona
-            <select className="search" style={{ marginTop: 4 }} value={c.zona || ''} disabled={saving === c.cliente_key}
+            <select className="search" style={{ marginTop: 4 }} value={ejByID[c.ejecutivo_id]?.zona || ''} disabled={saving === c.cliente_key}
               onChange={e => saveRow(c, { zona: e.target.value })}>
               <option value="">—</option>
               {ZONAS.map(z => <option key={z} value={z}>{z}</option>)}
@@ -324,10 +324,10 @@ function TabPrecios({ onFlash }) {
     setLoading(true)
     try {
       let query = supabase.from('stock')
-        .select('sku_canon,producto_nombre,precio_unidad,precio_caja,precio_kilo,stock_operativo,estado_stock,marca')
+        .select('sku_canon,producto_nombre,precio_unidad,precio_caja,precio_kilo,stock_operativo,estado_stock')
         .order('producto_nombre').limit(150)
       if (q.trim()) {
-        query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%,marca.ilike.%${q.trim()}%`)
+        query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
       }
       const { data, error } = await query
       if (error) throw error
@@ -371,7 +371,7 @@ function TabPrecios({ onFlash }) {
       {rows.map(r => (
         <div key={r.sku_canon} className="card" style={{ padding: 12, marginBottom: 10 }}>
           <div style={{ fontWeight: 800 }}>{r.producto_nombre || r.sku_canon}</div>
-          <div className="muted" style={{ fontSize: 11 }}>{r.sku_canon}{r.marca ? ` · ${r.marca}` : ''}</div>
+          <div className="muted" style={{ fontSize: 11 }}>{r.sku_canon}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             <label style={lbl}>Unidad
               <input className="search" type="number" style={{ marginTop: 4 }} defaultValue={r.precio_unidad || ''}
