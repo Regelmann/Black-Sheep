@@ -132,6 +132,17 @@ export function pctRitmo(udMtd, promUd) {
   return p
 }
 
+/** Cantidad sugerida de reposición (promedio − MTD, mínimo 1). */
+export function cantidadSugerida(s) {
+  if (!s) return 1
+  const prom = Number(s.promUd) || 0
+  const mtd = Number(s.udMtd) || 0
+  const falta = Math.max(0, prom - mtd)
+  if (falta > 0) return Math.max(1, Math.round(falta))
+  if (prom > 0) return Math.max(1, Math.round(prom * 0.5) || 1) // media ración si ya cumplió
+  return 1
+}
+
 export function cicloReposicion(s) {
   let diasUltima = null
   if (s.ultima) {
@@ -142,17 +153,25 @@ export function cicloReposicion(s) {
   }
   const cicloEst =
     s.cicloDias != null && Number(s.cicloDias) > 0 ? Math.round(Number(s.cicloDias)) : null
+  const qty = cantidadSugerida(s)
   let recompra = null
   if (diasUltima != null && cicloEst != null) {
     const delta = diasUltima - cicloEst
-    if (delta >= 3) recompra = { label: `Atrasa ${delta}d`, tone: 'bad', delta }
-    else if (delta >= 0) recompra = { label: 'Hoy reponer', tone: 'warn', delta }
-    else if (delta === -1) recompra = { label: 'Mañana', tone: 'ok', delta }
-    else recompra = { label: `En ${Math.abs(delta)}d`, tone: 'muted', delta }
+    if (delta >= 7) recompra = { label: `Se le acaba · ${qty}`, tone: 'bad', delta, qty }
+    else if (delta >= 3) recompra = { label: `Atrasa ${delta}d · ${qty}`, tone: 'bad', delta, qty }
+    else if (delta >= 0) recompra = { label: `Reponer hoy · ${qty}`, tone: 'warn', delta, qty }
+    else if (delta === -1) recompra = { label: `Mañana · ${qty}`, tone: 'ok', delta, qty }
+    else recompra = { label: `En ${Math.abs(delta)}d`, tone: 'muted', delta, qty }
   } else if (diasUltima != null && diasUltima >= 21) {
-    recompra = { label: `Sin compra ${diasUltima}d`, tone: 'warn', delta: diasUltima }
+    recompra = { label: `Sin compra ${diasUltima}d · ${qty}`, tone: 'warn', delta: diasUltima, qty }
+  } else if ((Number(s.promUd) || 0) > (Number(s.udMtd) || 0) && (Number(s.promUd) || 0) > 0) {
+    // Ritmo bajo del mes aunque el ciclo no esté vencido
+    const falta = Math.max(0, (Number(s.promUd) || 0) - (Number(s.udMtd) || 0))
+    if (falta >= (Number(s.promUd) || 0) * 0.4) {
+      recompra = { label: `Falta ritmo · ${qty}`, tone: 'warn', delta: 0, qty }
+    }
   }
-  return { diasUltima, cicloEst, recompra }
+  return { diasUltima, cicloEst, recompra, qty }
 }
 
 export function skusAReponer(c) {
@@ -161,11 +180,40 @@ export function skusAReponer(c) {
       .map(s => {
         const r = cicloReposicion(s)
         if (!r.recompra || (r.recompra.tone !== 'bad' && r.recompra.tone !== 'warn')) return null
-        return { ...s, ...r }
+        return { ...s, ...r, cantidadSugerida: r.qty || cantidadSugerida(s) }
       })
       .filter(Boolean)
+      .sort((a, b) => {
+        const ta = a.recompra?.tone === 'bad' ? 0 : 1
+        const tb = b.recompra?.tone === 'bad' ? 0 : 1
+        if (ta !== tb) return ta - tb
+        return (Number(b.promClp) || 0) - (Number(a.promClp) || 0)
+      })
   } catch {
     return []
+  }
+}
+
+/** Resumen corto para cards de Hoy / Cartera: "3 a reponer · Se le acaba" */
+export function smartReorderBadge(c) {
+  const skus = skusAReponer(c)
+  if (!skus.length) return null
+  const urg = skus.filter(s => s.recompra?.tone === 'bad').length
+  const top = skus[0]
+  const shortName = String(top?.nombre || '').split(/\s+/).slice(0, 3).join(' ')
+  if (urg > 0) {
+    return {
+      text: urg === 1 ? `Se le acaba · ${shortName}` : `${urg} se le acaban`,
+      tone: 'bad',
+      count: skus.length,
+      skus,
+    }
+  }
+  return {
+    text: skus.length === 1 ? `Reponer · ${shortName}` : `${skus.length} a reponer`,
+    tone: 'warn',
+    count: skus.length,
+    skus,
   }
 }
 

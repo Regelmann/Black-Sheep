@@ -10,17 +10,31 @@ const money = n => {
   return '$' + Math.round(v).toLocaleString('es-CL')
 }
 
-const PUBLIC_BRAND = (import.meta.env.VITE_PUBLIC_BRAND || 'KEYFOODS').toString()
+const PUBLIC_BRAND = (import.meta.env.VITE_PUBLIC_BRAND || 'Black Sheep').toString()
 
 const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-      <rect fill="#f3efe8" width="400" height="400"/>
-      <text x="200" y="198" text-anchor="middle" fill="#c2410c" font-family="system-ui,sans-serif" font-size="16" font-weight="700">{PUBLIC_BRAND}</text>
-      <text x="200" y="222" text-anchor="middle" fill="#a8a29e" font-family="system-ui,sans-serif" font-size="12">producto</text>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#1c1917"/>
+          <stop offset="100%" stop-color="#292524"/>
+        </linearGradient>
+      </defs>
+      <rect fill="url(#g)" width="800" height="800"/>
+      <text x="400" y="390" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="28" font-weight="700">${PUBLIC_BRAND}</text>
+      <text x="400" y="430" text-anchor="middle" fill="#a8a29e" font-family="system-ui,sans-serif" font-size="16">producto</text>
     </svg>`
   )
+
+function origenLabel(origen) {
+  const o = String(origen || '').toLowerCase()
+  if (o === 'negociado') return 'Negociado'
+  if (o === 'historico') return 'Tu precio'
+  if (o === 'lista') return 'Lista'
+  return 'Consultar'
+}
 
 export default function CatalogoCliente() {
   const { token } = useParams()
@@ -36,6 +50,7 @@ export default function CatalogoCliente() {
   const [nota, setNota] = useState('')
   const [ficha, setFicha] = useState(null)
   const [pedidoId, setPedidoId] = useState(null)
+  const [view, setView] = useState('grid') // grid | list
 
   useEffect(() => {
     let dead = false
@@ -50,15 +65,19 @@ export default function CatalogoCliente() {
           setErr(error.message || 'No se pudo cargar el catálogo')
         } else if (!data || !data.nombre_cliente) {
           setCatalogo(null)
+          setErr('Link inválido o catálogo no disponible')
         } else {
           const itemsNorm = (data.items || []).map(it => {
             const r = precioPublicoItem(it)
+            const origen = it.precio_origen || r.origen || 'consultar'
             return {
               ...it,
-              precio: r.precio != null ? r.precio : it.precio,
-              precio_origen: r.origen,
-              precio_lista: it.precio_lista || r.precio_lista,
-              precio_cliente: it.precio_cliente || r.precio_hist,
+              precio: r.precio != null ? r.precio : Number(it.precio) || 0,
+              precio_origen: origen,
+              precio_lista: Number(it.precio_lista) || r.precio_lista || 0,
+              precio_cliente: Number(it.precio_cliente) || r.precio_hist || 0,
+              etiqueta_precio: r.etiqueta || origenLabel(origen),
+              ahorro_vs_lista: r.ahorro_vs_lista,
             }
           })
           setCatalogo({ ...data, items: itemsNorm })
@@ -88,7 +107,8 @@ export default function CatalogoCliente() {
         !x ||
         String(i.producto_nombre || '').toLowerCase().includes(x) ||
         String(i.sku_canon || '').includes(x) ||
-        String(i.marca || '').toLowerCase().includes(x)
+        String(i.marca || '').toLowerCase().includes(x) ||
+        String(i.resena || '').toLowerCase().includes(x)
       const matchCat = catFilter === 'Todos' || (i.subfamilia || 'General') === catFilter
       return matchQ && matchCat
     })
@@ -96,9 +116,9 @@ export default function CatalogoCliente() {
 
   const available = filtered.filter(i => i.stock_disponible !== false)
   const habituales = available.filter(i => i.es_habitual)
-  const reposicion = available.filter(i => i.es_reposicion && !i.es_habitual)
-  const ofertas = available.filter(i => i.es_oferta && !i.es_habitual && !i.es_reposicion)
-  const liquidacion = available.filter(i => i.es_liquidacion && !i.es_habitual && !i.es_reposicion && !i.es_oferta)
+  const reposicion = available.filter(i => (i.es_reposicion || Number(i.cantidad_sugerida) > 0) && !i.es_habitual)
+  const ofertas = available.filter(i => i.es_oferta && !i.es_habitual && !(i.es_reposicion || Number(i.cantidad_sugerida) > 0))
+  const liquidacion = available.filter(i => i.es_liquidacion && !i.es_habitual && !i.es_oferta)
   const used = new Set([...habituales, ...reposicion, ...ofertas, ...liquidacion].map(i => i.sku_canon))
   const rest = available.filter(i => !used.has(i.sku_canon))
   const cartCount = cart.reduce((a, i) => a + Number(i.cantidad || 0), 0)
@@ -106,7 +126,7 @@ export default function CatalogoCliente() {
 
   function add(i) {
     if (i.stock_disponible === false) {
-      setErr(`${productTitle(i).title}: producto sin stock disponible.`)
+      setErr(`${productTitle(i).title}: sin stock disponible.`)
       return
     }
     const suggested = Number(i.cantidad_sugerida) > 0 ? Math.max(1, Math.round(i.cantidad_sugerida)) : 1
@@ -125,6 +145,7 @@ export default function CatalogoCliente() {
         cantidad: suggested,
         unidad_venta: i.unidad_venta,
         precio_origen: i.precio_origen,
+        imagen_url: i.imagen_url,
       }, ...prev]
     })
     setCartOpen(true)
@@ -147,24 +168,6 @@ export default function CatalogoCliente() {
     )
   }
 
-  function buildWhatsAppText() {
-    const lines = cart.map(
-      i =>
-        `• ${i.producto_nombre} × ${i.cantidad}` +
-        (i.precio > 0 ? ` · ${money(i.precio)}` : '')
-    )
-    return [
-      `Pedido catálogo — ${catalogo?.nombre_cliente || ''}`,
-      '',
-      ...lines,
-      '',
-      total > 0 ? `Total estimado: ${money(total)}` : '',
-      nota ? `Nota: ${nota}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n')
-  }
-
   async function enviar() {
     if (!cart.length || sending) return
     setSending(true)
@@ -178,17 +181,14 @@ export default function CatalogoCliente() {
           cantidad: i.cantidad,
           precio: i.precio,
         })),
+        p_nota: nota || null,
       })
       if (error) throw error
-      setPedidoId(data || null)
+      setPedidoId(data?.id || data?.pedido_id || null)
       setSent(true)
-      setCartOpen(false)
+      setCart([])
     } catch (e) {
-      // Fallback: WhatsApp con texto listo
-      setErr(
-        (e.message || 'No se pudo enviar') +
-          ' · Podés copiar el pedido o enviarlo por WhatsApp.'
-      )
+      setErr(e.message || 'No se pudo enviar el pedido')
     } finally {
       setSending(false)
     }
@@ -196,10 +196,11 @@ export default function CatalogoCliente() {
 
   if (loading) {
     return (
-      <div className="kf-pub">
-        <div className="kf-pub-loading">
-          <div className="kf-pub-brand">{PUBLIC_BRAND}</div>
-          <p>Cargando tu lista de precios…</p>
+      <div className="bs-shop">
+        <div className="bs-shop-boot">
+          <div className="bs-shop-boot-mark">{PUBLIC_BRAND.slice(0, 1)}</div>
+          <div className="bs-shop-boot-bar"><span /></div>
+          <p>Preparando tu catálogo…</p>
         </div>
       </div>
     )
@@ -207,384 +208,333 @@ export default function CatalogoCliente() {
 
   if (!catalogo) {
     return (
-      <div className="kf-pub">
-        <div className="kf-pub-empty">
-          <div className="kf-pub-brand">{PUBLIC_BRAND}</div>
+      <div className="bs-shop">
+        <div className="bs-shop-empty-page">
           <h1>Catálogo no disponible</h1>
-          <p>{err || 'El enlace puede estar inactivo o haber vencido. Pedile uno nuevo a tu ejecutivo.'}</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (sent) {
-    return (
-      <div className="kf-pub">
-        <div className="kf-pub-empty">
-          <div className="kf-pub-brand">{PUBLIC_BRAND}</div>
-          <div className="kf-pub-ok">✓</div>
-          <h1>¡Pedido recibido!</h1>
-          <p>
-            Tu pedido quedó registrado
-            {pedidoId ? ` (#${String(pedidoId).slice(0, 8)})` : ''}.
-            Tu ejecutivo KeyFoods lo va a confirmar.
-          </p>
-          <button
-            type="button"
-            className="kf-pub-btn"
-            onClick={() => {
-              setSent(false)
-              setCart([])
-              setNota('')
-              setPedidoId(null)
-            }}
-          >
-            Seguir viendo productos
-          </button>
+          <p>{err || 'Este link no es válido o expiró. Pedile uno nuevo a tu ejecutivo.'}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="kf-pub">
-      <header className="kf-pub-head">
-        <div>
-          <div className="kf-pub-brand">{PUBLIC_BRAND} · LISTA DE PRECIOS</div>
+    <div className="bs-shop">
+      {/* Hero editorial */}
+      <header className="bs-shop-hero">
+        <div className="bs-shop-hero-inner">
+          <div className="bs-shop-brand">{PUBLIC_BRAND}</div>
+          <p className="bs-shop-kicker">Catálogo personalizado</p>
           <h1>{catalogo.nombre_cliente}</h1>
-          <p>
-            {items.length} productos · precios para vos
-            {catalogo.actualizado_en
-              ? ` · act. ${String(catalogo.actualizado_en).slice(0, 10)}`
-              : ''}
+          <p className="bs-shop-sub">
+            Precios para vos · {items.length} productos
+            {catalogo.actualizado_en ? ` · act. ${String(catalogo.actualizado_en).slice(0, 10)}` : ''}
           </p>
         </div>
-        <button
-          type="button"
-          className="kf-pub-cart-badge"
-          onClick={() => setCartOpen(o => !o)}
-          aria-label="Abrir carrito"
-        >
-          🛒 {cartCount}
-        </button>
       </header>
 
-      <div className="kf-pub-search-wrap">
-        <input
-          className="kf-pub-search"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Buscar producto, marca o código…"
-          inputMode="search"
-        />
-      </div>
-
-      <div className="kf-pub-cats" role="tablist">
-        {categories.map(c => (
-          <button
-            key={c}
-            type="button"
-            role="tab"
-            className={'kf-pub-cat' + (catFilter === c ? ' is-on' : '')}
-            onClick={() => setCatFilter(c)}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {!items.length && (
-        <div className="kf-pub-empty" style={{ padding: '24px 12px' }}>
-          <p>Tu ejecutivo todavía no cargó productos en este catálogo.</p>
+      {/* Sticky toolbar */}
+      <div className="bs-shop-toolbar">
+        <div className="bs-shop-search-wrap">
+          <input
+            className="bs-shop-search"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Buscar producto, marca o código…"
+            aria-label="Buscar"
+          />
         </div>
-      )}
+        <div className="bs-shop-cats" role="tablist">
+          {categories.map(c => (
+            <button
+              key={c}
+              type="button"
+              role="tab"
+              aria-selected={catFilter === c}
+              className={'bs-shop-chip' + (catFilter === c ? ' is-on' : '')}
+              onClick={() => setCatFilter(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <div className="bs-shop-toolbar-meta">
+          <span>{filtered.length} resultados</span>
+          <div className="bs-shop-view-toggle">
+            <button type="button" className={view === 'grid' ? 'is-on' : ''} onClick={() => setView('grid')} aria-label="Grilla">▣</button>
+            <button type="button" className={view === 'list' ? 'is-on' : ''} onClick={() => setView('list')} aria-label="Lista">☰</button>
+          </div>
+        </div>
+      </div>
 
-      {habituales.length > 0 && (
-        <CatalogSection
-          title="↻ Para reponer"
-          subtitle="Lo que normalmente compras"
-          items={habituales}
-          onAdd={add}
-          onFicha={setFicha}
-          smart
-        />
-      )}
+      {err && <div className="bs-shop-banner-err">{err}</div>}
 
-      {reposicion.length > 0 && (
-        <CatalogSection
-          title="🟠 Probablemente necesitas"
-          subtitle="Tu ritmo de compra indica que ya es momento de reponer"
-          items={reposicion}
-          onAdd={add}
-          onFicha={setFicha}
-          smart
-        />
-      )}
+      <main className="bs-shop-main">
+        {habituales.length > 0 && (
+          <ShopSection title="Tus habituales" subtitle="Lo que ya comprás — con tu precio" items={habituales} view={view} onAdd={add} onFicha={setFicha} featured />
+        )}
+        {reposicion.length > 0 && (
+          <ShopSection title="Para reponer" subtitle="Según tu ritmo de compra" items={reposicion} view={view} onAdd={add} onFicha={setFicha} />
+        )}
+        {ofertas.length > 0 && (
+          <ShopSection title="Destacados" subtitle="Selección del mes" items={ofertas} view={view} onAdd={add} onFicha={setFicha} />
+        )}
+        {liquidacion.length > 0 && (
+          <ShopSection title="Oportunidad" subtitle="Stock especial" items={liquidacion} view={view} onAdd={add} onFicha={setFicha} />
+        )}
+        {rest.length > 0 && (
+          <ShopSection title={habituales.length || ofertas.length ? 'Todo el catálogo' : 'Productos'} subtitle="Lista completa disponible" items={rest} view={view} onAdd={add} onFicha={setFicha} />
+        )}
+        {!filtered.length && (
+          <div className="bs-shop-empty">
+            <h3>Sin resultados</h3>
+            <p>Probá otra búsqueda o categoría.</p>
+          </div>
+        )}
+      </main>
 
-      {ofertas.length > 0 && (
-        <CatalogSection
-          title="⭐ Oportunidades para ti"
-          subtitle="Focos y ofertas disponibles para tu negocio"
-          items={ofertas}
-          onAdd={add}
-          onFicha={setFicha}
-        />
-      )}
-
-      {liquidacion.length > 0 && (
-        <CatalogSection
-          title="⚡ Oportunidades especiales"
-          subtitle="Stock limitado o productos con cobertura corta"
-          items={liquidacion}
-          onAdd={add}
-          onFicha={setFicha}
-        />
-      )}
-
-      {rest.length > 0 && (
-        <CatalogSection
-          title="Todos los productos disponibles"
-          subtitle="Stock operativo disponible para tu pedido"
-          items={rest}
-          onAdd={add}
-          onFicha={setFicha}
-        />
-      )}
-
-      {filtered.length === 0 && items.length > 0 && (
-        <p className="kf-pub-muted" style={{ textAlign: 'center', padding: 20 }}>
-          No hay resultados para “{q}”.
-        </p>
-      )}
-
-      {/* Checkout sticky */}
-      <div className={'kf-pub-checkout' + (cartOpen || cartCount > 0 ? ' is-open' : '')}>
-        <button
-          type="button"
-          className="kf-pub-checkout-toggle"
-          onClick={() => setCartOpen(o => !o)}
-        >
-          <span>
-            {cartCount > 0 ? `${cartCount} ítem${cartCount === 1 ? '' : 's'}` : 'Carrito vacío'}
-          </span>
-          <strong>{total > 0 ? money(total) : '—'}</strong>
+      {/* Floating cart pill */}
+      {cartCount > 0 && !cartOpen && (
+        <button type="button" className="bs-shop-fab" onClick={() => setCartOpen(true)}>
+          <span className="bs-shop-fab-count">{cartCount}</span>
+          <span>Ver pedido</span>
+          {total > 0 && <strong>{money(total)}</strong>}
         </button>
+      )}
 
-        {cartOpen && (
-          <div className="kf-pub-checkout-body">
-            {cart.length === 0 && <p className="kf-pub-muted">Agregá productos con + Agregar</p>}
-            {cart.map(i => (
-              <div key={i.sku_canon} className="kf-pub-line">
-                <div className="kf-pub-line-name">
-                  <div>{productTitle(i).title}</div>
-                  <small>{i.precio > 0 ? money(i.precio) + ' c/u' : 'precio a confirmar'}</small>
-                </div>
-                <div className="kf-pub-qty">
-                  <button type="button" onClick={() => change(i.sku_canon, -1)} aria-label="Menos">
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    value={i.cantidad}
-                    onChange={e => setQty(i.sku_canon, e.target.value)}
-                    aria-label="Cantidad"
-                  />
-                  <button type="button" onClick={() => change(i.sku_canon, 1)} aria-label="Más">
-                    +
-                  </button>
-                </div>
+      {/* Cart drawer */}
+      {cartOpen && (
+        <div className="bs-shop-drawer-bg" onClick={() => setCartOpen(false)}>
+          <aside className="bs-shop-drawer" onClick={e => e.stopPropagation()}>
+            <div className="bs-shop-drawer-head">
+              <h2>Tu pedido</h2>
+              <button type="button" className="bs-shop-x" onClick={() => setCartOpen(false)}>×</button>
+            </div>
+            {sent ? (
+              <div className="bs-shop-success">
+                <div className="bs-shop-success-icon">✓</div>
+                <h3>Pedido enviado</h3>
+                <p>Tu ejecutivo lo recibe al instante{pedidoId ? ` · #${String(pedidoId).slice(0, 8)}` : ''}.</p>
+                <button type="button" className="bs-shop-btn-primary" onClick={() => { setSent(false); setCartOpen(false) }}>
+                  Seguir comprando
+                </button>
               </div>
-            ))}
-
-            {cart.length > 0 && (
+            ) : (
               <>
+                <div className="bs-shop-drawer-lines">
+                  {cart.map(i => (
+                    <div key={i.sku_canon} className="bs-shop-line">
+                      <div className="bs-shop-line-img">
+                        <img src={i.imagen_url || PLACEHOLDER} alt="" onError={e => { e.currentTarget.src = PLACEHOLDER }} />
+                      </div>
+                      <div className="bs-shop-line-body">
+                        <strong>{i.producto_nombre}</strong>
+                        <span>{i.precio > 0 ? money(i.precio) : 'Consultar'}{i.unidad_venta ? ` / ${i.unidad_venta}` : ''}</span>
+                        <div className="bs-shop-qty">
+                          <button type="button" onClick={() => change(i.sku_canon, -1)}>−</button>
+                          <input
+                            value={i.cantidad}
+                            onChange={e => setQty(i.sku_canon, e.target.value)}
+                            inputMode="numeric"
+                          />
+                          <button type="button" onClick={() => change(i.sku_canon, 1)}>+</button>
+                        </div>
+                      </div>
+                      <div className="bs-shop-line-sub">
+                        {i.precio > 0 ? money(i.precio * i.cantidad) : '—'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <textarea
-                  className="kf-pub-nota"
-                  rows={2}
+                  className="bs-shop-nota"
                   placeholder="Nota para tu ejecutivo (opcional)"
                   value={nota}
                   onChange={e => setNota(e.target.value)}
+                  rows={2}
                 />
-                {err && <div className="kf-pub-err">{err}</div>}
-                <div className="kf-pub-checkout-actions">
+                <div className="bs-shop-drawer-foot">
+                  <div className="bs-shop-total">
+                    <span>Total estimado</span>
+                    <strong>{total > 0 ? money(total) : 'A cotizar'}</strong>
+                  </div>
                   <button
                     type="button"
-                    className="kf-pub-btn"
-                    disabled={sending || !cart.length}
+                    className="bs-shop-btn-primary"
+                    disabled={!cart.length || sending}
                     onClick={enviar}
                   >
                     {sending ? 'Enviando…' : 'Enviar pedido'}
                   </button>
-                  <a
-                    className="kf-pub-btn-ghost"
-                    href={`https://wa.me/?text=${encodeURIComponent(buildWhatsAppText())}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    WhatsApp
-                  </a>
+                  <p className="bs-shop-fine">Sin compromiso de pago online · tu ejecutivo confirma stock y entrega.</p>
                 </div>
-                <p className="kf-pub-muted" style={{ marginTop: 8, fontSize: 11 }}>
-                  Al enviar, tu ejecutivo recibe el pedido en la app Black Sheep Field.
-                </p>
               </>
             )}
-          </div>
-        )}
-      </div>
+          </aside>
+        </div>
+      )}
 
-      {/* Modal ficha */}
+      {/* Product detail modal — página de producto */}
       {ficha && (
-        <div className="kf-pub-modal" onClick={() => setFicha(null)}>
-          <div className="kf-pub-modal-card" onClick={e => e.stopPropagation()}>
-            <img
-              className="kf-pub-modal-img"
-              src={ficha.imagen_url || PLACEHOLDER}
-              alt=""
-              onError={e => {
-                e.currentTarget.src = PLACEHOLDER
-              }}
-            />
-            <div className="kf-pub-status">
-              {ficha.stock_disponible ? '🟢 Disponible' : '⚪ Consultar disponibilidad'}
+        <div className="bs-shop-modal-bg" onClick={() => setFicha(null)}>
+          <div className="bs-shop-modal" onClick={e => e.stopPropagation()}>
+            <button type="button" className="bs-shop-x bs-shop-modal-x" onClick={() => setFicha(null)}>×</button>
+            <div className="bs-shop-modal-grid">
+              <div className="bs-shop-modal-media">
+                <img
+                  src={ficha.imagen_url || PLACEHOLDER}
+                  alt=""
+                  onError={e => { e.currentTarget.src = PLACEHOLDER }}
+                />
+              </div>
+              <div className="bs-shop-modal-info">
+                <div className="bs-shop-status">
+                  {ficha.stock_disponible ? 'Disponible' : 'Consultar stock'}
+                </div>
+                <h2>{productTitle(ficha).title}</h2>
+                <p className="bs-shop-meta">
+                  {[ficha.subfamilia || 'Producto', ficha.marca, ficha.unidad_venta, ficha.sku_canon]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                {ficha.resena && <p className="bs-shop-resena">{ficha.resena}</p>}
+                <div className="bs-shop-modal-price">
+                  <span className="bs-shop-price-lg">
+                    {Number(ficha.precio) > 0 ? money(ficha.precio) : 'Consultar'}
+                  </span>
+                  {Number(ficha.precio_lista) > 0 &&
+                    Number(ficha.precio) > 0 &&
+                    Number(ficha.precio) !== Number(ficha.precio_lista) && (
+                      <span className="bs-shop-price-strike">Lista {money(ficha.precio_lista)}</span>
+                    )}
+                </div>
+                {(() => {
+                  const origen = ficha.precio_origen || 'consultar'
+                  const stl = estiloOrigenPrecio(origen)
+                  return (
+                    <span className="bs-shop-origen" style={{ background: stl.bg, color: stl.color, borderColor: stl.border }}>
+                      {origenLabel(origen)}
+                      {ficha.ultima_compra && origen === 'historico'
+                        ? ` · últ. ${String(ficha.ultima_compra).slice(0, 10)}`
+                        : ''}
+                    </span>
+                  )
+                })()}
+                <div className="bs-shop-modal-cta">
+                  {ficha.ficha_url && (
+                    <a className="bs-shop-btn-ghost" href={ficha.ficha_url} target="_blank" rel="noreferrer">
+                      Ficha técnica
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className="bs-shop-btn-primary"
+                    onClick={() => { add(ficha); setFicha(null) }}
+                  >
+                    Agregar al pedido
+                  </button>
+                </div>
+              </div>
             </div>
-            <h2>{productTitle(ficha).title}</h2>
-            <p className="kf-pub-meta">
-              {ficha.subfamilia || 'Producto'}
-              {ficha.marca ? ` · ${ficha.marca}` : ''}
-              {ficha.unidad_venta ? ` · ${ficha.unidad_venta}` : ''}
-            </p>
-            {ficha.resena && <p className="kf-pub-resena">{ficha.resena}</p>}
-            <div className="kf-pub-price-lg">
-              {Number(ficha.precio) > 0 ? money(ficha.precio) : 'Consultar precio'}
-              {Number(ficha.precio_lista) > 0 &&
-                Number(ficha.precio) > 0 &&
-                Number(ficha.precio) !== Number(ficha.precio_lista) && (
-                  <small style={{ display: 'block', fontSize: 12, color: '#78716c', fontWeight: 500 }}>
-                    Lista: {money(ficha.precio_lista)}
-                  </small>
-                )}
-            </div>
-            <div className="kf-pub-modal-actions">
-              {ficha.ficha_url && (
-                <a className="kf-pub-btn-ghost" href={ficha.ficha_url} target="_blank" rel="noreferrer">
-                  Ficha técnica
-                </a>
-              )}
-              <button
-                type="button"
-                className="kf-pub-btn"
-                onClick={() => {
-                  add(ficha)
-                  setFicha(null)
-                }}
-              >
-                Agregar al pedido
-              </button>
-            </div>
-            <button type="button" className="kf-pub-close" onClick={() => setFicha(null)}>
-              Cerrar
-            </button>
           </div>
         </div>
       )}
+
+      <footer className="bs-shop-foot">
+        <span>Powered by Black Sheep</span>
+      </footer>
     </div>
   )
 }
 
-function CatalogSection({ title, subtitle, items, onAdd, onFicha, smart = false }) {
+function ShopSection({ title, subtitle, items, view, onAdd, onFicha, featured }) {
   return (
-    <section className={'kf-pub-section' + (smart ? ' kf-pub-smart-section' : '')}>
-      <div className="kf-pub-section-head">
+    <section className={'bs-shop-section' + (featured ? ' is-featured' : '')}>
+      <div className="bs-shop-section-head">
         <div>
           <h2>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
         </div>
-        <span className="kf-pub-section-count">{items.length}</span>
+        <span>{items.length}</span>
       </div>
-      <div className="kf-pub-grid">
+      <div className={view === 'list' ? 'bs-shop-list' : 'bs-shop-grid'}>
         {items.map(i => (
-          <ProductCard key={i.sku_canon} item={i} onAdd={onAdd} onFicha={onFicha} smart={smart} />
+          <ProductCard key={i.sku_canon} item={i} view={view} onAdd={onAdd} onFicha={onFicha} />
         ))}
       </div>
     </section>
   )
 }
 
-function ProductCard({ item, onAdd, onFicha, smart = false }) {
+function ProductCard({ item, view, onAdd, onFicha }) {
   const hasPrice = Number(item.precio) > 0
+  const d = productTitle(item)
+  const origen = item.precio_origen || 'consultar'
+  const stl = estiloOrigenPrecio(origen)
+
+  if (view === 'list') {
+    return (
+      <article className="bs-shop-row">
+        <button type="button" className="bs-shop-row-img" onClick={() => onFicha(item)}>
+          <img src={item.imagen_url || PLACEHOLDER} alt="" loading="lazy" onError={e => { e.currentTarget.src = PLACEHOLDER }} />
+        </button>
+        <div className="bs-shop-row-body">
+          <h3>{d.title}</h3>
+          <p>{[item.subfamilia, item.marca].filter(Boolean).join(' · ')}</p>
+          {item.resena && <p className="bs-shop-row-resena">{String(item.resena).slice(0, 100)}{String(item.resena).length > 100 ? '…' : ''}</p>}
+        </div>
+        <div className="bs-shop-row-price">
+          <strong>{hasPrice ? money(item.precio) : 'Consultar'}</strong>
+          <span className="bs-shop-origen-sm" style={{ background: stl.bg, color: stl.color }}>{origenLabel(origen)}</span>
+          <button type="button" className="bs-shop-add-sm" onClick={() => onAdd(item)}>+ Agregar</button>
+        </div>
+      </article>
+    )
+  }
+
   return (
-    <article className="kf-pub-card">
-      <button type="button" className="kf-pub-img" onClick={() => onFicha(item)}>
+    <article className="bs-shop-card">
+      <button type="button" className="bs-shop-card-media" onClick={() => onFicha(item)}>
         <img
           src={item.imagen_url || PLACEHOLDER}
           alt=""
           loading="lazy"
-          onError={e => {
-            e.currentTarget.src = PLACEHOLDER
-          }}
+          onError={e => { e.currentTarget.src = PLACEHOLDER }}
         />
-         {item.es_habitual && <span className="kf-pub-badge-smart">↻ Habitual</span>}
-        {!item.es_habitual && item.es_reposicion && <span className="kf-pub-badge-smart">🟠 Reponer</span>}
-        {!item.es_habitual && !item.es_reposicion && item.es_oferta && <span className="kf-pub-badge-hot">Para vos</span>}
-        {!item.es_habitual && !item.es_reposicion && !item.es_oferta && item.es_liquidacion && <span className="kf-pub-badge-smart">⚡ Especial</span>}
+        {item.es_habitual && <span className="bs-shop-tag">Habitual</span>}
+        {!item.es_habitual && item.es_oferta && <span className="bs-shop-tag is-hot">Destacado</span>}
+        {!item.es_habitual && item.es_liquidacion && <span className="bs-shop-tag is-deal">Oportunidad</span>}
       </button>
-      <div className="kf-pub-card-body">
-        <div className="kf-pub-status">
-          {item.stock_disponible ? '🟢 Disponible' : '⚪ Consultar'}
+      <div className="bs-shop-card-body">
+        <div className="bs-shop-card-top">
+          <span className={'bs-shop-dot' + (item.stock_disponible ? ' is-ok' : '')}>
+            {item.stock_disponible ? 'En stock' : 'Consultar'}
+          </span>
         </div>
-        {(() => {
-          const d = productTitle(item)
-          return (
-            <>
-              <h3 style={{ wordBreak: 'break-word' }}>{d.title}</h3>
-              {d.isFallback ? (
-                <div style={{ fontSize: 11, color: '#c2410c', marginTop: 2 }}>Falta nombre en ficha</div>
-              ) : null}
-            </>
-          )
-        })()}
-        <p className="kf-pub-meta">
-          {item.subfamilia || 'Producto'}
-          {item.marca ? ` · ${item.marca}` : ''}
+        <h3>{d.title}</h3>
+        <p className="bs-shop-card-meta">
+          {[item.subfamilia || 'Producto', item.marca].filter(Boolean).join(' · ')}
         </p>
         {item.resena && (
-          <p className="kf-pub-resena-sm">
-            {String(item.resena).slice(0, 80)}
-            {String(item.resena).length > 80 ? '…' : ''}
+          <p className="bs-shop-card-resena">
+            {String(item.resena).slice(0, 72)}
+            {String(item.resena).length > 72 ? '…' : ''}
           </p>
         )}
-        <div className="kf-pub-price">{hasPrice ? money(item.precio) : 'Consultar'}</div>
-        {smart && Number(item.cantidad_sugerida) > 0 && (
-          <div className="kf-pub-reorder">
-            <strong>Te sugerimos {Math.round(item.cantidad_sugerida)} {item.unidad_venta || 'unidades'}</strong>
-            {Number(item.dias_sin_comprar) > 0 && Number(item.cadencia_dias) > 0 && (
-              <span>Última compra hace {Math.round(item.dias_sin_comprar)} días · ritmo {Math.round(item.cadencia_dias)} días</span>
-            )}
-          </div>
-        )}
-        {(item.precio_origen || item.origen || (Number(item.precio_cliente) > 0 ? 'historico' : Number(item.precio_lista) > 0 ? 'lista' : '')) && (
-          <div style={{ marginTop: 4 }}>
-            {(() => {
-              const origen = item.precio_origen || item.origen || (Number(item.precio) > 0 && Number(item.precio_cliente) > 0 && Number(item.precio) === Number(item.precio_cliente) ? 'historico' : 'lista')
-              const stl = estiloOrigenPrecio(origen)
-              const label = origen === 'historico' ? 'Tu precio' : origen === 'lista' ? 'Lista' : origen === 'negociado' ? 'Negociado' : 'Consultar'
-              return (
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
-                  background: stl.bg, color: stl.color, border: `1px solid ${stl.border}`,
-                }}>{label}</span>
-              )
-            })()}
-          </div>
-        )}
-        <div className="kf-pub-card-actions">
-          <button type="button" className="kf-pub-link" onClick={() => onFicha(item)}>
-            Detalle
+        <div className="bs-shop-card-price">
+          <strong>{hasPrice ? money(item.precio) : 'Consultar'}</strong>
+          {hasPrice && Number(item.precio_lista) > 0 && Number(item.precio_lista) !== Number(item.precio) && (
+            <s>{money(item.precio_lista)}</s>
+          )}
+        </div>
+        <span className="bs-shop-origen-sm" style={{ background: stl.bg, color: stl.color, borderColor: stl.border }}>
+          {origenLabel(origen)}
+        </span>
+        <div className="bs-shop-card-actions">
+          <button type="button" className="bs-shop-link" onClick={() => onFicha(item)}>
+            {item.ficha_url ? 'Ficha' : 'Ver'}
           </button>
-          <button type="button" className="kf-pub-add" onClick={() => onAdd(item)}>
-            {smart && Number(item.cantidad_sugerida) > 0 ? `+ ${Math.round(item.cantidad_sugerida)} sugeridos` : '+ Agregar'}
+          <button type="button" className="bs-shop-add" onClick={() => onAdd(item)}>
+            {Number(item.cantidad_sugerida) > 0 ? `+ ${Math.round(item.cantidad_sugerida)}` : '+ Agregar'}
           </button>
         </div>
       </div>

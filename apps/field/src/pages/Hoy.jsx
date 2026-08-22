@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics'
+import { buildRecomendacionesHoy, resumenDia } from '../lib/recomendaciones'
 import { listarPedidosHoy } from '../lib/pedido'
 import HistorialPedidos from '../components/HistorialPedidos.jsx'
+import OrderInbox from '../components/OrderInbox.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import {
   loadActionQueue,
@@ -151,6 +153,8 @@ export default function Hoy() {
     }
   }, [eidVista])
 
+  const recsHoy = useMemo(() => buildRecomendacionesHoy(cartera, { focos }), [cartera, focos])
+  const coaching = useMemo(() => resumenDia(recsHoy, meta), [recsHoy, meta])
   const m = useMemo(() => computeConsistentMetrics(cartera, meta), [cartera, meta])
 
   // Refrescar resultados locales al volver a Hoy
@@ -215,11 +219,18 @@ export default function Hoy() {
 
   if (loading) {
     return (
-      <div className="wrap" style={{ paddingTop: 24 }}>
-        <div className="skeleton" style={{ height: 120, marginBottom: 12 }} />
-        <div className="skeleton" style={{ height: 72, marginBottom: 12 }} />
-        <div className="skeleton" style={{ height: 160 }} />
-        <p className="muted" style={{ textAlign: 'center', marginTop: 16 }}>Armando tu día…</p>
+      <div className="wrap hoy-wrap" style={{ paddingTop: 16 }}>
+        <div className="skeleton" style={{ height: 88, borderRadius: 18, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 120, borderRadius: 18, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 64, borderRadius: 16, marginBottom: 12 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+          <div className="skeleton" style={{ height: 72, borderRadius: 14 }} />
+          <div className="skeleton" style={{ height: 72, borderRadius: 14 }} />
+          <div className="skeleton" style={{ height: 72, borderRadius: 14 }} />
+        </div>
+        <div className="skeleton" style={{ height: 96, borderRadius: 16, marginBottom: 10 }} />
+        <div className="skeleton" style={{ height: 96, borderRadius: 16, marginBottom: 10 }} />
+        <p className="muted" style={{ textAlign: 'center', marginTop: 18, fontWeight: 700 }}>Armando tu día…</p>
       </div>
     )
   }
@@ -399,6 +410,15 @@ export default function Hoy() {
           </div>
         </div>
 
+        <OrderInbox
+          ejecutivoId={eidVista}
+          onOpenPedido={(p) => setPedidoEdit(p)}
+          onChanged={() => {
+            /* refresh contadores al cambiar estado */
+            setActividadHoy(a => ({ ...a }))
+          }}
+        />
+
         {showHistorial && (
           <HistorialPedidos
             ejecutivoId={eidVista}
@@ -534,6 +554,15 @@ export default function Hoy() {
           </div>
           <span style={{ opacity: 0.8 }}>→</span>
         </button>
+        {coaching && (
+          <div className="coaching-line" style={{
+            fontSize: 13, fontWeight: 700, color: '#9a3412',
+            background: '#fff7ed', borderRadius: 12, padding: '10px 12px', marginBottom: 10,
+            border: '1px solid #fed7aa',
+          }}>
+            Hoy: {coaching}
+          </div>
+        )}
         {m.actionQueue.length === 0 && (
           <div className="empty-state card">
             <div className="empty-title">Sin urgencias fuertes</div>

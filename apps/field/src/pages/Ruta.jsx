@@ -11,18 +11,20 @@ import PedidoSheet from '../components/PedidoSheet.jsx'
 /** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
 /** Alineado a ZONAS_COMUNAS.csv de producción (fuente de verdad). */
 const ZONAS_COMUNAS = {
+  // Fuente de verdad operativa KeyFoods — comunas de terreno por zona
   'NOR-ORIENTE': [
     'LAS CONDES', 'VITACURA', 'LO BARNECHEA', 'LA REINA',
-    'PENALOLEN', 'PEÑALOLEN', 'SAN BERNARDO', 'PUENTE ALTO',
+    'PENALOLEN', 'PEÑALOLEN', 'MACUL',
   ],
   'NOR-PONIENTE': [
     'NUNOA', 'ÑUÑOA', 'PROVIDENCIA', 'RECOLETA', 'INDEPENDENCIA', 'HUECHURABA',
     'QUILICURA', 'RENCA', 'CONCHALI', 'COLINA', 'LAMPA', 'CERRO NAVIA',
-    'QUINTA NORMAL', 'SANTIAGO',
+    'QUINTA NORMAL', 'SANTIAGO', 'ESTACION CENTRAL', 'ESTACIÓN CENTRAL',
   ],
   'ZONA SUR': [
     'LA FLORIDA', 'MAIPU', 'MAIPÚ', 'SAN MIGUEL', 'SAN JOAQUIN', 'SAN JOAQUÍN',
-    'EL BOSQUE', 'LA CISTERNA', 'PAINE', 'PIRQUE',
+    'EL BOSQUE', 'LA CISTERNA', 'PAINE', 'PIRQUE', 'SAN BERNARDO', 'PUENTE ALTO',
+    'LA PINTANA', 'SAN RAMON', 'SAN RAMÓN', 'PEDRO AGUIRRE CERDA',
   ],
 }
 function normComuna(s) {
@@ -215,12 +217,12 @@ export default function Ruta({ session }) {
         tip(acc != null && acc > 150
           ? `Ubicación ±${acc} m (aproximada). Mejor al aire libre`
           : `GPS OK${acc != null ? ` ±${acc} m` : ''}`)
-        // Centrar mapa en el usuario
+        // Forzar centrado local aunque ya se haya hecho fitBounds
         try {
           if (mapInstance.current && window.google?.maps) {
+            userCentered.current = true
             mapInstance.current.panTo({ lat: Number(pos.lat), lng: Number(pos.lng) })
-            const z = mapInstance.current.getZoom?.() || 12
-            if (z < 14) mapInstance.current.setZoom(15)
+            mapInstance.current.setZoom(15)
           }
         } catch (_) {}
       } else {
@@ -649,10 +651,14 @@ export default function Ruta({ session }) {
       }
     }
     // Prioridad: centrar en el vendedor (zoom local para ver clientes/prospectos cerca)
-    if (!userCentered.current && mapInstance.current) {
+    // Siempre gana el GPS la primera vez que llega con coords reales
+    if (mapInstance.current && !userCentered.current) {
       userCentered.current = true
-      mapInstance.current.panTo(pos)
-      mapInstance.current.setZoom(14)
+      try {
+        mapInstance.current.panTo(pos)
+        try { mapInstance.current.setZoom(Math.max(mapInstance.current.getZoom() || 0, 15)) } catch (_) {}
+        mapInstance.current.setZoom(15)
+      } catch (_) {}
     }
   }, [mapReady, myPos])
 
@@ -726,21 +732,20 @@ export default function Ruta({ session }) {
       })
     }
 
-    // fitBounds UNA sola vez por fecha+zona (evita zoom in/out al redibujar pines)
+    // fitBounds SOLO si todavía no hay GPS del vendedor (evita mapa "lejos")
+    // Si ya hay GPS, el centro queda en el vendedor (zoom 15) y no se abre al bounds total
     const fitKey = fecha + '|' + uid
     if (!userCentered.current && fittedFecha.current !== fitKey && visible.length) {
       fittedFecha.current = fitKey
       try {
         maps.event.trigger(mapInstance.current, 'resize')
-        // maxZoom/minZoom en el fit evita el rebote post-idle
         mapInstance.current.fitBounds(bounds, {
-          top: 40, right: 40, bottom: 40, left: 40,
+          top: 48, right: 40, bottom: 80, left: 40,
         })
-        // Limitar zoom sin listener idle (sin animación extra)
         const z = mapInstance.current.getZoom()
         if (typeof z === 'number') {
           if (z > 14) mapInstance.current.setZoom(14)
-          if (z < 11) mapInstance.current.setZoom(11)
+          if (z < 12) mapInstance.current.setZoom(12)
         }
       } catch {
         /* ignore */
@@ -1230,13 +1235,39 @@ export default function Ruta({ session }) {
         )}
       </div>
 
-      {/* Mapa — altura fija para que el contenedor exista al init */}
+      {/* Mapa — altura generosa + FAB centrar en mí (estilo Spotio / Badger) */}
       <div style={{ padding: '0 16px', position: 'relative' }}>
         <div
           ref={mapRef}
           className="map-box"
-          style={{ height: 300, marginBottom: 0, background: '#e2e8f0' }}
+          style={{ height: 360, marginBottom: 0, background: '#e2e8f0', borderRadius: 16 }}
         />
+        <button
+          type="button"
+          onClick={forzarGps}
+          disabled={gpsBusy}
+          title="Centrar en mi ubicación"
+          style={{
+            position: 'absolute',
+            right: 28,
+            bottom: 16,
+            zIndex: 5,
+            width: 48,
+            height: 48,
+            borderRadius: 14,
+            border: 'none',
+            background: myPos?.lat ? '#2563eb' : '#c2410c',
+            color: '#fff',
+            fontSize: 20,
+            fontWeight: 800,
+            boxShadow: '0 8px 24px rgba(15,23,42,.25)',
+            cursor: gpsBusy ? 'wait' : 'pointer',
+            display: 'grid',
+            placeItems: 'center',
+          }}
+        >
+          {gpsBusy ? '…' : '📍'}
+        </button>
       </div>
 
       {/* Listado de la ruta del día — siempre visible */}

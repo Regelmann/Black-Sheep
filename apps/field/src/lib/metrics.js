@@ -2,7 +2,8 @@
  * Single source of truth — métricas de campo KeyFoods
  * Usado por Hoy, Cartera y Mapa para que "Reponer hoy" sea siempre el mismo número.
  */
-import { parseSkuDetalle } from './coach'
+import { parseSkuDetalle, skusAReponer, cantidadSugerida, smartReorderBadge, cicloReposicion as cicloCoach } from './coach'
+import { calcularRiesgoFuga, enrichCarteraRiesgo, resumenRiesgo } from './riesgo'
 
 export function esActivoMes(c) {
   return Number(c?.venta_mtd) > 0
@@ -35,57 +36,9 @@ export function esRecuperadoMes(c) {
   return /DORMIDO|FUGADO/i.test(c?.estado_fuga || '')
 }
 
-/** Ciclo real desde sku_detalle (mediana gaps) — no inventar desde volumen */
-export function cicloReposicion(s) {
-  let diasUltima = null
-  if (s?.ultima) {
-    const d = new Date(String(s.ultima).slice(0, 10) + 'T12:00:00')
-    if (!isNaN(d.getTime())) {
-      diasUltima = Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000))
-    }
-  }
-  const cicloEst =
-    s?.cicloDias != null && !isNaN(Number(s.cicloDias)) && Number(s.cicloDias) > 0
-      ? Math.round(Number(s.cicloDias))
-      : null
-
-  let recompra = null
-  if (diasUltima != null && cicloEst != null) {
-    const delta = diasUltima - cicloEst
-    if (delta >= 3) recompra = { label: `Debería comprar ya · atrasa ${delta}d`, tone: 'bad' }
-    else if (delta >= 0) recompra = { label: 'Hoy debería reponer', tone: 'warn' }
-    else if (delta === -1) recompra = { label: 'Mañana debería reponer', tone: 'ok' }
-    else recompra = { label: `Próxima ~${Math.abs(delta)}d`, tone: 'muted' }
-  } else if (diasUltima != null) {
-    recompra = {
-      label: `Sin compra hace ${diasUltima}d`,
-      tone: diasUltima >= 21 ? 'bad' : 'warn',
-    }
-  }
-  return { diasUltima, cicloEst, recompra }
-}
-
-export function skusAReponer(c) {
-  try {
-    // Devolver el SKU completo (promUd, promClp, udMtd…) para precio unitario en Pedido
-    return parseSkuDetalle(c?.sku_detalle)
-      .map(s => {
-        const r = cicloReposicion(s)
-        if (!r.recompra || (r.recompra.tone !== 'bad' && r.recompra.tone !== 'warn')) return null
-        return {
-          ...s,
-          diasUltima: r.diasUltima,
-          cicloEst: r.cicloEst,
-          label: r.recompra.label,
-          tone: r.recompra.tone,
-          recompra: r.recompra,
-        }
-      })
-      .filter(Boolean)
-  } catch {
-    return []
-  }
-}
+// cicloReposicion + skusAReponer: single source en coach.js (Smart Reorder V2.4)
+export { skusAReponer, cantidadSugerida, smartReorderBadge } from './coach'
+export const cicloReposicion = cicloCoach
 
 export function clienteTocaReponer(c) {
   return skusAReponer(c).length > 0
@@ -95,52 +48,40 @@ export function scorePrioridad(c) {
   const dias = Number(c?.dias_sin_comprar) || 0
   const mtd = Number(c?.venta_mtd) || 0
   const hist = Number(c?.venta_mensual) || Number(c?.venta_historica) || 0
-  const ef = String(c?.estado_fuga || '')
+  const ef = String(c?.estado_fuga || c?.estado_fuga_calc || '')
   const skus = skusAReponer(c)
+  const riesgo = c?.riesgo_score != null ? Number(c.riesgo_score) : calcularRiesgoFuga(c).score
   let s = 0
-  if (/RIESGO/i.test(ef)) s += 80
-  else if (/ENFRI/i.test(ef)) s += 55
-  else if (/FUGADO|DORMIDO/i.test(ef)) s += 40
-  if (skus.length) s += 35 + Math.min(20, skus.length * 4)
-  // $ en juego: promedio histórico del top SKU a reponer
+  // Señal principal: algoritmo de fuga (0–100 → hasta 70 pts)
+  s += Math.round(riesgo * 0.7)
+  if (/RIESGO/i.test(ef)) s += 12
+  else if (/ENFRI/i.test(ef)) s += 8
+  else if (/FUGADO|DORMIDO/i.test(ef)) s += 6
+  if (skus.length) s += 25 + Math.min(15, skus.length * 3)
   const top$ = skus.reduce((mx, x) => Math.max(mx, Number(x.promClp) || Number(x.clpMtd) || 0), 0)
-  if (top$ > 0) s += Math.min(30, Math.round(top$ / 80000))
-  if (dias >= 45) s += 30
-  else if (dias >= 28) s += 20
-  else if (dias >= 21) s += 12
-  if (hist > mtd) s += Math.min(25, Math.round((hist - mtd) / 50000))
-  if (esNuevoMes(c) && mtd > 0) s += 15
+  if (top$ > 0) s += Math.min(25, Math.round(top$ / 80000))
+  if (dias >= 45) s += 12
+  else if (dias >= 28) s += 8
+  if (hist > mtd) s += Math.min(15, Math.round((hist - mtd) / 80000))
+  if (esNuevoMes(c) && mtd > 0) s += 12
   return s
 }
 
-/** Insight de 1 línea para el vendedor: ciclo + qué llevar */
+/** Insight de 1 línea para el vendedor: ciclo + qué llevar (Smart Reorder) */
 export function insightRecompra(c) {
   const skus = skusAReponer(c)
   if (!skus.length) {
     const dias = Number(c?.dias_sin_comprar)
-    if (!isNaN(dias) && dias >= 14) return `Sin compra hace ${dias}d`
+    if (!isNaN(dias) && dias >= 14) return { text: `Sin compra hace ${dias}d`, topSku: null, qty: null, ranked: [] }
     return null
   }
-  // Orden: más atrasado primero, luego $
-  const ranked = [...skus].sort((a, b) => {
-    const da = (a.diasUltima || 0) - (a.cicloEst || 0)
-    const db = (b.diasUltima || 0) - (b.cicloEst || 0)
-    if (db !== da) return db - da
-    return (Number(b.promClp) || 0) - (Number(a.promClp) || 0)
-  })
+  const ranked = [...skus]
   const top = ranked[0]
   const nom = String(top.nombre || '').split(/\s+/).slice(0, 4).join(' ')
-  const ciclo = top.cicloEst != null ? `ciclo ${top.cicloEst}d` : null
-  const atr = top.diasUltima != null && top.cicloEst != null
-    ? (top.diasUltima - top.cicloEst >= 0
-        ? `atrasa ${top.diasUltima - top.cicloEst}d`
-        : `próx. ${top.cicloEst - top.diasUltima}d`)
-    : (top.diasUltima != null ? `hace ${top.diasUltima}d` : null)
-  const falta = Math.max(0, (Number(top.promUd) || 0) - (Number(top.udMtd) || 0))
-  const qty = falta > 0 ? Math.max(1, Math.round(falta)) : (Number(top.promUd) > 0 ? Math.round(Number(top.promUd)) : null)
-  const qtyTxt = qty ? `llevar ~${qty}` : null
+  const qty = top.cantidadSugerida || top.qty || cantidadSugerida(top)
+  const label = top.recompra?.label || top.label || 'Reponer'
   return {
-    text: [nom, ciclo, atr, qtyTxt].filter(Boolean).join(' · '),
+    text: `${label} · ${nom}`,
     topSku: top,
     qty,
     ranked,
@@ -199,67 +140,80 @@ export function computeConsistentMetrics(cartera, metaRow) {
   }
   const ventaNecesariaDia = diasRestantes > 0 ? brecha / diasRestantes : 0
 
+  // Riesgo de fuga (algoritmo local — complementa estado_fuga del ciclo)
+  const riesgoPack = resumenRiesgo(rows)
+  const rowsRisk = riesgoPack.enriched
+  const byKey = new Map(rowsRisk.map(r => [r.cliente_key || r.id, r]))
+  const mergeRisk = (c) => byKey.get(c.cliente_key || c.id) || enrichCarteraRiesgo([c])[0]
+
   const reponerList = rows.filter(clienteTocaReponer)
-  const riesgoList  = rows.filter(c => /RIESGO/i.test(c.estado_fuga || ''))
-  const enfriList   = rows.filter(c => /ENFRI/i.test(c.estado_fuga || ''))
+  const riesgoList  = rowsRisk.filter(c => (c.riesgo_score || 0) >= 45 || /RIESGO/i.test(c.estado_fuga || ''))
+  const enfriList   = rowsRisk.filter(c => ((c.riesgo_score || 0) >= 25 && (c.riesgo_score || 0) < 45) || /ENFRI/i.test(c.estado_fuga || ''))
   const activosList = rows.filter(esActivoMes)
   const nuevosList  = rows.filter(esNuevoMes)
   const recuperadosList = rows.filter(esRecuperadoMes)
-  const ventaRiesgo = rows
-    .filter(c => /RIESGO|ENFRI|FUGADO|DORMIDO/i.test(c.estado_fuga || ''))
-    .reduce((s, c) => {
-      const men = Number(c.venta_mensual) || 0
-      if (men > 0) return s + men
-      const hist = Number(c.venta_historica) || 0
-      return s + (hist > 0 ? hist / 12 : 0)
-    }, 0)
+  const ventaRiesgo = riesgoPack.plataEnRiesgo || rowsRisk
+    .filter(c => (c.riesgo_score || 0) >= 45)
+    .reduce((s, c) => s + (Number(c.riesgo_plata) || Number(c.venta_mensual) || 0), 0)
 
   // Bloqueados NO van a Hoy: están cerrados/deuda a propósito
   const actionQueue = [...rows]
-    .filter(c => !c.es_bloqueado)
+    .filter(c => {
+      if (c.es_bloqueado) return false
+      const ef = String(c.estado_fuga || c.estado || '').toUpperCase()
+      if (ef.includes('BLOQ')) return false
+      return true
+    })
     .map(c => {
-      const skus  = skusAReponer(c)
-      const score = scorePrioridad(c)
-      const ef    = String(c.estado_fuga || '')
+      const cr = mergeRisk(c)
+      const skus  = skusAReponer(cr)
+      const score = scorePrioridad(cr)
+      const ef    = String(cr.estado_fuga || cr.riesgo_nivel || '')
+      const rs    = Number(cr.riesgo_score) || 0
       let type     = 'visita'
       let ctaLabel = 'Visitar'
-      if (/RIESGO|FUGADO/i.test(ef)) {
+      if (rs >= 65 || /FUGADO|DORMIDO/i.test(ef)) {
         type = 'riesgo'; ctaLabel = 'Recuperar'
-      } else if (/ENFRI/i.test(ef)) {
+      } else if (rs >= 45 || /RIESGO/i.test(ef)) {
+        type = 'riesgo'; ctaLabel = 'Recuperar'
+      } else if (rs >= 25 || /ENFRI/i.test(ef)) {
         type = 'enfriandose'; ctaLabel = 'Reactivar'
       } else if (skus.length) {
         type = 'reponer'; ctaLabel = 'Ir a reponer'
-      } else if (esNuevoMes(c)) {
+      } else if (esNuevoMes(cr)) {
         type = 'nuevo'; ctaLabel = 'Seguir nuevo'
       }
 
-      const dias = Number(c.dias_sin_comprar)
-      const insight = insightRecompra(c)
-      // Subtítulo: urgencia primero + comuna
+      const dias = Number(cr.dias_sin_comprar)
+      const insight = insightRecompra(cr)
+      const badge = smartReorderBadge(cr)
       const partes = [
+        badge?.text || (skus.length ? `${skus.length} SKU a reponer` : null),
         !isNaN(dias) && dias < 999 ? `hace ${dias}d` : null,
-        skus.length ? `${skus.length} SKU a reponer` : null,
-        c.comuna,
+        rs >= 25 ? `riesgo ${rs}` : null,
+        cr.comuna,
       ].filter(Boolean)
 
       return {
-        id:       c.cliente_key || c.id,
+        id:       cr.cliente_key || cr.id,
         type,
         priority: score,
-        title:    c.razon_social || c.nombre_cliente || c.cliente_key || 'Cliente',
+        title:    cr.razon_social || cr.nombre_cliente || cr.cliente_key || 'Cliente',
         subtitle: partes.join(' · '),
-        insight:  insight?.text || null,
+        insight:  insight?.text || (cr.riesgo_razones && cr.riesgo_razones[0]) || null,
         nextSku:  insight?.topSku?.nombre || null,
         nextQty:  insight?.qty || null,
         skusRanked: insight?.ranked || skus,
         count:    skus.length || undefined,
-        amount:   Number(c.venta_mtd) || Number(c.venta_mensual) || undefined,
-        clientId: c.cliente_key || c.id,
+        amount:   Number(cr.venta_mtd) || Number(cr.venta_mensual) || undefined,
+        clientId: cr.cliente_key || cr.id,
         ctaLabel,
-        oferta:   ofertaCorta(c.oferta_real),
-        telefono: c.telefono,
-        whatsapp: c.link_whatsapp,
-        raw:      c,
+        riesgoScore: rs,
+        riesgoLabel: cr.riesgo_label,
+        oferta:   ofertaCorta(cr.oferta_real),
+        telefono: cr.telefono,
+        whatsapp: cr.link_whatsapp,
+        raw:      cr,
       }
     })
     .filter(a => a.priority > 0)
@@ -279,6 +233,8 @@ export function computeConsistentMetrics(cartera, metaRow) {
     reponerHoy:      reponerList.length,
     reponerList,
     nRiesgo:         riesgoList.length,
+    plataEnRiesgo:   riesgoPack.plataEnRiesgo,
+    topRiesgo:       riesgoPack.topRiesgo,
     nEnfri:          enfriList.length,
     nActivos:        activosList.length,
     nNuevos:         nuevosList.length,
@@ -289,3 +245,6 @@ export function computeConsistentMetrics(cartera, metaRow) {
   }
 }
 
+
+
+export { calcularRiesgoFuga, enrichCarteraRiesgo, resumenRiesgo } from './riesgo'

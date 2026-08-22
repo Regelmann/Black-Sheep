@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
@@ -95,6 +96,8 @@ function canalDeCliente(d) {
 }
 
 export default function Gerencia({ esGerente }) {
+  const navAdmin = useNavigate()
+
   const eje = useEjecutivo() || {}
   const todosEjecutivos = eje.todosEjecutivos || []
   const eidVista = eje.eidVista
@@ -331,7 +334,10 @@ export default function Gerencia({ esGerente }) {
       }
     }
     for (const k of Object.keys(byCanal)) {
-      byCanal[k].sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
+      // Solo activos del mes (venta > 0). Evita listar toda la maestra con $0.
+      byCanal[k] = byCanal[k]
+        .filter(r => (Number(r.venta_mtd) || 0) > 0)
+        .sort((a, b) => (Number(b.venta_mtd) || 0) - (Number(a.venta_mtd) || 0))
     }
     return byCanal
   }, [detalleCli, carteraCache, todosEjecutivos])
@@ -918,7 +924,18 @@ export default function Gerencia({ esGerente }) {
   }
 
 
-  if (loading) return <div className="spinner">Cargando gerencia…</div>
+  if (loading) {
+    return (
+      <div className="wrap" style={{ paddingTop: 20 }}>
+        <div className="skeleton" style={{ height: 100, borderRadius: 18, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 160, borderRadius: 18, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 80, borderRadius: 14, marginBottom: 10 }} />
+        <div className="skeleton" style={{ height: 80, borderRadius: 14, marginBottom: 10 }} />
+        <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />
+        <p className="muted" style={{ textAlign: 'center', marginTop: 16, fontWeight: 700 }}>Cargando gerencia…</p>
+      </div>
+    )
+  }
   if (!esGerente) {
     return (
       <div className="wrap">
@@ -947,6 +964,19 @@ export default function Gerencia({ esGerente }) {
         <p>Venta total · terreno · canales</p>
       </div>
       <div className="wrap">
+        <button
+          type="button"
+          className="admin-entry"
+          onClick={() => navAdmin('/admin')}
+          style={{
+            width: '100%', marginBottom: 12, padding: '12px 14px', borderRadius: 14,
+            border: '1.5px solid #fed7aa', background: 'linear-gradient(180deg,#fff7ed,#fff)',
+            textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          <div style={{ fontWeight: 850, fontSize: 14, color: '#c2410c' }}>Admin · zonas, clientes y precios</div>
+          <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>Asignar zona / ejecutivo y revisar lista de precios</div>
+        </button>
         {error && (
           <div className="card" style={{ borderLeft: '4px solid #f59e0b', fontSize: 13 }}>
             {error}
@@ -1652,8 +1682,10 @@ export default function Gerencia({ esGerente }) {
                                   )
                                 })}
                                 {!cliSku[d.cliente_key]?.loading && !(cliSku[d.cliente_key]?.skus || []).length && (
-                                  <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
-                                    Sin historial de SKU para este cliente. Si es canal KAM o Corporativo, revisá la maestra de clientes.
+                                  <div className="gerencia-sku-empty">
+                                    Sin mix de productos en el mes para este cliente.
+                                    <br />
+                                    <span style={{ fontSize: 11 }}>Si vendió y no aparece, re-correr el ciclo (sku_detalle en gerencia_clientes).</span>
                                   </div>
                                 )}
                               </div>
@@ -1661,8 +1693,10 @@ export default function Gerencia({ esGerente }) {
                           </div>
                         ))}
                       {!(clientesDelCanal[normCanal(g.ejecutivo)] || []).length && (
-                        <p className="muted" style={{ fontSize: 12 }}>
-                          Sin clientes en este canal. Si acabás de subir el ciclo, verificá columna ejecutivo en gerencia_clientes.
+                        <p className="gerencia-sku-empty">
+                          Sin clientes con venta MTD en este canal.
+                          <br />
+                          <span style={{ fontSize: 11 }}>Solo se listan clientes con venta &gt; 0 del mes.</span>
                         </p>
                       )}
                     </div>

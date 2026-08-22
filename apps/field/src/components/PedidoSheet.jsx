@@ -402,7 +402,7 @@ export default function PedidoSheet({ initialPedido,
                     {kg != null
                       ? ` · stock ${kg.toLocaleString('es-CL')} ${l.unidad || 'kg'}`
                       : ''}
-                    {l._promUd ? ` · prom ${Number(l._promUd).toLocaleString('es-CL')} ud/mes` : ''}
+                    {l.motivo ? ` · ${l.motivo}` : (l._promUd ? ` · prom ${Number(l._promUd).toLocaleString('es-CL')} ud/mes` : '')}
                   </div>
                 </div>
                 <input

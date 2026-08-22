@@ -5,7 +5,7 @@ import { precioDesdeHistSku } from './precios'
  */
 
 import { supabase } from './supabase'
-import { parseSkuDetalle } from './coach'
+import { parseSkuDetalle, cantidadSugerida as cantidadSugeridaCoach } from './coach'
 
 /** Quita pipes/basura de nombres de producto (sku_detalle crudo) */
 export function sanitizeNombreProducto(n) {
@@ -220,6 +220,8 @@ export function precioUnitarioDesdeSku(s) {
 }
 
 export function cantidadSugeridaDesdeSku(s) {
+  // Single source: coach.cantidadSugerida (prom − MTD)
+  if (typeof cantidadSugeridaCoach === 'function') return cantidadSugeridaCoach(s)
   if (!s) return 1
   const prom = Number(s.promUd) || 0
   const mtd = Number(s.udMtd) || 0
@@ -511,3 +513,7 @@ export async function marcarPedidoEstado(pedidoId, estado) {
     return { error: e }
   }
 }
+
+
+/** Alias Order Inbox */
+export const actualizarEstadoPedido = marcarPedidoEstado

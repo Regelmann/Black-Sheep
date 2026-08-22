@@ -491,7 +491,17 @@ export default function Visita({ session }) {
     await terminar('no_venta')
   }
 
-  if (loading) return <div className="spinner">Cargando visita...</div>
+  if (loading) {
+    return (
+      <div className="wrap" style={{ paddingTop: 20 }}>
+        <div className="skeleton" style={{ height: 56, borderRadius: 14, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 140, borderRadius: 18, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 180, borderRadius: 18, marginBottom: 12 }} />
+        <div className="skeleton" style={{ height: 120, borderRadius: 16 }} />
+        <p className="muted" style={{ textAlign: 'center', marginTop: 16, fontWeight: 700 }}>Preparando visita…</p>
+      </div>
+    )
+  }
   if (!visita) {
     return (
       <div className="wrap" style={{ paddingTop: 32, textAlign: 'center' }}>
@@ -543,7 +553,7 @@ export default function Visita({ session }) {
 
   return (
     <>
-    <div style={{ paddingBottom: 32, background: '#faf7f2', minHeight: '100dvh' }}>
+    <div style={{ paddingBottom: 24, background: '#faf7f2', minHeight: '100dvh' }}>
       {/* Header azul */}
       <div
         style={{
@@ -555,18 +565,17 @@ export default function Visita({ session }) {
       >
         <button
           type="button"
-          onClick={() => nav('/')}
+          onClick={() => nav(-1)}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: 'rgba(255,255,255,0.18)', border: 'none', color: '#fff',
-            borderRadius: 999, padding: '8px 12px', fontWeight: 700, fontSize: 13,
-            cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12,
+            borderRadius: 999, padding: '7px 12px', fontWeight: 700, fontSize: 12,
+            cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10,
           }}
         >
-          ← Detalle de Visita
+          ← Volver
         </button>
-        <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.85, marginBottom: 4 }}>Detalle de Visita</div>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
           {visita.nombre_local}
         </h1>
         <div style={{ marginTop: 10 }}>
@@ -581,257 +590,130 @@ export default function Visita({ session }) {
       </div>
 
       <div style={{ padding: '0 14px', marginTop: -18 }}>
-        {/* Card dirección / comuna / ir / tel */}
+        {/* ── CAPTURE-FIRST: contexto + CTA principal ── */}
         <div style={{
-          background: '#fff', borderRadius: 20, padding: 16,
-          boxShadow: '0 8px 28px rgba(15,23,42,0.08)', marginBottom: 12,
+          background: '#fff', borderRadius: 20, padding: 14,
+          boxShadow: '0 8px 28px rgba(15,23,42,0.08)', marginBottom: 10,
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-            <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em' }}>DIRECCIÓN</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 4, lineHeight: 1.35 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 3, lineHeight: 1.3 }}>
                 {dir || visita.comuna || '—'}
+                {visita.comuna || cliente?.comuna ? ` · ${visita.comuna || cliente?.comuna}` : ''}
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em' }}>COMUNA</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>
-                {visita.comuna || cliente?.comuna || '—'}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <a href={mapsUrl} target="_blank" rel="noreferrer" style={{ flex: 1, textDecoration: 'none' }}>
-              <div style={{
-                textAlign: 'center', padding: '12px', borderRadius: 999,
-                background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
-              }}>
-                ↗ Ir
-              </div>
-            </a>
-            {telefono ? (
-              <a href={'tel:' + telefono} style={{ flex: 1, textDecoration: 'none' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8' }}>TELÉFONO</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#c2410c', marginTop: 2 }}>{telefono}</div>
+              {(Number(cliente?.venta_mtd) > 0 || Number(cliente?.venta_mensual) > 0) && (
+                <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+                  {Number(cliente?.venta_mtd) > 0 ? money(cliente.venta_mtd) + ' mes' : money(cliente.venta_mensual) + ' prom'}
+                  {cliente?.dias_sin_comprar != null ? ` · ${cliente.dias_sin_comprar}d sin compra` : ''}
                 </div>
-              </a>
+              )}
+            </div>
+            <a href={mapsUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', flexShrink: 0 }}>
+              <div style={{
+                textAlign: 'center', padding: '10px 16px', borderRadius: 12,
+                background: '#0f172a', color: '#fff', fontWeight: 800, fontSize: 13,
+              }}>↗ Ir</div>
+            </a>
+          </div>
+
+          {/* Action bar unificada: Llamar / WhatsApp / Check-in */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {telefono && (
+              <a href={'tel:' + telefono} style={{
+                flex: 1, textAlign: 'center', minHeight: 42, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 12, background: '#f5f5f4', color: '#1c1917', fontWeight: 700, textDecoration: 'none', fontSize: 13,
+              }}>Llamar</a>
+            )}
+            {wsp && (
+              <a href={wsp} target="_blank" rel="noreferrer" style={{
+                flex: 1, textAlign: 'center', minHeight: 42, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13,
+              }}>WhatsApp</a>
+            )}
+            {!yaLlego ? (
+              <button
+                type="button"
+                onClick={hacerCheckin}
+                disabled={busy}
+                style={{
+                  flex: 1.2, minHeight: 42, borderRadius: 12, border: 'none',
+                  background: 'linear-gradient(180deg,#c2410c,#9a3412)', color: '#fff',
+                  fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
+                  cursor: busy ? 'wait' : 'pointer',
+                }}
+              >
+                {busy ? 'GPS…' : 'Check-in'}
+              </button>
             ) : (
-              <div style={{ flex: 1, fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>Sin teléfono</div>
+              <div style={{
+                flex: 1.2, minHeight: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: '#ecfdf5', color: '#15803d', fontWeight: 800, fontSize: 12,
+              }}>
+                ✓ {new Date(checkin.hora_llegada).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+              </div>
             )}
           </div>
-          {(Number(cliente?.venta_mtd) > 0 || Number(cliente?.venta_mensual) > 0) && (
+          {msg && <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>{msg}</div>}
+        </div>
+
+        {/* CTA PRINCIPAL — un solo pedido, siempre arriba */}
+        <div style={{
+          background: '#fff', borderRadius: 20, padding: 14,
+          boxShadow: '0 4px 16px rgba(194,65,12,0.12)', marginBottom: 10,
+          border: '1.5px solid #fed7aa',
+        }}>
+          {pedidoOk ? (
             <div style={{
-              marginTop: 14, paddingTop: 12, borderTop: '1px solid #f1f5f9',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>★ SCORE / VENTA</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
-                {Number(cliente?.venta_mtd) > 0 ? money(cliente.venta_mtd) + ' mes' : money(cliente.venta_mensual) + ' prom'}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Productos sugeridos */}
-        <div style={{
-          background: '#fff', borderRadius: 20, padding: 16,
-          boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
-        }}>
-          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8 }}>Productos sugeridos</div>
-          {(cliente?.oferta_real || aReponer.length > 0) && (
-            <div style={{ fontSize: 12, color: '#15803d', fontWeight: 700, marginBottom: 10 }}>
-              Potencial · {aReponer.length > 0 ? `${aReponer.length} a reponer` : 'oferta del día'}
-            </div>
-          )}
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 8 }}>Recomendamos ofrecer:</div>
-          {(() => {
-            const items = []
-            if (cliente?.oferta_real) {
-              parseOfertaItems(cliente.oferta_real).forEach(it => {
-                if (!items.some(x => x.nombre === it.nombre)) items.push(it)
-              })
-            }
-            aReponer.slice(0, 6).forEach(s => {
-              if (!items.some(x => x.nombre === s.nombre)) {
-                items.push({ nombre: s.nombre, tag: s.recompra?.label || 'Reponer' })
-              }
-            })
-            if (cliente?.productos_top) {
-              String(cliente.productos_top).split(/\s*[·|]\s*/).slice(0, 6).forEach(s => {
-                const n = limpiaOferta(s)
-                if (!n || n.length < 3) return
-                if (/^\d+([.,]\d+)?\s*(kg|lt|l|un|ud)?$/i.test(n)) return
-                if (!items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Compraba' })
-              })
-            }
-            if (!items.length) {
-              return <div style={{ fontSize: 13, color: '#94a3b8' }}>Sin sugerencias cargadas para este cliente.</div>
-            }
-            return (
-              <>
-                {items.slice(0, 8).map((it, i) => {
-                  // Buscar precio de lista por nombre del producto
-                  const nombreKey = String(it.nombre || '').toLowerCase().trim()
-                  // Buscar match exacto o parcial (ej: "PECHUGA DESH 10KG" → "pechuga desh 10kg")
-                  const precioDeLista = preciosPorNombre[nombreKey] ||
-                    Object.entries(preciosPorNombre).find(([k]) =>
-                      k.length > 4 && (nombreKey.includes(k) || k.includes(nombreKey))
-                    )?.[1]
-                  return (
-                    <div key={i} style={{
-                      display: 'flex', gap: 10, alignItems: 'flex-start',
-                      padding: '10px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none',
-                    }}>
-                      <span style={{ color: '#22c55e', fontWeight: 800, marginTop: 2 }}>✓</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
-                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <span>{it.tag}</span>
-                          {precioDeLista > 0 && (
-                            <span style={{ color: '#c2410c', fontWeight: 700 }}>
-                              Lista: ${Math.round(precioDeLista).toLocaleString('es-CL')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-                <button
-                  type="button"
-                  onClick={() => setOfertaOpen(true)}
-                  style={{
-                    width: '100%', marginTop: 12, minHeight: 48, borderRadius: 14, border: 'none',
-                    background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
-                    fontFamily: 'inherit', cursor: 'pointer',
-                  }}
-                >
-                  Armar pedido sugerido
-                </button>
-              </>
-            )
-          })()}
-        </div>
-
-        {/* Pasos del flujo */}
-        <div style={{
-          display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2,
-        }}>
-          {[
-            { n: 1, label: 'Contexto', done: true },
-            { n: 2, label: 'Check-in', done: !!yaLlego },
-            { n: 3, label: 'Acción', done: !!pedidoOk || resultado === 'no_venta' },
-            { n: 4, label: 'Cerrar', done: false },
-          ].map(s => (
-            <div key={s.n} style={{
-              flex: '1 1 0', minWidth: 72, textAlign: 'center', padding: '8px 4px',
-              borderRadius: 12, fontSize: 11, fontWeight: 700,
-              background: s.done ? '#ecfdf5' : '#fff',
-              color: s.done ? '#15803d' : '#78716c',
-              border: `1.5px solid ${s.done ? '#86efac' : '#e7e5e4'}`,
-            }}>
-              {s.done ? '✓' : s.n} {s.label}
-            </div>
-          ))}
-        </div>
-
-        {/* Check-in */}
-        <div style={{
-          background: '#fff', borderRadius: 20, padding: 16,
-          boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
-        }}>
-          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>2 · Check-in</div>
-          {msg && <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>{msg}</div>}
-          {yaLlego ? (
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-              ✓ Llegaste{' '}
-              {new Date(checkin.hora_llegada).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-              {lastCheckinCoords?.dist != null && (
-                <span style={{ color: '#64748b', fontWeight: 500 }}>
-                  {' '}· {Math.round(lastCheckinCoords.dist)} m del pin
-                </span>
-              )}
-              {checkin?._offline && (
-                <span style={{ marginLeft: 6, fontSize: 11, color: '#92400e', fontWeight: 700 }}>offline</span>
-              )}
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={hacerCheckin}
-              disabled={busy}
-              style={{
-                width: '100%', minHeight: 48, padding: '14px', borderRadius: 14, border: 'none',
-                background: 'linear-gradient(180deg,#c2410c,#9a3412)', color: '#fff',
-                fontWeight: 800, fontSize: 15, fontFamily: 'inherit',
-                cursor: busy ? 'wait' : 'pointer',
-              }}
-            >
-              {busy ? 'Registrando GPS…' : 'Hacer check-in (llegué)'}
-            </button>
-          )}
-        </div>
-
-        {/* 3 · Acción comercial */}
-        <div style={{
-          background: '#fff', borderRadius: 20, padding: 16,
-          boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
-        }}>
-          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>3 · Acción comercial</div>
-          {pedidoOk && (
-            <div style={{
-              marginBottom: 10, padding: '10px 12px', borderRadius: 12,
-              background: '#ecfdf5', color: '#15803d', fontWeight: 700, fontSize: 13,
+              padding: '12px 14px', borderRadius: 12, marginBottom: 10,
+              background: '#ecfdf5', color: '#15803d', fontWeight: 800, fontSize: 14, textAlign: 'center',
             }}>
               ✓ Pedido capturado · listo para cerrar
             </div>
-          )}
-          {resultado === 'no_venta' && (
+          ) : resultado === 'no_venta' ? (
             <div style={{
-              marginBottom: 10, padding: '10px 12px', borderRadius: 12,
-              background: '#fff7ed', color: '#9a3412', fontWeight: 700, fontSize: 13,
+              padding: '12px 14px', borderRadius: 12, marginBottom: 10,
+              background: '#fff7ed', color: '#9a3412', fontWeight: 800, fontSize: 14, textAlign: 'center',
             }}>
               No compró · {noVentaMotivo || 'sin motivo'}
             </div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => setOfertaOpen(true)}
-              style={{
-                minHeight: 48, borderRadius: 14, border: 'none',
-                background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14,
-                fontFamily: 'inherit', cursor: 'pointer',
-              }}
-            >
-              Tomar pedido
-            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setPedidoOpen(true)}
+            style={{
+              width: '100%', minHeight: 52, borderRadius: 14, border: 'none',
+              background: pedidoOk ? '#0f172a' : 'linear-gradient(180deg,#ea580c,#c2410c)',
+              color: '#fff', fontWeight: 800, fontSize: 16, fontFamily: 'inherit',
+              cursor: 'pointer', boxShadow: pedidoOk ? 'none' : '0 8px 24px rgba(194,65,12,0.28)',
+            }}
+          >
+            {pedidoOk ? 'Ver / editar pedido' : 'Tomar pedido'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOfertaOpen(true)}
+            style={{
+              width: '100%', minHeight: 40, marginTop: 8, borderRadius: 12,
+              border: '1.5px solid #e7e5e4', background: '#fff', color: '#57534e',
+              fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+            }}
+          >
+            Enviar catálogo web al cliente
+          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             <button
               type="button"
               onClick={() => setShowNoVenta(true)}
               style={{
-                minHeight: 48, borderRadius: 14, border: '1.5px solid #e7e5e4',
-                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 14,
+                minHeight: 42, borderRadius: 12, border: '1.5px solid #e7e5e4',
+                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 13,
                 fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
               No compró
             </button>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            {telefono && (
-              <a href={'tel:' + telefono} style={{
-                flex: 1, textAlign: 'center', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 12, background: '#0f172a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: 13,
-              }}>Llamar</a>
-            )}
-            {wsp && (
-              <a href={wsp} target="_blank" rel="noreferrer" style={{
-                flex: 1, textAlign: 'center', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13,
-              }}>WhatsApp</a>
-            )}
             <button
               type="button"
               onClick={() => {
@@ -842,8 +724,9 @@ export default function Visita({ session }) {
                 setShowEncuesta(true)
               }}
               style={{
-                flex: 1, minHeight: 44, borderRadius: 12, border: '1.5px solid #e7e5e4',
-                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                minHeight: 42, borderRadius: 12, border: '1.5px solid #e7e5e4',
+                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 13,
+                fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
               Encuesta
@@ -851,10 +734,119 @@ export default function Visita({ session }) {
           </div>
         </div>
 
-        {/* Foto opcional */}
+        {/* Productos sugeridos — compacto, máx 5, sin segundo CTA de pedido */}
+        <div style={{
+          background: '#fff', borderRadius: 20, padding: 14,
+          boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 10,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>Qué ofrecer</div>
+            {(cliente?.oferta_real || aReponer.length > 0) && (
+              <div style={{ fontSize: 11, color: '#15803d', fontWeight: 700 }}>
+                {aReponer.length > 0 ? `${aReponer.length} a reponer` : 'Oferta del día'}
+              </div>
+            )}
+          </div>
+          {(() => {
+            const items = []
+            if (cliente?.oferta_real) {
+              parseOfertaItems(cliente.oferta_real).forEach(it => {
+                if (!items.some(x => x.nombre === it.nombre)) items.push(it)
+              })
+            }
+            aReponer.slice(0, 6).forEach(s => {
+              if (!items.some(x => x.nombre === s.nombre)) {
+                items.push({
+                  nombre: s.nombre,
+                  tag: s.recompra?.label || 'Reponer',
+                  recompra: s.recompra,
+                  cantidadSugerida: s.cantidadSugerida || s.qty || s.recompra?.qty,
+                })
+              }
+            })
+            if (cliente?.productos_top) {
+              String(cliente.productos_top).split(/\s*[·|]\s*/).slice(0, 6).forEach(s => {
+                const n = limpiaOferta(s)
+                if (!n || n.length < 3) return
+                if (/^\d+([.,]\d+)?\s*(kg|lt|l|un|ud)?$/i.test(n)) return
+                if (!items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Compraba' })
+              })
+            }
+            if (!items.length && Array.isArray(window.__BS_FOCOS__) && window.__BS_FOCOS__.length) {
+              window.__BS_FOCOS__.slice(0, 4).forEach(f => {
+                const n = String(f?.nombre || f?.foco || f || '').trim()
+                if (n && !items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Foco del mes' })
+              })
+            }
+            if (!items.length) {
+              const topLista = Object.keys(preciosPorNombre || {}).slice(0, 4)
+              topLista.forEach(n => {
+                if (n && !items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Lista' })
+              })
+            }
+            if (!items.length) {
+              return (
+                <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.45 }}>
+                  Sin historial. Abrí <strong>Tomar pedido</strong> y elegí desde la lista completa.
+                </div>
+              )
+            }
+            return (
+              <div>
+                {items.slice(0, 5).map((it, i) => {
+                  const nombreKey = String(it.nombre || '').toLowerCase().trim()
+                  const precioDeLista = preciosPorNombre[nombreKey] ||
+                    Object.entries(preciosPorNombre).find(([k]) =>
+                      k.length > 4 && (nombreKey.includes(k) || k.includes(nombreKey))
+                    )?.[1]
+                  const qty = it.cantidadSugerida || it.qty || it.recompra?.qty
+                  const tone = it.recompra?.tone || (String(it.tag || '').match(/Se le acaba|Atrasa|Sin compra/i) ? 'bad' : 'warn')
+                  const tagColor = tone === 'bad' ? '#b91c1c' : tone === 'warn' ? '#c2410c' : '#64748b'
+                  return (
+                    <div key={i} style={{
+                      display: 'flex', gap: 10, alignItems: 'center',
+                      padding: '9px 0', borderBottom: i < Math.min(items.length, 5) - 1 ? '1px solid #f1f5f9' : 'none',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
+                        <div style={{ fontSize: 11, marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ color: tagColor, fontWeight: 700 }}>{it.tag || it.recompra?.label || 'Sugerido'}</span>
+                          {precioDeLista > 0 && (
+                            <span style={{ color: '#78716c', fontWeight: 600 }}>
+                              ${Math.round(precioDeLista).toLocaleString('es-CL')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {qty > 0 && (
+                        <div style={{
+                          flexShrink: 0, minWidth: 44, textAlign: 'center',
+                          background: tone === 'bad' ? '#fef2f2' : '#fff7ed',
+                          color: tagColor, fontWeight: 800, fontSize: 13,
+                          borderRadius: 10, padding: '6px 8px',
+                          border: `1px solid ${tone === 'bad' ? '#fecaca' : '#fed7aa'}`,
+                        }}>
+                          {qty}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {items.length > 5 && (
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, fontWeight: 600 }}>
+                    +{items.length - 5} más en el pedido
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+
+        {/* Foto opcional — una línea */}
         <label style={{
-          display: 'block', background: '#fff', borderRadius: 20, padding: 16,
-          border: '1.5px dashed #cbd5e1', marginBottom: 12, cursor: 'pointer', textAlign: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          background: '#fff', borderRadius: 14, padding: '12px 14px',
+          border: '1.5px dashed #cbd5e1', marginBottom: 10, cursor: 'pointer',
         }}>
           <input
             type="file"
@@ -871,23 +863,24 @@ export default function Visita({ session }) {
             }}
           />
           {fotoPreview ? (
-            <div>
-              <img src={fotoPreview} alt="foto visita" style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 12 }} />
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>Tocá para cambiar foto</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <img src={fotoPreview} alt="foto" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Foto lista · tocá para cambiar</div>
             </div>
           ) : (
-            <div style={{ padding: '12px 0', color: '#64748b', fontWeight: 600, fontSize: 14 }}>
-              Foto opcional
-            </div>
+            <div style={{ color: '#64748b', fontWeight: 600, fontSize: 13 }}>📷 Foto opcional</div>
           )}
         </label>
 
-        {/* 4 · Cerrar */}
+        {/* Sticky bottom — cerrar visita (thumb zone) */}
         <div style={{
-          background: '#fff', borderRadius: 20, padding: 16,
-          boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 12,
+          position: 'sticky',
+          bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
+          zIndex: 20,
+          background: 'linear-gradient(180deg, transparent, #faf7f2 18%)',
+          paddingTop: 12,
+          paddingBottom: 8,
         }}>
-          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 8 }}>4 · Cerrar visita</div>
           <button
             type="button"
             disabled={busy}
@@ -918,10 +911,10 @@ export default function Visita({ session }) {
               )
             }}
             style={{
-              width: '100%', minHeight: 52, padding: '16px', borderRadius: 999, border: 'none',
+              width: '100%', minHeight: 52, padding: '14px', borderRadius: 14, border: 'none',
               background: 'linear-gradient(180deg,#ea580c,#c2410c)', color: '#fff',
-              fontWeight: 800, fontSize: 16, fontFamily: 'inherit', cursor: busy ? 'wait' : 'pointer',
-              boxShadow: '0 8px 24px rgba(194,65,12,0.3)', marginBottom: 8,
+              fontWeight: 800, fontSize: 15, fontFamily: 'inherit', cursor: busy ? 'wait' : 'pointer',
+              boxShadow: '0 8px 24px rgba(194,65,12,0.3)',
             }}
           >
             {pedidoOk ? 'Completar con pedido' : resultado === 'no_venta' ? 'Cerrar · no compró' : 'Completar visita'}
@@ -931,8 +924,8 @@ export default function Visita({ session }) {
             disabled={busy}
             onClick={omitir}
             style={{
-              width: '100%', minHeight: 44, padding: '12px', border: 'none', background: 'transparent',
-              color: '#64748b', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+              width: '100%', minHeight: 40, padding: '10px', border: 'none', background: 'transparent',
+              color: '#64748b', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
             }}
           >
             Omitir cliente por hoy

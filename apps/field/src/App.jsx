@@ -10,11 +10,12 @@ import Cartera from './pages/Cartera.jsx'
 import CatalogoCliente from './pages/CatalogoCliente.jsx'
 import Stock from './pages/Stock.jsx'
 import Gerencia from './pages/Gerencia.jsx'
+import Admin from './pages/Admin.jsx'
 import { NavBar } from './components.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V2'
+export const BUILD_STAMP = 'v-BS-PLATFORM-V2.9-INTEGRADO'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
@@ -161,7 +162,15 @@ export default function App() {
   if (window.location.pathname.startsWith('/catalogo/')) {
     return <Routes><Route path="/catalogo/:token" element={<CatalogoCliente />} /></Routes>
   }
-  if (session === undefined) return <div className="spinner">Cargando...</div>
+  if (session === undefined) {
+    return (
+      <div className="bs-boot">
+        <div className="bs-boot-logo">🐑</div>
+        <div className="bs-boot-bar"><span /></div>
+        <p>Iniciando Black Sheep Field…</p>
+      </div>
+    )
+  }
   if (!session) {
     return (
       <Routes>
@@ -169,7 +178,15 @@ export default function App() {
       </Routes>
     )
   }
-  if (!ejecutivo || !eidVista) return <div className="spinner">Cargando perfil...</div>
+  if (!ejecutivo || !eidVista) {
+    return (
+      <div className="bs-boot">
+        <div className="bs-boot-logo">🐑</div>
+        <div className="bs-boot-bar"><span /></div>
+        <p>Cargando tu perfil…</p>
+      </div>
+    )
+  }
 
   const esGerente = !!ejecutivo.esSuperAdmin
   const ctxValue = {
@@ -196,6 +213,7 @@ export default function App() {
           <Route path="/metas" element={<Navigate to="/" replace />} />
           <Route path="/stock" element={<Stock session={session} />} />
           <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
+          <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
