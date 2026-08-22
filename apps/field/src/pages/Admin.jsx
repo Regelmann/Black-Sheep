@@ -37,11 +37,10 @@ export default function Admin() {
 
   return (
     <div className="page admin-page" style={{ paddingBottom: 100 }}>
-      <div style={{ marginBottom: 12 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 850 }}>Control de la app</h1>
-        <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-          Zonas, clientes, precios, catálogo, metas y focos — sin Excel para el día a día
-        </p>
+      <div className="bs-page-hero" style={{ marginBottom: 12 }}>
+        <div className="bs-eyebrow">Administración</div>
+        <h1>Control de la app</h1>
+        <p className="sub">Zonas, clientes, precios, catálogo, metas y focos</p>
       </div>
 
       <div className="filter-row" style={{ marginBottom: 12 }}>
@@ -103,13 +102,13 @@ function TabClientes({ onFlash }) {
     try {
       let query = supabase
         .from('cartera')
-        .select('cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd')
+        .select('cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,venta_mtd')
         .order('nombre_cliente')
         .limit(200)
       const term = q.trim()
       if (term) {
         query = query.or(
-          `nombre_cliente.ilike.%${term}%,razon_social.ilike.%${term}%,cliente_key.ilike.%${term}%,comuna.ilike.%${term}%`
+          `nombre_cliente.ilike.%${term}%,cliente_key.ilike.%${term}%,comuna.ilike.%${term}%`
         )
       }
       if (zonaFiltro !== 'Todas') query = query.eq('zona', zonaFiltro)
@@ -174,7 +173,7 @@ function TabClientes({ onFlash }) {
       {loading && <p className="muted">Cargando…</p>}
       {rows.map(c => (
         <div key={c.cliente_key} className="card" style={{ padding: 12, marginBottom: 10 }}>
-          <div style={{ fontWeight: 800 }}>{c.nombre_cliente || c.razon_social || c.cliente_key}</div>
+          <div style={{ fontWeight: 800 }}>{c.nombre_cliente || c.cliente_key}</div>
           <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>
             {c.cliente_key}{c.venta_mtd > 0 ? ` · MTD ${moneyNum(c.venta_mtd)}` : ''}
           </div>

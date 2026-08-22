@@ -1,13 +1,11 @@
 {
   "name": "blacksheep-platform",
+  "version": "2.9.0",
   "private": true,
-  "version": "2.0.0",
-  "description": "Black Sheep Field — multi-tenant field sales platform",
+  "description": "Black Sheep Field + Web \u2014 V2.9 Integrado",
   "scripts": {
-    "dev": "npm --prefix apps/field run dev",
-    "build": "npm --prefix apps/field run build",
     "dev:field": "npm --prefix apps/field run dev",
     "build:field": "npm --prefix apps/field run build",
-    "dev:web": "npx --yes serve apps/web -p 5174"
+    "dev:web": "echo 'Static web \u2014 open apps/web/index.html or vercel apps/web'"
   }
 }

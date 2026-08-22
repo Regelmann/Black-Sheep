@@ -71,8 +71,35 @@ function parseOneBlock(block) {
 
 export function parseSkuDetalle(text) {
   if (!text) return []
+  // JSON array (algunos ciclos publican sku_detalle como JSON)
+  if (Array.isArray(text)) {
+    return text.map(item => {
+      if (!item || typeof item !== 'object') return null
+      const nombre = item.nombre || item.producto || item.sku_nombre || item.name || ''
+      if (isGarbageName(String(nombre))) return null
+      return {
+        nombre: String(nombre),
+        promUd: num(item.promUd ?? item.prom_ud ?? item.promedio),
+        udMtd: num(item.udMtd ?? item.ud_mtd ?? item.cantidad_mtd),
+        falta: num(item.falta),
+        promClp: num(item.promClp ?? item.prom_clp ?? item.precio),
+        clpMtd: num(item.clpMtd ?? item.clp_mtd ?? item.venta_mtd),
+        ultima: item.ultima || item.ultima_compra || null,
+        cicloDias: item.cicloDias != null ? num(item.cicloDias) : null,
+        nCompras: item.nCompras != null ? num(item.nCompras) : null,
+        estadoRecompra: item.estadoRecompra || null,
+        sku_canon: item.sku_canon || item.sku || null,
+      }
+    }).filter(Boolean)
+  }
   const raw = String(text).trim()
   if (!raw) return []
+  if (raw.startsWith('[') || raw.startsWith('{')) {
+    try {
+      const j = JSON.parse(raw)
+      return parseSkuDetalle(Array.isArray(j) ? j : [j])
+    } catch (_) { /* seguir con parse texto */ }
+  }
 
   let blocks
   if (raw.includes('\n')) {

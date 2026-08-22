@@ -463,18 +463,11 @@ export default function Cartera({ session }) {
     URL.revokeObjectURL(url)
   }
 
-  if (loading) return <div className="spinner">Cargando cartera...</div>
+  if (loading) return <div className="bs-spinner">Cargando cartera…</div>
 
   return (
     <div>
-      <div style={{
-          background: 'linear-gradient(155deg, #1a1614 0%, #2c2622 55%, #3d342e 100%)',
-          color: '#fff',
-          padding: '28px 20px 26px',
-          borderRadius: '0 0 28px 28px',
-          boxShadow: '0 12px 32px rgba(26,22,20,0.28)',
-          borderBottom: '3px solid #c2410c',
-        }}>
+      <div className="bs-page-hero">
         <div style={{
             fontSize: 11, fontWeight: 800, letterSpacing: '0.08em',
             textTransform: 'uppercase', color: '#fdba74', marginBottom: 8,

@@ -695,12 +695,13 @@ export default function Visita({ session }) {
             type="button"
             onClick={() => setOfertaOpen(true)}
             style={{
-              width: '100%', minHeight: 40, marginTop: 8, borderRadius: 12,
-              border: '1.5px solid #e7e5e4', background: '#fff', color: '#57534e',
-              fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+              width: '100%', marginTop: 8, padding: '6px 4px',
+              border: 'none', background: 'transparent', color: '#78716c',
+              fontWeight: 650, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
+              textDecoration: 'underline', textUnderlineOffset: 3,
             }}
           >
-            Enviar catálogo web al cliente
+            o enviar catálogo web al cliente
           </button>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             <button

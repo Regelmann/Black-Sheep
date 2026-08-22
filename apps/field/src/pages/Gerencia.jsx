@@ -949,19 +949,10 @@ export default function Gerencia({ esGerente }) {
 
   return (
     <div>
-      <div style={{
-          background: 'linear-gradient(145deg, #1c1917 0%, #292524 70%, #44403c 100%)',
-          color: '#fff',
-          padding: '26px 20px 28px',
-          borderRadius: '0 0 24px 24px',
-          boxShadow: '0 8px 24px rgba(28,25,23,0.25)', borderBottom: '3px solid #c2410c',
-        }}>
-        <div style={{
-            fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
-            textTransform: 'uppercase', color: '#fdba74', marginBottom: 6,
-          }}>Vista gerencial</div>
+      <div className="bs-page-hero">
+        <div className="bs-eyebrow">Vista gerencial</div>
         <h1>Resultado del mes</h1>
-        <p>Venta total · terreno · canales</p>
+        <p className="sub">Venta total · terreno · canales</p>
       </div>
       <div className="wrap">
         <button

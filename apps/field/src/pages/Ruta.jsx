@@ -183,6 +183,7 @@ export default function Ruta({ session }) {
   const meAccRef = useRef(null)
   const fittedFecha = useRef(null) // fecha para la que ya hicimos fitBounds
   const userCentered = useRef(false) // ya centramos en GPS del vendedor
+  const autoGpsOnce = useRef(false)
 
 
   const cercanos = (() => {
@@ -222,7 +223,7 @@ export default function Ruta({ session }) {
           if (mapInstance.current && window.google?.maps) {
             userCentered.current = true
             mapInstance.current.panTo({ lat: Number(pos.lat), lng: Number(pos.lng) })
-            mapInstance.current.setZoom(15)
+            mapInstance.current.setZoom(16)
           }
         } catch (_) {}
       } else {
@@ -567,7 +568,7 @@ export default function Ruta({ session }) {
           mapInstance.current.getDiv?.() !== mapRef.current
         if (needNew) {
           mapInstance.current = new maps.Map(mapRef.current, {
-            zoom: 12,
+            zoom: 14,
             center: CENTER,
             disableDefaultUI: true,
             zoomControl: true,
@@ -656,11 +657,29 @@ export default function Ruta({ session }) {
       userCentered.current = true
       try {
         mapInstance.current.panTo(pos)
-        try { mapInstance.current.setZoom(Math.max(mapInstance.current.getZoom() || 0, 15)) } catch (_) {}
-        mapInstance.current.setZoom(15)
+        mapInstance.current.setZoom(16)
       } catch (_) {}
     }
   }, [mapReady, myPos])
+
+  // Auto-GPS al abrir mapa: no esperar a que el usuario toque el FAB
+  useEffect(() => {
+    if (!mapReady || autoGpsOnce.current) return
+    autoGpsOnce.current = true
+    ;(async () => {
+      try {
+        const pos = await getPositionPrecise({ targetAccM: 120, maxWaitMs: 12000 })
+        if (pos?.lat != null && pos?.lng != null) {
+          setMyPos({ ...pos, pending: false })
+          if (mapInstance.current) {
+            userCentered.current = true
+            mapInstance.current.panTo({ lat: Number(pos.lat), lng: Number(pos.lng) })
+            mapInstance.current.setZoom(16)
+          }
+        }
+      } catch (_) {}
+    })()
+  }, [mapReady])
 
   // Markers: siempre redibuja cuando hay mapa + visible
   useEffect(() => {

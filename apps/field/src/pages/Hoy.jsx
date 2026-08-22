@@ -444,7 +444,7 @@ export default function Hoy() {
         {focos.length > 0 && (
           <>
             <div className="section-title hoy-section-title">Focos del mes</div>
-            {focos.map((f, i) => {
+            {focos.slice(0, 3).map((f, i) => {
               const vendido = Number(f.vendido_unidad) || 0
               const metaU   = Number(f.meta_unidad) || 0
               const p       = metaU ? Math.round((vendido / metaU) * 100) : 0
@@ -508,32 +508,38 @@ export default function Hoy() {
           </>
         )}
 
-        {/* Day Summary — 6 métricas en 3x2 */}
-        <div className="section-title hoy-section-title">Resumen de cartera</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+        {/* Day Summary — 4 métricas clave (menos ruido) */}
+        <div className="section-title hoy-section-title">Tu cartera hoy</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
           {[
-            { n: m.reponerHoy,  l: 'Reponer',    color: '#c2410c', route: '/cartera?filtro=ReponerHoy', bg: '#fff4eb' },
-            { n: m.nRiesgo,     l: 'Riesgo',     color: '#dc2626', route: '/cartera?filtro=Riesgo',    bg: '#fef2f2' },
-            { n: m.nEnfri,      l: 'Enfriando',  color: '#d97706', route: '/cartera?filtro=Enfri',     bg: '#fffbeb' },
-            { n: m.nActivos,    l: 'Activos',    color: '#15803d', route: '/cartera?filtro=ActivosMes', bg: '#f0fdf4' },
-            { n: m.nNuevos,     l: 'Nuevos',     color: '#2563eb', route: '/cartera?filtro=Nuevos',    bg: '#eff6ff' },
-            { n: m.totalClientes, l: 'Total',    color: '#57534e', route: '/cartera',                   bg: '#fafaf9' },
+            { n: m.reponerHoy,  l: 'Reponer', color: '#c2410c', route: '/cartera?filtro=ReponerHoy', bg: '#fff4eb' },
+            { n: m.nRiesgo,     l: 'Riesgo',  color: '#dc2626', route: '/cartera?filtro=Riesgo',    bg: '#fef2f2' },
+            { n: m.nNuevos,     l: 'Nuevos',  color: '#2563eb', route: '/cartera?filtro=Nuevos',    bg: '#eff6ff' },
+            { n: m.nActivos,    l: 'Activos', color: '#15803d', route: '/cartera?filtro=ActivosMes', bg: '#f0fdf4' },
           ].map(({ n, l, color, route, bg }) => (
             <button key={l} type="button"
               onClick={() => nav(route)}
               style={{
-                background: bg, border: `1.5px solid ${color}22`, borderRadius: 14,
-                padding: '12px 8px', textAlign: 'center', cursor: 'pointer',
+                background: bg, border: `1.5px solid ${color}22`, borderRadius: 12,
+                padding: '10px 4px', textAlign: 'center', cursor: 'pointer',
                 fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
               }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: '-0.03em' }}>{n}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>{l}</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color, lineHeight: 1, letterSpacing: '-0.03em' }}>{n}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: 3 }}>{l}</div>
             </button>
           ))}
         </div>
 
         {/* Action Queue */}
-        <div className="section-title hoy-section-title" style={{ marginBottom: 8 }}>Tu foco de hoy</div>
+        <div className="section-title hoy-section-title" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span>Tu foco de hoy</span>
+          {m.actionQueue.length > 5 && (
+            <button type="button" onClick={() => nav('/cartera?filtro=ReponerHoy')}
+              style={{ border: 'none', background: 'transparent', color: '#c2410c', fontWeight: 700, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
+              Ver {m.actionQueue.length}
+            </button>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => nav('/mapa')}
@@ -579,7 +585,7 @@ export default function Hoy() {
             </button>
           </div>
         )}
-        {m.actionQueue.map((item, idx) => {
+        {m.actionQueue.slice(0, 5).map((item, idx) => {
           const metaT = TYPE_META[item.type] || TYPE_META.visita
           const res = hoyRes[item.clientId] || hoyRes[item.id]
           const done = res?.resultado

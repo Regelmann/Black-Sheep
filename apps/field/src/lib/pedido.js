@@ -207,12 +207,27 @@ export function formatFechaPedido(iso) {
 }
 
 export function etiquetaEstadoPedido(estado, fuente) {
-  if (fuente === 'catalogo_publico') return { label: 'Catálogo web', color: '#0d9488' }
-  const e = String(estado || 'borrador').toLowerCase()
-  if (e === 'enviado' || e === 'recibido') return { label: e, color: '#15803d' }
-  if (e === 'confirmado' || e === 'entregado') return { label: e, color: '#2563eb' }
-  if (e === 'cancelado') return { label: e, color: '#b91c1c' }
-  return { label: e || 'borrador', color: '#a8a29e' }
+  // Estado real (no mezclar con fuente — el badge de origen va aparte)
+  try {
+    const { etiquetaEstado, colorEstado, normalizarEstado } = require('./pedidoEstados')
+  } catch (_) {}
+  const e = String(estado || '').toLowerCase().trim()
+  const map = {
+    borrador: { label: 'Borrador', color: '#78716c' },
+    recibido: { label: 'Recibido', color: '#c2410c' },
+    confirmado: { label: 'Confirmado', color: '#0369a1' },
+    preparado: { label: 'Preparado', color: '#7c3aed' },
+    enviado: { label: 'Enviado', color: '#0f766e' },
+    entregado: { label: 'Entregado', color: '#15803d' },
+    cancelado: { label: 'Cancelado', color: '#b91c1c' },
+    pendiente_carga: { label: 'Recibido', color: '#c2410c' },
+  }
+  if (!e && fuente === 'catalogo_publico') return map.recibido
+  if (map[e]) return map[e]
+  // aliases
+  if (e === 'enviado_bodega') return map.enviado
+  if (e === 'cargado' || e === 'ok') return map.entregado
+  return { label: e || 'Borrador', color: '#a8a29e' }
 }
 
 export function precioUnitarioDesdeSku(s) {

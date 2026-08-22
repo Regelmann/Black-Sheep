@@ -1,0 +1,60 @@
+================================================================================
+BLACK SHEEP · SISTEMA COMPLETO V3.3
+Stamp: v-BS-PLATFORM-V3.3-SISTEMA
+================================================================================
+
+REGLA DE ENTREGA (siempre)
+  • Siempre paquete ENTERO: apps/field + apps/web + sql + scripts + docs
+  • Nunca parches sueltos de una sola pantalla
+  • Misma lógica visual y de datos en todo el producto
+  • Una sola fuente de verdad: lib/metrics, lib/coach (parseSkuDetalle),
+    lib/pedidoEstados, lib/precios, tokens.css
+
+RUTA EN TU PC
+  %USERPROFILE%\Documents\Black-Sheep
+
+CONTENIDO DEL PAQUETE
+  apps/field/     → App terreno (Hoy, Mapa, Clientes, Stock, Gerencia, Admin)
+  apps/web/       → Landing + login black-sheep.cl
+  sql/            → 01…15 canónicos Supabase
+  scripts/        → KEYFOODS_CICLO_UNICO.py + helpers
+  .github/        → ciclo-diario.yml
+  brand/          → logos
+  docs/           → guías
+
+LÓGICA UNIFICADA (sistema)
+  Nav          Hoy | Mapa | Clientes | Más (Stock, Gerencia, Admin, Salir)
+  Headers      .bs-page-hero en Clientes, Stock, Gerencia, Admin
+  Carga        .bs-spinner en todas las pantallas
+  Precios      negociado → histórico → lista (lib/precios)
+  Mix SKU      parseSkuDetalle (texto + JSON) en Gerencia, ficha, coach
+  Pedidos      pedidoEstados: recibido→confirmado→preparado→enviado→entregado
+  Métricas     computeConsistentMetrics (Hoy / Clientes / Mapa)
+  Offline      cola + pill + flush al recuperar red
+  Mapa         auto-GPS zoom 16 al abrir
+
+PASOS DE DEPLOY
+--------------------------------------------------------------------------------
+1) cd /d %USERPROFILE%\Documents\Black-Sheep
+2) git pull
+3) Descomprimir este zip
+4) Copiar TODO el contenido de BLACKSHEEP\ encima del repo (reemplazar)
+5) (Si hace falta SQL nuevo) Supabase SQL Editor en orden 01→15
+6) git add -A
+7) git commit -m "V3.3 SISTEMA: monorepo completo, UI unificada"
+8) git push
+9) Hard refresh app.black-sheep.cl → stamp v-BS-PLATFORM-V3.3-SISTEMA
+   Hard refresh www.black-sheep.cl
+
+VERCEL
+  • Proyecto field: root apps/field (o config monorepo ya usada)
+  • Proyecto web:   root apps/web
+  • No cambiar env vars salvo que se indique
+
+ROLLBACK
+  Vercel → Deployments → Promote del deployment anterior estable.
+
+CICLO DE DATOS
+  scripts/KEYFOODS_CICLO_UNICO.py  (o el workflow GitHub Actions)
+  Atribución siempre por MAESTRA (cliente→ejecutivo/zona)
+================================================================================

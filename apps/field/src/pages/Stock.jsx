@@ -167,26 +167,14 @@ export default function Stock() {
     return rows
   }, [stock, q, filtro])
 
-  if (loading) return <div className="spinner">Cargando stock…</div>
+  if (loading) return <div className="bs-spinner">Cargando stock…</div>
 
   return (
     <div>
-      <div
-        style={{
-          background: 'linear-gradient(145deg, #1c1917 0%, #292524 70%, #44403c 100%)',
-          color: '#fff',
-          padding: '24px 18px 26px',
-          borderRadius: '0 0 22px 22px',
-          borderBottom: '3px solid #c2410c',
-        }}
-      >
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#fdba74', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
-          Inventario
-        </div>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Stock operativo</h1>
-        <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-          {stock.length} SKU · kg · qué empujar / qué proteger
-        </p>
+      <div className="bs-page-hero">
+        <div className="bs-eyebrow">Inventario</div>
+        <h1>Stock operativo</h1>
+        <p className="sub">{stock.length} SKU · kg · qué empujar / qué proteger</p>
       </div>
 
       <div style={{ padding: 14 }}>
