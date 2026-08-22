@@ -16,6 +16,7 @@ import {
   loadHoyResultados,
 } from '../lib/offline'
 import { skusAReponer } from '../lib/coach'
+import { buildDecisionFeed } from '../lib/decisionEngine'
 
 function limpiaEstado(e) {
   return (e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')
@@ -49,6 +50,7 @@ export default function Hoy() {
   const [pedidoEdit, setPedidoEdit] = useState(null)
   const [prep, setPrep] = useState(null) // item de Action Queue para sheet 10s
   const [hoyRes, setHoyRes] = useState(() => loadHoyResultados())
+  const [command, setCommand] = useState('')
 
   useEffect(() => {
     const on = async () => {
@@ -155,6 +157,8 @@ export default function Hoy() {
 
   const recsHoy = useMemo(() => buildRecomendacionesHoy(cartera, { focos }), [cartera, focos])
   const coaching = useMemo(() => resumenDia(recsHoy, meta), [recsHoy, meta])
+  const decisionFeed = useMemo(() => buildDecisionFeed({ cartera, focos, meta, actividad: actividadHoy }), [cartera, focos, meta, actividadHoy])
+  const commandResults = useMemo(() => { const q=command.trim().toLowerCase(); return (q ? decisionFeed.filter(d=>`${d.title} ${d.reason}`.toLowerCase().includes(q)) : decisionFeed).slice(0,5) }, [command, decisionFeed])
   const m = useMemo(() => computeConsistentMetrics(cartera, meta), [cartera, meta])
 
   // Refrescar resultados locales al volver a Hoy
@@ -299,6 +303,8 @@ export default function Hoy() {
       </div>
 
       <div className="wrap hoy-wrap">
+        <section className="bs-command bs-command-2060"><div className="bs-command-top"><div><div className="bs-command-kicker">BLACK SHEEP · 2060</div><h2>Tu siguiente decisión.</h2><p>No busques información. La información ya viene ordenada para actuar.</p></div><div className="bs-command-orb" aria-hidden="true"><span>✦</span></div></div><div className="bs-command-search"><span>⌕</span><input value={command} onChange={e=>setCommand(e.target.value)} placeholder="¿A quién debería contactar ahora?" aria-label="Buscar decisión" />{command&&<button type="button" onClick={()=>setCommand('')} aria-label="Limpiar">×</button>}</div><div className="bs-decision-feed">{commandResults.map((d,i)=><button type="button" key={d.id} className={`bs-decision-card ${d.type}`} onClick={()=>{if(d.route)nav(d.route);else if(d.clientId)openPrep({clientId:d.clientId,title:d.title,raw:d.raw,insight:d.reason})}}><span className="bs-decision-rank">{String(i+1).padStart(2,'0')}</span><span className="bs-decision-body"><small>{d.type.toUpperCase()} · {d.confidence || 0}% confianza</small><strong>{d.title}</strong><em>{d.reason}</em>{d.why?.length>0&&<span className="bs-decision-why">{d.why.slice(0,2).join(' · ')}</span>}</span><span className="bs-decision-action">{d.actionLabel || 'Abrir'} <b>→</b></span></button>)}</div></section>
+
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${m.totalClientes} clientes`} />}
 
         {/* Hero venta + meta integrada (antes tab Metas) */}

@@ -1,38 +1,102 @@
+/* ============================================================
+   BLACK SHEEP FIELD — Design System v4.0
+   Un solo sistema. Cero conflictos. Todas las pantallas.
+   ============================================================ */
+
 :root {
-  --kf-bg: #f5f2ed;
-  --kf-bg-elevated: #fbf9f6;
-  --kf-surface: #ffffff;
-  --kf-surface-soft: #f8f6f2;
-  --kf-ink: #181614;
-  --kf-ink-soft: #5f5953;
-  --kf-muted: #928a82;
-  --kf-line: #e8e2da;
-  --kf-line-strong: #d8d0c6;
+  /* ── TIPOGRAFÍA ────────────────────────────── */
+  --font: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 
-  --kf-brand: #c2410c;
-  --kf-brand-dark: #9a3412;
-  --kf-brand-soft: #fff3ea;
-  --kf-brand-ring: rgba(194, 65, 12, .16);
+  /* ── COLORES BASE ──────────────────────────── */
+  --bg:         #f4f0ea;   /* fondo de página */
+  --bg-raised:  #faf7f2;   /* elevación 1 */
+  --surface:    #ffffff;   /* cards */
+  --surface-2:  #f8f5f0;   /* cards secundarias */
+  --overlay:    rgba(26,22,20,0.48); /* modales */
 
-  --kf-success: #15803d;
-  --kf-success-soft: #ecfdf3;
-  --kf-warning: #b45309;
-  --kf-warning-soft: #fff8e8;
-  --kf-danger: #dc2626;
-  --kf-danger-soft: #fef2f2;
-  --kf-info: #2563eb;
-  --kf-info-soft: #eff6ff;
+  /* ── TIPOGRAFÍA ────────────────────────────── */
+  --ink:        #1c1917;   /* texto principal */
+  --ink-2:      #44403c;   /* texto secundario */
+  --ink-3:      #78716c;   /* texto terciario */
+  --muted:      #a8a29e;   /* placeholder, ayuda */
 
-  --kf-radius-sm: 10px;
-  --kf-radius-md: 14px;
-  --kf-radius-lg: 18px;
-  --kf-radius-xl: 24px;
-  --kf-radius-pill: 999px;
+  /* ── BORDES ────────────────────────────────── */
+  --line:       #ebe5dc;   /* borde suave */
+  --line-2:     #d6cfc4;   /* borde fuerte */
 
-  --kf-shadow-xs: 0 1px 2px rgba(24, 22, 20, .04);
-  --kf-shadow-sm: 0 4px 14px rgba(24, 22, 20, .055);
-  --kf-shadow-md: 0 12px 32px rgba(24, 22, 20, .10);
+  /* ── BRAND ─────────────────────────────────── */
+  --brand:      #c2410c;
+  --brand-dk:   #9a3412;
+  --brand-lt:   #fff4eb;
+  --brand-ring: rgba(194,65,12,0.20);
 
-  --kf-nav-h: 72px;
-  --kf-font: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* ── SEMÁNTICOS ────────────────────────────── */
+  --ok:         #15803d;
+  --ok-lt:      #ecfdf3;
+  --warn:       #d97706;
+  --warn-lt:    #fffbeb;
+  --danger:     #dc2626;
+  --danger-lt:  #fef2f2;
+  --info:       #2563eb;
+  --info-lt:    #eff6ff;
+
+  /* ── ESPACIADO Y RADIOS ────────────────────── */
+  --r-xs:  8px;
+  --r-sm:  12px;
+  --r-md:  16px;
+  --r-lg:  20px;
+  --r-xl:  24px;
+  --r-pill:999px;
+
+  /* ── SOMBRAS ───────────────────────────────── */
+  --sh-xs:  0 1px 2px rgba(28,25,23,0.04);
+  --sh-sm:  0 4px 14px rgba(28,25,23,0.06);
+  --sh-md:  0 8px 28px rgba(28,25,23,0.10);
+  --sh-lg:  0 16px 48px rgba(28,25,23,0.14);
+
+  /* ── LAYOUT ────────────────────────────────── */
+  --nav-h:  68px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --max-w:  480px;
+
+  /* ── ALIASES BACKWARD COMPAT (eliminar gradualmente) ── */
+  --brand-soft: var(--brand-lt);
+  --brand-dark: var(--brand-dk);
+  --green:      var(--ok);
+  --green-soft: var(--ok-lt);
+  --amber:      var(--warn);
+  --amber-soft: var(--warn-lt);
+  --red:        var(--danger);
+  --red-soft:   var(--danger-lt);
+  --blue:       var(--info);
+  --blue-soft:  var(--info-lt);
+  --radius:     var(--r-lg);
+  --radius-sm:  var(--r-sm);
+  --shadow:     var(--sh-md);
+  --shadow-sm:  var(--sh-xs);
+  --ink-soft:   var(--ink-2);
+  --line-strong: var(--line-2);
+  --bg-elevated: var(--bg-raised);
+  /* kf- aliases */
+  --kf-bg:      var(--bg);
+  --kf-surface: var(--surface);
+  --kf-ink:     var(--ink);
+  --kf-muted:   var(--muted);
+  --kf-line:    var(--line);
+  --kf-brand:   var(--brand);
+  --kf-success: var(--ok);
+  --kf-warning: var(--warn);
+  --kf-danger:  var(--danger);
+  --kf-info:    var(--info);
+  --kf-font:    var(--font);
+  --kf-radius-sm: var(--r-sm);
+  /* bs- aliases */
+  --bs-ink:      var(--ink);
+  --bs-ink-soft: var(--ink-2);
+  --bs-muted:    var(--muted);
+  --bs-line:     var(--line);
+  --bs-accent:   var(--brand);
+  --navy:        var(--ink);
+  --navy-2:      var(--ink-2);
+  --wsp:         #25D366;
 }

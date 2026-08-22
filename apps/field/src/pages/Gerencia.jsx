@@ -924,6 +924,8 @@ export default function Gerencia({ esGerente }) {
   }
 
 
+  const pulse = useMemo(() => { const rows=gerencia||[]; const total=rows.reduce((a,r)=>a+(Number(r.venta_mtd)||0),0); const under=rows.filter(r=>Number(r.meta_mensual||0)>0&&Number(r.venta_mtd||0)<Number(r.meta_mensual||0)).sort((a,b)=>((Number(a.venta_mtd)||0)/(Number(a.meta_mensual)||1))-((Number(b.venta_mtd)||0)/(Number(b.meta_mensual)||1))).slice(0,3); const risks=(carteraCache||[]).filter(c=>Number(c.dias_sin_comprar||0)>=30||/FUGA|RIESGO|CRIT/i.test(String(c.estado_fuga||''))).length; return {total,under,risks,slow:(stockLento||[]).length}; }, [gerencia,carteraCache,stockLento])
+
   if (loading) {
     return (
       <div className="wrap" style={{ paddingTop: 20 }}>
@@ -949,6 +951,8 @@ export default function Gerencia({ esGerente }) {
 
   return (
     <div>
+      <section className="bs-executive-pulse"><div className="bs-pulse-top"><div><span className="bs-command-kicker">EXECUTIVE PULSE · 2060</span><h2>¿Dónde actuaría si tuviera 10 minutos?</h2><p>Señales priorizadas por impacto, no por volumen de datos.</p></div><div className="bs-pulse-value">{money(pulse.total)}</div></div><div className="bs-pulse-grid"><div><strong>{pulse.under.length}</strong><span>zonas bajo meta</span></div><div><strong>{pulse.risks}</strong><span>clientes en riesgo</span></div><div><strong>{pulse.slow}</strong><span>SKUs lentos</span></div></div>{pulse.under.length>0&&<div className="bs-pulse-actions">{pulse.under.map((r,i)=><button type="button" key={i} onClick={()=>setCanalSel(r.ejecutivo)}><span>{r.ejecutivo}</span><strong>{Math.round((Number(r.venta_mtd)||0)/(Number(r.meta_mensual)||1)*100)}%</strong><em>ver causa →</em></button>)}</div>}</section>
+>
       <div className="bs-page-hero">
         <div className="bs-eyebrow">Vista gerencial</div>
         <h1>Resultado del mes</h1>

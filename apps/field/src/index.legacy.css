@@ -3,57 +3,8 @@
    Charcoal + terracota + crema. Mobile-first, 480px.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
 
-:root {
-  --bg: #f3efe9;
-  --bg-elevated: #faf8f5;
-  --surface: #ffffff;
-  --ink: #1a1614;
-  --ink-soft: #57534e;
-  --muted: #a8a29e;
-  --line: #ebe6df;
-  --line-strong: #d6cfc6;
-
-  --brand: #c2410c;
-  --brand-dark: #9a3412;
-  --brand-soft: #fff4eb;
-  --brand-ring: rgba(194, 65, 12, 0.22);
-
-  --navy: #1a1614;
-  --navy-2: #2a2421;
-
-  --green: #3f6f4a;
-  --green-soft: #ecfdf3;
-  --amber: #d97706;
-  --amber-soft: #fffbeb;
-  --red: #dc2626;
-  --red-soft: #fef2f2;
-  --blue: #2563eb;
-  --blue-soft: #eff6ff;
-  --wsp: #3d7a4a;
-
-  --radius: 18px;
-  --radius-sm: 12px;
-  --radius-xs: 8px;
-  --shadow: 0 4px 24px rgba(26, 22, 20, 0.06);
-  --shadow-sm: 0 1px 3px rgba(26, 22, 20, 0.05);
-  --shadow-lg: 0 12px 40px rgba(26, 22, 20, 0.14);
-  --nav-h: 72px;
-  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-
-  /* aliases usados en parches viejos */
-  --kf-bg: var(--bg);
-  --kf-surface: var(--surface);
-  --kf-ink: var(--ink);
-  --kf-muted: var(--muted);
-  --kf-line: var(--line);
-  --kf-accent: var(--brand);
-  --kf-accent-soft: var(--brand-soft);
-  --kf-ok: var(--green);
-  --kf-radius: var(--radius);
-  --kf-font: var(--font);
-}
+/* tokens → ver styles/tokens.css */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

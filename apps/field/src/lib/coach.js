@@ -140,14 +140,16 @@ export function parseSkuDetalle(text) {
 }
 
 /** $ efectivo del mes: clpMtd o estimación promClp/promUd * udMtd */
-export function clpEfectivo(s) {
+export function clpEfectivo(s, precioLista = 0) {
   const clp = Number(s?.clpMtd) || 0
   if (clp > 0) return clp
   const ud = Number(s?.udMtd) || 0
   const promClp = Number(s?.promClp) || 0
   const promUd = Number(s?.promUd) || 0
   if (ud > 0 && promClp > 0 && promUd > 0) return Math.round((promClp / promUd) * ud)
-  if (ud > 0 && promClp > 0 && promUd <= 0) return Math.round(promClp) // last resort
+  if (ud > 0 && promClp > 0 && promUd <= 0) return Math.round(promClp)
+  // Último recurso: usar precio lista × cantidad
+  if (ud > 0 && precioLista > 0) return Math.round(ud * precioLista)
   return 0
 }
 

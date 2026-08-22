@@ -102,7 +102,7 @@ function TabClientes({ onFlash }) {
     try {
       let query = supabase
         .from('cartera')
-        .select('cliente_key,nombre_cliente,razon_social,comuna,ejecutivo_id,venta_mtd')
+        .select('cliente_key,nombre_cliente,comuna,ejecutivo_id,venta_mtd')
         .order('nombre_cliente')
         .limit(200)
       const term = q.trim()

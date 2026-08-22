@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { supabase, initSupabase, getActiveTenant, availableTenants } from '../lib/supabase'
-import { resolveTenantFromEmail, resolveTenant, saveTenantId } from '../lib/tenants'
+import { resolveTenantFromEmail, resolveTenant, saveTenantId, applyTenantBrand } from '../lib/tenants'
 
 export default function Login() {
   const tenants = useMemo(() => availableTenants(), [])
@@ -42,6 +42,7 @@ export default function Login() {
       }
       initSupabase(tenant)
       saveTenantId(tenant.id)
+      applyTenantBrand(tenant)  // colores de la empresa al instante
 
       const { error: err } = await supabase.auth.signInWithPassword({
         email: em,

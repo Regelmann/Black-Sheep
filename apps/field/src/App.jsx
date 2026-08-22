@@ -1,7 +1,7 @@
 import { useEffect, useState, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase, initSupabase, getActiveTenant } from './lib/supabase'
-import { resolveTenant } from './lib/tenants'
+import { resolveTenant, applyTenantBrand } from './lib/tenants'
 import Login from './pages/Login.jsx'
 import Hoy from './pages/Hoy.jsx'
 import Ruta from './pages/Ruta.jsx'
@@ -15,7 +15,7 @@ import { NavBar } from './components.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V3.4'
+export const BUILD_STAMP = 'v-BS-2060-V6.0'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 // id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
@@ -69,7 +69,10 @@ export default function App() {
 
   useEffect(() => {
     const t = resolveTenant()
-    if (t) initSupabase(t)
+    if (t) {
+      initSupabase(t)
+      applyTenantBrand(t)  // aplica colores del tenant al DOM inmediatamente
+    }
   }, [])
 
   useEffect(() => {
@@ -165,9 +168,15 @@ export default function App() {
   if (session === undefined) {
     return (
       <div className="bs-boot">
-        <div className="bs-boot-logo">🐑</div>
+        <div className="bs-boot-logo-wrap">
+          <img src="/brand/logo-mark-192.png" alt="Black Sheep" className="bs-boot-logo-img"
+            onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }}
+          />
+          <div className="bs-boot-logo-fb" style={{display:'none'}}>BS</div>
+        </div>
+        <p className="bs-boot-name">Black Sheep Field</p>
         <div className="bs-boot-bar"><span /></div>
-        <p>Iniciando Black Sheep Field…</p>
+        <p>Iniciando…</p>
       </div>
     )
   }
@@ -181,7 +190,12 @@ export default function App() {
   if (!ejecutivo || !eidVista) {
     return (
       <div className="bs-boot">
-        <div className="bs-boot-logo">🐑</div>
+        <div className="bs-boot-logo-wrap">
+          <img src="/brand/logo-mark-192.png" alt="Black Sheep" className="bs-boot-logo-img"
+            onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }}
+          />
+          <div className="bs-boot-logo-fb" style={{display:'none'}}>BS</div>
+        </div>
         <div className="bs-boot-bar"><span /></div>
         <p>Cargando tu perfil…</p>
       </div>

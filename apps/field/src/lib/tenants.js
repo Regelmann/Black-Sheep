@@ -1,35 +1,40 @@
 /**
- * Black Sheep Field — registro de tenants (empresas).
+ * BLACK SHEEP FIELD — Multi-tenant registry
  *
- * Fase 1: un proyecto Supabase por empresa (aislamiento fuerte).
- * El login de black-sheep.cl resuelve el tenant y la app se conecta
- * a ese Supabase. KeyFoods es el primer cliente; Demo valida el producto.
+ * Arquitectura:
+ *   - Black Sheep = identidad de plataforma (logo, colores propios)
+ *   - Cada empresa cliente = sus colores + logo aplicados dinámicamente
+ *   - El theming se aplica en runtime via CSS custom properties en <html>
+ *   - Un Supabase por empresa → aislamiento total de datos
  *
- * Env (Vercel / .env):
- *   VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY     → default (KeyFoods)
- *   VITE_TENANT_KEYFOODS_URL / _ANON_KEY           → opcional override
- *   VITE_TENANT_DEMO_URL / _ANON_KEY               → tenant demo
+ * Flujo de resolución (orden):
+ *   URL ?tenant= → subdominio → localStorage → email → default
  */
 
 const env = (k, fallback = '') => {
-  try {
-    return (import.meta.env[k] || fallback || '').trim()
-  } catch {
-    return fallback
-  }
+  try { return (import.meta.env[k] || fallback || '').trim() } catch { return fallback }
 }
 
-/** @typedef {{
- *  id: string
- *  name: string
- *  slug: string
- *  domains: string[]
- *  emailHints: string[]
- *  supabaseUrl: string
- *  supabaseAnon: string
- *  features: { gerencia: boolean, catalogo: boolean, mapa: boolean, commerce: boolean }
- *  brand?: { accent?: string }
- * }} Tenant */
+/**
+ * @typedef {{
+ *   id: string
+ *   name: string           // nombre de la empresa cliente
+ *   slug: string
+ *   domains: string[]
+ *   emailHints: string[]
+ *   supabaseUrl: string
+ *   supabaseAnon: string
+ *   features: { gerencia: boolean, catalogo: boolean, mapa: boolean, commerce: boolean }
+ *   brand: {
+ *     accent: string       // color primario de la empresa
+ *     accentDark: string   // versión oscura del accent
+ *     accentSoft: string   // versión suave (bg de botones ghost)
+ *     accentRing: string   // sombra de focus/ring
+ *     logoUrl?: string     // URL del logo de la empresa (para cabeceras de la app)
+ *     name: string         // nombre para mostrar en la app
+ *   }
+ * }} Tenant
+ */
 
 /** @type {Tenant[]} */
 export const TENANTS = [
@@ -37,93 +42,78 @@ export const TENANTS = [
     id: 'keyfoods',
     name: 'KeyFoods',
     slug: 'keyfoods',
-    domains: ['keyfoods.cl', 'keyfoods.com'],
+    domains: ['keyfoods.cl', 'keyfoods.com', 'app.black-sheep.cl'],
     emailHints: ['keyfoods'],
-    supabaseUrl: env('VITE_TENANT_KEYFOODS_URL', env('VITE_SUPABASE_URL')),
+    supabaseUrl:  env('VITE_TENANT_KEYFOODS_URL',  env('VITE_SUPABASE_URL')),
     supabaseAnon: env('VITE_TENANT_KEYFOODS_ANON_KEY', env('VITE_SUPABASE_ANON_KEY')),
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
-    brand: { accent: '#c2410c' },
+    brand: {
+      name:        'KeyFoods',
+      accent:      '#c2410c',   // naranja KeyFoods
+      accentDark:  '#9a3412',
+      accentSoft:  '#fff4eb',
+      accentRing:  'rgba(194,65,12,0.20)',
+      logoUrl:     null,        // usar logo de Black Sheep hasta que tengan el suyo
+    },
   },
   {
     id: 'demo',
-    name: 'Demo Black Sheep',
+    name: 'Demo',
     slug: 'demo',
-    domains: ['demo.black-sheep.cl', 'black-sheep.cl'],
-    emailHints: ['demo', 'blacksheep'],
-    supabaseUrl: env('VITE_TENANT_DEMO_URL', env('VITE_SUPABASE_URL')),
+    domains: ['demo.black-sheep.cl'],
+    emailHints: ['demo', 'blacksheep', 'black-sheep'],
+    supabaseUrl:  env('VITE_TENANT_DEMO_URL',  env('VITE_SUPABASE_URL')),
     supabaseAnon: env('VITE_TENANT_DEMO_ANON_KEY', env('VITE_SUPABASE_ANON_KEY')),
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
-    brand: { accent: '#39ff14' },
+    brand: {
+      name:        'Demo',
+      accent:      '#0ea5e9',   // azul demo → diferente del naranja de prod
+      accentDark:  '#0284c7',
+      accentSoft:  '#e0f2fe',
+      accentRing:  'rgba(14,165,233,0.20)',
+      logoUrl:     null,
+    },
   },
 ]
 
 const STORAGE_KEY = 'bs_tenant_id'
 
-export function listTenants() {
-  return TENANTS.filter(t => t.supabaseUrl && t.supabaseAnon)
-}
+export const listTenants    = () => TENANTS.filter(t => t.supabaseUrl && t.supabaseAnon)
+export const getTenantById  = id => TENANTS.find(t => t.id === id || t.slug === id) || null
 
-export function getTenantById(id) {
-  if (!id) return null
-  return TENANTS.find(t => t.id === id || t.slug === id) || null
-}
-
-/**
- * Resuelve tenant por email (dominio o hint en local-part).
- * Ej: juan@keyfoods.cl → keyfoods
- *     demo@black-sheep.cl → demo
- */
 export function resolveTenantFromEmail(email) {
   const e = String(email || '').trim().toLowerCase()
   if (!e || !e.includes('@')) return null
   const [local, domain] = e.split('@')
   const available = listTenants()
-
   for (const t of available) {
     if (t.domains.some(d => domain === d || domain.endsWith('.' + d))) return t
   }
   for (const t of available) {
     if (t.emailHints.some(h => local.includes(h) || domain.includes(h))) return t
   }
-
-  // Un solo tenant configurado → ese
   if (available.length === 1) return available[0]
-  // Default KeyFoods si existe
   return getTenantById('keyfoods') || available[0] || null
 }
 
-export function saveTenantId(id) {
-  try {
-    if (id) localStorage.setItem(STORAGE_KEY, id)
-    else localStorage.removeItem(STORAGE_KEY)
-  } catch { /* ignore */ }
-}
-
-export function loadSavedTenantId() {
-  try {
-    return localStorage.getItem(STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
+export const saveTenantId    = id => { try { id ? localStorage.setItem(STORAGE_KEY, id) : localStorage.removeItem(STORAGE_KEY) } catch {} }
+export const loadSavedTenantId = () => { try { return localStorage.getItem(STORAGE_KEY) } catch { return null } }
 
 export function resolveTenantFromUrl() {
   try {
     const u = new URL(window.location.href)
     const q = u.searchParams.get('tenant') || u.searchParams.get('empresa')
     if (q) return getTenantById(q)
-    // subdominio: keyfoods.app.black-sheep.cl
     const host = u.hostname || ''
     const parts = host.split('.')
     if (parts.length >= 3) {
       const sub = parts[0]
       if (sub && sub !== 'app' && sub !== 'www') return getTenantById(sub)
     }
-  } catch { /* ignore */ }
+  } catch {}
   return null
 }
 
-/** Orden: URL → localStorage → email → default */
 export function resolveTenant({ email } = {}) {
   return (
     resolveTenantFromUrl() ||
@@ -133,4 +123,28 @@ export function resolveTenant({ email } = {}) {
     listTenants()[0] ||
     null
   )
+}
+
+/**
+ * Aplica el branding del tenant al documento.
+ * Sobreescribe SOLO las variables de brand — el resto del design system no cambia.
+ * <cite index="32-1">El patrón correcto: base stylesheet define tokens por defecto,
+ * al resolver tenant se aplican overrides en document.documentElement.</cite>
+ */
+export function applyTenantBrand(tenant) {
+  if (!tenant?.brand) return
+  const r = document.documentElement
+  const b = tenant.brand
+  r.style.setProperty('--brand',      b.accent)
+  r.style.setProperty('--brand-dk',   b.accentDark)
+  r.style.setProperty('--brand-lt',   b.accentSoft)
+  r.style.setProperty('--brand-ring', b.accentRing)
+  // aliases backward-compat
+  r.style.setProperty('--brand-dark', b.accentDark)
+  r.style.setProperty('--brand-soft', b.accentSoft)
+  r.style.setProperty('--kf-brand',   b.accent)
+  r.style.setProperty('--bs-accent',  b.accent)
+  // Nombre de la empresa para mostrar
+  if (b.name) r.setAttribute('data-tenant', b.name)
+  if (tenant.id) r.setAttribute('data-tenant-id', tenant.id)
 }

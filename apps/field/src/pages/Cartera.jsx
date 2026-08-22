@@ -1151,67 +1151,60 @@ export default function Cartera({ session }) {
                       )}
 
                       {skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).length > 0 ? (
-                        skus.filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre)).map((s, i) => {
+                        skus
+                          .filter(s => s.nombre && s.nombre.length > 2 && !/^\d+$/.test(s.nombre))
+                          .sort((a, b) => (Number(b.clpMtd) || Number(b.udMtd) || 0) - (Number(a.clpMtd) || Number(a.udMtd) || 0))
+                          .map((s, i) => {
                           const p = pctRitmo(s.udMtd, s.promUd)
                           const barPct = p != null ? Math.min(100, Math.max(0, p)) : 0
                           const barColor = p == null ? '#d6d3d1' : p >= 100 ? '#22c55e' : p >= 50 ? '#f59e0b' : '#ef4444'
+                          const clp = clpEfectivo(s)
+                          const tieneData = s.udMtd > 0 || s.promUd > 0 || clp > 0
                           return (
                             <div
                               key={i}
                               style={{
-                                padding: '12px 0',
-                                borderBottom: '1px solid #f5f5f4',
+                                padding: '10px 0',
+                                borderBottom: i < skus.length - 1 ? '1px solid #f5f5f4' : 'none',
+                                opacity: tieneData ? 1 : 0.5,
                               }}
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1614', flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1614', flex: 1, minWidth: 0, lineHeight: 1.3 }}>
                                   {s.nombre}
                                 </div>
-                                <span style={{ fontWeight: 800, fontSize: 13, color: barColor, whiteSpace: 'nowrap' }}>
-                                  {p != null ? p + '%' : '—'}
+                                <span style={{ fontWeight: 800, fontSize: 13, color: barColor, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                  {clp > 0 ? money(clp) : p != null ? p + '%' : '—'}
                                 </span>
                               </div>
-                              {/* Barra de avance vs promedio */}
-                              <div style={{
-                                marginTop: 6, height: 6, borderRadius: 999, background: '#f5f5f4', overflow: 'hidden',
-                              }}>
-                                <div style={{
-                                  width: barPct + '%', height: '100%', borderRadius: 999,
-                                  background: barColor, transition: 'width .3s ease',
-                                }} />
-                              </div>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  fontSize: 11,
-                                  color: '#78716c',
-                                  marginTop: 5,
-                                  gap: 8,
-                                }}
-                              >
-                                <span>
-                                  Mes {Number(s.udMtd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud · {money(clpEfectivo(s))}
-                                </span>
-                                <span>
-                                  prom {Number(s.promUd || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })} · {money(s.promClp)}
-                                </span>
-                              </div>
-                              {(s.falta > 0 || s.estadoRecompra || s.cicloDias) && (
-                                <div style={{ fontSize: 11, color: s.estadoRecompra === 'RECOMPRAR_HOY' ? '#b91c1c' : '#a8a29e', marginTop: 3, fontWeight: 600 }}>
-                                  {s.estadoRecompra === 'RECOMPRAR_HOY' ? 'Reponer hoy' :
-                                   s.estadoRecompra === 'RECOMPRAR_PRONTO' ? 'Reponer pronto' :
-                                   s.cicloDias ? `Ciclo ~${s.cicloDias}d` : ''}
-                                  {s.falta > 0 ? ` · falta ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })}` : ''}
-                                  {s.diasPara != null && s.estadoRecompra === 'OK' ? ` · en ${s.diasPara}d` : ''}
-                                </div>
+                              {tieneData && (
+                                <>
+                                  <div style={{ marginTop: 5, height: 4, borderRadius: 999, background: '#f0ece6', overflow: 'hidden' }}>
+                                    <div style={{ width: barPct + '%', height: '100%', borderRadius: 999, background: barColor, transition: 'width .3s ease' }} />
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#a8a29e', marginTop: 4, gap: 8 }}>
+                                    <span>
+                                      {s.udMtd > 0 ? `${Number(s.udMtd).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud este mes` : 'Sin compra este mes'}
+                                    </span>
+                                    <span>
+                                      {s.promUd > 0 ? `prom ${Number(s.promUd).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud` : ''}
+                                      {s.promClp > 0 ? ` · ${money(s.promClp)}` : ''}
+                                    </span>
+                                  </div>
+                                  {(s.estadoRecompra === 'RECOMPRAR_HOY' || s.estadoRecompra === 'RECOMPRAR_PRONTO') && (
+                                    <div style={{ fontSize: 11, color: s.estadoRecompra === 'RECOMPRAR_HOY' ? '#b91c1c' : '#c2410c', marginTop: 3, fontWeight: 700 }}>
+                                      {s.estadoRecompra === 'RECOMPRAR_HOY' ? '⚡ Reponer hoy' : '↑ Reponer pronto'}
+                                      {s.falta > 0 ? ` · faltan ${Number(s.falta).toLocaleString('es-CL', { maximumFractionDigits: 1 })} ud` : ''}
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           )
                         })
                       ) : (
-                        <div className="muted" style={{ fontSize: 12, padding: '8px 0' }}>
-                          Sin mix de productos cargado
+                        <div style={{ fontSize: 12, color: '#a8a29e', padding: '10px 0', textAlign: 'center' }}>
+                          Sin historial de productos. Corré el ciclo para ver el mix.
                         </div>
                       )}
 

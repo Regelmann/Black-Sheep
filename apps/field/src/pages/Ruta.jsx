@@ -1362,11 +1362,11 @@ export default function Ruta({ session }) {
         {listaOpen && (
           <div>
             {!visitas.length && (
-              <div className="card center" style={{ marginTop: 0 }}>
-                <p style={{ fontWeight: 600, marginBottom: 6 }}>Sin paradas aún</p>
-                <p className="muted">
-                  Tocá <b>Armar ruta del día</b> (GPS + prioridades) o un pin y <b>+ A la ruta</b>.
-                </p>
+              <div style={{ padding: '14px 16px', background: '#fafaf9', borderRadius: 12, margin: '8px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, color: '#a8a29e', fontWeight: 600 }}>Sin paradas en el itinerario</div>
+                <div style={{ fontSize: 12, color: '#c4bdb5', marginTop: 4 }}>
+                  Tocá <b style={{ color: '#c2410c' }}>Armar ruta del día</b> o añadí un pin desde el mapa.
+                </div>
               </div>
             )}
             {visitas.map(v => (
