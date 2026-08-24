@@ -329,7 +329,7 @@ export default function Gerencia({ esGerente }) {
           .slice(0, 25)
         setStockLento(lento)
         // Alerta: SKU de foco sin precio publicado
-        const sp = (stockData || []).filter(s => s.es_foco_mes && !(Number(s.precio_unidad||0) > 0 || Number(s.precio_lista||0) > 0 || Number(s.precio||0) > 0))
+        const sp = (sk || []).filter(s => s.es_foco_mes && !(Number(s.precio_unidad||0) > 0 || Number(s.precio_lista||0) > 0 || Number(s.precio||0) > 0))
         if (sp.length) console.warn('[BS] Focos sin precio:', sp.length, sp.slice(0,3).map(s=>s.producto_nombre))
         window.__bs_foco_sin_precio = sp.length
       } catch (e) {
@@ -886,6 +886,8 @@ export default function Gerencia({ esGerente }) {
         }
       }
     }
+
+    const nomBuscar = (nombreHint || fromGer?.nombre_cliente || fromGer?.razon_social || '').trim()
 
     if (!skus.length && nomBuscar) {
       const q = String(nomBuscar).slice(0, 48).replace(/%/g, '')

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
+import { pctAvanceFoco } from '../lib/utils'
 import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics'
 import { buildRecomendacionesHoy, resumenDia } from '../lib/recomendaciones'
@@ -15,6 +16,7 @@ import {
   clearActionQueue,
   isProbablyOffline,
   loadHoyResultados,
+  loadOfflineSnapshot,
 } from '../lib/offline'
 import { skusAReponer } from '../lib/coach'
 import { buildDecisionFeed, groupByAttention, daySummary } from '../lib/decisionEngine'
@@ -55,6 +57,7 @@ export default function Hoy() {
   const [prep, setPrep] = useState(null) // item de Action Queue para sheet 10s
   const [hoyRes, setHoyRes] = useState(() => loadHoyResultados())
   const [command, setCommand] = useState('')
+  const [cargaAviso, setCargaAviso] = useState(null) // aviso honesto si la cartera no cargo
 
   useEffect(() => {
     const on = async () => {
@@ -116,8 +119,11 @@ export default function Hoy() {
       try {
         const start = new Date()
         start.setHours(0, 0, 0, 0)
-        const [cRes, mRes, fRes, pRes, chRes] = await Promise.all([
-          supabase.from('cartera').select('*').eq('ejecutivo_id', eidVista),
+        // allSettled: que falle pedidos o checkins NO puede dejar la cartera
+        // en cero. Antes un rechazo mataba el bloque entero y Hoy mostraba
+        // "Venta mes $0 / 0 reponer" sin decir que no habia cargado nada.
+        const [cRes, mRes, fRes, pRes, chRes] = (await Promise.allSettled([
+          supabase.from('cartera').select('*').eq('ejecutivo_id', eidVista).limit(5000),
           supabase.from('metas').select('*').eq('ejecutivo_id', eidVista).order('mes', { ascending: false }).limit(1),
           supabase.from('focos').select('*').eq('ejecutivo_id', eidVista),
           listarPedidosHoy(eidVista),
@@ -126,14 +132,36 @@ export default function Hoy() {
             .select('id,resultado,hora_llegada')
             .gte('hora_llegada', start.toISOString())
             .limit(100),
-        ])
+        ])).map(r => (r.status === 'fulfilled' ? r.value : { data: null, error: r.reason }))
         if (cancelled) return
-        const rows = cRes.data || []
+
+        let rows = cRes?.data || []
+        const errCartera = cRes?.error || null
+        // Sin datos frescos: caer al ultimo snapshot que dejo Clientes.
+        // Mejor cartera de ayer marcada como tal que un $0 falso.
+        let desdeCache = false
+        if (!rows.length) {
+          const off = loadOfflineSnapshot()
+          if (off?.clientes?.length) {
+            rows = off.clientes
+            desdeCache = true
+          }
+        }
         setCartera(rows)
-        setMeta(mRes.data?.[0] || null)
-        setFocos(fRes.data || [])
+        setCargaAviso(
+          errCartera
+            ? { tono: 'error', texto: 'No pude cargar tu cartera. Los numeros de abajo estan incompletos.' }
+            : desdeCache
+              ? { tono: 'cache', texto: 'Mostrando la ultima cartera guardada — no hubo respuesta del servidor.' }
+              : !rows.length
+                ? { tono: 'vacio', texto: 'Tu cartera vino vacia para esta zona. Revisa la bajada del ciclo.' }
+                : null
+        )
+
+        setMeta(mRes?.data?.[0] || null)
+        setFocos(fRes?.data || [])
         const snap = rows.map(r => r.fecha_snapshot).filter(Boolean).sort().pop()
-        setDataAsOf(snap || mRes.data?.[0]?.fecha_snapshot || null)
+        setDataAsOf(snap || mRes?.data?.[0]?.fecha_snapshot || null)
 
         const pedidos = pRes?.data || []
         let totalPedidos = 0
@@ -283,7 +311,7 @@ export default function Hoy() {
         <div
           style={{
             position: 'sticky',
-            top: 0,
+            top: 'var(--topbar-h, 0px)',
             zIndex: 40,
             background: offline ? '#92400e' : '#b45309',
             color: '#fff',
@@ -439,11 +467,9 @@ export default function Hoy() {
             <div className="bs-hoy-focos" style={{ marginTop: 12 }}>
               <div className="bs-hoy-focos-title">Focos del mes</div>
               {focos.slice(0, 6).map((f, i) => {
-                const metaU = Number(f.meta_unidad) || 0
-                const vend = Number(f.vendido_unidad) || 0
-                const pct = f.pct_avance != null
-                  ? Number(f.pct_avance)
-                  : (metaU > 0 ? Math.round((vend / metaU) * 100) : 0)
+                const metaU = Number(f.meta_unidad ?? f.meta_unidad_mes ?? 0)
+                const vend = Number(f.vendido_unidad ?? f.vendido_unidad_mtd ?? 0)
+                const pct = pctAvanceFoco(f)
                 const bar = Math.max(0, Math.min(100, pct))
                 return (
                   <div key={f.id || i} className="bs-hoy-foco-row">
@@ -471,6 +497,14 @@ export default function Hoy() {
 
 
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${m.totalClientes} clientes`} />}
+
+        {/* Aviso honesto: si la cartera no cargo, decirlo en vez de mostrar $0 */}
+        {cargaAviso && (
+          <div className={'bs-carga-aviso is-' + cargaAviso.tono}>
+            <span>{cargaAviso.texto}</span>
+            <button type="button" onClick={() => window.location.reload()}>Reintentar</button>
+          </div>
+        )}
 
         {/* Compact metrics — no Excel wall */}
         <div className="bs-hoy-strip">

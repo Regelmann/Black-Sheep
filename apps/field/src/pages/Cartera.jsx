@@ -78,7 +78,7 @@ function alertaCliente(c) {
         : `Lleva ${dias || '—'}d sin comprar. Agendá visita de recuperación.`,
     }
   }
-  if (/RIESGO|ENFRIANDO/i.test(c.estado_fuga || '') || (dias === dias && dias >= 21)) {
+  if (/RIESGO|ENFRIANDO/i.test(c.estado_fuga || '') || (!isNaN(dias) && dias >= 21)) {
     return {
       tone: 'warn',
       title: 'Hoy deberías contactarlo',

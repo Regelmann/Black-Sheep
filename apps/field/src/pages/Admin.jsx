@@ -97,6 +97,13 @@ function TabClientes({ onFlash }) {
       .then(({ data }) => setEjecutivos(data || []))
   }, [])
 
+  // id ejecutivo → fila (para resolver la zona del cliente vía su ejecutivo)
+  const ejByID = useMemo(() => {
+    const m = {}
+    for (const e of ejecutivos || []) if (e?.id) m[e.id] = e
+    return m
+  }, [ejecutivos])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {

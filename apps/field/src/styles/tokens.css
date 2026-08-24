@@ -45,6 +45,9 @@
 
   /* LAYOUT */
   --nav-h:  68px;
+  /* Alto real de .bs-topbar — lo publica App.jsx al montar/redimensionar.
+     Los sticky de cada página se anclan a este valor, no a 0. */
+  --topbar-h: 0px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --max-w:  480px;
 

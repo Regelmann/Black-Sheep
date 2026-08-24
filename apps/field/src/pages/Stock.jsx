@@ -16,6 +16,17 @@ function unidadHint() {
   return 'kg'
 }
 
+/** Cobertura legible. Arriba de ~6 meses el numero no significa nada
+ *  (rotacion casi cero) — decir "sin rotacion" es mas util que "2.193,5 dias". */
+function fmtCobertura(d) {
+  const v = Number(d)
+  if (d == null || d === '' || isNaN(v)) return null
+  if (v < 0) return { txt: 'sin dato', tono: 'muted' }
+  if (v > 180) return { txt: 'sin rotación', tono: 'alto' }
+  if (v > 90) return { txt: '+90 días cob.', tono: 'alto' }
+  return { txt: `${v.toLocaleString('es-CL', { maximumFractionDigits: 1 })} días cob.`, tono: null }
+}
+
 export default function Stock() {
   const [loading, setLoading] = useState(true)
   const [stock, setStock] = useState([])
@@ -29,17 +40,19 @@ export default function Stock() {
   useEffect(() => {
     ;(async () => {
       setLoading(true)
-      const [stockRes, cartRes] = await Promise.all([
+      const [stockRes, cartRes] = (await Promise.allSettled([
         supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }),
         supabase
           .from('cartera')
           .select('cliente_key,nombre_cliente,sku_detalle,productos_top,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id')
           .not('sku_detalle', 'is', null)   // solo clientes con mix cargado
           .limit(3000),
-      ])
-      setCarteraStock(cartRes.data || [])
-      setStock(stockRes.data || [])
-      const snap = (stockRes.data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
+      ])).map(r => (r.status === 'fulfilled' ? r.value : { data: null, error: r.reason }))
+      if (cartRes?.error) console.error('[BS] cartera para compradores:', cartRes.error)
+      if (stockRes?.error) console.error('[BS] stock:', stockRes.error)
+      setCarteraStock(cartRes?.data || [])
+      setStock(stockRes?.data || [])
+      const snap = (stockRes?.data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
       if (snap) setDataAsOf(snap)
       setLoading(false)
     })()
@@ -332,18 +345,23 @@ export default function Stock() {
                     {fmtNum(s.stock_operativo)}{' '}
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#78716c' }}>{u}</span>
                   </div>
-                  {s.cobertura_dias != null && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        marginTop: 2,
-                        color: crit ? '#dc2626' : alto ? '#d97706' : '#3f6212',
-                      }}
-                    >
-                      {fmtNum(s.cobertura_dias)} días cob.
-                    </div>
-                  )}
+                  {(() => {
+                    const c = fmtCobertura(s.cobertura_dias)
+                    if (!c) return null
+                    return (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          marginTop: 2,
+                          color: c.tono === 'muted' ? '#a8a29e'
+                            : crit ? '#dc2626' : (alto || c.tono === 'alto') ? '#d97706' : '#3f6212',
+                        }}
+                      >
+                        {c.txt}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
               {accion && (
@@ -380,8 +398,21 @@ export default function Stock() {
                     {res.enReposicion > 0 && (
                       <p className="bs-stock-buyers-sub">{res.enReposicion} en ventana de reposición</p>
                     )}
-                    {res.buyers.length === 0 ? (
-                      <p className="bs-stock-buyers-sub">Sin match en cartera con este SKU en historial.</p>
+                    {carteraStock.length === 0 ? (
+                      <p className="bs-stock-buyers-sub">
+                        No pude leer tu cartera — sin ella no puedo cruzar compradores.{' '}
+                        <button
+                          type="button"
+                          onClick={() => window.location.reload()}
+                          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand)', fontWeight: 800, fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline' }}
+                        >
+                          Reintentar
+                        </button>
+                      </p>
+                    ) : res.buyers.length === 0 ? (
+                      <p className="bs-stock-buyers-sub">
+                        Ninguno de tus {carteraStock.length} clientes con historial compró este producto.
+                      </p>
                     ) : (
                       res.buyers.slice(0, 8).map(b => (
                         <button

@@ -10,6 +10,16 @@ export function pctNum(x) {
   return p <= 1.5 ? Math.round(p * 100) : Math.round(p)
 }
 
+/** Avance de un foco, en 0-100 entero.
+ *  Fuente de verdad: vendido/meta. `pct_avance` de la bajada llega como
+ *  FRACCION (0.7619), asi que solo se usa de respaldo y normalizado. */
+export function pctAvanceFoco(f) {
+  const meta = Number(f?.meta_unidad ?? f?.meta_unidad_mes ?? 0)
+  const vend = Number(f?.vendido_unidad ?? f?.vendido_unidad_mtd ?? 0)
+  if (meta > 0) return Math.round((vend / meta) * 100)
+  return pctNum(f?.pct_avance)
+}
+
 export function pctBar(pct) {
   const p = Math.min(Math.max(pct, 0), 200)
   const color = pct >= 100 ? '#16a34a' : pct >= 80 ? '#2563eb' : pct >= 50 ? '#f59e0b' : '#ef4444'

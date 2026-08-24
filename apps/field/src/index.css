@@ -574,7 +574,7 @@ input, textarea, select { font-family: inherit; }
 
 /* ── MAPA ────────────────────────────────────────────────────── */
 .bs-map-toolbar {
-  position: sticky; top: 0; z-index: 20;
+  position: sticky; top: var(--topbar-h, 0px); z-index: 20;
   background: rgba(244,240,234,.94); backdrop-filter: blur(12px);
   padding: 10px 14px 8px; border-bottom: 1px solid var(--line);
 }
@@ -623,11 +623,22 @@ input, textarea, select { font-family: inherit; }
 .login-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); padding: 22px 20px; box-shadow: var(--sh-md); }
 
 /* ── ZONE SELECTOR ───────────────────────────────────────────── */
-.kf-zone-bar {
-  position: sticky; top: 0; z-index: 30;
-  background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
+/* Barra superior única (zonas + sello). OPACA a propósito:
+   con fondo translúcido el hero oscuro se transparentaba en Android. */
+.bs-topbar {
+  position: sticky; top: 0; z-index: 60;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
-  display: flex; gap: 7px; padding: 9px 14px; overflow-x: auto;
+  max-width: var(--max-w); margin: 0 auto;
+}
+.bs-topbar-stamp {
+  font-size: 10px; color: var(--muted); text-align: right;
+  padding: 3px 14px 4px; letter-spacing: .02em;
+  background: var(--surface);
+}
+.kf-zone-bar {
+  background: var(--surface);
+  display: flex; gap: 7px; padding: 9px 14px 5px; overflow-x: auto;
   scrollbar-width: none;
 }
 .zone-chip {
@@ -808,7 +819,7 @@ input, textarea, select { font-family: inherit; }
 .muted      { color: var(--muted); }
 .center     { text-align: center; }
 .spinner    { min-height: 100dvh; display: grid; place-items: center; color: var(--muted); }
-.build-stamp{ font-size: 10px; color: var(--muted); text-align: right; padding: 4px 14px; }
+/* .build-stamp: reemplazado por .bs-topbar-stamp (ver TOPBAR) */
 
 /* Botones extra */
 .btn        { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 10px 18px; border-radius: var(--r-md); font-weight: 700; font-size: 14px; border: none; cursor: pointer; font-family: inherit; }
@@ -960,7 +971,7 @@ input, textarea, select { font-family: inherit; }
 .bs-shop-brand  { font-size: 11px; color: rgba(255,255,255,.45); margin-bottom: 5px; }
 .bs-shop-sub    { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 4px; }
 .bs-shop-meta   { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 3px; }
-.bs-shop-toolbar{ position: sticky; top: 0; z-index: 20; background: rgba(244,240,234,.94); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); padding: 9px 14px; }
+.bs-shop-toolbar{ position: sticky; top: var(--topbar-h, 0px); z-index: 20; background: rgba(244,240,234,.94); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); padding: 9px 14px; }
 .bs-shop-toolbar-meta { font-size: 11px; color: var(--muted); padding: 4px 0; }
 .bs-shop-search { }
 .bs-shop-search-wrap { position: relative; }
@@ -1298,3 +1309,20 @@ span.kf-progress-info { background: var(--info); }
   display: block; height: 100%; background: var(--brand); border-radius: 99px;
 }
 .bs-hoy-foco-meta { font-size: 11px; margin-top: 3px; color: var(--muted); }
+
+/* ── AVISO DE CARGA (Hoy) ─────────────────────────────────────
+   Cuando la cartera no llega, el vendedor tiene que saberlo:
+   un $0 sin explicacion se lee como "no vendi nada". */
+.bs-carga-aviso {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  border-radius: var(--r-md); padding: 10px 12px; margin-bottom: 10px;
+  font-size: 12px; font-weight: 700; line-height: 1.35;
+}
+.bs-carga-aviso button {
+  flex-shrink: 0; border: 1px solid currentColor; background: transparent;
+  color: inherit; border-radius: var(--r-pill); padding: 5px 12px;
+  font-size: 11px; font-weight: 800; font-family: inherit;
+}
+.bs-carga-aviso.is-error { background: var(--danger-lt); color: var(--danger); }
+.bs-carga-aviso.is-cache { background: var(--brand-lt); color: var(--brand-dk); }
+.bs-carga-aviso.is-vacio { background: var(--bg-raised); color: var(--ink-3); border: 1px solid var(--line); }

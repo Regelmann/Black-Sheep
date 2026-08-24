@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { money, pctNum, DataAsOfBanner } from '../components.jsx'
+import { pctAvanceFoco } from '../lib/utils'
 import { useEjecutivo } from '../App.jsx'
 import { parseSkuDetalle } from '../lib/coach'
 
@@ -189,7 +190,7 @@ export default function Metas({ session }) {
         {focos.map((f, i) => {
           const vendido = Number(f.vendido_unidad ?? f.vendido_unidad_mtd ?? 0)
           const metaU = Number(f.meta_unidad ?? f.meta_unidad_mes ?? 0)
-          const pct = metaU ? Math.round((vendido / metaU) * 100) : pctNum(f.pct_avance)
+          const pct = pctAvanceFoco(f)
           const bar = pctBar(pct)
           return (
             <div

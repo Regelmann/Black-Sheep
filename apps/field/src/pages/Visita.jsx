@@ -9,6 +9,7 @@ import PedidoSheet from '../components/PedidoSheet.jsx'
 import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline'
+import { esNombreProducto } from '../lib/productDisplay'
 
 const money = n => {
   const v = Number(n)
@@ -72,7 +73,8 @@ export default function Visita({ session }) {
   const [showNoVenta, setShowNoVenta] = useState(false)
   const [noVentaMotivo, setNoVentaMotivo] = useState('')
   const [pedidoOk, setPedidoOk] = useState(false)
-  const [preciosPorNombre, setPreciosPorNombre] = useState({}) // nombre → precio_unidad de lista
+  const [preciosPorNombre, setPreciosPorNombre] = useState({}) // nombre|sku → precio_unidad (solo para matchear)
+  const [listaMostrable, setListaMostrable] = useState([])      // {nombre, precio} con nombre real, para mostrar
 
   const CARTERA_SEL =
     'cliente_key,nombre_cliente,razon_social,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,venta_mensual,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga,ejecutivo_id'
@@ -312,17 +314,23 @@ export default function Visita({ session }) {
           .limit(500)
         if (!data?.length) return
         const mapa = {}
+        const mostrables = []
         for (const s of data) {
           const precio = Number(s.precio_unidad) || 0
           if (precio <= 0) continue
+          const nombre = String(s.producto_nombre || '').trim()
           // Indexar por nombre y por sku_canon para máxima cobertura de matches
           const keys = [
-            String(s.producto_nombre || '').toLowerCase().trim(),
+            nombre.toLowerCase(),
             String(s.sku_canon || '').toLowerCase().trim(),
           ].filter(k => k.length > 2)
           for (const k of keys) mapa[k] = precio
+          // Lista mostrable: SOLO nombres reales. El indice de precios tiene
+          // tambien los sku_canon (codigos) y no se pueden mostrar al vendedor.
+          if (esNombreProducto(nombre)) mostrables.push({ nombre, precio })
         }
         setPreciosPorNombre(mapa)
+        setListaMostrable(mostrables.slice(0, 12))
       } catch { /* silent — precios es un nice-to-have */ }
     })()
   }, [loading])
@@ -705,21 +713,9 @@ export default function Visita({ session }) {
                 borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13,
               }}>WhatsApp</a>
             )}
-            {!yaLlego ? (
-              <button
-                type="button"
-                onClick={hacerCheckin}
-                disabled={busy}
-                style={{
-                  flex: 1.2, minHeight: 42, borderRadius: 12, border: 'none',
-                  background: 'linear-gradient(180deg,#c2410c,#9a3412)', color: '#fff',
-                  fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
-                  cursor: busy ? 'wait' : 'pointer',
-                }}
-              >
-                {busy ? 'GPS…' : 'Check-in'}
-              </button>
-            ) : (
+            {/* El Check-in vive UNA sola vez, en el sticky inferior (thumb zone).
+                Aca solo se muestra el estado de llegada. */}
+            {yaLlego && (
               <div style={{
                 flex: 1.2, minHeight: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: '#ecfdf5', color: '#15803d', fontWeight: 800, fontSize: 12,
@@ -731,7 +727,9 @@ export default function Visita({ session }) {
           {msg && <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>{msg}</div>}
         </div>
 
-        {/* CTA PRINCIPAL */}
+        {/* RESULTADO DE LA VISITA — solo tiene sentido despues del check-in.
+            Antes, la unica accion valida es Check-in (sticky inferior). */}
+        {yaLlego && (
         <div style={{
           background: '#fff', borderRadius: 16, padding: '10px 12px',
           boxShadow: '0 2px 8px rgba(194,65,12,0.08)', marginBottom: 8,
@@ -797,6 +795,7 @@ export default function Visita({ session }) {
             </button>
           </div>
         </div>
+        )}
 
         {/* Productos sugeridos — compacto, máx 5, sin segundo CTA de pedido */}
         <div style={{
@@ -843,9 +842,10 @@ export default function Visita({ session }) {
               })
             }
             if (!items.length) {
-              const topLista = Object.keys(preciosPorNombre || {}).slice(0, 4)
-              topLista.forEach(n => {
-                if (n && !items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Lista' })
+              listaMostrable.slice(0, 4).forEach(p => {
+                if (p.nombre && !items.some(x => x.nombre === p.nombre)) {
+                  items.push({ nombre: p.nombre, tag: 'Lista' })
+                }
               })
             }
             if (!items.length) {
