@@ -213,7 +213,7 @@ export default function Gerencia({ esGerente }) {
           await Promise.all([
             supabase.from('gerencia').select('*'),
             supabase.from('tendencia').select('*'),
-            supabase.from('stock').select('*').limit(500),
+            supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,precio,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
             supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
             Promise.all(carPromises),
             supabase
@@ -328,6 +328,10 @@ export default function Gerencia({ esGerente }) {
           })
           .slice(0, 25)
         setStockLento(lento)
+        // Alerta: SKU de foco sin precio publicado
+        const sp = (stockData || []).filter(s => s.es_foco_mes && !(Number(s.precio_unidad||0) > 0 || Number(s.precio_lista||0) > 0 || Number(s.precio||0) > 0))
+        if (sp.length) console.warn('[BS] Focos sin precio:', sp.length, sp.slice(0,3).map(s=>s.producto_nombre))
+        window.__bs_foco_sin_precio = sp.length
       } catch (e) {
         setError(String(e.message || e))
       } finally {
@@ -792,6 +796,10 @@ export default function Gerencia({ esGerente }) {
     // Fuente 0: sku_detalle de gerencia_clientes
     if (fromGer?.sku_detalle) {
       skus = parseSkuDetalle(fromGer.sku_detalle)
+      if (skus.length <= 1) {
+        const fromVentasEarly = await mixDesdeVentasLineas(clienteKey || fromGer?.cliente_key)
+        if (fromVentasEarly.length > skus.length) skus = fromVentasEarly
+      }
     }
     // Fuente 0c: ventas_lineas es la verdad del mix (siempre que haya venta)
     try {
@@ -997,7 +1005,11 @@ export default function Gerencia({ esGerente }) {
   }
 
 
-  const pulse = useMemo(() => { const rows=gerencia||[]; const total=rows.reduce((a,r)=>a+(Number(r.venta_mtd)||0),0); const under=rows.filter(r=>Number(r.meta_mensual||0)>0&&Number(r.venta_mtd||0)<Number(r.meta_mensual||0)).sort((a,b)=>((Number(a.venta_mtd)||0)/(Number(a.meta_mensual)||1))-((Number(b.venta_mtd)||0)/(Number(b.meta_mensual)||1))).slice(0,3); const risks=(carteraCache||[]).filter(c=>{const d=Number(c.dias_sin_comprar||0);if(d>=180||d<=0)return false;return (d>=30&&d<=120)||/RIESGO|ENFRI|DORMIDO/i.test(String(c.estado_fuga||''));}).length; return {total,under,risks,slow:(stockLento||[]).length}; }, [gerencia,carteraCache,stockLento])
+  const pulse = useMemo(() => { const rows=gerencia||[]; const total=rows.reduce((a,r)=>a+(Number(r.venta_mtd)||0),0); const under=rows.filter(r=>Number(r.meta_mensual||0)>0&&Number(r.venta_mtd||0)<Number(r.meta_mensual||0)).sort((a,b)=>((Number(a.venta_mtd)||0)/(Number(a.meta_mensual)||1))-((Number(b.venta_mtd)||0)/(Number(b.meta_mensual)||1))).slice(0,3); const risks=(carteraCache||[]).filter(c=>{const d=Number(c.dias_sin_comprar||0);if(d>=180||d<=0)return false;return (d>=30&&d<=120)||/RIESGO|ENFRI|DORMIDO/i.test(String(c.estado_fuga||''));}).length;
+  // Alerta: SKU sin precio en lista → afecta pedidos del vendedor
+  const stockAll = carteraCache?.__stockAll || []
+  const sinPrecio = (stockLento || []).filter ? 0 : 0 // placeholder
+  return {total,under,risks,slow:(stockLento||[]).length, sinPrecio}; }, [gerencia,carteraCache,stockLento])
 
   const pred7 = useMemo(() => predict7Days(carteraCache || [], gerencia?.[0] || null, []), [carteraCache, gerencia])
 
@@ -1050,6 +1062,11 @@ export default function Gerencia({ esGerente }) {
             <span>SKUs lentos</span>
           </div>
         </div>
+        {typeof window !== 'undefined' && window.__bs_foco_sin_precio > 0 && (
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 12px', marginTop: 8, fontSize: 12, color: '#92400e', fontWeight: 700 }}>
+            ⚠️ {window.__bs_foco_sin_precio} foco{window.__bs_foco_sin_precio > 1 ? 's' : ''} sin precio en lista — actualizá la lista de precios en el ciclo
+          </div>
+        )}
         {pulse.under.length > 0 && (
           <div className="bs-pulse-actions">
             {pulse.under.map((r, i) => {
@@ -1118,15 +1135,21 @@ export default function Gerencia({ esGerente }) {
         <button
           type="button"
           className="admin-entry"
-          onClick={() => navAdmin('/admin')}
+          onClick={() => window.open('https://black-sheep.cl/dashboard', '_blank')}
           style={{
             width: '100%', marginBottom: 12, padding: '12px 14px', borderRadius: 14,
-            border: '1.5px solid #fed7aa', background: 'linear-gradient(180deg,#fff7ed,#fff)',
+            border: '1px solid var(--line)', background: 'var(--surface)',
             textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 10,
           }}
         >
-          <div style={{ fontWeight: 850, fontSize: 14, color: '#c2410c' }}>Admin · zonas, clientes y precios</div>
-          <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>Asignar zona / ejecutivo y revisar lista de precios</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand-lt)', border: '1px solid var(--brand-ring)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>Control Center ↗</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>Clientes · metas · precios · config — desde PC</div>
+          </div>
         </button>
         {error && (
           <div className="card" style={{ borderLeft: '4px solid #f59e0b', fontSize: 13 }}>
@@ -1638,7 +1661,10 @@ export default function Gerencia({ esGerente }) {
                                   </div>
                                 )}
                                 {(det?.skus || []).slice(0, 10).map((s, i) => {
-                                  const clp = clpEfectivo(s); const pct = s.promClp > 0 ? Math.round((clp / s.promClp) * 100) : clp > 0 ? 100 : 0
+                                  const clp = clpEfectivo(s)
+                                  // Protección: si promClp < 1000 y clp > 10000 → dato irreal del ciclo
+                                  const promClpOk = s.promClp > 0 && !(s.promClp < 1000 && clp > 10000)
+                                  const pct = promClpOk ? Math.min(300, Math.round((clp / s.promClp) * 100)) : s.promUd > 0 ? Math.min(300, Math.round(((Number(s.udMtd)||0) / Number(s.promUd)) * 100)) : clp > 0 ? 100 : 0
                                   const falta = Math.max(0, s.promUd - s.udMtd)
                                   const { recompra, cicloEst, diasUltima } = cicloReposicion(s)
                                   const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']
@@ -1802,7 +1828,10 @@ export default function Gerencia({ esGerente }) {
                                   </div>
                                 )}
                                 {(cliSku[d.cliente_key]?.skus || []).slice(0, 10).map((s, i) => {
-                                  const clp = clpEfectivo(s); const pct = s.promClp > 0 ? Math.round((clp / s.promClp) * 100) : clp > 0 ? 100 : 0
+                                  const clp = clpEfectivo(s)
+                                  // Protección: si promClp < 1000 y clp > 10000 → dato irreal del ciclo
+                                  const promClpOk = s.promClp > 0 && !(s.promClp < 1000 && clp > 10000)
+                                  const pct = promClpOk ? Math.min(300, Math.round((clp / s.promClp) * 100)) : s.promUd > 0 ? Math.min(300, Math.round(((Number(s.udMtd)||0) / Number(s.promUd)) * 100)) : clp > 0 ? 100 : 0
                                   const falta = Math.max(0, s.promUd - s.udMtd)
                                   const { recompra, cicloEst, diasUltima } = cicloReposicion(s)
                                   const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']

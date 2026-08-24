@@ -338,7 +338,7 @@ export async function enriquecerPreciosDesdeVentas(clienteKey, lineas) {
   try {
     const { data, error } = await supabase
       .from('ventas_lineas')
-      .select('producto_nombre,sku_canon,venta_neta_clp,cantidad_unidad,fecha')
+      .select('producto_nombre,sku_canon,venta_neta_clp,cantidad_unidad,cantidad,fecha')
       .eq('cliente_key', clienteKey)
       .order('fecha', { ascending: false })
       .limit(400)
@@ -350,7 +350,7 @@ export async function enriquecerPreciosDesdeVentas(clienteKey, lineas) {
         String(r.producto_nombre || '').toLowerCase(),
         String(r.sku_canon || '').toLowerCase(),
       ]
-      const cant = Number(r.cantidad_unidad) || 0
+      const cant = Number(r.cantidad_unidad) || Number(r.cantidad) || 0
       const neto = Number(r.venta_neta_clp) || 0
       if (cant <= 0 || neto <= 0) continue
       const pu = neto / cant

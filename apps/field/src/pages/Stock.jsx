@@ -29,14 +29,17 @@ export default function Stock() {
   useEffect(() => {
     ;(async () => {
       setLoading(true)
-      const { data } = await supabase.from('stock').select('*').order('es_foco_mes', { ascending: false })
-      const { data: cart } = await supabase
-        .from('cartera')
-        .select('cliente_key,nombre_cliente,razon_social,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado')
-        .limit(2000)
-      setCarteraStock(cart || [])
-      setStock(data || [])
-      const snap = (data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
+      const [stockRes, cartRes] = await Promise.all([
+        supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }),
+        supabase
+          .from('cartera')
+          .select('cliente_key,nombre_cliente,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id')
+          .not('sku_detalle', 'is', null)   // solo clientes con mix cargado
+          .limit(3000),
+      ])
+      setCarteraStock(cartRes.data || [])
+      setStock(stockRes.data || [])
+      const snap = (stockRes.data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
       if (snap) setDataAsOf(snap)
       setLoading(false)
     })()
@@ -367,7 +370,7 @@ export default function Stock() {
                 {skuSel === (s.sku_canon || s.id) ? 'Ocultar compradores' : 'Encontrar compradores'}
               </button>
               {skuSel === (s.sku_canon || s.id) && (() => {
-                const res = findBuyersForSku(s.sku_canon, carteraStock)
+                const res = findBuyersForSku(s.sku_canon, carteraStock, { productoNombre: s.producto_nombre || productTitle(s).title })
                 return (
                   <div className="bs-stock-buyers">
                     <div className="bs-stock-buyers-head">

@@ -157,10 +157,19 @@ export function clpEfectivo(s, precioLista = 0) {
 
 export function pctRitmo(udMtd, promUd) {
   if (!promUd || promUd <= 0) return null
-  const p = Math.round((udMtd / promUd) * 100)
-  if (p > 300) return 300 // cap visual
+  const p = Math.round((Number(udMtd) / Number(promUd)) * 100)
+  if (p > 300) return 300 // cap visual — nunca mostrar 850000%
   if (p < 0) return 0
   return p
+}
+
+/** % basado en CLP — cap 300% y protección contra promClp irreal */
+export function pctRitmoCLP(clpMtd, promClp) {
+  if (!promClp || promClp <= 0) return null
+  // Si promClp < 1000 y clpMtd > 50000 → promedio irreal (precio por línea)
+  if (promClp < 1000 && Number(clpMtd) > 10000) return null
+  const p = Math.round((Number(clpMtd) / Number(promClp)) * 100)
+  return Math.min(300, Math.max(0, p))
 }
 
 /** Cantidad sugerida de reposición (promedio − MTD, mínimo 1). */

@@ -559,7 +559,7 @@ export default function Visita({ session }) {
 
   return (
     <>
-    <div className="visita-page" style={{ paddingBottom: 120, background: '#faf7f2', minHeight: '100dvh' }}>
+    <div className="visita-page" style={{ paddingBottom: 160, background: '#faf7f2', minHeight: '100dvh' }}>
       {/* Header azul */}
       <div
         style={{
@@ -731,11 +731,11 @@ export default function Visita({ session }) {
           {msg && <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>{msg}</div>}
         </div>
 
-        {/* CTA PRINCIPAL — un solo pedido, siempre arriba */}
+        {/* CTA PRINCIPAL */}
         <div style={{
-          background: '#fff', borderRadius: 20, padding: 14,
-          boxShadow: '0 4px 16px rgba(194,65,12,0.12)', marginBottom: 10,
-          border: '1.5px solid #fed7aa',
+          background: '#fff', borderRadius: 16, padding: '10px 12px',
+          boxShadow: '0 2px 8px rgba(194,65,12,0.08)', marginBottom: 8,
+          border: '1px solid var(--line)',
         }}>
           {pedidoOk ? (
             <div style={{
@@ -753,18 +753,7 @@ export default function Visita({ session }) {
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => setPedidoOpen(true)}
-            style={{
-              width: '100%', minHeight: 52, borderRadius: 14, border: 'none',
-              background: pedidoOk ? '#0f172a' : 'linear-gradient(180deg,#ea580c,#c2410c)',
-              color: '#fff', fontWeight: 800, fontSize: 16, fontFamily: 'inherit',
-              cursor: 'pointer', boxShadow: pedidoOk ? 'none' : '0 8px 24px rgba(194,65,12,0.28)',
-            }}
-          >
-            {pedidoOk ? 'Ver / editar pedido' : 'Tomar pedido'}
-          </button>
+          {/* CTA principal en sticky bottom — evita doble Tomar pedido */}
           <button
             type="button"
             onClick={() => setOfertaOpen(true)}
@@ -804,7 +793,7 @@ export default function Visita({ session }) {
                 fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
-              Encuesta
+              Solo visita
             </button>
           </div>
         </div>
@@ -964,17 +953,18 @@ export default function Visita({ session }) {
               className="bs-cta-primary bs-visit-cta"
               onClick={hacerCheckin}
             >
-              {busy ? 'GPS…' : 'Check-in · estoy aquí'}
+              {busy ? 'GPS…' : 'Check-in'}
             </button>
-          ) : !pedidoOk && resultado !== 'no_venta' ? (
+          ) : resultado !== 'no_venta' ? (
             <>
               <button
                 type="button"
                 disabled={busy}
                 className="bs-cta-primary bs-visit-cta"
+                style={{ boxShadow: '0 4px 14px rgba(194,65,12,0.3)' }}
                 onClick={() => setPedidoOpen(true)}
               >
-                Tomar pedido
+                {pedidoOk ? 'Ver / editar pedido' : 'Tomar pedido'}
               </button>
               <div className="bs-visit-outcomes">
                 <button type="button" disabled={busy} onClick={() => registrarNoVenta()}>No compró</button>

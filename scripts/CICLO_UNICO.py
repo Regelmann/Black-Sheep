@@ -1389,21 +1389,19 @@ def build_sku_detalle_y_ciclo(ventas: pd.DataFrame, mes_inicio: date) -> Dict[st
     """
     Por cliente:
       - productos_top (nombres)
-      - sku_detalle: nombre||prom||mtd||clp||clp_mtd||ultima||ciclo_dias||n_compras
+      - sku_detalle: nombre|prom|mtd|falta|clp_prom|clp_mtd|ultima|ciclo|n|estado|dias|sku_canon
       - ciclo por sku (mediana gaps)
+
+    Promedio mensual: usa TODO el historial disponible (no solo 6 meses).
+    Clientes nuevos con 1-2 compras → promedio = lo comprado (no 0).
     """
     if ventas.empty:
         return {}
 
-    mes_fin = (mes_inicio.replace(day=28) + timedelta(days=4)).replace(day=1)  # next month
-    # meses previos para promedio: 6 meses antes de mes_inicio
-    prev_ini = date(mes_inicio.year, mes_inicio.month, 1)
-    for _ in range(6):
-        prev_ini = (prev_ini - timedelta(days=1)).replace(day=1)
+    mes_fin = (mes_inicio.replace(day=28) + timedelta(days=4)).replace(day=1)
 
     out: Dict[str, Dict[str, Any]] = {}
 
-    # Pre-group
     v = ventas.dropna(subset=["cliente_key"]).copy()
     v["mes"] = v["fecha"].dt.to_period("M")
 
@@ -1418,61 +1416,60 @@ def build_sku_detalle_y_ciclo(ventas: pd.DataFrame, mes_inicio: date) -> Dict[st
             n_compras = len(set(fechas))
             ultima = max(fechas) if fechas else None
 
-            # mtd
+            # MTD del mes en curso
             mtd_mask = (gs["fecha_d"] >= mes_inicio) & (gs["fecha_d"] < mes_fin)
             cant_mtd = float(gs.loc[mtd_mask, "cantidad"].sum()) if "cantidad" in gs.columns else 0.0
-            clp_mtd = float(gs.loc[mtd_mask, "venta_neta_clp"].fillna(0).sum())
+            clp_mtd  = float(gs.loc[mtd_mask, "venta_neta_clp"].fillna(0).sum())
 
-            # promedio mensual (meses previos con data)
-            prev = gs[(gs["fecha_d"] >= prev_ini) & (gs["fecha_d"] < mes_inicio)]
+            # Promedio mensual: historial PREVIO al mes actual (todo lo que hay)
+            prev = gs[gs["fecha_d"] < mes_inicio]
             if prev.empty:
-                prom = 0.0
-                clp_prom = 0.0
+                # Cliente nuevo sin historial → usar MTD como referencia si existe
+                prom     = cant_mtd if cant_mtd > 0 else 0.0
+                clp_prom = clp_mtd  if clp_mtd  > 0 else 0.0
             else:
+                # Agrupar por mes calendario y promediar
                 by_m = prev.groupby(prev["fecha"].dt.to_period("M"))
-                if "cantidad" in prev.columns:
-                    prom = float(by_m["cantidad"].sum().mean())
-                else:
-                    prom = 0.0
+                prom     = float(by_m["cantidad"].sum().mean())           if "cantidad" in prev.columns else 0.0
                 clp_prom = float(by_m["venta_neta_clp"].sum().mean())
 
             falta = max(0.0, (prom or 0) - (cant_mtd or 0))
+
             dias_desde = (date.today() - ultima).days if ultima else None
             if ciclo and dias_desde is not None:
                 if dias_desde >= ciclo:
-                    est_rec = "RECOMPRAR_HOY"
+                    est_rec   = "RECOMPRAR_HOY"
                 elif dias_desde >= max(1, int(ciclo) - 3):
-                    est_rec = "RECOMPRAR_PRONTO"
+                    est_rec   = "RECOMPRAR_PRONTO"
                 else:
-                    est_rec = "OK"
+                    est_rec   = "OK"
                 dias_para = max(0, int(ciclo) - int(dias_desde))
             else:
-                est_rec = "SIN_CICLO"
+                est_rec   = "SIN_CICLO"
                 dias_para = None
+
             skus[sku] = {
-                "nombre": nombre or sku,
-                "prom": round(prom, 2),
-                "mtd": round(cant_mtd, 2),
-                "falta": round(falta, 2),
-                "clp_prom": round(clp_prom, 0),
-                "clp_mtd": round(clp_mtd, 0),
-                "ultima": ultima.isoformat() if ultima else "",
-                "ciclo_dias": ciclo,
-                "n_compras": n_compras,
-                "sku": str(sku),
-                "dias_desde": dias_desde,
+                "nombre":            nombre or sku,
+                "prom":              round(prom, 2),
+                "mtd":               round(cant_mtd, 2),
+                "falta":             round(falta, 2),
+                "clp_prom":          round(clp_prom, 0),
+                "clp_mtd":           round(clp_mtd, 0),
+                "ultima":            ultima.isoformat() if ultima else "",
+                "ciclo_dias":        ciclo,
+                "n_compras":         n_compras,
+                "sku":               str(sku),
+                "dias_desde":        dias_desde,
                 "dias_para_recompra": dias_para,
-                "estado_recompra": est_rec,
+                "estado_recompra":   est_rec,
             }
 
-        ranking = sorted(skus.values(), key=lambda x: -(x["clp_mtd"] * 10 + x["clp_prom"]))
-        # REGLA MIX: todos los SKU con venta MTD del mes van SIEMPRE.
-        # Después se completan con histórico hasta 30 (antes top 10 perdía productos).
+        ranking   = sorted(skus.values(), key=lambda x: -(x["clp_mtd"] * 10 + x["clp_prom"]))
         mtd_first = [x for x in ranking if float(x.get("mtd") or 0) > 0]
-        rest = [x for x in ranking if float(x.get("mtd") or 0) <= 0]
-        ordered = mtd_first + rest
+        rest      = [x for x in ranking if float(x.get("mtd") or 0) <= 0]
+        ordered   = mtd_first + rest
         top_names = [x["nombre"] for x in ordered[:5]]
-        # V3: nombre|prom|mtd|falta|clp_prom|clp_mtd|ultima|ciclo|n|estado|dias|sku_canon
+
         parts = []
         for x in ordered[:30]:
             parts.append("|".join([
@@ -1491,10 +1488,10 @@ def build_sku_detalle_y_ciclo(ventas: pd.DataFrame, mes_inicio: date) -> Dict[st
             ]))
         out[ck] = {
             "productos_top": " · ".join(top_names),
-            "sku_detalle": "||".join(parts),
-            "skus": skus,
-            "n_sku_mtd": len(mtd_first),
-            "n_sku_total": len(ordered),
+            "sku_detalle":   "||".join(parts),
+            "skus":          skus,
+            "n_sku_mtd":     len(mtd_first),
+            "n_sku_total":   len(ordered),
         }
     return out
 

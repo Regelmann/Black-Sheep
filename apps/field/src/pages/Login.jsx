@@ -86,7 +86,7 @@ export default function Login() {
           }}
         />
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', color: '#fafafa' }}>
-          Black Sheep <span style={{ color: '#39ff14' }}>Field</span>
+          Black Sheep <span style={{ color: '#a3e635' }}>Field</span>
         </h1>
         <p style={{ margin: '8px 0 0', color: '#a1a1aa', fontSize: 14, fontWeight: 500 }}>
           Una plataforma · muchas empresas
@@ -212,7 +212,7 @@ export default function Login() {
               minHeight: 52,
               border: 'none',
               borderRadius: 12,
-              background: '#39ff14',
+              background: '#a3e635',
               color: '#0a0a0a',
               fontWeight: 900,
               fontSize: 15,

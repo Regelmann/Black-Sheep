@@ -12,6 +12,7 @@ import {
   imprimirPedidoPdf,
   marcarPedidoEstado,
 } from '../lib/pedido'
+import { precioDesdeLista, resolverPrecio } from '../lib/precios'
 
 const money = n => {
   const v = Number(n)
@@ -74,7 +75,7 @@ export default function PedidoSheet({ initialPedido,
     ;(async () => {
       const { data } = await supabase
         .from('stock')
-        .select('sku_canon,producto_nombre,stock_operativo,cobertura_dias,estado_stock,es_foco_mes,foco')
+        .select('sku_canon,producto_nombre,stock_operativo,cobertura_dias,estado_stock,es_foco_mes,foco,precio_unidad,precio_lista,precio,precio_caja,precio_kilo')
         .order('producto_nombre')
         .limit(500)
       if (!cancelled) setStock(data || [])
@@ -86,20 +87,38 @@ export default function PedidoSheet({ initialPedido,
       )
       if (!cancelled && enriched?.length) {
         setLineas(prev => {
-          // solo si el usuario no editó mucho: merge precios
           return prev.map(l => {
             const e = enriched.find(
               x => String(x.nombre).toLowerCase() === String(l.nombre).toLowerCase()
             )
             if (e && !(Number(l.precio) > 0) && Number(e.precio) > 0) {
-              return { ...l, precio: e.precio }
+              return { ...l, precio: e.precio, motivo: 'histórico' }
             }
             return l
           })
         })
       }
+      // Fallback lista de precios desde stock
+      if (!cancelled && data?.length) {
+        setLineas(prev =>
+          prev.map(l => {
+            if (Number(l.precio) > 0) return l
+            const s =
+              data.find(x => String(x.sku_canon) === String(l.sku)) ||
+              data.find(
+                x =>
+                  String(x.producto_nombre || '').toLowerCase() ===
+                  String(l.nombre || '').toLowerCase()
+              )
+            const pl = precioDesdeLista(s)
+            return pl ? { ...l, precio: pl, motivo: 'lista' } : l
+          })
+        )
+      }
     })()
-    return () => {
+    return (
+    // sheet: espacio sobre nav
+    ) => {
       cancelled = true
     }
   }, [cliente?.cliente_key])
@@ -139,6 +158,7 @@ export default function PedidoSheet({ initialPedido,
     const sku = s.sku_canon
     const nombre = productLabel(s) || sku
     if (!nombre) return
+    const precioLista = precioDesdeLista(s)
     setLineas(prev => {
       const i = prev.findIndex(
         l =>
@@ -155,8 +175,8 @@ export default function PedidoSheet({ initialPedido,
           nombre,
           cantidad: 1,
           unidad: unidadDesdeNombre(nombre),
-          precio: null,
-          motivo: 'catálogo',
+          precio: precioLista || null,
+          motivo: precioLista ? 'lista' : 'catálogo',
         },
       ]
     })
@@ -256,7 +276,7 @@ export default function PedidoSheet({ initialPedido,
           overflow: 'auto',
           background: '#fffaf5',
           borderRadius: '20px 20px 0 0',
-          padding: '12px 16px 24px',
+          padding: '12px 16px calc(var(--nav-h, 68px) + 16px)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
         }}
       >
@@ -465,8 +485,8 @@ export default function PedidoSheet({ initialPedido,
                     fontFamily: 'inherit',
                   }}
                 />
-                <span style={{ fontSize: 12, color: '#c2410c', fontWeight: 700 }}>
-                  {sub != null ? money(sub) : 'sin precio hist.'}
+                <span style={{ fontSize: 12, fontWeight: 700, color: sub != null ? '#c2410c' : l.precio > 0 ? '#15803d' : '#a8a29e' }}>
+                  {sub != null ? money(sub) : l.precio > 0 ? `Lista: ${money(l.precio)}` : 'Sin precio — ingresá manualmente'}
                 </span>
               </div>
             </div>

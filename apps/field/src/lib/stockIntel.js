@@ -1,17 +1,56 @@
 /**
- * Stock → compradores (ONE BRAIN surface)
+ * Stock → compradores (ONE BRAIN)
+ * Match por sku normalizado Y por nombre de producto (sku_detalle a menudo no trae el mismo código que stock).
  */
 import { parseSkuDetalle } from './coach'
 
 const n = v => Number(v) || 0
 
+function normSku(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/^0+/, '')
+}
+
+function normName(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function tokens(s) {
+  return normName(s)
+    .split(' ')
+    .filter(t => t.length >= 3 && !/^(kg|prom|caja|pack|und|ud|mm|lt|lts|x\d+)$/i.test(t))
+}
+
+function nameMatch(stockName, itemName) {
+  const a = tokens(stockName)
+  const b = tokens(itemName)
+  if (!a.length || !b.length) return false
+  // overlap significativo
+  let hit = 0
+  for (const t of a) {
+    if (b.some(x => x === t || x.includes(t) || t.includes(x))) hit++
+  }
+  return hit >= Math.min(2, a.length) || (a[0] && b.some(x => x.includes(a[0]) || a[0].includes(x)))
+}
+
 /**
- * Clientes de cartera que compran este SKU (via sku_detalle).
- * Prioriza reposición y valor.
+ * @param {string} skuCanon
+ * @param {array} cartera
+ * @param {{ limit?: number, productoNombre?: string }} opts
  */
-export function findBuyersForSku(skuCanon, cartera = [], { limit = 12 } = {}) {
-  const sku = String(skuCanon || '').trim().toLowerCase()
-  if (!sku) return { buyers: [], potencial: 0 }
+export function findBuyersForSku(skuCanon, cartera = [], opts = {}) {
+  const limit = opts.limit ?? 12
+  const sku = normSku(skuCanon)
+  const prodName = opts.productoNombre || ''
+  if (!sku && !prodName) return { buyers: [], potencial: 0, totalMatch: 0, enReposicion: 0 }
 
   const buyers = []
   for (const c of cartera || []) {
@@ -19,14 +58,13 @@ export function findBuyersForSku(skuCanon, cartera = [], { limit = 12 } = {}) {
     const items = parseSkuDetalle(c.sku_detalle) || []
     let hit = null
     for (const it of items) {
-      const sk = String(it.sku_canon || it.sku || '').trim().toLowerCase()
-      const name = String(it.nombre || it.producto || '').toLowerCase()
-      if (sk === sku || (sk && sku.includes(sk)) || (sk && sk.includes(sku))) {
+      const sk = normSku(it.sku_canon || it.sku)
+      const nm = it.nombre || it.producto || ''
+      if (sku && sk && (sk === sku || sk.includes(sku) || sku.includes(sk))) {
         hit = it
         break
       }
-      // match by name fragment if sku empty on item
-      if (!sk && name && sku.length > 4 && name.includes(sku)) {
+      if (prodName && nameMatch(prodName, nm)) {
         hit = it
         break
       }
