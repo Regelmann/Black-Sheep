@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { productTitle } from '../lib/productDisplay'
+import { findBuyersForSku } from '../lib/stockIntel'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { DataAsOfBanner } from '../components.jsx'
 
@@ -17,6 +19,9 @@ function unidadHint() {
 export default function Stock() {
   const [loading, setLoading] = useState(true)
   const [stock, setStock] = useState([])
+  const [carteraStock, setCarteraStock] = useState([])
+  const [skuSel, setSkuSel] = useState(null)
+  const nav = useNavigate()
   const [q, setQ] = useState('')
   const [filtro, setFiltro] = useState('Todos')
   const [dataAsOf, setDataAsOf] = useState(null)
@@ -25,6 +30,11 @@ export default function Stock() {
     ;(async () => {
       setLoading(true)
       const { data } = await supabase.from('stock').select('*').order('es_foco_mes', { ascending: false })
+      const { data: cart } = await supabase
+        .from('cartera')
+        .select('cliente_key,nombre_cliente,razon_social,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado')
+        .limit(2000)
+      setCarteraStock(cart || [])
       setStock(data || [])
       const snap = (data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
       if (snap) setDataAsOf(snap)
@@ -349,6 +359,45 @@ export default function Stock() {
                   → {accion.t}
                 </div>
               )}
+              <button
+                type="button"
+                className="bs-stock-buyers-btn"
+                onClick={() => setSkuSel(skuSel === (s.sku_canon || s.id) ? null : (s.sku_canon || s.id))}
+              >
+                {skuSel === (s.sku_canon || s.id) ? 'Ocultar compradores' : 'Encontrar compradores'}
+              </button>
+              {skuSel === (s.sku_canon || s.id) && (() => {
+                const res = findBuyersForSku(s.sku_canon, carteraStock)
+                return (
+                  <div className="bs-stock-buyers">
+                    <div className="bs-stock-buyers-head">
+                      Black Sheep encuentra · {res.totalMatch} clientes
+                      {res.potencial > 0 && <> · ${Math.round(res.potencial).toLocaleString('es-CL')} potencial</>}
+                    </div>
+                    {res.enReposicion > 0 && (
+                      <p className="bs-stock-buyers-sub">{res.enReposicion} en ventana de reposición</p>
+                    )}
+                    {res.buyers.length === 0 ? (
+                      <p className="bs-stock-buyers-sub">Sin match en cartera con este SKU en historial.</p>
+                    ) : (
+                      res.buyers.slice(0, 8).map(b => (
+                        <button
+                          key={b.cliente_key}
+                          type="button"
+                          className="bs-stock-buyer-row"
+                          onClick={() => nav('/visita/' + encodeURIComponent(b.cliente_key))}
+                        >
+                          <span className="name">{b.nombre}</span>
+                          <span className="meta">
+                            {b.dias > 0 ? `${b.dias}d` : '—'}
+                            {b.enReposicion ? ' · reponer' : ''}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )
         })}

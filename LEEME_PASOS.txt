@@ -1,20 +1,16 @@
 ================================================================================
-BLACK SHEEP · V72 ONE BRAIN
-Stamp: v-BS-V72-ONE-BRAIN
+BLACK SHEEP · V73 360 + STOCK
+Stamp: v-BS-V73-360-STOCK
 Build: OK
 ================================================================================
 
-UN SOLO CEREBRO
-- decisionEngine = única fuente de ranking (urgencia×valor×prob×acción×confianza)
-- Hoy: 1 DecisionCard protagonista · Después colapsado · 7d secundario
-- Evidence visual en cada decisión · Memory boost opcional
-- daySummary una frase
+- Stock: "Encontrar compradores" por SKU (cartera + sku_detalle)
+- Visita: DecisionCard del ONE BRAIN como CTA de pedido
+- Mismo cerebro que V72
 
-NO compiten en Hoy: recomendaciones.js, múltiples predicciones a la vez
-
-DEPLOY
-  cd /d %USERPROFILE%\Documents\Black-Sheep
-  Copiar BLACKSHEEP\ encima del repo
-  git add -A && git commit -m "V72 ONE BRAIN" && git push
-  Hard refresh → v-BS-V72-ONE-BRAIN
+DEPLOY (Git Bash)
+  cd ~/Black-Sheep/Black-Sheep
+  # copiar contenido BLACKSHEEP\ encima
+  git add -A && git commit -m "V73 360 stock" && git push
+  Hard refresh → v-BS-V73-360-STOCK
 ================================================================================

@@ -3442,3 +3442,61 @@ button.admin-btn {
 .bs-dc-why-body {
   margin-top: 8px;
 }
+
+
+/* ═══ V73 Stock buyers + Visita 360 ═══ */
+.bs-stock-buyers-btn {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1.5px solid #e7e5e4;
+  background: #fafaf9;
+  font-weight: 800;
+  font-size: 12px;
+  font-family: inherit;
+  color: #c2410c;
+  cursor: pointer;
+}
+.bs-stock-buyers {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f5f5f4;
+}
+.bs-stock-buyers-head {
+  font-size: 12px;
+  font-weight: 800;
+  color: #1c1917;
+  margin-bottom: 4px;
+}
+.bs-stock-buyers-sub {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: #78716c;
+}
+.bs-stock-buyer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  padding: 10px 0;
+  border: none;
+  border-bottom: 1px solid #f5f5f4;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+.bs-stock-buyer-row .name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1c1917;
+}
+.bs-stock-buyer-row .meta {
+  font-size: 11px;
+  font-weight: 700;
+  color: #c2410c;
+}
+.bs-dc-visita {
+  margin: 12px 0;
+}

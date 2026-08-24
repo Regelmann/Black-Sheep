@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
 import { decideClient, calcCommercialValue } from '../lib/decisionEngine'
+import { DecisionCard } from '../components/DecisionCard.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
@@ -633,6 +634,16 @@ export default function Visita({ session }) {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {decision && (
+          <div className="bs-dc-visita">
+            <DecisionCard
+              item={decision}
+              featured
+              onAction={() => setPedidoOpen(true)}
+            />
           </div>
         )}
 
