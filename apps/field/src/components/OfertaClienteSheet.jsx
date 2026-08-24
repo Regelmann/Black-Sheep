@@ -66,7 +66,8 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
           .from('ofertas_cliente')
           .select('*')
           .eq('cliente_key', cliente?.cliente_key)
-          .eq('activo', true)
+          .order('creado_en', { ascending: false })
+          .limit(1)
           .maybeSingle(),
       ])
       if (dead) return
@@ -212,6 +213,7 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
             ejecutivo_id: ejecutivoId,
             token: tok,
             activo: true,
+            activa: true,
           })
           .select('*')
           .single()

@@ -1266,3 +1266,35 @@ span.kf-progress-info { background: var(--info); }
 .b-red { background: var(--danger-lt); color: var(--danger); }
 .b-blue { background: var(--info-lt); color: var(--info); }
 .b-amber { background: var(--warn-lt); color: var(--warn); }
+
+/* Focos del mes en Hoy */
+.bs-hoy-focos {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  box-shadow: var(--sh-xs);
+}
+.bs-hoy-focos-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.bs-hoy-foco-row { margin-bottom: 10px; }
+.bs-hoy-foco-row:last-child { margin-bottom: 0; }
+.bs-hoy-foco-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 13px; margin-bottom: 4px;
+}
+.bs-hoy-foco-head strong { font-weight: 800; color: var(--ink); }
+.bs-hoy-foco-head span { font-weight: 800; color: var(--brand); font-size: 12px; }
+.bs-hoy-foco-bar {
+  height: 6px; background: var(--line); border-radius: 99px; overflow: hidden;
+}
+.bs-hoy-foco-bar i {
+  display: block; height: 100%; background: var(--brand); border-radius: 99px;
+}
+.bs-hoy-foco-meta { font-size: 11px; margin-top: 3px; color: var(--muted); }

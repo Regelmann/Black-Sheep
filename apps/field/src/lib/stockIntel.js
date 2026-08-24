@@ -1,6 +1,6 @@
 /**
- * Stock → compradores (ONE BRAIN)
- * Match por sku normalizado Y por nombre de producto (sku_detalle a menudo no trae el mismo código que stock).
+ * Stock → compradores
+ * Match: sku_canon · nombre producto · productos_top (si existe)
  */
 import { parseSkuDetalle } from './coach'
 
@@ -26,26 +26,28 @@ function normName(s) {
 function tokens(s) {
   return normName(s)
     .split(' ')
-    .filter(t => t.length >= 3 && !/^(kg|prom|caja|pack|und|ud|mm|lt|lts|x\d+)$/i.test(t))
+    .filter(t => t.length >= 3 && !/^(kg|prom|caja|pack|und|ud|mm|lt|lts|bol|x\d+)$/i.test(t))
 }
 
 function nameMatch(stockName, itemName) {
   const a = tokens(stockName)
   const b = tokens(itemName)
   if (!a.length || !b.length) return false
-  // overlap significativo
   let hit = 0
   for (const t of a) {
     if (b.some(x => x === t || x.includes(t) || t.includes(x))) hit++
   }
-  return hit >= Math.min(2, a.length) || (a[0] && b.some(x => x.includes(a[0]) || a[0].includes(x)))
+  // 1 token fuerte (marca/producto) basta si es distintivo (>=5 chars)
+  if (hit >= 2) return true
+  if (hit >= 1 && a.some(t => t.length >= 5 && b.includes(t))) return true
+  // substring full
+  const na = normName(stockName)
+  const nb = normName(itemName)
+  if (na.length >= 8 && nb.includes(na.slice(0, 12))) return true
+  if (nb.length >= 8 && na.includes(nb.slice(0, 12))) return true
+  return false
 }
 
-/**
- * @param {string} skuCanon
- * @param {array} cartera
- * @param {{ limit?: number, productoNombre?: string }} opts
- */
 export function findBuyersForSku(skuCanon, cartera = [], opts = {}) {
   const limit = opts.limit ?? 12
   const sku = normSku(skuCanon)
@@ -68,6 +70,16 @@ export function findBuyersForSku(skuCanon, cartera = [], opts = {}) {
         hit = it
         break
       }
+    }
+    // fallback: productos_top texto libre
+    if (!hit && prodName && c.productos_top) {
+      if (nameMatch(prodName, String(c.productos_top))) {
+        hit = { nombre: prodName }
+      }
+    }
+    // fallback: sku_detalle raw includes sku code
+    if (!hit && sku && c.sku_detalle && String(c.sku_detalle).toLowerCase().includes(String(skuCanon).toLowerCase())) {
+      hit = { nombre: prodName || skuCanon }
     }
     if (!hit) continue
     const dias = n(c.dias_sin_comprar)

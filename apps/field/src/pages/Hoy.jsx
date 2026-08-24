@@ -12,6 +12,7 @@ import PedidoSheet from '../components/PedidoSheet.jsx'
 import {
   loadActionQueue,
   flushActionQueue,
+  clearActionQueue,
   isProbablyOffline,
   loadHoyResultados,
 } from '../lib/offline'
@@ -301,26 +302,50 @@ export default function Hoy() {
               : `${colaN} acción(es) pendientes de sincronizar`}
           </span>
           {!offline && colaN > 0 && (
-            <button
-              type="button"
-              onClick={async () => {
-                await flushActionQueue({})
-                setActividadHoy(a => ({ ...a, colaOffline: loadActionQueue().length }))
-              }}
-              style={{
-                border: '1px solid rgba(255,255,255,0.4)',
-                background: 'rgba(255,255,255,0.15)',
-                color: '#fff',
-                borderRadius: 8,
-                padding: '4px 10px',
-                fontSize: 11,
-                fontWeight: 800,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-              }}
-            >
-              Reintentar
-            </button>
+            <span style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  await flushActionQueue({})
+                  setActividadHoy(a => ({ ...a, colaOffline: loadActionQueue().length }))
+                }}
+                style={{
+                  border: '1px solid rgba(255,255,255,0.4)',
+                  background: 'rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                Reintentar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('¿Descartar acciones pendientes de la cola offline?')) {
+                    clearActionQueue()
+                    setActividadHoy(a => ({ ...a, colaOffline: 0 }))
+                  }
+                }}
+                style={{
+                  border: '1px solid rgba(255,255,255,0.35)',
+                  background: 'transparent',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                Descartar
+              </button>
+            </span>
           )}
         </div>
       )}
@@ -406,6 +431,35 @@ export default function Hoy() {
               </div>
               {pred7.resumen && <p className="bs-pred7-hint">{pred7.resumen}</p>}
             </details>
+          )}
+
+
+          {/* Focos del mes — avance SKU */}
+          {Array.isArray(focos) && focos.length > 0 && (
+            <div className="bs-hoy-focos" style={{ marginTop: 12 }}>
+              <div className="bs-hoy-focos-title">Focos del mes</div>
+              {focos.slice(0, 6).map((f, i) => {
+                const metaU = Number(f.meta_unidad) || 0
+                const vend = Number(f.vendido_unidad) || 0
+                const pct = f.pct_avance != null
+                  ? Number(f.pct_avance)
+                  : (metaU > 0 ? Math.round((vend / metaU) * 100) : 0)
+                const bar = Math.max(0, Math.min(100, pct))
+                return (
+                  <div key={f.id || i} className="bs-hoy-foco-row">
+                    <div className="bs-hoy-foco-head">
+                      <strong>{f.foco || 'Foco'}</strong>
+                      <span>{bar}%</span>
+                    </div>
+                    <div className="bs-hoy-foco-bar"><i style={{ width: bar + '%' }} /></div>
+                    <div className="bs-hoy-foco-meta">
+                      {vend.toLocaleString('es-CL')} / {metaU.toLocaleString('es-CL')} {f.unidad_meta || 'ud'}
+                      {f.estado_ritmo ? ` · ${String(f.estado_ritmo)}` : ''}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
 
           <button type="button" className="bs-hoy-route" onClick={() => nav('/mapa')}>

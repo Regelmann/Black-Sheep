@@ -237,6 +237,7 @@ create table if not exists public.ofertas_cliente (
   cliente_key text,
   ejecutivo_id text,
   activa boolean default true,
+  activo boolean default true,
   creado_en timestamptz default now()
 );
 
@@ -339,7 +340,7 @@ declare
 begin
   select * into v_oferta
   from public.ofertas_cliente
-  where token = p_token and coalesce(activa, true) = true
+  where token = p_token and coalesce(activa, activo, true) = true
   limit 1;
 
   if not found then

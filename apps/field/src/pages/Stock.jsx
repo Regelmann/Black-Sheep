@@ -33,7 +33,7 @@ export default function Stock() {
         supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }),
         supabase
           .from('cartera')
-          .select('cliente_key,nombre_cliente,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id')
+          .select('cliente_key,nombre_cliente,sku_detalle,productos_top,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id')
           .not('sku_detalle', 'is', null)   // solo clientes con mix cargado
           .limit(3000),
       ])

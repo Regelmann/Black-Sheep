@@ -62,7 +62,9 @@ export default function CatalogoCliente() {
         if (dead) return
         if (error) {
           setCatalogo(null)
-          setErr(error.message || 'No se pudo cargar el catálogo')
+          setErr((error.message || '').includes('activa') || (error.message || '').includes('column')
+            ? 'Catálogo desactualizado en base de datos. Pedí a admin correr sql/01_FIX_CATALOGO_ACTIVA.sql'
+            : (error.message || 'No se pudo cargar el catálogo'))
         } else if (!data || !data.nombre_cliente) {
           setCatalogo(null)
           setErr('Link inválido o catálogo no disponible')
