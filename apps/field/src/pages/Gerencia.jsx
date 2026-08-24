@@ -181,6 +181,8 @@ export default function Gerencia({ esGerente }) {
   const [carteraCache, setCarteraCache] = useState([]) // mix + bloqueos por zona de terreno
   const [actividad, setActividad] = useState(null) // { loading, rango, checkins, pedidos, notas, stats }
   const [actRango, setActRango] = useState('hoy') // hoy | 7d
+  const [fuentesOk, setFuentesOk] = useState({ gerencia: true, stock: true, cartera: true })
+  const [focosSinPrecio, setFocosSinPrecio] = useState(0) // SKU foco sin precio de lista
 
   useEffect(() => {
     ;(async () => {
@@ -209,19 +211,36 @@ export default function Gerencia({ esGerente }) {
                 .limit(2000),
             ]
 
-        const [{ data: g }, { data: t }, { data: stock }, { data: det }, carResults, { data: notasBlq }] =
-          await Promise.all([
-            supabase.from('gerencia').select('*'),
-            supabase.from('tendencia').select('*'),
-            supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,precio,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
-            supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
-            Promise.all(carPromises),
-            supabase
-              .from('notas_cliente')
-              .select('cliente_key,nombre_local,tipo,texto,created_at,creado_en')
-              .or('tipo.ilike.%bloqueo%,tipo.ilike.%bloqueo_cerrado%,tipo.ilike.%bloqueo_deuda%')
-              .limit(150),
-          ])
+        // allSettled + unwrap seguro: si cae `notas_cliente` o `stock`, el
+        // tablero NO puede quedar en blanco. Cada fuente falla por separado.
+        const _res = await Promise.allSettled([
+          supabase.from('gerencia').select('*'),
+          supabase.from('tendencia').select('*'),
+          supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,precio,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
+          supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
+          Promise.allSettled(carPromises),
+          supabase
+            .from('notas_cliente')
+            .select('cliente_key,nombre_local,tipo,texto,created_at,creado_en')
+            .or('tipo.ilike.%bloqueo%,tipo.ilike.%bloqueo_cerrado%,tipo.ilike.%bloqueo_deuda%')
+            .limit(150),
+        ])
+        const _val = i => (_res[i].status === 'fulfilled' ? _res[i].value : null)
+        const _data = i => _val(i)?.data || null
+        const g = _data(0)
+        const t = _data(1)
+        const stock = _data(2)
+        const det = _data(3)
+        const carResults = (_val(4) || []).map(r => (r.status === 'fulfilled' ? r.value : { data: [] }))
+        const notasBlq = _data(5)
+
+        // Qué fuentes no llegaron — para no mostrar ceros inventados
+        const fuentes = {
+          gerencia: !!g,
+          stock: !!stock,
+          cartera: carResults.some(r => (r?.data || []).length > 0),
+        }
+        setFuentesOk(fuentes)
 
         // mapa ejecutivo_id → zona (para cuando cartera.zona viene vacía)
         const zonaByEid = {}
@@ -330,8 +349,8 @@ export default function Gerencia({ esGerente }) {
         setStockLento(lento)
         // Alerta: SKU de foco sin precio publicado
         const sp = (sk || []).filter(s => s.es_foco_mes && !(Number(s.precio_unidad||0) > 0 || Number(s.precio_lista||0) > 0 || Number(s.precio||0) > 0))
-        if (sp.length) console.warn('[BS] Focos sin precio:', sp.length, sp.slice(0,3).map(s=>s.producto_nombre))
-        window.__bs_foco_sin_precio = sp.length
+        if (sp.length) console.warn('[BS] Focos sin precio:', sp.length, sp.slice(0, 3).map(s => s.producto_nombre))
+        setFocosSinPrecio(sp.length)
       } catch (e) {
         setError(String(e.message || e))
       } finally {
@@ -1007,11 +1026,30 @@ export default function Gerencia({ esGerente }) {
   }
 
 
-  const pulse = useMemo(() => { const rows=gerencia||[]; const total=rows.reduce((a,r)=>a+(Number(r.venta_mtd)||0),0); const under=rows.filter(r=>Number(r.meta_mensual||0)>0&&Number(r.venta_mtd||0)<Number(r.meta_mensual||0)).sort((a,b)=>((Number(a.venta_mtd)||0)/(Number(a.meta_mensual)||1))-((Number(b.venta_mtd)||0)/(Number(b.meta_mensual)||1))).slice(0,3); const risks=(carteraCache||[]).filter(c=>{const d=Number(c.dias_sin_comprar||0);if(d>=180||d<=0)return false;return (d>=30&&d<=120)||/RIESGO|ENFRI|DORMIDO/i.test(String(c.estado_fuga||''));}).length;
-  // Alerta: SKU sin precio en lista → afecta pedidos del vendedor
-  const stockAll = carteraCache?.__stockAll || []
-  const sinPrecio = (stockLento || []).filter ? 0 : 0 // placeholder
-  return {total,under,risks,slow:(stockLento||[]).length, sinPrecio}; }, [gerencia,carteraCache,stockLento])
+  /** Pulse gerencial. Regla: si una fuente no cargó, el contador va en null
+   *  y la UI muestra "—". Un 0 inventado se lee como "no hay problemas". */
+  const pulse = useMemo(() => {
+    const rows = gerencia || []
+    const total = rows.reduce((a, r) => a + (Number(r.venta_mtd) || 0), 0)
+
+    const ratio = r => (Number(r.venta_mtd) || 0) / (Number(r.meta_mensual) || 1)
+    const under = rows
+      .filter(r => Number(r.meta_mensual || 0) > 0 && Number(r.venta_mtd || 0) < Number(r.meta_mensual || 0))
+      .sort((a, b) => ratio(a) - ratio(b))
+      .slice(0, 3)
+
+    const risks = !fuentesOk.cartera
+      ? null
+      : (carteraCache || []).filter(c => {
+          const d = Number(c.dias_sin_comprar || 0)
+          if (d >= 180 || d <= 0) return false
+          return (d >= 30 && d <= 120) || /RIESGO|ENFRI|DORMIDO/i.test(String(c.estado_fuga || ''))
+        }).length
+
+    const slow = !fuentesOk.stock ? null : (stockLento || []).length
+
+    return { total, under, risks, slow }
+  }, [gerencia, carteraCache, stockLento, fuentesOk])
 
   const pred7 = useMemo(() => predict7Days(carteraCache || [], gerencia?.[0] || null, []), [carteraCache, gerencia])
 
@@ -1056,17 +1094,31 @@ export default function Gerencia({ esGerente }) {
             <span>zonas bajo meta</span>
           </div>
           <div>
-            <strong>{pulse.risks}</strong>
+            <strong>{pulse.risks ?? '—'}</strong>
             <span>clientes en riesgo</span>
           </div>
           <div>
-            <strong>{pulse.slow}</strong>
+            <strong>{pulse.slow ?? '—'}</strong>
             <span>SKUs lentos</span>
           </div>
         </div>
-        {typeof window !== 'undefined' && window.__bs_foco_sin_precio > 0 && (
+        {(!fuentesOk.gerencia || !fuentesOk.stock || !fuentesOk.cartera) && (
+          <div className="bs-carga-aviso is-error" style={{ marginTop: 10 }}>
+            <span>
+              No cargó:{' '}
+              {[
+                !fuentesOk.gerencia && 'gerencia',
+                !fuentesOk.stock && 'stock',
+                !fuentesOk.cartera && 'cartera',
+              ].filter(Boolean).join(' · ')}
+              . Los contadores en "—" no son cero, son sin dato.
+            </span>
+            <button type="button" onClick={() => window.location.reload()}>Reintentar</button>
+          </div>
+        )}
+        {focosSinPrecio > 0 && (
           <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 12px', marginTop: 8, fontSize: 12, color: '#92400e', fontWeight: 700 }}>
-            ⚠️ {window.__bs_foco_sin_precio} foco{window.__bs_foco_sin_precio > 1 ? 's' : ''} sin precio en lista — actualizá la lista de precios en el ciclo
+            ⚠️ {focosSinPrecio} foco{focosSinPrecio > 1 ? 's' : ''} sin precio en lista — el vendedor no puede cotizarlos. Actualizá la lista de precios en el ciclo.
           </div>
         )}
         {pulse.under.length > 0 && (
