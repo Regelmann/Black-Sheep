@@ -159,7 +159,7 @@ function TabClientes({ onFlash }) {
   }
 
   return (
-    <div>
+    <div className="bs-page">
       <div className="card" style={{ marginBottom: 12 }}>
         <input className="search" placeholder="Buscar cliente, código, comuna…" value={q} onChange={e => setQ(e.target.value)} />
         <div className="filter-row" style={{ marginTop: 8 }}>

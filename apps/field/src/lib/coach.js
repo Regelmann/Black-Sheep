@@ -42,6 +42,7 @@ function parseOneBlock(block) {
       cicloDias: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
       nCompras: p[8] !== '' && !isNaN(Number(p[8])) ? Number(p[8]) : null,
       estadoRecompra: p[9] || null,
+      sku_canon: p[11] || p[10] && !/^[A-Z_]+$/.test(p[10]) ? (p[11] || p[10]) : (p[11] || null),
     }
   } else if (p.length >= 5) {
     row = {
@@ -55,6 +56,7 @@ function parseOneBlock(block) {
       cicloDias: p[6] !== '' && !isNaN(Number(p[6])) ? Number(p[6]) : null,
       nCompras: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
       estadoRecompra: null,
+      sku_canon: p[8] && /^[0-9A-Za-z_-]{3,}$/.test(p[8]) ? p[8] : null,
     }
   } else {
     return null

@@ -16,7 +16,10 @@ import {
   loadHoyResultados,
 } from '../lib/offline'
 import { skusAReponer } from '../lib/coach'
-import { buildDecisionFeed } from '../lib/decisionEngine'
+import { buildDecisionFeed, groupByAttention, daySummary } from '../lib/decisionEngine'
+import { DecisionCard, DecisionSection } from '../components/DecisionCard.jsx'
+import { trackDecision } from '../lib/memory'
+import { predict7Days } from '../lib/predictor'
 
 function limpiaEstado(e) {
   return (e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')
@@ -158,7 +161,38 @@ export default function Hoy() {
   const recsHoy = useMemo(() => buildRecomendacionesHoy(cartera, { focos }), [cartera, focos])
   const coaching = useMemo(() => resumenDia(recsHoy, meta), [recsHoy, meta])
   const decisionFeed = useMemo(() => buildDecisionFeed({ cartera, focos, meta, actividad: actividadHoy }), [cartera, focos, meta, actividadHoy])
-  const commandResults = useMemo(() => { const q=command.trim().toLowerCase(); return (q ? decisionFeed.filter(d=>`${d.title} ${d.reason}`.toLowerCase().includes(q)) : decisionFeed).slice(0,5) }, [command, decisionFeed])
+  const commandResults = useMemo(() => {
+    const q = command.trim().toLowerCase()
+    const base = q
+      ? decisionFeed.filter(d => `${d.title} ${d.reason} ${(d.why || []).join(' ')}`.toLowerCase().includes(q))
+      : decisionFeed
+    return base.slice(0, 8)
+  }, [command, decisionFeed])
+  const byAtt = useMemo(() => groupByAttention(commandResults), [commandResults])
+  const pred7 = useMemo(() => predict7Days(cartera, meta, focos), [cartera, meta, focos])
+  const diaResumen = useMemo(() => daySummary(commandResults, pred7), [commandResults, pred7])
+
+  function handleDecisionAction(item) {
+    trackDecision({
+      decisionId: item.id,
+      decisionType: item.type,
+      attention: item.attention,
+      clienteKey: item.clientId,
+      ejecutivoId: eidVista,
+      accion: 'tap',
+    })
+    if (item.route) nav(item.route)
+    else if (item.clientId)
+      openPrep({
+        clientId: item.clientId,
+        title: item.title,
+        raw: item.raw,
+        insight: item.reason,
+        why: item.why,
+        confidence: item.confidence,
+      })
+  }
+
   const m = useMemo(() => computeConsistentMetrics(cartera, meta), [cartera, meta])
 
   // Refrescar resultados locales al volver a Hoy
@@ -243,7 +277,7 @@ export default function Hoy() {
   const showOfflineBanner = offline || colaN > 0
 
   return (
-    <div>
+    <div className="bs-page">
       {showOfflineBanner && (
         <div
           style={{
@@ -292,7 +326,7 @@ export default function Hoy() {
       )}
 
       <div className="page-hero hoy-hero">
-        <div className="eyebrow">KeyFoods · Mi día</div>
+        <div className="eyebrow">Black Sheep · One Brain</div>
         <h1>
           {saludo()}, {nombreCorto}
         </h1>
@@ -303,424 +337,132 @@ export default function Hoy() {
       </div>
 
       <div className="wrap hoy-wrap">
-        <section className="bs-command bs-command-2060"><div className="bs-command-top"><div><div className="bs-command-kicker">BLACK SHEEP · 2060</div><h2>Tu siguiente decisión.</h2><p>No busques información. La información ya viene ordenada para actuar.</p></div><div className="bs-command-orb" aria-hidden="true"><span>✦</span></div></div><div className="bs-command-search"><span>⌕</span><input value={command} onChange={e=>setCommand(e.target.value)} placeholder="¿A quién debería contactar ahora?" aria-label="Buscar decisión" />{command&&<button type="button" onClick={()=>setCommand('')} aria-label="Limpiar">×</button>}</div><div className="bs-decision-feed">{commandResults.map((d,i)=><button type="button" key={d.id} className={`bs-decision-card ${d.type}`} onClick={()=>{if(d.route)nav(d.route);else if(d.clientId)openPrep({clientId:d.clientId,title:d.title,raw:d.raw,insight:d.reason})}}><span className="bs-decision-rank">{String(i+1).padStart(2,'0')}</span><span className="bs-decision-body"><small>{d.type.toUpperCase()} · {d.confidence || 0}% confianza</small><strong>{d.title}</strong><em>{d.reason}</em>{d.why?.length>0&&<span className="bs-decision-why">{d.why.slice(0,2).join(' · ')}</span>}</span><span className="bs-decision-action">{d.actionLabel || 'Abrir'} <b>→</b></span></button>)}</div></section>
+        
+        {/* ONE BRAIN — una decisión manda */}
+        <section className="bs-hoy-action bs-one-brain">
+          <div className="bs-hoy-kicker">Tu día</div>
+          <h2 className="bs-hoy-title">Siguiente mejor acción</h2>
+
+          {commandResults.length === 0 ? (
+            <div className="bs-hoy-empty">
+              Sin acciones que justifiquen interrumpirte.
+              <button type="button" className="bs-hoy-route" style={{ marginTop: 12 }} onClick={() => nav('/mapa')}>
+                Armar ruta
+              </button>
+            </div>
+          ) : (
+            <>
+              <DecisionCard
+                item={commandResults[0]}
+                featured
+                onAction={handleDecisionAction}
+              />
+
+              {commandResults.length > 1 && (
+                <details className="bs-hoy-despues">
+                  <summary>
+                    Después · {commandResults.length - 1} más
+                    {commandResults.slice(1).reduce((s, d) => s + (Number(d.expectedValue) || 0), 0) > 0 && (
+                      <> · ${Math.round(commandResults.slice(1).reduce((s, d) => s + (Number(d.expectedValue) || 0), 0)).toLocaleString('es-CL')} potencial</>
+                    )}
+                  </summary>
+                  <div className="bs-dc-stack" style={{ marginTop: 10 }}>
+                    {commandResults.slice(1).map(d => (
+                      <DecisionCard key={d.id} item={d} onAction={handleDecisionAction} />
+                    ))}
+                  </div>
+                </details>
+              )}
+            </>
+          )}
+
+          {diaResumen && (
+            <div className="bs-hoy-day-summary">{diaResumen}</div>
+          )}
+
+          {/* Predicción secundaria — no compite con la acción */}
+          {pred7 && (pred7.ventaEsperada > 0 || pred7.ventaEnRiesgo > 0) && (
+            <details className="bs-pred7-secondary">
+              <summary>Horizonte 7 días</summary>
+              <div className="bs-pred7-grid" style={{ marginTop: 10 }}>
+                {pred7.ventaEsperada > 0 && (
+                  <div className="bs-pred7-cell ok">
+                    <strong>{money(pred7.ventaEsperada)}</strong>
+                    <span>Esperada</span>
+                  </div>
+                )}
+                {pred7.ventaEnRiesgo > 0 && (
+                  <div className="bs-pred7-cell risk">
+                    <strong>{money(pred7.ventaEnRiesgo)}</strong>
+                    <span>Riesgo</span>
+                  </div>
+                )}
+                {pred7.oportunidad > 0 && (
+                  <div className="bs-pred7-cell opp">
+                    <strong>{money(pred7.oportunidad)}</strong>
+                    <span>Oport.</span>
+                  </div>
+                )}
+              </div>
+              {pred7.resumen && <p className="bs-pred7-hint">{pred7.resumen}</p>}
+            </details>
+          )}
+
+          <button type="button" className="bs-hoy-route" onClick={() => nav('/mapa')}>
+            Armar ruta del día
+          </button>
+        </section>
+
+
+
 
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${m.totalClientes} clientes`} />}
 
-        {/* Hero venta + meta integrada (antes tab Metas) */}
-        <div className="hero-metric hoy-sales-hero">
-          <div className="hm-label">Venta del mes</div>
-          <div className="hm-value">{money(m.ventaMtd)}</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <span
-              style={{
-                fontSize: 22,
-                fontWeight: 800,
-                color: m.pct >= 70 ? '#4ade80' : m.pct >= 40 ? '#fbbf24' : '#fb923c',
-              }}
-            >
-              {m.pct}%
-            </span>
-            <span className="hm-meta">Meta {money(m.metaMensual)}</span>
+        {/* Compact metrics — no Excel wall */}
+        <div className="bs-hoy-strip">
+          <div className="bs-hoy-strip-main">
+            <span className="bs-hoy-strip-label">Venta mes</span>
+            <strong>{money(m.ventaMtd)}</strong>
+            <span className={'bs-hoy-strip-pct ' + (m.pct >= 70 ? 'ok' : m.pct >= 40 ? 'mid' : 'low')}>{m.pct}%</span>
           </div>
-          <div className="progress-bg" style={{ marginTop: 10, background: 'rgba(255,255,255,0.12)' }}>
-            <div
-              className="progress-fill"
-              style={{
-                width: Math.min(m.pct, 100) + '%',
-                background: m.pct >= 70 ? '#4ade80' : '#fb923c',
-              }}
-            />
+          <div className="bs-hoy-strip-meta">
+            Meta {money(m.metaMensual)} · Faltan {money(m.brecha)}
+            {m.ritmoDia > 0 ? ` · ${money(m.ritmoDia)}/día` : ''}
           </div>
-          <div className="hm-meta" style={{ marginTop: 10 }}>
-            Faltan {money(m.brecha)}
-            {m.ritmoDia > 0 && <> · Ritmo {money(m.ritmoDia)}/día</>}
+          <div className="bs-hoy-strip-bar">
+            <i style={{ width: Math.min(m.pct, 100) + '%' }} />
           </div>
         </div>
 
-        {m.metaMensual > 0 && (
-          <button
-            type="button"
-            className="card"
-            onClick={() => nav('/cartera?filtro=CerrarMeta')}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              width: '100%',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              border: '1px solid #e7e5e4',
-            }}
-          >
-            <div>
-              <div className="card-label" style={{ marginBottom: 4 }}>
-                Proyección del mes · tocá para actuar
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{money(m.proyeccion)}</div>
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                textAlign: 'right',
-                color: m.proyeccionDiff >= 0 ? 'var(--green)' : 'var(--red)',
-              }}
-            >
-              {m.proyeccionDiff >= 0 ? '↑' : '↓'} {money(Math.abs(m.proyeccionDiff))}
-              <div className="muted" style={{ fontWeight: 600, fontSize: 11 }}>
-                {m.proyeccionDiff >= 0 ? 'sobre meta' : 'cerrar brecha →'}
-              </div>
-            </div>
+        <div className="bs-hoy-kpis">
+          <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=ReponerHoy')}>
+            <strong>{m.reponerHoy ?? '—'}</strong>
+            <span>Reponer</span>
           </button>
-        )}
-
-        {/* Actividad de terreno hoy — loop cerrado */}
-        <div className="card" style={{ padding: '14px 16px' }}>
-          <div className="card-label" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>
-              Hoy en terreno
-              {actividadHoy.colaOffline > 0 && (
-                <span style={{ marginLeft: 8, color: '#92400e', fontWeight: 700 }}>
-                  · {actividadHoy.colaOffline} en cola offline
-                </span>
-              )}
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowHistorial(v => !v)}
-              style={{
-                border: 'none', background: showHistorial ? '#c2410c' : '#f5f5f4',
-                color: showHistorial ? '#fff' : '#57534e',
-                borderRadius: 999, padding: '5px 10px', fontSize: 11, fontWeight: 800,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              {showHistorial ? 'Ocultar historial' : 'Ver historial'}
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{actividadHoy.visitas}</div>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Check-ins</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--brand)' }}>{actividadHoy.pedidos}</div>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Pedidos</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 800 }}>{money(actividadHoy.totalPedidos)}</div>
-              <div className="muted" style={{ fontSize: 11, fontWeight: 650 }}>Capturado</div>
-            </div>
-          </div>
+          <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=RIESGO')}>
+            <strong>{m.nRiesgo ?? '—'}</strong>
+            <span>Riesgo</span>
+          </button>
+          <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=Nuevos')}>
+            <strong>{m.nNuevos ?? '—'}</strong>
+            <span>Nuevos</span>
+          </button>
+          <button type="button" className="bs-hoy-kpi ghost" onClick={() => setShowHistorial(v => !v)}>
+            <strong>{actividadHoy.visitas || 0}</strong>
+            <span>Visitas</span>
+          </button>
         </div>
-
-        <OrderInbox
-          ejecutivoId={eidVista}
-          onOpenPedido={(p) => setPedidoEdit(p)}
-          onChanged={() => {
-            /* refresh contadores al cambiar estado */
-            setActividadHoy(a => ({ ...a }))
-          }}
-        />
 
         {showHistorial && (
-          <HistorialPedidos
-            ejecutivoId={eidVista}
-            defaultDias={30}
-            onOpenPedido={(p) => setPedidoEdit(p)}
-          />
-        )}
-        {pedidoEdit && (
-          <PedidoSheet
-            initialPedido={pedidoEdit}
-            cliente={{
-              cliente_key: pedidoEdit.cliente_key,
-              nombre_cliente: pedidoEdit.nombre_cliente,
-            }}
-            aReponer={[]}
-            ejecutivoId={eidVista}
-            onClose={() => setPedidoEdit(null)}
-            onSaved={() => setPedidoEdit(null)}
-          />
-        )}
-
-        {/* Focos del mes (ex-Metas) */}
-        {focos.length > 0 && (
-          <>
-            <div className="section-title hoy-section-title">Focos del mes</div>
-            {focos.slice(0, 3).map((f, i) => {
-              const vendido = Number(f.vendido_unidad) || 0
-              const metaU   = Number(f.meta_unidad) || 0
-              const p       = metaU ? Math.round((vendido / metaU) * 100) : 0
-              const unidad  = f.unidad_meta || 'KG'
-              const falta   = Math.max(0, metaU - vendido)
-              const ritmoNecesario = m.diasRestantes > 0
-                ? Math.round(falta / m.diasRestantes * 10) / 10
-                : null
-              const atrasado = /ATRAS|SIN/i.test(f.estado_ritmo || '') || (metaU && p < 70)
-              const colorFoco = p >= 100 ? '#15803d' : p >= 70 ? '#2563eb' : p >= 40 ? '#d97706' : '#dc2626'
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  className="card"
-                  onClick={() => nav(`/cartera?filtro=Foco&q=${encodeURIComponent(f.foco || '')}`)}
-                  style={{
-                    padding: '10px 12px',
-                    width: '100%',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    border: '1px solid #e7e5e4',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#1c1917' }}>
-                        {f.foco}
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#a8a29e', marginLeft: 6 }}>
-                          → a quién vender
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
-                        <b style={{ color: '#1c1917' }}>{vendido.toLocaleString('es-CL')}</b>
-                        {' / '}{metaU.toLocaleString('es-CL')} {unidad}
-                        {falta > 0 && <span style={{ color: colorFoco }}> · faltan {falta.toLocaleString('es-CL')} {unidad}</span>}
-                      </div>
-                      {ritmoNecesario !== null && falta > 0 && (
-                        <div style={{ fontSize: 11, color: atrasado ? '#dc2626' : '#78716c', fontWeight: 600, marginTop: 2 }}>
-                          {atrasado ? '⚡' : '→'} {ritmoNecesario.toLocaleString('es-CL')} {unidad}/día ({m.diasRestantes}d háb.)
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 10 }}>
-                      <div style={{ fontWeight: 900, fontSize: 18, color: colorFoco, lineHeight: 1 }}>{p}%</div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: colorFoco, marginTop: 2 }}>
-                        {p >= 100 ? 'OK' : atrasado ? 'ATRÁS' : 'RITMO'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="progress-bg" style={{ marginTop: 6 }}>
-                    <div
-                      className="progress-fill"
-                      style={{ width: Math.min(p, 100) + '%', background: colorFoco }}
-                    />
-                  </div>
-                </button>
-              )
-            })}
-          </>
-        )}
-
-        {/* Day Summary — 4 métricas clave (menos ruido) */}
-        <div className="section-title hoy-section-title">Tu cartera hoy</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
-          {[
-            { n: m.reponerHoy,  l: 'Reponer', color: '#c2410c', route: '/cartera?filtro=ReponerHoy', bg: '#fff4eb' },
-            { n: m.nRiesgo,     l: 'Riesgo',  color: '#dc2626', route: '/cartera?filtro=Riesgo',    bg: '#fef2f2' },
-            { n: m.nNuevos,     l: 'Nuevos',  color: '#2563eb', route: '/cartera?filtro=Nuevos',    bg: '#eff6ff' },
-            { n: m.nActivos,    l: 'Activos', color: '#15803d', route: '/cartera?filtro=ActivosMes', bg: '#f0fdf4' },
-          ].map(({ n, l, color, route, bg }) => (
-            <button key={l} type="button"
-              onClick={() => nav(route)}
-              style={{
-                background: bg, border: `1.5px solid ${color}22`, borderRadius: 12,
-                padding: '10px 4px', textAlign: 'center', cursor: 'pointer',
-                fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
-              }}>
-              <div style={{ fontSize: 20, fontWeight: 900, color, lineHeight: 1, letterSpacing: '-0.03em' }}>{n}</div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: 3 }}>{l}</div>
-            </button>
-          ))}
-        </div>
-
-        {/* Action Queue */}
-        <div className="section-title hoy-section-title" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span>Tu foco de hoy</span>
-          {m.actionQueue.length > 5 && (
-            <button type="button" onClick={() => nav('/cartera?filtro=ReponerHoy')}
-              style={{ border: 'none', background: 'transparent', color: '#c2410c', fontWeight: 700, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
-              Ver {m.actionQueue.length}
-            </button>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => nav('/mapa')}
-          style={{
-            width: '100%', marginBottom: 10,
-            padding: '10px 12px', borderRadius: 12,
-            background: 'linear-gradient(135deg, #1c1917 0%, #c2410c 100%)',
-            border: 'none', color: '#fff',
-            fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
-            cursor: 'pointer', textAlign: 'left',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}
-        >
-          <span style={{ fontSize: 18 }}>🎯</span>
-          <div style={{ flex: 1 }}>
-            <div>Armar ruta del día</div>
-            <div style={{ fontWeight: 500, fontSize: 11, opacity: 0.7 }}>GPS · prioridades · km</div>
-          </div>
-          <span style={{ opacity: 0.8 }}>→</span>
-        </button>
-        {coaching && (
-          <div className="coaching-line" style={{
-            fontSize: 13, fontWeight: 700, color: '#9a3412',
-            background: '#fff7ed', borderRadius: 12, padding: '10px 12px', marginBottom: 10,
-            border: '1px solid #fed7aa',
-          }}>
-            Hoy: {coaching}
-          </div>
-        )}
-        {m.actionQueue.length === 0 && (
-          <div className="empty-state card">
-            <div className="empty-title">Sin urgencias fuertes</div>
-            <p className="muted" style={{ fontSize: 13 }}>
-              Revisá el mapa o cartera para armar la ruta del día.
+          <div className="card bs-hoy-hist">
+            <div className="card-label">Actividad de hoy</div>
+            <p className="muted" style={{ fontSize: 13, margin: '8px 0 0' }}>
+              Visitas {actividadHoy.visitas || 0}
+              {actividadHoy.colaOffline > 0 ? ` · ${actividadHoy.colaOffline} en cola offline` : ''}
+              {actividadHoy.pedidos ? ` · ${actividadHoy.pedidos} pedidos` : ''}
             </p>
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              style={{ marginTop: 12, minHeight: 48 }}
-              onClick={() => nav('/mapa')}
-            >
-              Ir al mapa
-            </button>
           </div>
         )}
-        {m.actionQueue.slice(0, 5).map((item, idx) => {
-          const metaT = TYPE_META[item.type] || TYPE_META.visita
-          const res = hoyRes[item.clientId] || hoyRes[item.id]
-          const done = res?.resultado
-          const doneLabel =
-            done === 'pedido' ? 'Pedido' :
-            done === 'no_venta' ? 'No compró' :
-            done === 'checkin' || done === 'visitado' ? 'OK' : null
-          const doneColor =
-            done === 'pedido' ? '#0d9488' :
-            done === 'no_venta' ? '#78716c' :
-            done ? '#2563eb' : null
-          return (
-            <div
-              key={item.id || idx}
-              style={{
-                background: done ? '#fafaf9' : '#fff',
-                borderRadius: 10,
-                border: `1px solid ${metaT.color}22`,
-                marginBottom: 6,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 8px 8px 10px',
-                opacity: done === 'pedido' || done === 'no_venta' ? 0.78 : 1,
-              }}
-            >
-              <div
-                style={{
-                  width: 3,
-                  alignSelf: 'stretch',
-                  borderRadius: 2,
-                  background: doneColor || metaT.color,
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{
-                    fontSize: 9, fontWeight: 800, letterSpacing: '0.03em',
-                    color: metaT.color, textTransform: 'uppercase',
-                    background: metaT.color + '12', padding: '1px 5px', borderRadius: 4,
-                  }}>
-                    {metaT.badge}
-                  </span>
-                  {doneLabel && (
-                    <span style={{ fontSize: 9, fontWeight: 700, color: doneColor }}>✓ {doneLabel}</span>
-                  )}
-                  {item.amount > 0 && (
-                    <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: '#1c1917', flexShrink: 0 }}>
-                      {money(item.amount)}
-                    </span>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: 13, fontWeight: 800, color: '#1c1917', lineHeight: 1.25,
-                  marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {item.title}
-                </div>
-                {item.subtitle && (
-                  <div style={{
-                    fontSize: 10, color: '#a8a29e', marginTop: 1,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {item.subtitle}
-                  </div>
-                )}
-                {item.insight && (
-                  <div style={{
-                    fontSize: 11, color: '#9a3412', marginTop: 2, fontWeight: 650,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    → {item.insight}
-                  </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                {item.telefono && (
-                  <a href={`tel:${item.telefono}`}
-                    style={{
-                      width: 34, height: 34, borderRadius: 8,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: '#f5f5f4', color: '#57534e', textDecoration: 'none',
-                    }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                    </svg>
-                  </a>
-                )}
-                {item.whatsapp && (
-                  <a href={item.whatsapp} target="_blank" rel="noreferrer"
-                    style={{
-                      width: 34, height: 34, borderRadius: 8,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: '#ecfdf5', textDecoration: 'none',
-                    }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="#15803d">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.552 4.106 1.515 5.828L0 24l6.338-1.476A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm.029 21.818a9.833 9.833 0 0 1-5.019-1.374l-.36-.214-3.732.979 1.003-3.647-.234-.374A9.862 9.862 0 0 1 2.182 12c0-5.42 4.41-9.818 9.847-9.818 5.437 0 9.847 4.398 9.847 9.818 0 5.42-4.41 9.818-9.847 9.818z"/>
-                    </svg>
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => openPrep(item)}
-                  style={{
-                    border: 'none',
-                    background: done ? '#57534e' : metaT.color,
-                    color: '#fff',
-                    fontSize: 11,
-                    fontWeight: 800,
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    padding: '8px 10px',
-                    borderRadius: 8,
-                    whiteSpace: 'nowrap',
-                    minHeight: 34,
-                  }}
-                >
-                  {done ? 'Ver' : (item.ctaLabel || 'Ir')}
-                </button>
-              </div>
-            </div>
-          )
-        })}
 
         {/* Espacio para navbar fijo + safe area (evita que la última card se corte) */}
         <div style={{ height: 'calc(72px + env(safe-area-inset-bottom, 0px))' }} />

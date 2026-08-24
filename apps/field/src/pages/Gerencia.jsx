@@ -4,6 +4,66 @@ import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { parseSkuDetalle, clpEfectivo } from '../lib/coach.js'
+import { predict7Days } from '../lib/predictor.js'
+
+/** Fuente de verdad del mix: líneas de venta del cliente (mes + histórico reciente) */
+async function mixDesdeVentasLineas(clienteKey) {
+  if (!clienteKey) return []
+  const { data, error } = await supabase
+    .from('ventas_lineas')
+    .select('sku_canon,producto_nombre,cantidad,venta_neta_clp,fecha')
+    .eq('cliente_key', String(clienteKey))
+    .order('fecha', { ascending: false })
+    .limit(800)
+  if (error || !data?.length) return []
+  // Mes de referencia = mes de la venta más reciente del cliente (no reloj del celular)
+  let mesRef = new Date().toISOString().slice(0, 7)
+  for (const r of data) {
+    const f = r.fecha ? String(r.fecha).slice(0, 7) : null
+    if (f) { mesRef = f; break }
+  }
+  const by = new Map()
+  for (const r of data) {
+    const sk = String(r.sku_canon || '').trim()
+    if (!sk) continue
+    const cur = by.get(sk) || {
+      nombre: r.producto_nombre || sk,
+      sku_canon: sk,
+      promUd: 0,
+      udMtd: 0,
+      falta: 0,
+      promClp: 0,
+      clpMtd: 0,
+      ultima: null,
+      nCompras: 0,
+    }
+    const cant = Number(r.cantidad) || 0
+    const clp = Number(r.venta_neta_clp) || 0
+    const f = r.fecha ? String(r.fecha).slice(0, 10) : null
+    if (f && f.startsWith(mesRef)) {
+      cur.udMtd += cant
+      cur.clpMtd += clp
+    }
+    cur.promUd += cant
+    cur.promClp += clp
+    cur.nCompras += 1
+    if (!cur.ultima || (f && f > cur.ultima)) cur.ultima = f
+    if (r.producto_nombre) cur.nombre = r.producto_nombre
+    by.set(sk, cur)
+  }
+  // Preferir SKUs del mes; si ninguno, devolver histórico completo
+  const all = Array.from(by.values())
+  const mtd = all.filter(x => (Number(x.clpMtd) || 0) > 0 || (Number(x.udMtd) || 0) > 0)
+  const list = (mtd.length ? mtd : all)
+    .map(x => ({
+      ...x,
+      falta: 0,
+      promUd: x.nCompras ? x.promUd / Math.max(1, x.nCompras) : x.promUd,
+    }))
+    .sort((a, b) => (b.clpMtd || 0) - (a.clpMtd || 0) || (b.promClp || 0) - (a.promClp || 0))
+  return list
+}
+
 
 function fmtStock(n) {
   if (n == null || n === '') return '—'
@@ -640,7 +700,12 @@ export default function Gerencia({ esGerente }) {
 
     // FAST PATH 1: gerencia_clientes tiene sku_detalle → mostrar sin queries
     if (fromGer?.sku_detalle) {
-      const skusFast = parseSkuDetalle(fromGer.sku_detalle)
+      let skusFast = parseSkuDetalle(fromGer.sku_detalle)
+      try {
+        const fv = await mixDesdeVentasLineas(fromGer.cliente_key)
+        if (fv.length >= skusFast.length) skusFast = fv
+      } catch (_) {}
+
       if (skusFast.length) {
         setCliSku(prev => ({ ...prev, [key]: {
           loading: false, skus: skusFast,
@@ -724,10 +789,18 @@ export default function Gerencia({ esGerente }) {
     let productos_top = fromGer?.productos_top || null
 
 
-    // Fuente 0: sku_detalle directo de gerencia_clientes (más confiable, incluye clientes fuera de zona terreno)
+    // Fuente 0: sku_detalle de gerencia_clientes
     if (fromGer?.sku_detalle) {
       skus = parseSkuDetalle(fromGer.sku_detalle)
     }
+    // Fuente 0c: ventas_lineas es la verdad del mix (siempre que haya venta)
+    try {
+      const fromVentas = await mixDesdeVentasLineas(clienteKey || fromGer?.cliente_key)
+      if (fromVentas.length >= skus.length) skus = fromVentas
+      else if (fromVentas.length > 0 && skus.length === 0) skus = fromVentas
+    } catch (_) { /* ignore */ }
+
+
 
     // Fuente 0b: productos_top de gerencia_clientes (accion field con Top SKU)
     if (!skus.length && fromGer?.accion) {
@@ -924,7 +997,9 @@ export default function Gerencia({ esGerente }) {
   }
 
 
-  const pulse = useMemo(() => { const rows=gerencia||[]; const total=rows.reduce((a,r)=>a+(Number(r.venta_mtd)||0),0); const under=rows.filter(r=>Number(r.meta_mensual||0)>0&&Number(r.venta_mtd||0)<Number(r.meta_mensual||0)).sort((a,b)=>((Number(a.venta_mtd)||0)/(Number(a.meta_mensual)||1))-((Number(b.venta_mtd)||0)/(Number(b.meta_mensual)||1))).slice(0,3); const risks=(carteraCache||[]).filter(c=>Number(c.dias_sin_comprar||0)>=30||/FUGA|RIESGO|CRIT/i.test(String(c.estado_fuga||''))).length; return {total,under,risks,slow:(stockLento||[]).length}; }, [gerencia,carteraCache,stockLento])
+  const pulse = useMemo(() => { const rows=gerencia||[]; const total=rows.reduce((a,r)=>a+(Number(r.venta_mtd)||0),0); const under=rows.filter(r=>Number(r.meta_mensual||0)>0&&Number(r.venta_mtd||0)<Number(r.meta_mensual||0)).sort((a,b)=>((Number(a.venta_mtd)||0)/(Number(a.meta_mensual)||1))-((Number(b.venta_mtd)||0)/(Number(b.meta_mensual)||1))).slice(0,3); const risks=(carteraCache||[]).filter(c=>{const d=Number(c.dias_sin_comprar||0);if(d>=180||d<=0)return false;return (d>=30&&d<=120)||/RIESGO|ENFRI|DORMIDO/i.test(String(c.estado_fuga||''));}).length; return {total,under,risks,slow:(stockLento||[]).length}; }, [gerencia,carteraCache,stockLento])
+
+  const pred7 = useMemo(() => predict7Days(carteraCache || [], gerencia?.[0] || null, []), [carteraCache, gerencia])
 
   if (loading) {
     return (
@@ -938,6 +1013,7 @@ export default function Gerencia({ esGerente }) {
       </div>
     )
   }
+
   if (!esGerente) {
     return (
       <div className="wrap">
@@ -950,15 +1026,95 @@ export default function Gerencia({ esGerente }) {
   }
 
   return (
-    <div>
-      <section className="bs-executive-pulse"><div className="bs-pulse-top"><div><span className="bs-command-kicker">EXECUTIVE PULSE · 2060</span><h2>¿Dónde actuaría si tuviera 10 minutos?</h2><p>Señales priorizadas por impacto, no por volumen de datos.</p></div><div className="bs-pulse-value">{money(pulse.total)}</div></div><div className="bs-pulse-grid"><div><strong>{pulse.under.length}</strong><span>zonas bajo meta</span></div><div><strong>{pulse.risks}</strong><span>clientes en riesgo</span></div><div><strong>{pulse.slow}</strong><span>SKUs lentos</span></div></div>{pulse.under.length>0&&<div className="bs-pulse-actions">{pulse.under.map((r,i)=><button type="button" key={i} onClick={()=>setCanalSel(r.ejecutivo)}><span>{r.ejecutivo}</span><strong>{Math.round((Number(r.venta_mtd)||0)/(Number(r.meta_mensual)||1)*100)}%</strong><em>ver causa →</em></button>)}</div>}</section>
->
+    <div className="gerencia-page bs-page">
+      <section className="bs-executive-pulse">
+        <div className="bs-pulse-top">
+          <div>
+            <span className="bs-command-kicker">GERENCIA · PULSE</span>
+            <h2>¿Dónde actuar ahora?</h2>
+            <p>Venta del mes y desviaciones que importan.</p>
+          </div>
+          <div className="bs-pulse-value">{money(pulse.total)}</div>
+        </div>
+        <div className="bs-pulse-grid">
+          <div>
+            <strong>{pulse.under.length}</strong>
+            <span>zonas bajo meta</span>
+          </div>
+          <div>
+            <strong>{pulse.risks}</strong>
+            <span>clientes en riesgo</span>
+          </div>
+          <div>
+            <strong>{pulse.slow}</strong>
+            <span>SKUs lentos</span>
+          </div>
+        </div>
+        {pulse.under.length > 0 && (
+          <div className="bs-pulse-actions">
+            {pulse.under.map((r, i) => {
+              const pct = Math.round(
+                ((Number(r.venta_mtd) || 0) / (Number(r.meta_mensual) || 1)) * 100
+              )
+              return (
+                <button type="button" key={i} onClick={() => setCanalSel(r.ejecutivo)}>
+                  <span>{r.ejecutivo}</span>
+                  <strong>{pct}%</strong>
+                  <em>ver causa →</em>
+                </button>
+              )
+            })}
+          </div>
+        )}
+        {(pred7?.ventaEsperada > 0 || pred7?.ventaEnRiesgo > 0) && (
+          <div className="bs-pulse-7d">
+            <span>7 días</span>
+            {pred7.ventaEsperada > 0 && <strong className="ok">+{money(pred7.ventaEsperada)} esp.</strong>}
+            {pred7.ventaEnRiesgo > 0 && <strong className="risk">{money(pred7.ventaEnRiesgo)} riesgo</strong>}
+            {pred7.oportunidad > 0 && <strong className="opp">{money(pred7.oportunidad)} oport.</strong>}
+          </div>
+        )}
+        {pred7?.resumen && <p className="bs-pulse-resumen">{pred7.resumen}</p>}
+      </section>
+
       <div className="bs-page-hero">
         <div className="bs-eyebrow">Vista gerencial</div>
         <h1>Resultado del mes</h1>
         <p className="sub">Venta total · terreno · canales</p>
       </div>
       <div className="wrap">
+
+        {(pred7?.ventaEsperada > 0 || pred7?.ventaEnRiesgo > 0 || pred7?.oportunidad > 0) && (
+          <div className="bs-pred7 gerencia">
+            <div className="bs-pred7-label">Próximos 7 días — predicción</div>
+            <div className="bs-pred7-grid">
+              {pred7.ventaEsperada > 0 && (
+                <div className="bs-pred7-cell ok">
+                  <strong>{money(pred7.ventaEsperada)}</strong>
+                  <span>Venta esperada</span>
+                </div>
+              )}
+              {pred7.ventaEnRiesgo > 0 && (
+                <div className="bs-pred7-cell risk">
+                  <strong>{money(pred7.ventaEnRiesgo)}</strong>
+                  <span>En riesgo</span>
+                </div>
+              )}
+              {pred7.oportunidad > 0 && (
+                <div className="bs-pred7-cell opp">
+                  <strong>{money(pred7.oportunidad)}</strong>
+                  <span>Oportunidad</span>
+                </div>
+              )}
+            </div>
+            {pred7.clientesPorVencer?.length > 0 && (
+              <p className="bs-pred7-hint">
+                {pred7.clientesPorVencer.length} cliente(s) con ciclo por vencer
+              </p>
+            )}
+          </div>
+        )}
+
         <button
           type="button"
           className="admin-entry"

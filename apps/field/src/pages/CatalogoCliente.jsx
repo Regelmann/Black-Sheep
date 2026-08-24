@@ -218,7 +218,7 @@ export default function CatalogoCliente() {
   }
 
   return (
-    <div className="bs-shop">
+    <div className="bs-page bs-shop">
       {/* Hero editorial */}
       <header className="bs-shop-hero">
         <div className="bs-shop-hero-inner">

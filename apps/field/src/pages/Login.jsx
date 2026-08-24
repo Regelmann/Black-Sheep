@@ -72,7 +72,7 @@ export default function Login() {
         `,
       }}
     >
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
+      <div className="bs-login-brand" style={{ textAlign: 'center', marginBottom: 28 }}>
         <img
           src="/brand/logo-mark-192.png"
           alt="Black Sheep"

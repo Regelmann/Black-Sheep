@@ -466,7 +466,7 @@ export default function Cartera({ session }) {
   if (loading) return <div className="bs-spinner">Cargando cartera…</div>
 
   return (
-    <div>
+    <div className="bs-page">
       <div className="bs-page-hero">
         <div style={{
             fontSize: 11, fontWeight: 800, letterSpacing: '0.08em',
@@ -537,7 +537,7 @@ export default function Cartera({ session }) {
           }}
         />
 
-        <div className="filter-row">
+        <div className="filter-row bs-chips">
           <button
             className={'filter-btn' + (filtro === 'Todos' ? ' active' : '')}
             onClick={() => {

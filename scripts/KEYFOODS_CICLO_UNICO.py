@@ -1,7 +1,7 @@
 # =============================================================================
 # KEYFOODS CICLO LIMPIO — UN SOLO SCRIPT CANÓNICO
 # =============================================================================
-# VERSION = "CICLO_UNICO_v1.33"
+# VERSION = CICLO_UNICO_v1.34_MIX
 #
 # Una corrida hace TODO:
 #   1. Carga Excel (VENTAS, MAESTRA, STOCK, LISTA_PRECIOS) + opcional PRODUCTOS_MEDIA
@@ -55,7 +55,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # ---------------------------------------------------------------------------
 # Banner
 # ---------------------------------------------------------------------------
-VERSION = "CICLO_UNICO_v1.33"
+VERSION = "CICLO_UNICO_v1.34_MIX"
 print("=" * 72)
 print(f"VERSION = {VERSION}")
 print("Un solo script. Validar → Calcular → Metas → Places → Supabase.")
@@ -1459,16 +1459,22 @@ def build_sku_detalle_y_ciclo(ventas: pd.DataFrame, mes_inicio: date) -> Dict[st
                 "ultima": ultima.isoformat() if ultima else "",
                 "ciclo_dias": ciclo,
                 "n_compras": n_compras,
+                "sku": str(sku),
                 "dias_desde": dias_desde,
                 "dias_para_recompra": dias_para,
                 "estado_recompra": est_rec,
             }
 
-        ranking = sorted(skus.values(), key=lambda x: -(x["clp_prom"] + x["clp_mtd"]))
-        top_names = [x["nombre"] for x in ranking[:3]]
-        # V2: nombre|prom|mtd|falta|clp_prom|clp_mtd|ultima|ciclo|n|estado_recompra|dias_para
+        ranking = sorted(skus.values(), key=lambda x: -(x["clp_mtd"] * 10 + x["clp_prom"]))
+        # REGLA MIX: todos los SKU con venta MTD del mes van SIEMPRE.
+        # Después se completan con histórico hasta 30 (antes top 10 perdía productos).
+        mtd_first = [x for x in ranking if float(x.get("mtd") or 0) > 0]
+        rest = [x for x in ranking if float(x.get("mtd") or 0) <= 0]
+        ordered = mtd_first + rest
+        top_names = [x["nombre"] for x in ordered[:5]]
+        # V3: nombre|prom|mtd|falta|clp_prom|clp_mtd|ultima|ciclo|n|estado|dias|sku_canon
         parts = []
-        for x in ranking[:10]:
+        for x in ordered[:30]:
             parts.append("|".join([
                 str(x["nombre"]),
                 str(x["prom"]),
@@ -1481,11 +1487,14 @@ def build_sku_detalle_y_ciclo(ventas: pd.DataFrame, mes_inicio: date) -> Dict[st
                 str(x["n_compras"]),
                 str(x.get("estado_recompra") or ""),
                 str(x["dias_para_recompra"] if x.get("dias_para_recompra") is not None else ""),
+                str(x.get("sku") or ""),
             ]))
         out[ck] = {
             "productos_top": " · ".join(top_names),
             "sku_detalle": "||".join(parts),
             "skus": skus,
+            "n_sku_mtd": len(mtd_first),
+            "n_sku_total": len(ordered),
         }
     return out
 

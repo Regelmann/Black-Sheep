@@ -170,57 +170,38 @@ export default function Stock() {
   if (loading) return <div className="bs-spinner">Cargando stock…</div>
 
   return (
-    <div>
+    <div className="bs-page">
       <div className="bs-page-hero">
         <div className="bs-eyebrow">Inventario</div>
         <h1>Stock operativo</h1>
-        <p className="sub">{stock.length} SKU · kg · qué empujar / qué proteger</p>
+        <p className="sub">{stock.length} SKU · qué empujar y qué no vender agresivo</p>
       </div>
 
-      <div style={{ padding: 14 }}>
+      <div className="wrap bs-page-body">
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${stock.length} SKU`} />}
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 8,
-            marginBottom: 12,
-          }}
-        >
+        <div className="bs-hoy-kpis" style={{ marginBottom: 12 }}>
           {[
-            { n: stock.length, l: 'SKU', c: '#1c1917' },
-            { n: stats.focos, l: 'Foco', c: '#c2410c' },
-            { n: stats.bajo + stats.neg, l: 'Crítico', c: '#dc2626' },
-            { n: stats.alto, l: 'Sobrestock', c: '#d97706' },
+            { n: stock.length, l: 'SKU', f: 'Todos' },
+            { n: stats.focos, l: 'Foco', f: 'Foco' },
+            { n: stats.bajo + stats.neg, l: 'Crítico', f: 'Critico' },
+            { n: stats.alto, l: 'Sobrestock', f: 'Alto' },
           ].map(m => (
             <button
               key={m.l}
               type="button"
-              onClick={() =>
-                setFiltro(
-                  m.l === 'Foco' ? 'Foco' : m.l === 'Crítico' ? 'Critico' : m.l === 'Sobrestock' ? 'Alto' : 'Todos'
-                )
-              }
-              style={{
-                background: '#fff',
-                borderRadius: 12,
-                padding: '12px 6px',
-                textAlign: 'center',
-                border: '1px solid #e7e0d8',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              className={'bs-hoy-kpi' + (filtro === m.f ? ' active' : '')}
+              onClick={() => setFiltro(m.f)}
             >
-              <div style={{ fontSize: 18, fontWeight: 800, color: m.c }}>{m.n}</div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>{m.l}</div>
+              <strong>{m.n}</strong>
+              <span>{m.l}</span>
             </button>
           ))}
         </div>
 
         {/* Alertas como chips (mismo lenguaje visual que filtros) */}
         {insights.length > 0 && (
-          <div style={{ marginBottom: 12, display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+          <div className="bs-chips" style={{ marginBottom: 12 }}>
             {insights.map((ins, i) => (
               <button
                 key={i}
@@ -258,7 +239,7 @@ export default function Stock() {
           onChange={e => setQ(e.target.value)}
         />
 
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 12 }}>
+        <div className="bs-chips">
           {['Todos', 'Foco', 'Critico', 'Alto'].map(f => (
             <button
               key={f}

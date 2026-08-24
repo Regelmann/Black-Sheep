@@ -1,120 +1,345 @@
+/**
+ * BLACK SHEEP — DECISION OS (ONE BRAIN)
+ * Única fuente de decisiones para Hoy / Cliente / Gerencia.
+ * Otras libs (riesgo, coach, predictor) alimentan datos; no compiten en UI.
+ */
+
 const n = v => Number(v) || 0
 const txt = v => String(v ?? '').trim()
 const money = v => `$${Math.round(n(v)).toLocaleString('es-CL')}`
 
-function clientDecision(c) {
-  const venta = n(c.venta_mtd ?? c.venta_mensual)
-  const dias = n(c.dias_sin_comprar)
-  const estado = txt(c.estado_fuga).toUpperCase()
-  const key = c.cliente_key || c.id
-  if (!key) return null
+function diasUtiles(c) {
+  const d = n(c.dias_sin_comprar)
+  if (!d || d < 0 || d >= 180) return null
+  return d
+}
 
-  let score = 18
-  let type = 'opportunity'
-  let title = 'Mantener relación'
-  let actionLabel = 'Ver cliente'
-  let reason = venta ? `Compra activa · MTD ${money(venta)}.` : 'Cliente activo en cartera.'
-  let why = []
+function tuvoHistorial(c) {
+  if (n(c.venta_mtd) > 0 || n(c.venta_mensual) > 0) return true
+  if (c.ultima_compra) return true
+  const d = n(c.dias_sin_comprar)
+  return d > 0 && d < 180
+}
 
-  if (/FUGA|RIESGO|CRIT/.test(estado) || dias >= 30) {
-    score = 72
-    type = 'protect'
-    title = 'Proteger cliente'
-    actionLabel = 'Preparar contacto'
-    reason = `${dias} días sin compra${venta ? ` · MTD ${money(venta)}` : ''}.`
-    why.push(`${dias} días fuera de compra`)
-  } else if (dias >= 12) {
-    score = 48
-    type = 'replenish'
-    title = 'Activar reposición'
-    actionLabel = 'Preparar pedido'
-    reason = `${dias} días sin compra.`
-    why.push(`${dias} días sin compra`)
-  }
-
-  if (venta >= 500000) { score += 20; why.push('alto valor MTD') }
-  else if (venta >= 200000) { score += 12; why.push('valor MTD relevante') }
-
-  if (n(c.potencial_clp || c.oportunidad_clp) > 0) {
-    score += Math.min(18, n(c.potencial_clp || c.oportunidad_clp) / 100000)
-    why.push(`potencial ${money(c.potencial_clp || c.oportunidad_clp)}`)
-  }
-
-  if (c.es_bloqueado) {
-    score -= 40
-    type = 'blocked'
-    actionLabel = 'Revisar condición'
-    reason = 'Cliente bloqueado: revisar condición antes de ofrecer.'
-    why = ['cliente bloqueado']
-  }
-
-  const confidence = Math.max(0.45, Math.min(0.98, 0.52 + Math.min(0.3, dias / 100) + (venta > 0 ? 0.08 : 0) + (why.length >= 2 ? 0.05 : 0)))
+/**
+ * Score compuesto 0–100:
+ * urgencia × valor × probabilidad × accionable × confianza (promedio ponderado)
+ */
+function scoreParts({ urgencia, valor, probabilidad, accionable, confianza }) {
+  const u = Math.min(100, Math.max(0, urgencia))
+  const v = Math.min(100, Math.max(0, valor))
+  const p = Math.min(100, Math.max(0, probabilidad))
+  const a = Math.min(100, Math.max(0, accionable))
+  const c = Math.min(100, Math.max(0, confianza))
+  // pesos: urgencia y valor mandan
+  const total = u * 0.3 + v * 0.25 + p * 0.2 + a * 0.15 + c * 0.1
   return {
-    id: `client_${key}`,
-    type,
-    score: Math.round(score),
-    clientId: key,
-    title: c.nombre_cliente || c.razon_social || String(key),
-    reason,
-    why: why.slice(0, 3),
-    confidence: Math.round(confidence * 100),
-    actionLabel,
-    expectedValue: Math.round(n(c.potencial_clp || c.oportunidad_clp) || venta * (type === 'protect' ? 0.35 : 0.18)),
-    raw: c,
+    urgencia: Math.round(u),
+    valor: Math.round(v),
+    probabilidad: Math.round(p),
+    accionable: Math.round(a),
+    confianza: Math.round(c),
+    total: Math.round(total),
   }
 }
 
-export function buildDecisionFeed({ cartera = [], focos = [], meta = null, actividad = {} } = {}) {
-  const out = []
-  for (const c of cartera) {
-    const d = clientDecision(c)
-    if (d) out.push(d)
+function attentionFromScore(total, type) {
+  if (type === 'order') return 'now'
+  if (total >= 78) return 'now'
+  if (total >= 55) return 'today'
+  if (total >= 40) return 'week'
+  return null // ignorar
+}
+
+function evidenceFromClient(c, dias, ciclo, venta) {
+  const ev = []
+  if (dias != null) {
+    ev.push({ label: 'Sin compra', value: `${dias}d`, tone: dias >= 12 ? 'risk' : 'neutral' })
+  }
+  if (ciclo > 0 && dias != null) {
+    const over = dias - ciclo
+    ev.push({
+      label: over > 0 ? 'Sobre ciclo' : 'Ciclo',
+      value: over > 0 ? `+${over}d` : `~${ciclo}d`,
+      tone: over > 0 ? 'risk' : 'ok',
+    })
+  }
+  if (venta > 0) {
+    ev.push({ label: 'Habitual', value: money(venta), tone: 'neutral' })
+  }
+  if (c.estado_fuga) {
+    const e = txt(c.estado_fuga).replace(/^\d+_?/, '')
+    if (e) ev.push({ label: 'Estado', value: e, tone: /RIESGO|ENFRI/i.test(e) ? 'risk' : 'neutral' })
+  }
+  return ev.slice(0, 4)
+}
+
+/** Decisión de un cliente — export para Visita / 360 */
+export function decideClient(c) {
+  if (!c || c.es_bloqueado) return null
+  const key = c.cliente_key || c.id
+  if (!key) return null
+  if (!tuvoHistorial(c) && n(c.venta_mtd) <= 0) return null
+
+  const venta = n(c.venta_mtd ?? c.venta_mensual)
+  const dias = diasUtiles(c)
+  const ciclo = n(c.ciclo_dias) || 0
+  const estado = txt(c.estado_fuga).toUpperCase()
+  const nombre = c.nombre_cliente || c.razon_social || String(key)
+
+  // --- Reposición ---
+  if (dias != null && dias >= 7 && dias <= 45) {
+    const late = ciclo > 0 ? Math.max(0, dias - ciclo) : Math.max(0, dias - 9)
+    const urgencia = Math.min(100, 50 + dias * 1.5 + late * 4)
+    const valor = Math.min(100, 30 + (venta >= 500000 ? 50 : venta >= 200000 ? 35 : venta >= 50000 ? 20 : 10))
+    const probabilidad = Math.min(100, 55 + (ciclo > 0 && dias >= ciclo ? 25 : 10) + (venta > 0 ? 10 : 0))
+    const accionable = 100
+    const confianza = dias <= 21 ? 88 : 72
+    const parts = scoreParts({ urgencia, valor, probabilidad, accionable, confianza })
+    const att = attentionFromScore(parts.total, 'replenish')
+    if (!att) return null
+    return {
+      id: `rep_${key}`,
+      type: 'replenish',
+      attention: att,
+      score: parts.total,
+      parts,
+      clientId: key,
+      title: nombre,
+      reason:
+        ciclo > 0 && dias > ciclo
+          ? `${dias}d sin compra · ciclo ${ciclo}d`
+          : `Hace ${dias} días · reponer`,
+      why: [
+        ciclo > 0 ? `Ciclo habitual ~${ciclo} días` : 'Cliente con historial',
+        `Lleva ${dias} días sin comprar`,
+        venta > 0 ? `Venta habitual ${money(venta)}` : 'Tiene compras previas',
+        'Pedido accionable en terreno',
+      ],
+      evidence: evidenceFromClient(c, dias, ciclo, venta),
+      confidence: parts.confianza,
+      actionLabel: 'Armar pedido',
+      expectedValue: Math.round(venta > 0 ? Math.max(venta * 0.25, 40000) : 80000),
+      raw: c,
+    }
   }
 
-  for (const f of focos) {
+  // --- Riesgo recuperable ---
+  if (dias != null && dias >= 30 && dias <= 90 && (venta > 0 || /RIESGO|ENFRI|DORMIDO/.test(estado))) {
+    const urgencia = Math.min(100, 40 + (90 - dias) * 0.4 + (venta >= 300000 ? 15 : 0))
+    const valor = Math.min(100, 25 + (venta >= 300000 ? 40 : venta >= 100000 ? 25 : 12))
+    const probabilidad = Math.min(100, 45 + (dias <= 60 ? 20 : 5))
+    const parts = scoreParts({ urgencia, valor, probabilidad, accionable: 95, confianza: 70 })
+    const att = attentionFromScore(parts.total, 'protect')
+    if (!att) return null
+    return {
+      id: `risk_${key}`,
+      type: 'protect',
+      attention: att,
+      score: parts.total,
+      parts,
+      clientId: key,
+      title: nombre,
+      reason: `${dias} días sin compra · rescatar`,
+      why: [
+        `${dias}d sin compra`,
+        venta > 0 ? `Valía ${money(venta)}` : 'Marcado en riesgo',
+        'Todavía recuperable',
+        'Contacto + pedido corto',
+      ],
+      evidence: evidenceFromClient(c, dias, ciclo, venta),
+      confidence: parts.confianza,
+      actionLabel: 'Contactar',
+      expectedValue: Math.round(venta * 0.2 || 50000),
+      raw: c,
+    }
+  }
+
+  // --- Nudge ventana ---
+  if (dias != null && dias >= 5 && dias < 7 && venta >= 150000) {
+    const parts = scoreParts({
+      urgencia: 48,
+      valor: Math.min(100, 40 + (venta >= 500000 ? 30 : 15)),
+      probabilidad: 70,
+      accionable: 100,
+      confianza: 65,
+    })
+    const att = attentionFromScore(parts.total, 'replenish')
+    if (!att) return null
+    return {
+      id: `nudge_${key}`,
+      type: 'replenish',
+      attention: att,
+      score: parts.total,
+      parts,
+      clientId: key,
+      title: nombre,
+      reason: `Ventana de reposición · ${dias}d`,
+      why: [`${dias}d desde última compra`, `MTD/prom ${money(venta)}`, 'Adelantarse al ciclo'],
+      evidence: evidenceFromClient(c, dias, ciclo, venta),
+      confidence: parts.confianza,
+      actionLabel: 'Ver cliente',
+      expectedValue: Math.round(venta * 0.15),
+      raw: c,
+    }
+  }
+
+  return null
+}
+
+const ATT_RANK = { now: 0, today: 1, week: 2 }
+
+/**
+ * Feed único. actividad.pedidos → prioridad máxima.
+ * effectiveness (memory) puede bonificar tipos que convierten.
+ */
+export function buildDecisionFeed({
+  cartera = [],
+  focos = [],
+  meta = null,
+  actividad = {},
+  effectiveness = null, // Map type_attention -> { pctConversion }
+} = {}) {
+  const out = []
+
+  if (n(actividad.pedidos) > 0) {
+    out.push({
+      id: 'orders_today',
+      type: 'order',
+      attention: 'now',
+      score: 99,
+      parts: scoreParts({ urgencia: 100, valor: 90, probabilidad: 100, accionable: 100, confianza: 100 }),
+      title: `${actividad.pedidos} pedido${actividad.pedidos === 1 ? '' : 's'} por gestionar`,
+      reason: actividad.totalPedidos
+        ? `${money(actividad.totalPedidos)} capturados hoy`
+        : 'Confirmá con bodega',
+      why: ['Pedido ya ingresado', 'Requiere gestión ahora'],
+      evidence: [
+        { label: 'Pedidos', value: String(actividad.pedidos), tone: 'risk' },
+        ...(actividad.totalPedidos
+          ? [{ label: 'Monto', value: money(actividad.totalPedidos), tone: 'ok' }]
+          : []),
+      ],
+      confidence: 100,
+      actionLabel: 'Revisar',
+      expectedValue: n(actividad.totalPedidos),
+      route: '/',
+    })
+  }
+
+  for (const c of cartera || []) {
+    const d = decideClient(c)
+    if (!d) continue
+    // Memory boost
+    if (effectiveness && typeof effectiveness.get === 'function') {
+      const key = `${d.type}_${d.attention}`
+      const eff = effectiveness.get(key)
+      if (eff && n(eff.pctConversion) >= 30) {
+        d.score = Math.min(100, d.score + 5)
+        d.why = [...(d.why || []), `Histórico: ${Math.round(eff.pctConversion)}% conversión`]
+      }
+    }
+    out.push(d)
+  }
+
+  // Un foco como máximo
+  let worstFoco = null
+  for (const f of focos || []) {
     const sold = n(f.vendido_unidad)
     const goal = n(f.meta_unidad)
     if (!goal) continue
     const pct = Math.round((sold / goal) * 100)
-    if (pct < 80) {
-      const missing = Math.max(0, goal - sold)
-      out.push({
-        id: `focus_${f.id || f.foco}`,
+    if (pct >= 85) continue
+    const missing = Math.max(0, goal - sold)
+    const parts = scoreParts({
+      urgencia: Math.min(100, 40 + (85 - pct)),
+      valor: 50,
+      probabilidad: 55,
+      accionable: 80,
+      confianza: 60,
+    })
+    const att = attentionFromScore(parts.total, 'focus') || 'week'
+    const score = parts.total
+    if (!worstFoco || score > worstFoco.score) {
+      worstFoco = {
+        id: `focus_${f.foco || f.id}`,
         type: 'focus',
-        score: Math.round(46 + (80 - pct) * 0.8),
+        attention: att,
+        score,
+        parts,
         title: String(f.foco || 'Foco del mes'),
-        reason: `${pct}% de meta · faltan ${missing.toLocaleString('es-CL')} ${f.unidad_meta || ''}.`,
-        why: [`avance ${pct}%`, `brecha ${missing.toLocaleString('es-CL')} ${f.unidad_meta || ''}`],
-        confidence: 96,
-        actionLabel: 'Ver oportunidad',
+        reason: `${pct}% meta · faltan ${missing.toLocaleString('es-CL')}`,
+        why: [`Avance ${pct}%`, `Faltan ${missing.toLocaleString('es-CL')} ${f.unidad_meta || 'u'}`],
+        evidence: [
+          { label: 'Avance', value: `${pct}%`, tone: pct < 50 ? 'risk' : 'neutral' },
+          { label: 'Falta', value: String(missing), tone: 'neutral' },
+        ],
+        confidence: 60,
+        actionLabel: 'Ver clientes',
         expectedValue: 0,
-        route: `/cartera?filtro=Foco&q=${encodeURIComponent(f.foco || '')}`,
-      })
+        route: '/cartera',
+      }
     }
   }
+  if (worstFoco) out.push(worstFoco)
 
-  if (n(actividad.pedidos) > 0) {
-    out.push({
-      id: 'orders', type: 'order', score: 96,
-      title: `${actividad.pedidos} pedido${actividad.pedidos === 1 ? '' : 's'} capturado${actividad.pedidos === 1 ? '' : 's'}`,
-      reason: `${money(actividad.totalPedidos)} listos para revisar.`,
-      why: ['pedido web/capturado pendiente de gestión'], confidence: 100,
-      actionLabel: 'Revisar pedidos', expectedValue: n(actividad.totalPedidos), route: '/',
-    })
+  out.sort((a, b) => {
+    const ar = ATT_RANK[a.attention] ?? 9
+    const br = ATT_RANK[b.attention] ?? 9
+    if (ar !== br) return ar - br
+    return (b.score || 0) - (a.score || 0)
+  })
+
+  return out.slice(0, 6)
+}
+
+export function nextBestAction(feed) {
+  return (feed && feed[0]) || null
+}
+
+export function groupByAttention(feed = []) {
+  const g = { now: [], today: [], week: [] }
+  for (const d of feed) {
+    const k = d.attention && g[d.attention] ? d.attention : 'today'
+    g[k].push(d)
   }
+  return g
+}
 
-  if (meta && n(meta.brecha) > 0) {
-    out.push({
-      id: 'gap', type: 'goal', score: 40,
-      title: 'Cerrar brecha de meta',
-      reason: `Faltan ${money(meta.brecha)} para la meta mensual.`,
-      why: ['brecha financiera vigente'], confidence: 100,
-      actionLabel: 'Ver cartera', expectedValue: n(meta.brecha), route: '/cartera?filtro=CerrarMeta',
-    })
+export function calcCommercialValue(c) {
+  const nn = v => Number(v) || 0
+  const vtaMtd = nn(c.venta_mtd)
+  const vtaProm = nn(c.venta_mensual)
+  const dias = nn(c.dias_sin_comprar)
+  const ciclo = nn(c.ciclo_dias)
+  const estado = String(c.estado_fuga || '').toUpperCase()
+  const esperada = vtaProm > 0 ? vtaProm : vtaMtd
+  const enRiesgo = /RIESGO|ENFRI|DORMIDO/.test(estado)
+    ? Math.round(esperada * 0.4)
+    : dias > (ciclo || 12)
+      ? Math.round(esperada * 0.2)
+      : 0
+  const oportunidad = vtaProm > 0 ? Math.round(vtaProm * 0.15) : 0
+  return {
+    vtaMtd,
+    esperada,
+    enRiesgo,
+    oportunidad,
+    valorComercial: vtaMtd + esperada + enRiesgo + oportunidad,
   }
+}
 
-  return out
-    .filter(x => x.score > 0)
-    .sort((a, b) => (b.score - a.score) || (b.expectedValue - a.expectedValue))
-    .slice(0, 12)
+/** Resumen del día para el footer de Hoy — una sola frase del cerebro */
+export function daySummary(feed = [], pred7 = null) {
+  const nAct = feed.length
+  const pot = feed.reduce((s, d) => s + (Number(d.expectedValue) || 0), 0)
+  const now = feed.filter(d => d.attention === 'now').length
+  const parts = []
+  if (now) parts.push(`${now} ahora`)
+  if (nAct) parts.push(`${nAct} oportunidades`)
+  if (pot > 0) parts.push(`$${Math.round(pot).toLocaleString('es-CL')} potencial`)
+  if (pred7?.ventaEnRiesgo > 0) {
+    parts.push(`$${Math.round(pred7.ventaEnRiesgo).toLocaleString('es-CL')} en riesgo (7d)`)
+  }
+  return parts.join(' · ') || 'Sin urgencias de terreno'
 }

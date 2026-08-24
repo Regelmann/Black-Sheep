@@ -547,82 +547,25 @@ export default function PedidoSheet({ initialPedido,
           <button
             type="button"
             disabled={busy}
-            onClick={() => confirmar({})}
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 12,
-              border: 'none',
-              background: '#1c1917',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: 13,
-              cursor: busy ? 'wait' : 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            Guardar
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => confirmar({ pdf: true })}
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 12,
-              border: '1.5px solid #c2410c',
-              background: '#fff7ed',
-              color: '#c2410c',
-              fontWeight: 800,
-              fontSize: 13,
-              cursor: busy ? 'wait' : 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            PDF
-          </button>
-          <button
-            type="button"
-            disabled={busy}
             onClick={() => confirmar({ waBodega: true })}
+            className="bs-cta-primary"
             style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 12,
-              border: 'none',
-              background: '#0f766e',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: 13,
-              cursor: busy ? 'wait' : 'pointer',
-              fontFamily: 'inherit',
+              flex: 1.4,
+              minHeight: 48,
+              borderRadius: 14,
+              fontSize: 14,
             }}
           >
-            Bodega
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => confirmar({ waCliente: true })}
-            style={{
-              flex: 1.1,
-              padding: 12,
-              borderRadius: 12,
-              border: 'none',
-              background: '#16a34a',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: 13,
-              cursor: busy ? 'wait' : 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            WhatsApp
+            {busy ? 'Enviando…' : 'Enviar a bodega'}
           </button>
         </div>
+        <div className="bs-pedido-secondary">
+          <button type="button" disabled={busy} onClick={() => confirmar({})}>Guardar</button>
+          <button type="button" disabled={busy} onClick={() => confirmar({ pdf: true })}>PDF</button>
+          <button type="button" disabled={busy} onClick={() => confirmar({ waCliente: true })}>WhatsApp cliente</button>
+        </div>
         <p className="muted" style={{ fontSize: 11, marginTop: 8, textAlign: 'center' }}>
-          PDF = imprimir/guardar · Bodega = WhatsApp a despacho · WhatsApp = al cliente
+          Primario: despacho · secundario: guardar / PDF / cliente
         </p>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
+import { decideClient, calcCommercialValue } from '../lib/decisionEngine'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
@@ -550,10 +551,14 @@ export default function Visita({ session }) {
   const contacto = visita.persona_contacto || cliente?.persona_contacto
   const dir = visita.direccion || cliente?.direccion
   const aReponer = skusAReponer(cliente || {})
+  const paso = !yaLlego ? 1 : (!pedidoOk && resultado !== 'no_venta' ? 2 : 3)
+  const briefSku = aReponer.slice(0, 3).map(s => s.nombre || s.sku || 'Producto').filter(Boolean)
+  const decision = decideClient(cliente || {})
+  const cv = calcCommercialValue(cliente || {})
 
   return (
     <>
-    <div style={{ paddingBottom: 24, background: '#faf7f2', minHeight: '100dvh' }}>
+    <div className="visita-page" style={{ paddingBottom: 120, background: '#faf7f2', minHeight: '100dvh' }}>
       {/* Header azul */}
       <div
         style={{
@@ -590,6 +595,64 @@ export default function Visita({ session }) {
       </div>
 
       <div style={{ padding: '0 14px', marginTop: -18 }}>
+        {/* Stepper glanceable — patrón Field Service */}
+        <div className="bs-visit-steps">
+          <span className={paso >= 1 ? 'on' : ''}>1 · Llegada</span>
+          <span className={paso >= 2 ? 'on' : ''}>2 · Pedido</span>
+          <span className={paso >= 3 ? 'on' : ''}>3 · Cierre</span>
+        </div>
+
+
+        {/* Análisis comercial del cliente — data → decisión */}
+        {(cv.valorComercial > 0 || decision) && (
+          <div className="bs-client-intel">
+            <div className="bs-client-intel-kicker">Análisis</div>
+            <div className="bs-client-intel-grid">
+              {cv.vtaMtd > 0 && (
+                <div><em>MTD</em><strong>{money(cv.vtaMtd)}</strong></div>
+              )}
+              {cv.enRiesgo > 0 && (
+                <div className="risk"><em>En riesgo</em><strong>{money(cv.enRiesgo)}</strong></div>
+              )}
+              {cv.oportunidad > 0 && (
+                <div className="opp"><em>Oportunidad</em><strong>{money(cv.oportunidad)}</strong></div>
+              )}
+              {decision?.expectedValue > 0 && (
+                <div className="now"><em>Acción</em><strong>{money(decision.expectedValue)}</strong></div>
+              )}
+            </div>
+            {decision && (
+              <div className="bs-client-intel-action">
+                <strong>{decision.reason}</strong>
+                {decision.why?.length > 0 && (
+                  <ul>
+                    {decision.why.slice(0, 4).map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pre-work brief (Salesforce Pre-Work Brief) */}
+        {(briefSku.length > 0 || Number(cliente?.dias_sin_comprar) > 0) && (
+          <div className="bs-prework">
+            <div className="bs-prework-kicker">Antes de entrar</div>
+            <div className="bs-prework-title">
+              {Number(cliente?.dias_sin_comprar) >= 14
+                ? `Hace ${cliente.dias_sin_comprar} días que no compra`
+                : 'Qué ofrecer hoy'}
+            </div>
+            {briefSku.length > 0 && (
+              <ul className="bs-prework-list">
+                {briefSku.map((n, i) => <li key={i}>{n}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* ── CAPTURE-FIRST: contexto + CTA principal ── */}
         <div style={{
           background: '#fff', borderRadius: 20, padding: 14,
@@ -882,54 +945,73 @@ export default function Visita({ session }) {
           paddingTop: 12,
           paddingBottom: 8,
         }}>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={async () => {
-              if (fotoPreview) {
-                try {
-                  await supabase.from('notas_cliente').insert({
-                    ejecutivo_id: session.user.id,
-                    cliente_key: visita.cliente_key || cliente?.cliente_key,
-                    nombre_local: visita.nombre_local,
-                    tipo: 'foto_visita',
-                    texto: `Foto en visita${fotoName ? ': ' + fotoName : ''} · ${new Date().toISOString()}`,
-                  })
-                } catch {
-                  enqueueAction({
-                    type: 'nota',
-                    payload: {
+          {/* UNA sola acción primaria según paso — Outfield / Team400 */}
+          {!yaLlego ? (
+            <button
+              type="button"
+              disabled={busy}
+              className="bs-cta-primary bs-visit-cta"
+              onClick={hacerCheckin}
+            >
+              {busy ? 'GPS…' : 'Check-in · estoy aquí'}
+            </button>
+          ) : !pedidoOk && resultado !== 'no_venta' ? (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                className="bs-cta-primary bs-visit-cta"
+                onClick={() => setPedidoOpen(true)}
+              >
+                Tomar pedido
+              </button>
+              <div className="bs-visit-outcomes">
+                <button type="button" disabled={busy} onClick={() => registrarNoVenta()}>No compró</button>
+                <button type="button" disabled={busy} onClick={() => terminar('completada')}>Solo visita</button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              className="bs-cta-primary bs-visit-cta"
+              onClick={async () => {
+                if (fotoPreview) {
+                  try {
+                    await supabase.from('notas_cliente').insert({
                       ejecutivo_id: session.user.id,
                       cliente_key: visita.cliente_key || cliente?.cliente_key,
+                      nombre_local: visita.nombre_local,
                       tipo: 'foto_visita',
-                      texto: `Foto visita ${fotoName || ''}`.trim(),
-                    },
-                  })
+                      texto: `Foto en visita${fotoName ? ': ' + fotoName : ''} · ${new Date().toISOString()}`,
+                    })
+                  } catch {
+                    enqueueAction({
+                      type: 'nota',
+                      payload: {
+                        ejecutivo_id: session.user.id,
+                        cliente_key: visita.cliente_key || cliente?.cliente_key,
+                        tipo: 'foto_visita',
+                        texto: `Foto visita ${fotoName || ''}`.trim(),
+                      },
+                    })
+                  }
                 }
-              }
-              await terminar(
-                pedidoOk ? 'pedido' : resultado === 'no_venta' ? 'no_venta' : yaLlego ? 'completada' : 'sin_checkin'
-              )
-            }}
-            style={{
-              width: '100%', minHeight: 52, padding: '14px', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(180deg,#ea580c,#c2410c)', color: '#fff',
-              fontWeight: 800, fontSize: 15, fontFamily: 'inherit', cursor: busy ? 'wait' : 'pointer',
-              boxShadow: '0 8px 24px rgba(194,65,12,0.3)',
-            }}
-          >
-            {pedidoOk ? 'Completar con pedido' : resultado === 'no_venta' ? 'Cerrar · no compró' : 'Completar visita'}
-          </button>
+                await terminar(
+                  pedidoOk ? 'pedido' : resultado === 'no_venta' ? 'no_venta' : 'completada'
+                )
+              }}
+            >
+              {pedidoOk ? 'Completar con pedido' : resultado === 'no_venta' ? 'Cerrar · no compró' : 'Completar visita'}
+            </button>
+          )}
           <button
             type="button"
             disabled={busy}
             onClick={omitir}
-            style={{
-              width: '100%', minHeight: 40, padding: '10px', border: 'none', background: 'transparent',
-              color: '#64748b', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
-            }}
+            className="bs-visit-skip"
           >
-            Omitir cliente por hoy
+            Omitir por hoy
           </button>
         </div>
       </div>

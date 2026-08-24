@@ -934,7 +934,7 @@ export default function Ruta({ session }) {
       : null
 
   return (
-    <div style={{ paddingBottom: 72 }}>
+    <div className="bs-page" style={{ paddingBottom: 72 }}>
       {loadError && (
         <div
           style={{
@@ -1039,7 +1039,7 @@ export default function Ruta({ session }) {
               <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Cerca de mí</div>
               <div style={{ fontSize: 12, color: '#64748b' }}>
                 {myPos?.lat
-                  ? `Oportunidades a ≤${radioKm} km · ${cercanos.length} puntos`
+                  ? `Cerca de ti · ≤${radioKm} km · ${cercanos.length} puntos`
                   : 'Activá GPS para ordenar por cercanía'}
               </div>
             </div>
