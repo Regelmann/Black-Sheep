@@ -1241,3 +1241,51 @@ input, textarea, select { font-family: inherit; }
 .bs-visit-address-label { font-size: 9px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .bs-visit-address-value { font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 2px; }
 .bs-visit-done { text-align: center; color: var(--ok); font-weight: 700; font-size: 14px; padding: 12px 0; }
+
+
+/* ── CATÁLOGO PÚBLICO (shop) — grid visible ───────────────────── */
+.bs-page.bs-shop { background: #faf8f5; color: #1c1917; padding-bottom: 100px; }
+.bs-shop-main { padding: 12px 14px 24px; min-height: 40vh; background: #faf8f5; }
+.bs-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 0 8px;
+}
+.bs-shop-list { display: flex; flex-direction: column; gap: 8px; }
+.bs-shop-section { margin-bottom: 18px; }
+.bs-shop-section-head h2, .bs-shop-section-title {
+  font-size: 15px; font-weight: 800; color: #1c1917; margin: 0 0 2px;
+}
+.bs-shop-section-sub { font-size: 12px; color: #78716c; margin: 0 0 10px; }
+.bs-shop-card {
+  background: #fff !important;
+  border: 1px solid #e7e5e4 !important;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #1c1917;
+}
+.bs-shop-card h3 {
+  font-size: 13px; font-weight: 700; color: #1c1917; line-height: 1.3;
+  margin: 4px 0 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bs-shop-card-media {
+  position: relative; aspect-ratio: 1/1; background: #f5f0eb;
+  border: none; padding: 0; width: 100%; display: block;
+}
+.bs-shop-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bs-shop-card-body { padding: 10px 11px 12px; background: #fff; }
+.bs-shop-card-price strong { font-size: 15px; font-weight: 900; color: #c2410c; }
+.bs-shop-card-price s { font-size: 11px; color: #a8a29e; margin-left: 6px; }
+.bs-shop-add {
+  min-height: 36px; border-radius: 10px; border: none;
+  background: #c2410c; color: #fff; font-weight: 800; font-size: 12px;
+  font-family: inherit; flex: 1; width: 100%;
+}
+.bs-shop-empty { text-align: center; padding: 40px 16px; color: #78716c; }
+.bs-shop-empty h3 { color: #1c1917; margin-bottom: 6px; }
+.bs-shop-list .bs-shop-card { flex-direction: row; align-items: stretch; }
+.bs-shop-list .bs-shop-card-media { width: 88px; min-width: 88px; aspect-ratio: 1; }
+.bs-shop-list .bs-shop-card-body { flex: 1; }

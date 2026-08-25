@@ -16,15 +16,10 @@ const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="var(--ink)"/>
-          <stop offset="100%" stop-color="var(--bs-shell-2)"/>
-        </linearGradient>
-      </defs>
-      <rect fill="url(#g)" width="800" height="800"/>
-      <text x="400" y="390" text-anchor="middle" fill="var(--brand-soft)" font-family="system-ui,sans-serif" font-size="28" font-weight="700">${PUBLIC_BRAND}</text>
-      <text x="400" y="430" text-anchor="middle" fill="var(--muted)" font-family="system-ui,sans-serif" font-size="16">producto</text>
+      <rect fill="#f5f0eb" width="800" height="800"/>
+      <rect x="200" y="220" width="400" height="280" rx="24" fill="#e7e0d8"/>
+      <text x="400" y="380" text-anchor="middle" fill="#c2410c" font-family="system-ui,sans-serif" font-size="28" font-weight="700">Black Sheep</text>
+      <text x="400" y="420" text-anchor="middle" fill="#78716c" font-family="system-ui,sans-serif" font-size="16">producto</text>
     </svg>`
   )
 
@@ -142,13 +137,13 @@ export default function CatalogoCliente() {
     })
   }, [items, q, catFilter])
 
-  const available = filtered.filter(i => i.stock_disponible !== false)
-  const habituales = available.filter(i => i.es_habitual)
-  const reposicion = available.filter(i => (i.es_reposicion || Number(i.cantidad_sugerida) > 0) && !i.es_habitual)
-  const ofertas = available.filter(i => i.es_oferta && !i.es_habitual && !(i.es_reposicion || Number(i.cantidad_sugerida) > 0))
-  const liquidacion = available.filter(i => i.es_liquidacion && !i.es_habitual && !i.es_oferta)
-  const used = new Set([...habituales, ...reposicion, ...ofertas, ...liquidacion].map(i => i.sku_canon))
-  const rest = available.filter(i => !used.has(i.sku_canon))
+  // RPC pública no trae stock_disponible: mostrar TODOS los items del catálogo
+  const available = filtered
+  const habituales = available.filter(i => i.es_habitual || i.recomendado || i.destacado)
+  const rest = available.filter(i => !(i.es_habitual || i.recomendado || i.destacado))
+  const reposicion = []
+  const ofertas = habituales
+  const liquidacion = []
   const cartCount = cart.reduce((a, i) => a + Number(i.cantidad || 0), 0)
   const total = cart.reduce((a, i) => a + Number(i.precio || 0) * Number(i.cantidad || 0), 0)
 

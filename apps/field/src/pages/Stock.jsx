@@ -38,23 +38,25 @@ export default function Stock() {
     setErrStock(null); setErrCartera(null)
     // Solo la cartera del ejecutivo en vista — NUNCA mezclar zonas.
     const eid = eje?.eidVista
-    const CARTERA_SEL = 'cliente_key,nombre_cliente,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id'
-    let cartQ = supabase.from('cartera').select(CARTERA_SEL).limit(3000)
-    if (eid) cartQ = cartQ.eq('ejecutivo_id', eid)
-    const r = await safeAll({
-      stock: supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }),
-      cartera: cartQ,
-    })
-    let carteraRows = r.cartera || []
-    let cartErr = r.errors.cartera
-    // Fallback si alguna columna no existe
-    if (cartErr && /column|42703|PGRST204/i.test(String(cartErr.dev || cartErr.user || ''))) {
-      let q2 = supabase.from('cartera').select('cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id').limit(3000)
-      if (eid) q2 = q2.eq('ejecutivo_id', eid)
-      const r2 = await safeSelect(q2)
-      if (r2.ok) { carteraRows = r2.rows; cartErr = null }
-      else cartErr = r2.error
+    // Columnas mínimas comprobadas en producción (sin venta_mensual/ciclo_dias/es_bloqueado/razon_social)
+    const tries = [
+      'cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id',
+      'cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,ejecutivo_id',
+      'cliente_key,nombre_cliente,sku_detalle,venta_mtd,ejecutivo_id',
+      'cliente_key,nombre_cliente,sku_detalle',
+    ]
+    let carteraRows = []
+    let cartErr = null
+    for (const cols of tries) {
+      let q = supabase.from('cartera').select(cols).limit(3000)
+      if (eid) q = q.eq('ejecutivo_id', eid)
+      const rCart = await safeSelect(q)
+      if (rCart.ok) { carteraRows = rCart.rows || []; cartErr = null; break }
+      cartErr = rCart.error
+      if (!/column|42703|PGRST204/i.test(String(cartErr?.dev || cartErr?.user || ''))) break
     }
+    const rStock = await safeSelect(supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }))
+    const r = { stock: rStock.ok ? rStock.rows : [], errors: { stock: rStock.ok ? null : rStock.error, cartera: cartErr } }
     // Doble filtro client-side por si RLS devuelve de más
     if (eid) {
       carteraRows = (carteraRows || []).filter(c => !c.ejecutivo_id || String(c.ejecutivo_id) === String(eid))
