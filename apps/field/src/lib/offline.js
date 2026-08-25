@@ -5,7 +5,7 @@
  */
 
 const KEY = 'kf_offline_v1'
-const QUEUE_KEY = 'kf_action_queue_v1'
+export const QUEUE_KEY = 'kf_action_queue_v1'
 const HOY_KEY = 'kf_hoy_resultados_v1'
 
 function safeParse(s) {
@@ -109,14 +109,29 @@ export async function flushActionQueue(handlers = {}) {
       continue
     }
     try {
-      const success = await fn(item)
-      if (success) ok++
-      else {
+      const res = await fn(item)
+      // CONTRATO: un handler puede devolver boolean o { ok, error }.
+      // Antes se evaluaba `if (res)` y `{ ok:false }` es un OBJETO TRUTHY:
+      // cada fallo BORRABA el item de la cola como si se hubiera subido.
+      // Eso perdia check-ins y pedidos en silencio.
+      const success =
+        res === true ||
+        (res && typeof res === 'object' && res.ok === true)
+      if (success) {
+        ok++
+        if (res && res.degraded) {
+          console.warn('[outbox] item subido en modo degradado', item.type)
+        }
+      } else {
         fail++
+        item.lastError = (res && res.error) || 'handler devolvio falso'
+        item.attempts = (item.attempts || 0) + 1
         remaining.push(item)
       }
-    } catch {
+    } catch (e) {
       fail++
+      item.lastError = String(e?.message || e)
+      item.attempts = (item.attempts || 0) + 1
       remaining.push(item)
     }
   }

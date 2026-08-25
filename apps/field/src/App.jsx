@@ -13,51 +13,28 @@ import Gerencia from './pages/Gerencia.jsx'
 import Admin from './pages/Admin.jsx'
 import { NavBar } from './components.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
+// V9.0 — domain components
+import { ZonePicker } from './components/domain/ZonePicker.jsx'
+import { syncHandlers } from './lib/syncHandlers.js'
+import { SyncBanner } from './components/domain/SyncBanner.jsx'
+import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
+import { runSyncFlush } from './lib/sync/engine.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V8.1-OP'
+export const BUILD_STAMP = 'v-BS-PLATFORM-V9.2'
 
 // ── Contexto global ──────────────────────────────────────────────────────
-// id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
 export const EjecutivoCtx = createContext(null)
 export function useEjecutivo() {
   return useContext(EjecutivoCtx)
 }
 
-const ZONA_COLOR = {
-  'NOR-ORIENTE': '#1e3a5f',
-  'NOR-PONIENTE': '#0f766e',
-  'ZONA SUR': '#7c2d12',
-}
-
-function ZonaSelector({ todos, zonaVista, onChange }) {
-  if (!todos?.length) return null
-  const color = {
-    'NOR-ORIENTE': '#c2410c',
-    'NOR-PONIENTE': '#0d9488',
-    'ZONA SUR': '#ea580c',
-  }
-  return (
-    <div className="kf-zone-bar" aria-label="Selector de zona">
-      {todos.map(e => {
-        const zona = e.zona || e.nombre
-        const activo = zona === zonaVista
-        return (
-          <button
-            key={e.id || zona}
-            type="button"
-            className={'kf-zone-btn' + (activo ? ' is-active' : '')}
-            style={{ '--zone-color': color[zona] || '#c2410c' }}
-            aria-pressed={activo}
-            onClick={() => onChange(zona)}
-          >
-            {zona}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+// Handlers reales para el sync engine — los mismos que usan Hoy/Visita
+// SyncBanner los recibe para que "Reintentar" drene de verdad la outbox
+// Handlers del outbox: fuente ÚNICA en lib/syncHandlers.js.
+// Antes vivían duplicados acá, en Hoy.jsx y en SyncBanner, y estos
+// devolvían undefined (falsy) → la cola NUNCA se drenaba.
+const SYNC_HANDLERS = syncHandlers
 
 
 export default function App() {
@@ -160,6 +137,7 @@ export default function App() {
     if (!ej) return
     setZonaVista(zona)
     setEidVista(ej.id)
+    applyZoneCssVars(zona) // V9.0 — colores de zona al DOM inmediatamente
   }
 
   if (window.location.pathname.startsWith('/catalogo/')) {
@@ -203,6 +181,7 @@ export default function App() {
   }
 
   const esGerente = !!ejecutivo.esSuperAdmin
+  const zonasDisponibles = zonesFromEjecutivos(todosEjecutivos)
   const ctxValue = {
     ...ejecutivo,
     zonaVista,
@@ -213,9 +192,16 @@ export default function App() {
 
   return (
     <EjecutivoCtx.Provider value={ctxValue}>
-      {esGerente && todosEjecutivos.length > 0 && (
-        <ZonaSelector todos={todosEjecutivos} zonaVista={zonaVista} onChange={cambiarZona} />
-      )}
+      {/* V9.0 — la zona vive en el saludo, no en una barra de pills.
+          Con una sola zona no se muestra ningún control. */}
+      <ZonePicker
+        nombre={ejecutivo?.nombre}
+        zonaActiva={zonaVista}
+        zonas={esGerente ? zonasDisponibles : []}
+        onChange={cambiarZona}
+      />
+      {/* V9.0 — SyncBanner con handlers reales (no banner mentiroso) */}
+      <SyncBanner handlers={SYNC_HANDLERS} />
       <AppShell>
       <div className="app-body">
       <div className="build-stamp">{BUILD_STAMP}{typeof window !== 'undefined' && window.__BS_TENANT__ ? ` · ${window.__BS_TENANT__.name}` : ''}</div>

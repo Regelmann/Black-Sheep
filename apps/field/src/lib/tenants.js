@@ -49,7 +49,7 @@ export const TENANTS = [
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {
       name:        'KeyFoods',
-      accent:      '#c2410c',   // naranja KeyFoods
+      accent:      '#c2410c',   // naranja KeyFoods · HEX REAL (applyTenantBrand escribe --brand)
       accentDark:  '#9a3412',
       accentSoft:  '#fff4eb',
       accentRing:  'rgba(194,65,12,0.20)',
@@ -67,7 +67,7 @@ export const TENANTS = [
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {
       name:        'Demo',
-      accent:      '#0ea5e9',   // azul demo → diferente del naranja de prod
+      accent:      '#0ea5e9',   // azul demo · HEX REAL
       accentDark:  '#0284c7',
       accentSoft:  '#e0f2fe',
       accentRing:  'rgba(14,165,233,0.20)',
@@ -131,27 +131,41 @@ export function resolveTenant({ email } = {}) {
  * <cite index="32-1">El patrón correcto: base stylesheet define tokens por defecto,
  * al resolver tenant se aplican overrides en document.documentElement.</cite>
  */
+/**
+ * GUARDA: un token de marca DEBE ser un color literal (hex / rgb / hsl).
+ * Si se escribe `--brand: var(--brand)` la referencia es circular, CSS la
+ * descarta y se cae TODO el sistema de marca. Esto ya pasó en V9.0.
+ */
+const isLiteralColor = (v) =>
+  typeof v === 'string' && v.trim() !== '' && !v.includes('var(')
+
 export function applyTenantBrand(tenant) {
   if (!tenant?.brand) return
   const r = document.documentElement
   const b = tenant.brand
-  const safe = (v, fb) => {
-    const s = String(v || '')
-    if (!s || s.startsWith('var(')) {
-      if (typeof console !== 'undefined') console.warn('[tenants] accent inválido (var circular):', v)
-      return fb
+
+  const setVar = (name, value) => {
+    if (!isLiteralColor(value)) {
+      if (import.meta.env?.DEV) {
+        console.error(
+          `[tenants] ${name} descartado: "${value}" no es un color literal. ` +
+          `Usá hex, nunca var(). Referencia circular evitada.`
+        )
+      }
+      return
     }
-    return s
+    r.style.setProperty(name, value)
   }
-  r.style.setProperty('--brand',      safe(b.accent, '#c2410c'))
-  r.style.setProperty('--brand-dk',   safe(b.accentDark, '#9a3412'))
-  r.style.setProperty('--brand-lt',   safe(b.accentSoft, '#fff4eb'))
-  r.style.setProperty('--brand-ring', b.accentRing)
+
+  setVar('--brand',      b.accent)
+  setVar('--brand-dk',   b.accentDark)
+  setVar('--brand-lt',   b.accentSoft)
+  setVar('--brand-ring', b.accentRing)
   // aliases backward-compat
-  r.style.setProperty('--brand-dark', b.accentDark)
-  r.style.setProperty('--brand-soft', b.accentSoft)
-  r.style.setProperty('--kf-brand',   b.accent)
-  r.style.setProperty('--bs-accent',  b.accent)
+  setVar('--brand-dark', b.accentDark)
+  setVar('--brand-soft', b.accentSoft)
+  setVar('--kf-brand',   b.accent)
+  setVar('--bs-accent',  b.accent)
   // Nombre de la empresa para mostrar
   if (b.name) r.setAttribute('data-tenant', b.name)
   if (tenant.id) r.setAttribute('data-tenant-id', tenant.id)

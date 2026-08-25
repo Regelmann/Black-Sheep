@@ -1,0 +1,472 @@
+/* ============================================================
+   V9.0 — Capa de correcciones de UI de terreno
+   Se carga DESPUÉS de index.css. Cada bloque cita el síntoma real.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. HERO — títulos invisibles
+   El <h1> del hero no tenía color y heredaba --ink (#1c1917)
+   sobre un gradiente negro. Texto negro sobre fondo negro.
+   Afectaba "Mi cartera" (Clientes) y "Resultado del mes" (Gerencia).
+   ------------------------------------------------------------ */
+.bs-page-hero {
+  /* separación real del borde: antes el contenido tocaba los lados */
+  padding: 18px 16px 20px;
+  padding-top: calc(18px + env(safe-area-inset-top, 0px) * 0.25);
+}
+.bs-page-hero,
+.bs-page-hero h1,
+.bs-page-hero h2,
+.bs-page-hero h3 {
+  color: #fff;
+}
+.bs-page-hero h1 {
+  font-size: clamp(22px, 6.2vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 6px;
+  /* sombra sutil SOLO para separar del gradiente, no para "dar color" */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.bs-page-hero .bs-hero-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn-lt5, #fdba74);
+  margin-bottom: 6px;
+}
+.bs-page-hero .bs-hero-sub {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------
+   2. FILTROS — barra única para todas las páginas
+   Antes: cada página con su padding; chips pegados al buscador
+   y a la línea superior; se cortaban al no entrar.
+   ------------------------------------------------------------ */
+.bs-filterbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* respiro arriba y abajo: ya no se pega a nada */
+  margin: 12px 0 10px;
+  position: relative;
+  min-width: 0;
+}
+.bs-filterbar-scroller {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 14px 2px 14px; /* el chip activo no toca el borde */
+  margin: 0 -14px;
+  flex: 1 1 auto;
+  min-width: 0;
+  scroll-snap-type: x proximity;
+}
+.bs-filterbar-scroller::-webkit-scrollbar { display: none; }
+.bs-filterbar-trailing {
+  flex: 0 0 auto;
+  padding-right: 14px;
+}
+
+/* Chip compacto: entran ~40% más que antes en la misma pantalla */
+.bs-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2, #d6cfc4);
+  background: #fff;
+  color: var(--ink-4, #57534e);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+/* Área de toque de 44px sin agrandar el chip visualmente */
+.bs-chip::before {
+  content: '';
+  position: absolute;
+  inset: -5px 0;
+}
+.bs-chip { position: relative; }
+
+.bs-chip:active { transform: scale(0.97); }
+.bs-chip.is-active {
+  background: var(--ink, #1c1917);
+  border-color: var(--ink, #1c1917);
+  color: #fff;
+}
+.bs-chip.is-danger        { border-color: var(--danger-lt3, #fecaca); color: var(--danger-dk, #b91c1c); }
+.bs-chip.is-danger.is-active  { background: var(--danger-dk, #b91c1c); border-color: var(--danger-dk, #b91c1c); color: #fff; }
+.bs-chip.is-warn          { border-color: var(--warn-lt5, #fdba74); color: var(--brand, #c2410c); }
+.bs-chip.is-warn.is-active    { background: var(--brand, #c2410c); border-color: var(--brand, #c2410c); color: #fff; }
+.bs-chip.is-ok            { border-color: var(--ok-lt4, #a7f3d0); color: var(--ok-dk, #166534); }
+.bs-chip.is-ok.is-active      { background: var(--ok-dk, #166534); border-color: var(--ok-dk, #166534); color: #fff; }
+
+.bs-chip-count {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+}
+.bs-chip.is-active .bs-chip-count { background: rgba(255, 255, 255, 0.22); }
+
+/* ------------------------------------------------------------
+   3. BUSCADOR — no se pega a los filtros
+   ------------------------------------------------------------ */
+.bs-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  margin: 10px 0 0;
+  border-radius: 12px;
+  border: 1px solid var(--line-2, #d6cfc4);
+  background: #fff;
+}
+.bs-search-icon { color: var(--muted, #a8a29e); flex: 0 0 auto; }
+.bs-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px; /* 16px real evita zoom en iOS; 15 + no-zoom meta */
+  color: var(--ink, #1c1917);
+}
+.bs-search-input::-webkit-search-cancel-button { display: none; }
+.bs-search-clear {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  border: none; border-radius: 50%;
+  background: var(--line, #ebe5dc);
+  color: var(--ink-3, #78716c);
+  font-size: 17px; line-height: 1;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------
+   4. STATGRID — alertas en filas ordenadas
+   Antes: 7 tarjetas sueltas pegadas a la línea de arriba.
+   ------------------------------------------------------------ */
+.bs-statgrid {
+  display: grid;
+  grid-template-columns: repeat(var(--sg-cols, 3), minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 14px 0;   /* despega de la línea superior */
+  margin: 0;
+}
+.bs-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 62px;      /* antes ~96px: menos scroll, misma info */
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line, #ebe5dc);
+  background: #fff;
+  font-family: inherit;
+  text-align: center;
+}
+.bs-stat.is-clickable { cursor: pointer; }
+.bs-stat.is-clickable:active { transform: scale(0.98); }
+.bs-stat.is-active {
+  border-color: var(--ink, #1c1917);
+  box-shadow: 0 0 0 1px var(--ink, #1c1917) inset;
+}
+.bs-stat-value {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink, #1c1917);
+}
+.bs-stat-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+  line-height: 1.2;
+}
+.bs-stat.is-ok     .bs-stat-value { color: var(--ok, #15803d); }
+.bs-stat.is-warn   .bs-stat-value { color: var(--brand, #c2410c); }
+.bs-stat.is-danger .bs-stat-value { color: var(--danger-dk, #b91c1c); }
+.bs-stat.is-info   .bs-stat-value { color: var(--info, #2563eb); }
+
+/* ------------------------------------------------------------
+   5. ACTION BAR — Llamar / WhatsApp / Navegar / Nota
+   Antes se cortaba "Nota" por usar flex sin min-width:0.
+   ------------------------------------------------------------ */
+.bs-action-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0;
+}
+.bs-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  min-width: 0;              /* la clave: permite encoger sin cortar */
+  padding: 6px 2px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2, #d6cfc4);
+  background: #fff;
+  color: var(--ink-4, #57534e);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.bs-action-icon { display: flex; line-height: 0; }
+.bs-action-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bs-action-call { color: var(--info, #2563eb); border-color: #bfdbfe; background: #eff6ff; }
+.bs-action-wsp  { color: #15803d; border-color: #bbf7d0; background: #f0fdf4; }
+.bs-action-nav  { color: var(--info, #2563eb); border-color: #bfdbfe; background: #eff6ff; }
+.bs-action-note { color: var(--ink-4, #57534e); }
+.bs-action-btn.is-disabled,
+.bs-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ------------------------------------------------------------
+   6. DENSIDAD — tarjetas de cliente
+   "el vendedor no necesita tarjetas enormes, necesita acción"
+   ------------------------------------------------------------ */
+.bs-client-card {
+  padding: 12px 14px;        /* antes 18-20 */
+  border-radius: 14px;
+  border: 1px solid var(--line, #ebe5dc);
+  background: #fff;
+  margin-bottom: 8px;        /* antes 14 */
+}
+.bs-client-card + .bs-client-card { margin-top: 0; }
+.bs-client-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.bs-client-name {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--ink, #1c1917);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bs-client-amount {
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand, #c2410c);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   7. ESTADOS DE DATOS — vacío ≠ roto
+   ------------------------------------------------------------ */
+.bs-data-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  border-radius: 12px;
+  border: 1px solid var(--danger-lt3, #fecaca);
+  background: var(--danger-lt, #fef2f2);
+}
+.bs-data-error.is-compact { padding: 10px 12px; margin: 8px 0; }
+.bs-data-error-body { display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
+.bs-data-error-icon {
+  flex: 0 0 auto;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--danger-dk, #b91c1c);
+  color: #fff;
+  font-size: 12px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.bs-data-error-msg {
+  margin: 0;
+  font-size: 13px; font-weight: 700; line-height: 1.35;
+  color: var(--danger-dk, #b91c1c);
+}
+.bs-data-error-hint {
+  margin: 3px 0 0;
+  font-size: 11.5px; font-weight: 500;
+  color: var(--ink-3, #78716c);
+}
+.bs-data-error-retry {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid var(--danger-dk, #b91c1c);
+  background: #fff;
+  color: var(--danger-dk, #b91c1c);
+  font-family: inherit; font-size: 12.5px; font-weight: 800;
+  cursor: pointer;
+}
+.bs-data-empty { padding: 22px 16px; text-align: center; }
+.bs-data-empty-title { margin: 0; font-size: 14px; font-weight: 800; color: var(--ink-2, #44403c); }
+.bs-data-empty-desc  { margin: 5px 0 0; font-size: 12.5px; color: var(--ink-3, #78716c); line-height: 1.4; }
+.bs-data-empty-cta {
+  margin-top: 12px; min-height: 40px; padding: 0 16px;
+  border-radius: 10px; border: none;
+  background: var(--brand, #c2410c); color: #fff;
+  font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
+}
+
+/* Skeletons */
+.bs-skel-group { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+.bs-skel-row {
+  height: 58px; border-radius: 12px;
+  background: linear-gradient(90deg, #f0ece6 25%, #f7f4ef 50%, #f0ece6 75%);
+  background-size: 200% 100%;
+  animation: bs-shimmer 1.3s ease-in-out infinite;
+}
+.bs-skel-group.is-compact .bs-skel-row { height: 38px; }
+@keyframes bs-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bs-skel-row { animation: none; }
+  .bs-filterbar-scroller { scroll-behavior: auto; }
+}
+
+.bs-sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ------------------------------------------------------------
+   8. SELECTOR DE ZONA EN EL HEADER
+   "iba a ser con el mismo donde dice hola Sebastián,
+    lo que cambiaba eran los colores solamente"
+   Elimina la barra de pills que comía ~60px en cada pantalla.
+   ------------------------------------------------------------ */
+.bs-greet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.bs-greet-text { min-width: 0; }
+.bs-greet-hello {
+  margin: 0;
+  font-size: 15px; font-weight: 800; line-height: 1.2;
+  color: var(--ink, #1c1917);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bs-greet-zone {
+  margin: 2px 0 0;
+  font-size: 11.5px; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--zone-active, var(--brand, #c2410c));
+}
+.bs-zone-picker {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 38px; padding: 0 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--zone-active, var(--brand, #c2410c));
+  background: var(--zone-active-soft, #fff7ed);
+  color: var(--zone-active, var(--brand, #c2410c));
+  font-family: inherit; font-size: 12.5px; font-weight: 800;
+  cursor: pointer;
+  max-width: 58vw;
+}
+.bs-zone-picker-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bs-zone-picker-caret { flex: 0 0 auto; opacity: 0.7; }
+
+/* Hoja de selección */
+.bs-zone-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(28, 25, 23, 0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.bs-zone-sheet {
+  width: 100%; max-width: 520px;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  animation: bs-sheet-up 0.2s ease-out;
+}
+@keyframes bs-sheet-up { from { transform: translateY(14px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bs-zone-sheet { animation: none; } }
+.bs-zone-sheet-title {
+  margin: 2px 0 10px;
+  font-size: 12px; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+}
+.bs-zone-option {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 52px;
+  padding: 0 14px; margin-bottom: 7px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line, #ebe5dc);
+  background: #fff;
+  font-family: inherit; font-size: 14.5px; font-weight: 800;
+  color: var(--ink, #1c1917);
+  cursor: pointer; text-align: left;
+}
+/* Sólo cambia el color al seleccionar — el pedido literal */
+.bs-zone-option.is-active {
+  border-color: var(--zone-opt, var(--brand, #c2410c));
+  background: var(--zone-opt-soft, #fff7ed);
+  color: var(--zone-opt, var(--brand, #c2410c));
+}
+.bs-zone-option-dot {
+  flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--zone-opt, var(--brand, #c2410c));
+}
+.bs-zone-option-check { margin-left: auto; font-weight: 900; }
+
+/* ------------------------------------------------------------
+   9. Respeta la barra inferior fija en todas las páginas
+   ------------------------------------------------------------ */
+.bs-page {
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}

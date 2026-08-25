@@ -3,6 +3,7 @@
  * Única fuente de decisiones para Hoy / Cliente / Gerencia.
  * Otras libs (riesgo, coach, predictor) alimentan datos; no compiten en UI.
  */
+import { calcGoal } from './calculations/goal.js'
 
 const n = v => Number(v) || 0
 const txt = v => String(v ?? '').trim()
@@ -242,17 +243,36 @@ export function buildDecisionFeed({
     out.push(d)
   }
 
-  // Un foco como máximo
+  // Un foco como máximo — usando calcGoal (SSoT) con días hábiles
   let worstFoco = null
+  // Calcular días hábiles del mes actual (igual que metrics.js)
+  const _hoy = new Date()
+  let _bElapsed = 0, _bTotal = 0
+  const _mesIni = new Date(_hoy.getFullYear(), _hoy.getMonth(), 1)
+  const _mesFin = new Date(_hoy.getFullYear(), _hoy.getMonth() + 1, 0)
+  for (let d = new Date(_mesIni); d <= _mesFin; d.setDate(d.getDate() + 1)) {
+    const dw = d.getDay()
+    if (dw !== 0 && dw !== 6) {
+      _bTotal++
+      if (d <= _hoy) _bElapsed++
+    }
+  }
   for (const f of focos || []) {
     const sold = n(f.vendido_unidad)
     const goal = n(f.meta_unidad)
     if (!goal) continue
     const pct = Math.round((sold / goal) * 100)
-    if (pct >= 85) continue
+    if (pct >= 100) continue
     const missing = Math.max(0, goal - sold)
+    // calcGoal determina si es EN_RITMO o ATRASADO con días hábiles reales
+    const { status: goalStatus, expectedPct } = calcGoal({
+      sold, target: goal,
+      businessDaysElapsed: _bElapsed,
+      businessDaysInMonth: _bTotal,
+    })
+    if (goalStatus === 'EN_RITMO' && pct >= 85) continue
     const parts = scoreParts({
-      urgencia: Math.min(100, 40 + (85 - pct)),
+      urgencia: Math.min(100, goalStatus === 'ATRASADO' ? 65 : 40 + (85 - pct)),
       valor: 50,
       probabilidad: 55,
       accionable: 80,
@@ -268,13 +288,18 @@ export function buildDecisionFeed({
         score,
         parts,
         title: String(f.foco || 'Foco del mes'),
-        reason: `${pct}% meta · faltan ${missing.toLocaleString('es-CL')}`,
-        why: [`Avance ${pct}%`, `Faltan ${missing.toLocaleString('es-CL')} ${f.unidad_meta || 'u'}`],
+        reason: `${pct}% meta · ${goalStatus === 'ATRASADO' ? '⚠️ Atrasado' : 'En ritmo'} · faltan ${missing.toLocaleString('es-CL')} ${f.unidad_meta || 'u'}`,
+        why: [
+          `Avance ${pct}% (ritmo esperado ${expectedPct}%)`,
+          goalStatus === 'ATRASADO' ? `Atrasado vs días hábiles del mes` : `En ritmo`,
+          `Faltan ${missing.toLocaleString('es-CL')} ${f.unidad_meta || 'u'}`,
+        ],
         evidence: [
-          { label: 'Avance', value: `${pct}%`, tone: pct < 50 ? 'risk' : 'neutral' },
+          { label: 'Avance', value: `${pct}%`, tone: goalStatus === 'ATRASADO' ? 'bad' : 'ok' },
+          { label: 'Ritmo', value: `${expectedPct}%`, tone: 'neutral' },
           { label: 'Falta', value: String(missing), tone: 'neutral' },
         ],
-        confidence: 60,
+        confidence: 65,
         actionLabel: 'Ver clientes',
         expectedValue: 0,
         route: '/cartera',

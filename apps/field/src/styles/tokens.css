@@ -1,71 +1,170 @@
-/* ═══════════════════════════════════════════════════════════
-   BLACK SHEEP FIELD — Design System 5.0
-   Una sola fuente de verdad. Todo el resto hereda de acá.
-   ═══════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════
+   BLACK SHEEP FIELD — Design Tokens v6.0
+   Fuente única de verdad para colores, espacios y tipografía.
+   NUNCA usar hex directamente en JSX o CSS — usar var(--token).
+   ════════════════════════════════════════════════════════════ */
 :root {
-  /* TIPOGRAFÍA */
+  /* ── Tipografía ── */
   --font: 'DM Sans', system-ui, -apple-system, sans-serif;
 
-  /* SUPERFICIES — de más oscura a más clara */
-  --bg:        #f4f0ea;
-  --bg-raised: #faf7f2;
-  --surface:   #ffffff;
-  --surface-2: #f8f5f0;
+  /* ── Fondos (de más oscuro a más claro) ── */
+  --bg:         #f4f0ea;
+  --bg-raised:  #faf7f2;
+  --bg-soft:    #faf8f5;
+  --surface:    #ffffff;
+  --surface-2:  #f8f5f0;
+  --surface-3:  #f5f0e8;
 
-  /* TEXTO */
-  --ink:   #1c1917;
-  --ink-2: #44403c;
-  --ink-3: #78716c;
-  --muted: #a8a29e;
+  /* ── Texto ── */
+  --ink:        #1c1917;
+  --ink-2:      #44403c;
+  --ink-3:      #78716c;
+  --ink-4:      #57534e;
+  --muted:      #a8a29e;
+  --muted-2:    #c4bdb5;
+  --subtle:     #6b6560;
 
-  /* BORDES */
-  --line:  #ebe5dc;
-  --line-2:#d6cfc4;
+  /* ── Bordes ── */
+  --line:       #ebe5dc;
+  --line-2:     #d6cfc4;
+  --line-3:     #e7e5e4;
+  --line-soft:  #e7e0d8;
+  --line-faint: #f0ece6;
 
-  /* BRAND — sobreescrito por applyTenantBrand() */
+  /* ── Brand (tenant override via applyTenantBrand) ── */
   --brand:      #c2410c;
   --brand-dk:   #9a3412;
+  --brand-dk2:  #7c2d12;
   --brand-lt:   #fff4eb;
+  --brand-lt2:  #fff7ed;
+  --brand-lt3:  #ffedd5;
   --brand-ring: rgba(194,65,12,.18);
+  --brand-mid:  #ea580c;
+  --brand-soft: #fb923c;
 
-  /* SEMÁNTICOS */
-  --ok:       #15803d; --ok-lt:   #ecfdf3;
-  --warn:     #d97706; --warn-lt: #fffbeb;
-  --danger:   #dc2626; --danger-lt:#fef2f2;
-  --info:     #2563eb; --info-lt: #eff6ff;
+  /* ── Semánticos: OK/verde ── */
+  --ok:         #15803d;
+  --ok-dk:      #166534;
+  --ok-dk2:     #047857;
+  --ok-dk3:     #3f6212;
+  --ok-lt:      #ecfdf5;
+  --ok-lt2:     #f0fdf4;
+  --ok-lt3:     #dcfce7;
+  --ok-lt4:     #a7f3d0;
+  --ok-mid:     #16a34a;
+  --ok-mid2:    #22c55e;
 
-  /* ESPACIADO */
-  --r-sm: 10px; --r-md: 14px; --r-lg: 18px;
-  --r-xl: 22px; --r-pill: 999px;
+  /* ── Semánticos: warn/amber ── */
+  --warn:       #d97706;
+  --warn-dk:    #92400e;
+  --warn-dk2:   #b45309;
+  --warn-lt:    #fffbeb;
+  --warn-lt2:   #fff7ed;
+  --warn-lt3:   #fef3c7;
+  --warn-lt4:   #fde68a;
+  --warn-lt5:   #fdba74;
+  --warn-lt6:   #fed7aa;
+  --warn-lt7:   #fecaca;  /* rosa claro */
 
-  /* SOMBRAS */
-  --sh-xs: 0 1px 3px rgba(28,25,23,.05);
-  --sh-sm: 0 4px 14px rgba(28,25,23,.07);
-  --sh-md: 0 8px 28px rgba(28,25,23,.11);
+  /* ── Semánticos: danger/rojo ── */
+  --danger:     #dc2626;
+  --danger-dk:  #b91c1c;
+  --danger-dk2: #991b1b;
+  --danger-dk3: #7f1d1d;
+  --danger-lt:  #fef2f2;
+  --danger-lt2: #fee2e2;
+  --danger-lt3: #fecaca;
+  --danger-lt4: #fca5a5;
 
-  /* LAYOUT */
+  /* ── Semánticos: info/azul ── */
+  --info:       #2563eb;
+  --info-dk:    #1d4ed8;
+  --info-dk2:   #1e3a8a;
+  --info-dk3:   #0369a1;
+  --info-dk4:   #0284c7;
+  --info-dk5:   #0ea5e9;
+  --info-lt:    #eff6ff;
+  --info-lt2:   #e0f2fe;
+  --info-lt3:   #bfdbfe;
+  --info-lt4:   #93c5fd;
+  --info-lt5:   #dbeafe;
+  --info-mid:   #3b82f6;
+  --info-mid2:  #334155;
+  --info-mid3:  #475569;
+  --info-mid4:  #94a3b8;
+  --info-mid5:  #cbd5e1;
+  --info-mid6:  #e2e8f0;
+  --info-mid7:  #f1f5f9;
+  --info-mid8:  #f8fafc;
+
+  /* ── Especiales ── */
+  --wsp:        #25D366;
+  --teal:       #0f766e;
+  --teal-lt:    #ccfbf1;
+  --teal-dk:    #047857;
+  --purple:     #7c3aed;
+  --navy:       #0f172a;
+  --navy-2:     #1e3a5f;
+  --lime:       #a3e635;
+  --neutral:    #71717a;
+  --neutral-2:  #52525b;
+  --neutral-3:  #a1a1aa;
+  --neutral-4:  #e4e4e7;
+
+  /* ── Black Sheep dark shell ── */
+  --bs-dark:    #0c0a09;
+  --bs-dark-2:  #141210;
+  --bs-dark-3:  #0a0a0a;
+  --bs-shell:   #1c1917;
+  --bs-shell-2: #292524;
+  --bs-border:  #3a3633;
+
+  /* ── Blancos con transparencia ── */
+  --white:      #ffffff;
+  --white-soft: rgba(255,255,255,.07);
+  --black:      #000000;
+
+  /* ── Radios ── */
+  --r-xs:   6px;
+  --r-sm:   10px;
+  --r-md:   14px;
+  --r-lg:   18px;
+  --r-xl:   22px;
+  --r-pill: 999px;
+
+  /* ── Sombras ── */
+  --sh-xs:  0 1px 3px rgba(28,25,23,.05);
+  --sh-sm:  0 4px 14px rgba(28,25,23,.07);
+  --sh-md:  0 8px 28px rgba(28,25,23,.11);
+  --sh-lg:  0 16px 48px rgba(28,25,23,.14);
+
+  /* ── Layout ── */
   --nav-h:  68px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --max-w:  480px;
 
-  /* ALIASES — backward compat, no usar en código nuevo */
-  --green:       var(--ok);      --green-soft: var(--ok-lt);
-  --red:         var(--danger);  --red-soft:   var(--danger-lt);
-  --blue:        var(--info);    --blue-soft:  var(--info-lt);
-  --amber:       var(--warn);    --amber-soft: var(--warn-lt);
-  --brand-soft:  var(--brand-lt);
-  --brand-dark:  var(--brand-dk);
-  --ink-soft:    var(--ink-2);
-  --line-strong: var(--line-2);
-  --bg-elevated: var(--bg-raised);
-  --shadow-sm:   var(--sh-xs);
-  --shadow:      var(--sh-md);
-  --radius:      var(--r-lg);
-  --radius-sm:   var(--r-sm);
-  --kf-brand:    var(--brand);
-  --bs-accent:   var(--brand);
-  --bs-ink:      var(--ink);
-  --bs-muted:    var(--muted);
-  --bs-line:     var(--line);
-  --wsp:         #25D366;
+  /* ── Aliases backward-compat ── */
+  --green:        var(--ok);
+  --green-soft:   var(--ok-lt);
+  --red:          var(--danger);
+  --red-soft:     var(--danger-lt);
+  --blue:         var(--info);
+  --blue-soft:    var(--info-lt);
+  --amber:        var(--warn);
+  --amber-soft:   var(--warn-lt);
+  --brand-soft:   var(--brand-lt);
+  --brand-dark:   var(--brand-dk);
+  --ink-soft:     var(--ink-2);
+  --line-strong:  var(--line-2);
+  --bg-elevated:  var(--bg-raised);
+  --shadow-sm:    var(--sh-xs);
+  --shadow:       var(--sh-md);
+  --radius:       var(--r-lg);
+  --radius-sm:    var(--r-sm);
+  --kf-brand:     var(--brand);
+  --bs-accent:    var(--brand);
+  --bs-ink:       var(--ink);
+  --bs-muted:     var(--muted);
+  --bs-line:      var(--line);
+  --overlay:      rgba(28,25,23,.50);
 }

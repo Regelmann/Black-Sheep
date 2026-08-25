@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { safeRpc } from '../lib/query'
 import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios'
 import { productTitle } from '../lib/productDisplay'
 
@@ -19,13 +18,13 @@ const PLACEHOLDER =
     `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
       <defs>
         <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#1c1917"/>
-          <stop offset="100%" stop-color="#292524"/>
+          <stop offset="0%" stop-color="var(--ink)"/>
+          <stop offset="100%" stop-color="var(--bs-shell-2)"/>
         </linearGradient>
       </defs>
       <rect fill="url(#g)" width="800" height="800"/>
-      <text x="400" y="390" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="28" font-weight="700">${PUBLIC_BRAND}</text>
-      <text x="400" y="430" text-anchor="middle" fill="#a8a29e" font-family="system-ui,sans-serif" font-size="16">producto</text>
+      <text x="400" y="390" text-anchor="middle" fill="var(--brand-soft)" font-family="system-ui,sans-serif" font-size="28" font-weight="700">${PUBLIC_BRAND}</text>
+      <text x="400" y="430" text-anchor="middle" fill="var(--muted)" font-family="system-ui,sans-serif" font-size="16">producto</text>
     </svg>`
   )
 
@@ -59,16 +58,35 @@ export default function CatalogoCliente() {
       setLoading(true)
       setErr('')
       try {
-        const { data, error } = await safeRpc('get_public_catalogo', { p_token: token })
+        const { data: raw, error } = await supabase.rpc('get_public_catalogo', { p_token: token })
         if (dead) return
+        // La RPC puede devolver objeto o array de una fila segun como se
+        // haya declarado (jsonb vs setof). Normalizar antes de leer campos.
+        const data = Array.isArray(raw) ? raw[0] : raw
         if (error) {
           setCatalogo(null)
-          setErr(String(error).includes('activa') || String(error).includes('column')
-            ? 'Catálogo desactualizado. Corré sql/01_FIX_CATALOGO_ACTIVA.sql en Supabase.'
-            : (error || 'No se pudo cargar el catálogo'))
-        } else if (!data || data.ok === false || (!data.items && !data.cliente_key)) {
+          // Distinguir "no existe" de "esta roto": el vendedor necesita
+          // saber si reenviar el link o llamar a soporte.
+          const m = String(error.message || '')
+          if (/does not exist|schema cache|42883/i.test(m)) {
+            setErr('El catálogo no está disponible por un problema de configuración. Avisá a soporte.')
+          } else if (/permission|denied|42501|RLS/i.test(m)) {
+            setErr('Este catálogo no está publicado. Pedile al ejecutivo que lo vuelva a activar.')
+          } else {
+            setErr(m || 'No se pudo cargar el catálogo')
+          }
+          console.error('[catalogo] rpc error', error)
+        } else if (data && data.ok === false) {
           setCatalogo(null)
-          setErr((data && data.error) || 'Link inválido o catálogo no disponible')
+          setErr(
+            data.error === 'token_invalido'
+              ? 'Este link ya no está activo. Pedile uno nuevo a tu ejecutivo.'
+              : 'Catálogo no disponible.'
+          )
+        } else if (!data || !data.nombre_cliente) {
+          setCatalogo(null)
+          setErr('Link inválido o catálogo no disponible')
+          console.error('[catalogo] respuesta sin nombre_cliente', raw)
         } else {
           const itemsNorm = (data.items || []).map(it => {
             const r = precioPublicoItem(it)

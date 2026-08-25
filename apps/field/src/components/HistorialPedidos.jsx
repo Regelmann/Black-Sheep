@@ -134,11 +134,11 @@ export default function HistorialPedidos({
     <div className={compact ? '' : 'card'} style={compact ? {} : { padding: '12px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14, color: '#1c1917' }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>
             {title || (clienteKey ? 'Pedidos de este cliente' : 'Historial de pedidos')}
           </div>
           {!loading && (
-            <div style={{ fontSize: 11, color: '#78716c', fontWeight: 600 }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>
               {resumen.n}
               {resumen.n !== resumen.nRaw ? ` de ${resumen.nRaw}` : ''} pedido
               {resumen.n === 1 ? '' : 's'}
@@ -161,8 +161,8 @@ export default function HistorialPedidos({
                 fontWeight: 800,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
-                background: dias === d ? '#c2410c' : '#f5f5f4',
-                color: dias === d ? '#fff' : '#57534e',
+                background: dias === d ? 'var(--brand)' : 'var(--line)',
+                color: dias === d ? '#fff' : 'var(--ink-4)',
               }}
             >
               {d}d
@@ -172,15 +172,15 @@ export default function HistorialPedidos({
             type="button"
             onClick={() => setShowAdv(v => !v)}
             style={{
-              border: '1px solid ' + (showAdv || activeFilters ? '#fdba74' : '#e7e5e4'),
+              border: '1px solid ' + (showAdv || activeFilters ? 'var(--warn-lt5)' : 'var(--line-3)'),
               borderRadius: 999,
               padding: '5px 10px',
               fontSize: 11,
               fontWeight: 800,
               cursor: 'pointer',
               fontFamily: 'inherit',
-              background: showAdv || activeFilters ? '#fff7ed' : '#fff',
-              color: '#c2410c',
+              background: showAdv || activeFilters ? 'var(--brand-lt2)' : '#fff',
+              color: 'var(--brand)',
             }}
           >
             Filtros{activeFilters ? ` (${activeFilters})` : ''}
@@ -191,7 +191,7 @@ export default function HistorialPedidos({
       {showAdv && (
         <div
           style={{
-            background: '#fafaf9',
+            background: 'var(--bg-raised)',
             border: '1px solid #e7e5e4',
             borderRadius: 14,
             padding: 12,
@@ -213,7 +213,7 @@ export default function HistorialPedidos({
               marginBottom: 10,
             }}
           />
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#a8a29e', letterSpacing: '0.06em', marginBottom: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
             ESTADO
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
@@ -230,18 +230,18 @@ export default function HistorialPedidos({
                   fontWeight: 700,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
-                  background: estado === e.id ? '#1c1917' : '#fff',
-                  color: estado === e.id ? '#fff' : '#57534e',
+                  background: estado === e.id ? 'var(--ink)' : '#fff',
+                  color: estado === e.id ? '#fff' : 'var(--ink-4)',
                   borderWidth: 1,
                   borderStyle: 'solid',
-                  borderColor: estado === e.id ? '#1c1917' : '#e7e5e4',
+                  borderColor: estado === e.id ? 'var(--ink)' : 'var(--line-3)',
                 }}
               >
                 {e.label}
               </button>
             ))}
           </div>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#a8a29e', letterSpacing: '0.06em', marginBottom: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', letterSpacing: '0.06em', marginBottom: 6 }}>
             ORIGEN
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
@@ -251,15 +251,15 @@ export default function HistorialPedidos({
                 type="button"
                 onClick={() => setFuente(f.id)}
                 style={{
-                  border: '1px solid ' + (fuente === f.id ? '#0d9488' : '#e7e5e4'),
+                  border: '1px solid ' + (fuente === f.id ? 'var(--teal)' : 'var(--line-3)'),
                   borderRadius: 999,
                   padding: '6px 10px',
                   fontSize: 11,
                   fontWeight: 700,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
-                  background: fuente === f.id ? '#ccfbf1' : '#fff',
-                  color: fuente === f.id ? '#0f766e' : '#57534e',
+                  background: fuente === f.id ? 'var(--teal-lt)' : '#fff',
+                  color: fuente === f.id ? 'var(--teal)' : 'var(--ink-4)',
                 }}
               >
                 {f.label}
@@ -279,8 +279,8 @@ export default function HistorialPedidos({
                   fontWeight: 700,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
-                  background: sort === 'fecha' ? '#e7e5e4' : 'transparent',
-                  color: '#44403c',
+                  background: sort === 'fecha' ? 'var(--line-3)' : 'transparent',
+                  color: 'var(--ink-2)',
                 }}
               >
                 Por fecha
@@ -296,8 +296,8 @@ export default function HistorialPedidos({
                   fontWeight: 700,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
-                  background: sort === 'total' ? '#e7e5e4' : 'transparent',
-                  color: '#44403c',
+                  background: sort === 'total' ? 'var(--line-3)' : 'transparent',
+                  color: 'var(--ink-2)',
                 }}
               >
                 Por monto
@@ -310,7 +310,7 @@ export default function HistorialPedidos({
                 style={{
                   border: 'none',
                   background: 'transparent',
-                  color: '#c2410c',
+                  color: 'var(--brand)',
                   fontWeight: 700,
                   fontSize: 12,
                   cursor: 'pointer',
@@ -324,14 +324,14 @@ export default function HistorialPedidos({
         </div>
       )}
 
-      {loading && <div style={{ fontSize: 13, color: '#a8a29e', padding: '8px 0' }}>Cargando pedidos…</div>}
+      {loading && <div style={{ fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>Cargando pedidos…</div>}
       {err && (
-        <div style={{ fontSize: 12, color: '#b91c1c', background: '#fef2f2', padding: 10, borderRadius: 10 }}>
+        <div style={{ fontSize: 12, color: 'var(--danger-dk)', background: 'var(--danger-lt)', padding: 10, borderRadius: 10 }}>
           {err}
         </div>
       )}
       {!loading && !err && filtered.length === 0 && (
-        <div style={{ fontSize: 13, color: '#78716c', padding: '10px 0' }}>
+        <div style={{ fontSize: 13, color: 'var(--ink-3)', padding: '10px 0' }}>
           {items.length === 0
             ? clienteKey
               ? 'Sin pedidos en el período.'
@@ -375,7 +375,7 @@ export default function HistorialPedidos({
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#c2410c', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--brand)', letterSpacing: '0.04em' }}>
                       {folioPedido(p.id)}
                     </span>
                     <span
@@ -391,21 +391,21 @@ export default function HistorialPedidos({
                       {et.label}
                     </span>
                     {p.fuente === 'catalogo_publico' && String(p.estado || '') !== '' && (
-                      <span style={{ fontSize: 10, color: '#a8a29e' }}>{p.estado}</span>
+                      <span style={{ fontSize: 10, color: 'var(--muted)' }}>{p.estado}</span>
                     )}
                   </div>
                   {!clienteKey && (
-                    <div style={{ fontWeight: 700, fontSize: 13.5, color: '#1a1614' }}>
+                    <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>
                       {p.nombre_cliente || p.cliente_key || 'Sin nombre'}
                     </div>
                   )}
-                  <div style={{ fontSize: 12, color: '#78716c' }}>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
                     {n} línea{n === 1 ? '' : 's'}
                     {total > 0 ? ` · ${money(total)}` : ''}
                     {p.nota ? ` · ${String(p.nota).slice(0, 36)}` : ''}
                   </div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                   {formatFechaPedido(p.creado_en)}
                   <span style={{ display: 'block', textAlign: 'right', marginTop: 4 }}>{expanded ? '▴' : '▾'}</span>
                 </div>
@@ -414,7 +414,7 @@ export default function HistorialPedidos({
               {expanded && (
                 <div style={{ padding: '0 12px 12px', borderTop: '1px solid #f5f5f4' }}>
                   {lineas.length === 0 && (
-                    <div style={{ fontSize: 12, color: '#a8a29e', paddingTop: 8 }}>Sin líneas</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', paddingTop: 8 }}>Sin líneas</div>
                   )}
                   {lineas.map((l, i) => {
                     const cant = Number(l.cantidad) || 0
@@ -434,12 +434,12 @@ export default function HistorialPedidos({
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 650 }}>{l.nombre || l.sku || 'Producto'}</div>
-                          <div style={{ fontSize: 11, color: '#a8a29e' }}>
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>
                             {cant} {l.unidad || 'ud'}
                             {precio > 0 ? ` × ${money(precio)}` : ''}
                           </div>
                         </div>
-                        <div style={{ fontWeight: 700, color: '#c2410c', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--brand)', whiteSpace: 'nowrap' }}>
                           {sub > 0 ? money(sub) : '—'}
                         </div>
                       </div>
@@ -457,7 +457,7 @@ export default function HistorialPedidos({
                           padding: '10px',
                           borderRadius: 10,
                           border: 'none',
-                          background: '#c2410c',
+                          background: 'var(--brand)',
                           color: '#fff',
                           fontWeight: 800,
                           fontSize: 12,
@@ -479,8 +479,8 @@ export default function HistorialPedidos({
                           padding: '10px',
                           borderRadius: 10,
                           border: '1px solid #bbf7d0',
-                          background: '#ecfdf5',
-                          color: '#15803d',
+                          background: 'var(--ok-lt)',
+                          color: 'var(--ok)',
                           fontWeight: 700,
                           fontSize: 12,
                           cursor: 'pointer',
@@ -500,7 +500,7 @@ export default function HistorialPedidos({
                           borderRadius: 10,
                           border: '1px solid #fecaca',
                           background: '#fff',
-                          color: '#b91c1c',
+                          color: 'var(--danger-dk)',
                           fontWeight: 700,
                           fontSize: 12,
                           cursor: 'pointer',

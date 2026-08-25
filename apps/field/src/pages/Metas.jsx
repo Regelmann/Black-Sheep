@@ -2,15 +2,75 @@ import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { money, pctNum, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
-import { parseSkuDetalle } from '../lib/coach'
 
 const limpiaEstado = e => String(e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')
 
-
+function parseSkuDetalle(text) {
+  if (!text) return []
+  const raw = String(text).trim()
+  if (!raw) return []
+  const nl = String.fromCharCode(10)
+  const blocks = raw.includes('||')
+    ? raw.split('||').map(s => s.trim()).filter(Boolean)
+    : raw.split(nl).map(s => s.trim()).filter(Boolean)
+  return blocks.map(block => {
+    const p = block.split('|').map(s => s.trim())
+    if (p.length >= 10) {
+      return {
+        nombre: p[0],
+        promUd: Number(p[1]) || 0,
+        udMtd: Number(p[2]) || 0,
+        falta: Number(p[3]) || 0,
+        promClp: Number(p[4]) || 0,
+        clpMtd: Number(p[5]) || 0,
+        ultima: p[6] || null,
+        cicloDias: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
+        nCompras: p[8] !== '' && !isNaN(Number(p[8])) ? Number(p[8]) : null,
+        estadoRecompra: p[9] || null,
+        diasPara: p[10] !== undefined && p[10] !== '' && !isNaN(Number(p[10])) ? Number(p[10]) : null,
+      }
+    }
+    if (p.length >= 8) {
+      return {
+        nombre: p[0],
+        promUd: Number(p[1]) || 0,
+        udMtd: Number(p[2]) || 0,
+        falta: Math.max(0, (Number(p[1]) || 0) - (Number(p[2]) || 0)),
+        promClp: Number(p[3]) || 0,
+        clpMtd: Number(p[4]) || 0,
+        ultima: p[5] || null,
+        cicloDias: p[6] !== '' && !isNaN(Number(p[6])) ? Number(p[6]) : null,
+        nCompras: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
+        estadoRecompra: null,
+        diasPara: null,
+      }
+    }
+    if (p.length >= 5) {
+      return {
+        nombre: p[0],
+        promUd: Number(p[1]) || 0,
+        udMtd: Number(p[2]) || 0,
+        falta: Math.max(0, (Number(p[1]) || 0) - (Number(p[2]) || 0)),
+        promClp: Number(p[3]) || 0,
+        clpMtd: Number(p[4]) || 0,
+        ultima: p[5] || null,
+        cicloDias: p[6] !== '' && !isNaN(Number(p[6])) ? Number(p[6]) : null,
+        nCompras: p[7] !== '' && !isNaN(Number(p[7])) ? Number(p[7]) : null,
+        estadoRecompra: null,
+        diasPara: null,
+      }
+    }
+    return {
+      nombre: p[0] || block,
+      promUd: 0, udMtd: 0, falta: 0, promClp: 0, clpMtd: 0,
+      ultima: null, cicloDias: null, nCompras: null, estadoRecompra: null, diasPara: null,
+    }
+  })
+}
 
 function pctBar(pct) {
   const p = Math.min(Math.max(pct, 0), 200)
-  const color = pct >= 100 ? '#16a34a' : pct >= 80 ? '#2563eb' : pct >= 50 ? '#f59e0b' : '#ef4444'
+  const color = pct >= 100 ? 'var(--ok-mid)' : pct >= 80 ? 'var(--info)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)'
   return { width: `${Math.min(p, 100)}%`, background: color }
 }
 
@@ -90,7 +150,7 @@ export default function Metas({ session }) {
             : 0
       )
     : 0
-  const color = p >= 90 ? '#16a34a' : p >= 60 ? '#f59e0b' : '#ef4444'
+  const color = p >= 90 ? 'var(--ok-mid)' : p >= 60 ? 'var(--warn)' : 'var(--danger)'
   const venta = Number(meta?.venta_mtd) || 0
   const metaVal = Number(meta?.meta_mensual) || 0
 
@@ -112,7 +172,7 @@ export default function Metas({ session }) {
             fontWeight: 700,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
-            color: '#fdba74',
+            color: 'var(--warn-lt5)',
             marginBottom: 6,
           }}
         >
@@ -138,14 +198,14 @@ export default function Metas({ session }) {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: color }}>{p}%</div>
-                <div style={{ textAlign: 'right', fontSize: 13, color: '#78716c' }}>
+                <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--ink-3)' }}>
                   {money(venta)} / {money(metaVal)}
                 </div>
               </div>
               <div
                 style={{
                   height: 10,
-                  background: '#f5f5f4',
+                  background: 'var(--line)',
                   borderRadius: 999,
                   marginTop: 10,
                   overflow: 'hidden',
@@ -160,13 +220,13 @@ export default function Metas({ session }) {
                   }}
                 />
               </div>
-              <div style={{ marginTop: 8, fontSize: 12, color: '#78716c' }}>
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-3)' }}>
                 Brecha: {money(Math.max(0, metaVal - venta))}
                 {p > 100 ? ` · Sobre meta +${money(venta - metaVal)}` : ''}
               </div>
             </>
           ) : (
-            <p style={{ margin: 0, color: '#78716c' }}>Sin meta cargada para este ejecutivo.</p>
+            <p style={{ margin: 0, color: 'var(--ink-3)' }}>Sin meta cargada para este ejecutivo.</p>
           )}
         </div>
 
@@ -179,7 +239,7 @@ export default function Metas({ session }) {
               border: '1px solid #e7e0d8',
               borderRadius: 14,
               padding: 14,
-              color: '#78716c',
+              color: 'var(--ink-3)',
               fontSize: 13,
             }}
           >
@@ -206,7 +266,7 @@ export default function Metas({ session }) {
                 <div style={{ fontWeight: 800, fontSize: 14 }}>{f.foco || f.nombre || 'Foco'}</div>
                 <div style={{ fontWeight: 800, color: bar.background }}>{pct}%</div>
               </div>
-              <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
                 {vendido.toLocaleString('es-CL')} de {metaU.toLocaleString('es-CL')}{' '}
                 {f.unidad_meta || 'ud'}
                 {f.estado_ritmo ? ` · ${String(f.estado_ritmo).replace(/_/g, ' ')}` : ''}
@@ -214,7 +274,7 @@ export default function Metas({ session }) {
               <div
                 style={{
                   height: 8,
-                  background: '#f5f5f4',
+                  background: 'var(--line)',
                   borderRadius: 999,
                   marginTop: 8,
                   overflow: 'hidden',
@@ -244,7 +304,7 @@ export default function Metas({ session }) {
             style={{
               border: 'none',
               background: 'none',
-              color: '#c2410c',
+              color: 'var(--brand)',
               fontWeight: 700,
               fontSize: 13,
               cursor: 'pointer',
@@ -253,7 +313,7 @@ export default function Metas({ session }) {
             {showCli ? 'Ocultar' : 'Ver'}
           </button>
         </div>
-        <div style={{ fontSize: 12, color: '#78716c', margin: '0 4px 8px' }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)', margin: '0 4px 8px' }}>
           Suma cartera MTD: {money(totalCli)} · Tocá un cliente para ver mix del mes
         </div>
 
@@ -264,7 +324,7 @@ export default function Metas({ session }) {
               border: '1px solid #e7e0d8',
               borderRadius: 14,
               padding: 14,
-              color: '#78716c',
+              color: 'var(--ink-3)',
             }}
           >
             Ningún cliente de tu cartera con venta este mes.
@@ -302,17 +362,17 @@ export default function Metas({ session }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1917' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>
                         {c.nombre_cliente}
                       </div>
-                      <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
                         {c.comuna || '—'} · {limpiaEstado(c.estado_fuga || c.estado_texto)}
                         {c.dias_sin_comprar != null ? ` · ${c.dias_sin_comprar}d` : ''}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 800, color: '#c2410c' }}>{money(c.venta_mtd)}</div>
-                      <div style={{ fontSize: 11, color: '#78716c' }}>
+                      <div style={{ fontWeight: 800, color: 'var(--brand)' }}>{money(c.venta_mtd)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
                         {open ? '▲' : '▼'} este mes
                       </div>
                     </div>
@@ -322,7 +382,7 @@ export default function Metas({ session }) {
                 {open && (
                   <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f5f5f4' }}>
                     {c.ultima_compra && (
-                      <div style={{ fontSize: 12, color: '#78716c', marginTop: 8 }}>
+                      <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8 }}>
                         Última compra: <b>{c.ultima_compra}</b>
                         {c.dias_sin_comprar != null
                           ? ` (${c.dias_sin_comprar} días sin comprar)`
@@ -334,8 +394,8 @@ export default function Metas({ session }) {
                         style={{
                           marginTop: 8,
                           fontSize: 12,
-                          color: '#9a3412',
-                          background: '#fff7ed',
+                          color: 'var(--brand-dk)',
+                          background: 'var(--brand-lt2)',
                           padding: '8px 10px',
                           borderRadius: 10,
                         }}
@@ -347,7 +407,7 @@ export default function Metas({ session }) {
                     <div style={{ marginTop: 10, fontWeight: 700, fontSize: 13 }}>
                       Mix del mes ({skusMes.length || skus.length} productos)
                     </div>
-                    <div style={{ fontSize: 11, color: '#a8a29e', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>
                       Este mes vs promedio meses anteriores · gap = oportunidad
                     </div>
 
@@ -374,7 +434,7 @@ export default function Metas({ session }) {
                               display: 'flex',
                               justifyContent: 'space-between',
                               fontSize: 11,
-                              color: '#78716c',
+                              color: 'var(--ink-3)',
                               marginTop: 2,
                             }}
                           >
@@ -386,14 +446,14 @@ export default function Metas({ session }) {
                             </span>
                           </div>
                           {s.ultima && (
-                            <div style={{ fontSize: 11, color: '#a8a29e', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                               Última venta de este SKU: {s.ultima}
                             </div>
                           )}
                           <div
                             style={{
                               height: 6,
-                              background: '#f5f5f4',
+                              background: 'var(--line)',
                               borderRadius: 999,
                               marginTop: 6,
                               overflow: 'hidden',
@@ -403,7 +463,7 @@ export default function Metas({ session }) {
                               style={{
                                 height: '100%',
                                 width: `${Math.min(pct, 100)}%`,
-                                background: over ? '#16a34a' : pct >= 70 ? '#f59e0b' : '#ef4444',
+                                background: over ? 'var(--ok-mid)' : pct >= 70 ? 'var(--warn)' : 'var(--danger)',
                               }}
                             />
                           </div>
@@ -411,7 +471,7 @@ export default function Metas({ session }) {
                             style={{
                               fontSize: 11,
                               marginTop: 3,
-                              color: over ? '#16a34a' : '#b45309',
+                              color: over ? 'var(--ok-mid)' : 'var(--warn-dk2)',
                               fontWeight: 600,
                             }}
                           >
@@ -427,12 +487,12 @@ export default function Metas({ session }) {
                       )
                     })}
                     {!skus.length && c.productos_top && (
-                      <div style={{ fontSize: 12, marginTop: 6, color: '#475569' }}>
+                      <div style={{ fontSize: 12, marginTop: 6, color: 'var(--info-mid3)' }}>
                         <b>Compraba:</b> {c.productos_top}
                       </div>
                     )}
                     {!skus.length && !c.productos_top && (
-                      <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 6 }}>
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
                         Sin detalle SKU para este cliente en la bajada.
                       </div>
                     )}

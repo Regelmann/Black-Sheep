@@ -208,9 +208,6 @@ export function formatFechaPedido(iso) {
 
 export function etiquetaEstadoPedido(estado, fuente) {
   // Estado real (no mezclar con fuente — el badge de origen va aparte)
-  try {
-    const { etiquetaEstado, colorEstado, normalizarEstado } = require('./pedidoEstados')
-  } catch (_) {}
   const e = String(estado || '').toLowerCase().trim()
   const map = {
     borrador: { label: 'Borrador', color: '#78716c' },

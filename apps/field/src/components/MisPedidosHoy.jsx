@@ -32,20 +32,20 @@ export default function MisPedidosHoy({ ejecutivoId, onOpenPedido }) {
           background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: '#c2410c' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: 'var(--brand)' }}>
           PEDIDOS DE HOY · {rows.length}
         </span>
-        <span style={{ fontSize: 12, color: '#a8a29e' }}>{open ? 'Ocultar' : 'Ver'}</span>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{open ? 'Ocultar' : 'Ver'}</span>
       </button>
       {open && (
         <div style={{ marginTop: 10 }}>
           {err && (
-            <div style={{ fontSize: 12, color: '#b91c1c', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: 'var(--danger-dk)', marginBottom: 8 }}>
               {err}
             </div>
           )}
           {!err && rows.length === 0 && (
-            <div style={{ fontSize: 13, color: '#a8a29e' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>
               Todavía no hay pedidos hoy. Desde el cliente: Catálogo o Pedido interno.
             </div>
           )}
@@ -75,23 +75,23 @@ export default function MisPedidosHoy({ ejecutivoId, onOpenPedido }) {
               >
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#c2410c', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--brand)', letterSpacing: '0.04em' }}>
                       {folioPedido(p.id)}
                     </span>
-                    <span style={{ fontSize: 10, color: '#a8a29e' }}>
+                    <span style={{ fontSize: 10, color: 'var(--muted)' }}>
                       {p.fuente === 'catalogo_publico' ? '🌐 catálogo' : (p.estado === 'enviado' || p.estado === 'recibido' ? '✓ ' + p.estado : '· ' + (p.estado || 'borrador'))}
                     </span>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 13.5, color: '#1a1614' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>
                     {p.nombre_cliente || p.cliente_key || 'Sin nombre de cliente'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#78716c' }}>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
                     {n} línea{n === 1 ? '' : 's'}
                     {(Number(p.total_estimado) > 0) ? ` · $${Math.round(Number(p.total_estimado)).toLocaleString('es-CL')}` : ''}
                     {p.nota ? ` · ${String(p.nota).slice(0, 30)}` : ''}
                   </div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                   {hora}
                   {onOpenPedido ? ' · editar' : ''}
                 </div>

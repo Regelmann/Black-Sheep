@@ -9,10 +9,10 @@ import { listarPedidosHoy } from '../lib/pedido'
 import HistorialPedidos from '../components/HistorialPedidos.jsx'
 import OrderInbox from '../components/OrderInbox.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
+import { syncHandlers } from '../lib/syncHandlers.js'
 import {
   loadActionQueue,
   flushActionQueue,
-  clearActionQueue,
   isProbablyOffline,
   loadHoyResultados,
 } from '../lib/offline'
@@ -27,12 +27,12 @@ function limpiaEstado(e) {
 }
 
 const TYPE_META = {
-  reponer: { badge: 'REPONER', cls: 'reponer', color: '#c2410c' },
-  riesgo: { badge: 'RIESGO', cls: 'riesgo', color: '#dc2626' },
-  enfriandose: { badge: 'ENFRIÁNDOSE', cls: 'fuga', color: '#d97706' },
-  nuevo: { badge: 'NUEVO', cls: 'reponer', color: '#2563eb' },
-  visita: { badge: 'VISITAR', cls: 'reponer', color: '#57534e' },
-  pedido: { badge: 'PEDIDO', cls: 'reponer', color: '#0d9488' },
+  reponer: { badge: 'REPONER', cls: 'reponer', color: 'var(--brand)' },
+  riesgo: { badge: 'RIESGO', cls: 'riesgo', color: 'var(--danger)' },
+  enfriandose: { badge: 'ENFRIÁNDOSE', cls: 'fuga', color: 'var(--warn)' },
+  nuevo: { badge: 'NUEVO', cls: 'reponer', color: 'var(--info)' },
+  visita: { badge: 'VISITAR', cls: 'reponer', color: 'var(--ink-4)' },
+  pedido: { badge: 'PEDIDO', cls: 'reponer', color: 'var(--teal)' },
 }
 
 export default function Hoy() {
@@ -61,40 +61,7 @@ export default function Hoy() {
       setOffline(false)
       // Drenar cola offline al recuperar red
       try {
-        await flushActionQueue({
-          checkin: async item => {
-            const { error } = await supabase.from('checkins').insert({
-              visita_id: item.payload?.visita_id,
-              hora_llegada: item.payload?.hora_llegada,
-              lat_real: item.payload?.lat_real,
-              lng_real: item.payload?.lng_real,
-            })
-            return !error
-          },
-          completar: async item => {
-            if (item.payload?.checkin_id && !String(item.payload.checkin_id).startsWith('offline_')) {
-              await supabase
-                .from('checkins')
-                .update({
-                  hora_fin: item.payload.hora_fin,
-                  resultado: item.payload.resultado,
-                })
-                .eq('id', item.payload.checkin_id)
-            }
-            if (item.payload?.visita_id) {
-              await supabase
-                .from('visitas')
-                .update({ estado: 'visitada' })
-                .eq('id', item.payload.visita_id)
-            }
-            return true
-          },
-          nota: async item => {
-            const { error } = await supabase.from('notas_cliente').insert(item.payload || {})
-            return !error
-          },
-          pedido: async () => true, // pedidos ya reintentan en PedidoSheet
-        })
+        await flushActionQueue(syncHandlers)
       } catch {
         /* silent */
       }
@@ -285,7 +252,7 @@ export default function Hoy() {
             position: 'sticky',
             top: 0,
             zIndex: 40,
-            background: offline ? '#92400e' : '#b45309',
+            background: offline ? 'var(--warn-dk)' : 'var(--warn-dk2)',
             color: '#fff',
             padding: '8px 14px',
             fontSize: 12,
@@ -302,50 +269,26 @@ export default function Hoy() {
               : `${colaN} acción(es) pendientes de sincronizar`}
           </span>
           {!offline && colaN > 0 && (
-            <span style={{ display: 'flex', gap: 6 }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  await flushActionQueue({})
-                  setActividadHoy(a => ({ ...a, colaOffline: loadActionQueue().length }))
-                }}
-                style={{
-                  border: '1px solid rgba(255,255,255,0.4)',
-                  background: 'rgba(255,255,255,0.15)',
-                  color: '#fff',
-                  borderRadius: 8,
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontWeight: 800,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
-              >
-                Reintentar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('¿Descartar acciones pendientes de la cola offline?')) {
-                    clearActionQueue()
-                    setActividadHoy(a => ({ ...a, colaOffline: 0 }))
-                  }
-                }}
-                style={{
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  background: 'transparent',
-                  color: '#fff',
-                  borderRadius: 8,
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
-              >
-                Descartar
-              </button>
-            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                await flushActionQueue(syncHandlers)
+                setActividadHoy(a => ({ ...a, colaOffline: loadActionQueue().length }))
+              }}
+              style={{
+                border: '1px solid rgba(255,255,255,0.4)',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                borderRadius: 8,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              Reintentar
+            </button>
           )}
         </div>
       )}
@@ -433,35 +376,6 @@ export default function Hoy() {
             </details>
           )}
 
-
-          {/* Focos del mes — avance SKU */}
-          {Array.isArray(focos) && focos.length > 0 && (
-            <div className="bs-hoy-focos" style={{ marginTop: 12 }}>
-              <div className="bs-hoy-focos-title">Focos del mes</div>
-              {focos.slice(0, 6).map((f, i) => {
-                const metaU = Number(f.meta_unidad) || 0
-                const vend = Number(f.vendido_unidad) || 0
-                const pct = f.pct_avance != null
-                  ? Number(f.pct_avance)
-                  : (metaU > 0 ? Math.round((vend / metaU) * 100) : 0)
-                const bar = Math.max(0, Math.min(100, pct))
-                return (
-                  <div key={f.id || i} className="bs-hoy-foco-row">
-                    <div className="bs-hoy-foco-head">
-                      <strong>{f.foco || 'Foco'}</strong>
-                      <span>{bar}%</span>
-                    </div>
-                    <div className="bs-hoy-foco-bar"><i style={{ width: bar + '%' }} /></div>
-                    <div className="bs-hoy-foco-meta">
-                      {vend.toLocaleString('es-CL')} / {metaU.toLocaleString('es-CL')} {f.unidad_meta || 'ud'}
-                      {f.estado_ritmo ? ` · ${String(f.estado_ritmo)}` : ''}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
           <button type="button" className="bs-hoy-route" onClick={() => nav('/mapa')}>
             Armar ruta del día
           </button>
@@ -546,29 +460,29 @@ export default function Hoy() {
               overflowY: 'auto',
             }}
           >
-            <div style={{ width: 40, height: 4, borderRadius: 999, background: '#e7e5e4', margin: '0 auto 14px' }} />
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#c2410c', textTransform: 'uppercase' }}>
+            <div style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--line-3)', margin: '0 auto 14px' }} />
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: 'var(--brand)', textTransform: 'uppercase' }}>
               Prep de visita · 10 segundos
             </div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#1c1917', marginTop: 4, letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--ink)', marginTop: 4, letterSpacing: '-0.02em' }}>
               {prep.title}
             </div>
-            <div style={{ fontSize: 13, color: '#78716c', marginTop: 4 }}>
+            <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>
               {[prep.comuna, prep.dias != null && !isNaN(prep.dias) ? `hace ${prep.dias}d` : null, limpiaEstado(prep.estado)]
                 .filter(Boolean)
                 .join(' · ')}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
-              <div style={{ background: '#fafaf9', borderRadius: 12, padding: '10px 12px', border: '1px solid #f5f5f4' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>Última compra</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#1c1917', marginTop: 2 }}>
+              <div style={{ background: 'var(--bg-raised)', borderRadius: 12, padding: '10px 12px', border: '1px solid #f5f5f4' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Última compra</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>
                   {prep.ultima || '—'}
                 </div>
               </div>
-              <div style={{ background: '#fafaf9', borderRadius: 12, padding: '10px 12px', border: '1px solid #f5f5f4' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'uppercase' }}>Prom / MTD</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#c2410c', marginTop: 2 }}>
+              <div style={{ background: 'var(--bg-raised)', borderRadius: 12, padding: '10px 12px', border: '1px solid #f5f5f4' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Prom / MTD</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--brand)', marginTop: 2 }}>
                   {money(prep.amount || 0)}
                 </div>
               </div>
@@ -577,8 +491,8 @@ export default function Hoy() {
             {prep.insight && (
               <div style={{
                 marginTop: 12, padding: '10px 12px', borderRadius: 12,
-                background: '#fef2f2', border: '1px solid #fecaca',
-                fontSize: 13, fontWeight: 700, color: '#991b1b', lineHeight: 1.4,
+                background: 'var(--danger-lt)', border: '1px solid #fecaca',
+                fontSize: 13, fontWeight: 700, color: 'var(--danger-dk2)', lineHeight: 1.4,
               }}>
                 Debe llevar hoy: {prep.insight}
               </div>
@@ -586,8 +500,8 @@ export default function Hoy() {
             {prep.oferta && (
               <div style={{
                 marginTop: 8, padding: '10px 12px', borderRadius: 12,
-                background: '#fff7ed', border: '1px solid #fed7aa',
-                fontSize: 13, fontWeight: 600, color: '#9a3412', lineHeight: 1.4,
+                background: 'var(--brand-lt2)', border: '1px solid #fed7aa',
+                fontSize: 13, fontWeight: 600, color: 'var(--brand-dk)', lineHeight: 1.4,
               }}>
                 💡 Ofrecé: {prep.oferta}
               </div>
@@ -595,7 +509,7 @@ export default function Hoy() {
 
             {prep.skusTop?.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#78716c', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                   A reponer ahora
                 </div>
                 {prep.skusTop.map((s, i) => (
@@ -604,12 +518,12 @@ export default function Hoy() {
                     padding: '8px 0', borderBottom: '1px solid #f5f5f4',
                   }}>
                     <span style={{
-                      width: 22, height: 22, borderRadius: 7, background: '#fef2f2', color: '#b91c1c',
+                      width: 22, height: 22, borderRadius: 7, background: 'var(--danger-lt)', color: 'var(--danger-dk)',
                       fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 650, color: '#1c1917' }}>{s.nombre}</div>
-                      <div style={{ fontSize: 11, color: '#78716c', marginTop: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 650, color: 'var(--ink)' }}>{s.nombre}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>
                         {[s.label, s.cicloEst != null ? `ciclo ${s.cicloEst}d` : null, s.qty ? `sugerido ${s.qty}` : null]
                           .filter(Boolean).join(' · ')}
                       </div>
@@ -635,7 +549,7 @@ export default function Hoy() {
                 onClick={() => goVisita(prep)}
                 style={{
                   flex: 2, minHeight: 48, borderRadius: 12, border: 'none',
-                  background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 15,
+                  background: 'var(--brand)', color: '#fff', fontWeight: 800, fontSize: 15,
                   fontFamily: 'inherit', cursor: 'pointer',
                 }}
               >
