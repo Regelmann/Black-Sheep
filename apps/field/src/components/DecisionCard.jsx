@@ -25,7 +25,7 @@ export function DecisionCard({ item, featured = false, onAction }) {
   const parts = item.parts
 
   return (
-    <article className={'bs-dc' + (featured ? ' is-featured' : '') + ` att-${att}` + ` type-${type}`}>
+    <article className={'bs-dc bs-dc--compact' + (featured ? ' is-featured' : '') + ` att-${att}` + ` type-${type}`}>
       <div className="bs-dc-top">
         <span className={`bs-dc-badge att-${att}`}>
           {att === 'now' ? 'AHORA' : att === 'today' ? 'HOY' : 'SEMANA'}

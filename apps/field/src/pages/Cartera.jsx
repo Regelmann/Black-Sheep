@@ -486,7 +486,7 @@ export default function Cartera({ session }) {
       <div className="wrap">
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${clientes.length} clientes · zona activa`} />}
         <StatGrid
-          cols={3}
+          cols={4}
           items={[
             { label: 'Con venta mes', value: nActivosMes, tone: 'ok',
               active: filtro === 'ActivosMes',
