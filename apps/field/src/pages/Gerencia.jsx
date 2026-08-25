@@ -197,7 +197,7 @@ export default function Gerencia({ esGerente }) {
               supabase
                 .from('cartera')
                 .select(
-                  'cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
+                  'cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
                 )
                 .eq('ejecutivo_id', id)
                 .limit(800)
@@ -206,7 +206,7 @@ export default function Gerencia({ esGerente }) {
               supabase
                 .from('cartera')
                 .select(
-                  'cliente_key,nombre_cliente,razon_social,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
+                  'cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
                 )
                 .limit(2000),
             ]
@@ -217,12 +217,12 @@ export default function Gerencia({ esGerente }) {
         const _settled = await Promise.allSettled([
           supabase.from('gerencia').select('*'),
           supabase.from('tendencia').select('*'),
-          supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,precio,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
+          supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
           supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
           Promise.all(carPromises),
           supabase
             .from('notas_cliente')
-            .select('cliente_key,nombre_local,tipo,texto,created_at,creado_en')
+            .select('cliente_key,nombre_local,tipo,texto,creado_en')
             .or('tipo.ilike.%bloqueo%,tipo.ilike.%bloqueo_cerrado%,tipo.ilike.%bloqueo_deuda%')
             .limit(150),
         ])

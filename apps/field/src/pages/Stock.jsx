@@ -3,7 +3,7 @@ import { productTitle } from '../lib/productDisplay'
 import { findBuyersForSku } from '../lib/stockIntel'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { safeAll } from '../lib/query'
+import { safeAll, safeSelect } from '../lib/query'
 import { DataError } from '../components/DataState.jsx'
 import { DataAsOfBanner } from '../components.jsx'
 
@@ -34,20 +34,28 @@ export default function Stock() {
   const cargar = useCallback(async () => {
     setLoading(true)
     setErrStock(null); setErrCartera(null)
-    // Cada bloque falla por separado: que no cargue la cartera NO debe
-    // ocultar el stock, y viceversa.
+    // Cartera: columnas mínimas que SÍ existen en el esquema real.
+    // No pedir razon_social ni created_at — rompen toda la query (42703).
+    const CARTERA_SEL = 'cliente_key,nombre_cliente,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado'
     const r = await safeAll({
       stock: supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }),
-      cartera: supabase
-        .from('cartera')
-        .select('cliente_key,nombre_cliente,razon_social,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado')
-        .limit(2000),
+      cartera: supabase.from('cartera').select(CARTERA_SEL).limit(3000),
     })
+    // Si aún falla por una columna opcional, reintentar aún más mínimo
+    let carteraRows = r.cartera
+    let cartErr = r.errors.cartera
+    if (cartErr && /column|42703|PGRST204/i.test(String(cartErr.dev || cartErr.user || ''))) {
+      const r2 = await safeSelect(
+        supabase.from('cartera').select('cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar').limit(3000)
+      )
+      if (r2.ok) { carteraRows = r2.rows; cartErr = null }
+      else cartErr = r2.error
+    }
     setStock(r.stock)
-    setCarteraStock(r.cartera)
+    setCarteraStock(carteraRows)
     if (r.errors.stock) setErrStock(r.errors.stock)
-    if (r.errors.cartera) setErrCartera(r.errors.cartera)
-    const snap = r.stock.map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
+    if (cartErr) setErrCartera(cartErr)
+    const snap = (r.stock || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
     if (snap) setDataAsOf(snap)
     setLoading(false)
   }, [])

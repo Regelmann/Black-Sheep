@@ -21,7 +21,7 @@ import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
 import { runSyncFlush } from './lib/sync/engine.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V9.3'
+export const BUILD_STAMP = 'v-BS-PLATFORM-V9.3.1'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 export const EjecutivoCtx = createContext(null)

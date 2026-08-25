@@ -69,7 +69,7 @@ export default function CatalogoCliente() {
           // saber si reenviar el link o llamar a soporte.
           const m = String(error.message || '')
           if (/does not exist|schema cache|42883/i.test(m)) {
-            setErr('El catálogo no está disponible por un problema de configuración. Avisá a soporte.')
+            setErr('Falta instalar el catálogo en Supabase (SQL 20_CATALOGO_CANONICO). Avisá a soporte.')
           } else if (/permission|denied|42501|RLS/i.test(m)) {
             setErr('Este catálogo no está publicado. Pedile al ejecutivo que lo vuelva a activar.')
           } else {
@@ -83,11 +83,18 @@ export default function CatalogoCliente() {
               ? 'Este link ya no está activo. Pedile uno nuevo a tu ejecutivo.'
               : 'Catálogo no disponible.'
           )
-        } else if (!data || !data.nombre_cliente) {
+        } else if (!data || (data.ok === false)) {
           setCatalogo(null)
-          setErr('Link inválido o catálogo no disponible')
-          console.error('[catalogo] respuesta sin nombre_cliente', raw)
+          setErr((data && data.error === 'token_invalido')
+            ? 'Este link ya no está activo. Pedile uno nuevo a tu ejecutivo.'
+            : 'Link inválido o catálogo no disponible')
+        } else if (!data.nombre_cliente && !(data.items && data.items.length)) {
+          setCatalogo(null)
+          setErr('Catálogo vacío. Pedile al ejecutivo que vuelva a publicar la oferta.')
+          console.error('[catalogo] sin nombre ni items', raw)
         } else {
+          if (!data.nombre_cliente) data.nombre_cliente = 'Cliente'
+
           const itemsNorm = (data.items || []).map(it => {
             const r = precioPublicoItem(it)
             const origen = it.precio_origen || r.origen || 'consultar'
