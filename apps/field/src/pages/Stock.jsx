@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { safeAll, safeSelect } from '../lib/query'
 import { DataError } from '../components/DataState.jsx'
 import { DataAsOfBanner } from '../components.jsx'
+import { useEjecutivo } from '../App.jsx'
 
 function fmtNum(n) {
   if (n == null || n === '') return '—'
@@ -19,6 +20,7 @@ function unidadHint() {
 }
 
 export default function Stock() {
+  const eje = useEjecutivo()
   const [loading, setLoading] = useState(true)
   const [stock, setStock] = useState([])
   const [carteraStock, setCarteraStock] = useState([])
@@ -34,22 +36,36 @@ export default function Stock() {
   const cargar = useCallback(async () => {
     setLoading(true)
     setErrStock(null); setErrCartera(null)
-    // Cartera: columnas mínimas que SÍ existen en el esquema real.
-    // No pedir razon_social ni created_at — rompen toda la query (42703).
-    const CARTERA_SEL = 'cliente_key,nombre_cliente,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado'
+    // Solo la cartera del ejecutivo en vista — NUNCA mezclar zonas.
+    const eid = eje?.eidVista
+    const CARTERA_SEL = 'cliente_key,nombre_cliente,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id'
+    let cartQ = supabase.from('cartera').select(CARTERA_SEL).limit(3000)
+    if (eid) cartQ = cartQ.eq('ejecutivo_id', eid)
     const r = await safeAll({
       stock: supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }),
-      cartera: supabase.from('cartera').select(CARTERA_SEL).limit(3000),
+      cartera: cartQ,
     })
-    // Si aún falla por una columna opcional, reintentar aún más mínimo
-    let carteraRows = r.cartera
+    let carteraRows = r.cartera || []
     let cartErr = r.errors.cartera
+    // Fallback si alguna columna no existe
     if (cartErr && /column|42703|PGRST204/i.test(String(cartErr.dev || cartErr.user || ''))) {
-      const r2 = await safeSelect(
-        supabase.from('cartera').select('cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar').limit(3000)
-      )
+      let q2 = supabase.from('cartera').select('cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id').limit(3000)
+      if (eid) q2 = q2.eq('ejecutivo_id', eid)
+      const r2 = await safeSelect(q2)
       if (r2.ok) { carteraRows = r2.rows; cartErr = null }
       else cartErr = r2.error
+    }
+    // Doble filtro client-side por si RLS devuelve de más
+    if (eid) {
+      carteraRows = (carteraRows || []).filter(c => !c.ejecutivo_id || String(c.ejecutivo_id) === String(eid))
+    }
+    if (eje?.zonaVista) {
+      const nz = String(eje.zonaVista).toUpperCase().replace(/[^A-Z0-9]/g, '')
+      carteraRows = (carteraRows || []).filter(c => {
+        if (!c.zona) return true
+        const cz = String(c.zona).toUpperCase().replace(/[^A-Z0-9]/g, '')
+        return cz === nz || cz.includes(nz) || nz.includes(cz)
+      })
     }
     setStock(r.stock)
     setCarteraStock(carteraRows)
@@ -58,7 +74,7 @@ export default function Stock() {
     const snap = (r.stock || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
     if (snap) setDataAsOf(snap)
     setLoading(false)
-  }, [])
+  }, [eje?.eidVista, eje?.zonaVista])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -401,7 +417,11 @@ export default function Stock() {
                 {skuSel === (s.sku_canon || s.id) ? 'Ocultar compradores' : 'Encontrar compradores'}
               </button>
               {skuSel === (s.sku_canon || s.id) && (() => {
-                const res = findBuyersForSku(s.sku_canon, carteraStock, { productoNombre: s.producto_nombre || productTitle(s).title })
+                const res = findBuyersForSku(s.sku_canon, carteraStock, {
+                  productoNombre: s.producto_nombre || productTitle(s).title,
+                  ejecutivoId: eje?.eidVista,
+                  zona: eje?.zonaVista,
+                })
                 return (
                   <div className="bs-stock-buyers">
                     <div className="bs-stock-buyers-head">

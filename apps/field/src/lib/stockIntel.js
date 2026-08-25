@@ -37,9 +37,9 @@ function nameMatch(stockName, itemName) {
   for (const t of a) {
     if (b.some(x => x === t || x.includes(t) || t.includes(x))) hit++
   }
-  // 1 token fuerte (marca/producto) basta si es distintivo (>=5 chars)
+  // Evitar cruces flojos (ej. "POLLO" match en toda la categoría)
   if (hit >= 2) return true
-  if (hit >= 1 && a.some(t => t.length >= 5 && b.includes(t))) return true
+  if (hit >= 1 && a.some(t => t.length >= 6 && b.includes(t))) return true
   // substring full
   const na = normName(stockName)
   const nb = normName(itemName)
@@ -48,15 +48,32 @@ function nameMatch(stockName, itemName) {
   return false
 }
 
+function normZona(z) {
+  return String(z || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/g, '')
+}
+
+/**
+ * Compradores de un SKU dentro de UNA cartera (nunca mezclar zonas).
+ * opts: { productoNombre, limit, ejecutivoId, zona }
+ */
 export function findBuyersForSku(skuCanon, cartera = [], opts = {}) {
   const limit = opts.limit ?? 12
   const sku = normSku(skuCanon)
   const prodName = opts.productoNombre || ''
+  const eidFilter = opts.ejecutivoId ? String(opts.ejecutivoId) : null
+  const zonaFilter = opts.zona ? normZona(opts.zona) : null
   if (!sku && !prodName) return { buyers: [], potencial: 0, totalMatch: 0, enReposicion: 0 }
 
   const buyers = []
   for (const c of cartera || []) {
     if (c.es_bloqueado) continue
+    // Aislamiento de cartera: solo el ejecutivo / zona en vista
+    if (eidFilter && c.ejecutivo_id && String(c.ejecutivo_id) !== eidFilter) continue
+    if (zonaFilter && c.zona && normZona(c.zona) !== zonaFilter) continue
     const items = parseSkuDetalle(c.sku_detalle) || []
     let hit = null
     for (const it of items) {
