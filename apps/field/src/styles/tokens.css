@@ -4,6 +4,48 @@
    NUNCA usar hex directamente en JSX o CSS — usar var(--token).
    ════════════════════════════════════════════════════════════ */
 :root {
+  /* ── Escala de espacio (4px base, estilo Linear) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* ── Radios (un solo sistema) ── */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  /* ── Sombras Attio/Linear (suaves, no decorativas) ── */
+  --shadow-xs: 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-sm: 0 1px 3px rgba(28, 25, 23, 0.06), 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-md: 0 4px 12px rgba(28, 25, 23, 0.08);
+  --shadow-lg: 0 8px 24px rgba(28, 25, 23, 0.12);
+
+  /* ── Tipografía escala ── */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 28px;
+  --leading-tight: 1.2;
+  --leading-normal: 1.4;
+  --weight-med: 600;
+  --weight-bold: 700;
+  --weight-black: 800;
+
+  /* ── Touch ── */
+  --touch: 44px;
+  --touch-lg: 48px;
+  --max-w: 480px;
+
   /* ── Tipografía ── */
   --font: 'DM Sans', system-ui, -apple-system, sans-serif;
 
