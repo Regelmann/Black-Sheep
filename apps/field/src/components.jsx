@@ -174,9 +174,10 @@ export function AlertasDia() {
   useEffect(() => {
     ;(async () => {
       const out = []
-      const { data: cart } = await supabase
+      const { data: cart, error: eCart } = await supabase
         .from('cartera')
         .select('estado_fuga,nombre_cliente,dias_sin_comprar')
+      if (eCart) console.error('[alertas] cartera', eCart)
       if (cart) {
         const riesgo = cart.filter(c => (c.estado_fuga || '').includes('3_EN_RIESGO')).length
         const superoP = cart.filter(c => c.dias_sin_comprar != null && c.dias_sin_comprar > 60).length
@@ -185,9 +186,10 @@ export function AlertasDia() {
         if (superoP > 0)
           out.push({ t: 'inactivos', txt: `${superoP} clientes +60 dias sin comprar`, cls: 'a-red' })
       }
-      const { data: stk } = await supabase
+      const { data: stk, error: eStk } = await supabase
         .from('stock')
         .select('stock_operativo,es_foco_mes,producto_nombre')
+      if (eStk) console.error('[alertas] stock', eStk)
       if (stk) {
         const negFoco = stk.filter(s => s.es_foco_mes && Number(s.stock_operativo) < 0).length
         if (negFoco > 0)

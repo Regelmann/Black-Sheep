@@ -10,6 +10,7 @@ import HistorialPedidos from '../components/HistorialPedidos.jsx'
 import OrderInbox from '../components/OrderInbox.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import { syncHandlers } from '../lib/syncHandlers.js'
+import { FocosMes } from '../components/FocosMes.jsx'
 import {
   loadActionQueue,
   flushActionQueue,
@@ -401,6 +402,9 @@ export default function Hoy() {
             <i style={{ width: Math.min(m.pct, 100) + '%' }} />
           </div>
         </div>
+
+        {/* Avance de focos — rescatado de la difunta pages/Metas.jsx */}
+        <FocosMes focos={focos} />
 
         <div className="bs-hoy-kpis">
           <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=ReponerHoy')}>

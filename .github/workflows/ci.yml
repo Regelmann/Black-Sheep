@@ -1,0 +1,87 @@
+name: CI
+
+# Existe porque tres entregas seguidas llegaron sin compilar:
+#   V9.0   → Visita.jsx con JSX inválido
+#   V92.4  → importaba CatalogoCliente.jsx después de borrarlo
+# Ninguna había corrido `npm run build` antes de subir.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Guard · Tests · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: apps/field
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/field/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # 1. Reglas de regresión — cada una nació de un bug real en producción
+      - name: Guard (regresiones conocidas)
+        run: npm run guard
+
+      # 2. Tests unitarios
+      - name: Tests
+        run: npm test
+
+      # 3. Build — el paso que faltaba
+      - name: Build
+        run: npm run build
+
+      # 4. El stamp tiene que estar y ser único
+      - name: Verificar BUILD_STAMP
+        run: |
+          STAMP=$(grep -oP "BUILD_STAMP = '\K[^']+" src/App.jsx)
+          if [ -z "$STAMP" ]; then
+            echo "::error::No se encontró BUILD_STAMP en App.jsx"
+            exit 1
+          fi
+          N=$(grep -c "export const BUILD_STAMP" src/App.jsx)
+          if [ "$N" -ne 1 ]; then
+            echo "::error::BUILD_STAMP definido $N veces (debe ser 1)"
+            exit 1
+          fi
+          echo "✅ BUILD_STAMP = $STAMP"
+          echo "### 📦 \`$STAMP\`" >> $GITHUB_STEP_SUMMARY
+
+      # 5. Presupuesto de tamaño — hoy avisa, en Fase 3 bloquea
+      - name: Presupuesto de bundle
+        run: |
+          JS=$(find dist/assets -name '*.js' -printf '%s\n' | sort -rn | head -1)
+          KB=$((JS / 1024))
+          echo "Bundle principal: ${KB} kB" >> $GITHUB_STEP_SUMMARY
+          if [ "$KB" -gt 900 ]; then
+            echo "::error::Bundle ${KB} kB supera el techo duro de 900 kB"
+            exit 1
+          elif [ "$KB" -gt 400 ]; then
+            echo "::warning::Bundle ${KB} kB — objetivo Fase 3 es < 250 kB"
+          fi
+
+      - name: Guardar dist
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: apps/field/dist
+          retention-days: 7

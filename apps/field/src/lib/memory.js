@@ -62,9 +62,10 @@ export async function trackPedido({ decisionId, decisionType, attention, cliente
  */
 export async function loadEffectiveness() {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('decision_effectiveness')
       .select('decision_type,attention,pct_conversion_pedido,ticket_promedio')
+    if (error) { console.warn('[memory] effectiveness no disponible', error); return new Map() }
     if (!data?.length) return new Map()
     const m = new Map()
     for (const r of data) {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { safeSelect } from '../lib/query'
 import { useEjecutivo } from '../App.jsx'
 import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo'
 import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach'
@@ -249,8 +250,11 @@ export default function Ruta({ session }) {
       if (er) console.warn('rutas', er.message)
       let r = rutas?.[0] || null
       if (!r) {
-        const { data: r2 } = await supabase.from('rutas').select('*').eq('fecha', fecha).limit(5)
-        r = (r2 || []).find(x => !x.ejecutivo_id || x.ejecutivo_id === uid) || null
+        const rr = await safeSelect(
+          supabase.from('rutas').select('*').eq('fecha', fecha).limit(5),
+          { label: 'rutas_fecha' }
+        )
+        r = rr.rows.find(x => !x.ejecutivo_id || x.ejecutivo_id === uid) || null
       }
       setRuta(r)
 
@@ -531,12 +535,17 @@ export default function Ruta({ session }) {
         })
       }
       // Re-optimizar todo el itinerario junto
-      const { data: todas } = await supabase
-        .from('visitas')
-        .select('*')
-        .eq('ruta_id', rid)
-        .order('orden')
-      const { ordered: finalOrd } = ordenarRutaOptima(todas || [], origin, { priorityWeight: 40 })
+      // Esta lectura alimenta una ESCRITURA (reordenar). Si falla en
+      // silencio, el vendedor toca "optimizar" y no pasa nada sin aviso.
+      const rTodas = await safeSelect(
+        supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
+        { label: 'visitas_reorden' }
+      )
+      if (!rTodas.ok) {
+        setToast('No se pudo leer la ruta para reordenar. Reintentá.')
+        return
+      }
+      const { ordered: finalOrd } = ordenarRutaOptima(rTodas.rows, origin, { priorityWeight: 40 })
       for (let i = 0; i < finalOrd.length; i++) {
         if (finalOrd[i].id) {
           await supabase.from('visitas').update({ orden: i + 1 }).eq('id', finalOrd[i].id)
@@ -776,12 +785,11 @@ export default function Ruta({ session }) {
   const recargarVisitas = useCallback(async (rutaId) => {
     const rid = rutaId || ruta?.id
     if (!rid) return
-    const { data: v } = await supabase
-      .from('visitas')
-      .select('*')
-      .eq('ruta_id', rid)
-      .order('orden')
-    const vis = v || []
+    const rV = await safeSelect(
+      supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
+      { label: 'visitas_ruta' }
+    )
+    const vis = rV.rows
     setVisitas(vis)
 
     // Actualizar solo los items tipo "ruta" en territorio sin tocar clientes/prospectos

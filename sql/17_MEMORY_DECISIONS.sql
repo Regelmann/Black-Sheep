@@ -30,6 +30,7 @@ CREATE INDEX IF NOT EXISTS df_cliente_idx     ON public.decision_feedback (clien
 CREATE INDEX IF NOT EXISTS df_fecha_idx       ON public.decision_feedback (fecha_snapshot);
 
 ALTER TABLE public.decision_feedback ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "df_auth" ON public.decision_feedback;
 CREATE POLICY "df_auth" ON public.decision_feedback
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 

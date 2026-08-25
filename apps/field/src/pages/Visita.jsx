@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { safeSelect } from '../lib/query'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
 import { decideClient, calcCommercialValue } from '../lib/decisionEngine'
@@ -177,12 +178,12 @@ export default function Visita({ session }) {
           let cli = null
           if (v.cliente_key) cli = await buscarCarteraPorKey(v.cliente_key)
           if (!cli && v.nombre_local) {
-            const { data: cRows } = await supabase
-              .from('cartera')
-              .select(CARTERA_SEL)
-              .ilike('nombre_cliente', `%${String(v.nombre_local).slice(0, 40)}%`)
-              .limit(3)
-            cli = cRows?.[0] || null
+            const rC = await safeSelect(
+              supabase.from('cartera').select(CARTERA_SEL)
+                .ilike('nombre_cliente', `%${String(v.nombre_local).slice(0, 40)}%`).limit(3),
+              { label: 'cartera_por_nombre' }
+            )
+            cli = rC.rows[0] || null
           }
           if (cli) {
             applyCliente(cli, decodedId, {
@@ -211,13 +212,15 @@ export default function Visita({ session }) {
           }
           // check-in de esta visita
           try {
-            const { data: c } = await supabase
-              .from('checkins')
-              .select('*')
-              .eq('visita_id', decodedId)
-              .order('creado_en', { ascending: false })
-              .limit(1)
-            setCheckin(c?.[0] || null)
+            const rCk = await safeSelect(
+              supabase.from('checkins').select('*')
+                .eq('visita_id', decodedId)
+                .order('creado_en', { ascending: false }).limit(1),
+              { label: 'checkin_previo' }
+            )
+            // Si la lectura falla NO se asume "sin check-in": eso haría
+            // que el vendedor marque llegada dos veces sobre la misma visita.
+            if (rCk.ok) setCheckin(rCk.rows[0] || null)
           } catch (_) {
             /* ignore */
           }
@@ -232,12 +235,13 @@ export default function Visita({ session }) {
       // 3) prospecto
       if (!cli) {
         try {
-          const { data: pRows } = await supabase
-            .from('prospectos')
-            .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono,place_id')
-            .or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`)
-            .limit(1)
-          const p = pRows?.[0]
+          const rP = await safeSelect(
+            supabase.from('prospectos')
+              .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono,place_id')
+              .or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`).limit(1),
+            { label: 'prospecto' }
+          )
+          const p = rP.rows[0]
           if (p) {
             cli = {
               cliente_key: p.cliente_key || p.place_id || decodedId,
@@ -307,12 +311,14 @@ export default function Visita({ session }) {
     if (loading) return
     ;(async () => {
       try {
-        const { data } = await supabase
-          .from('stock')
-          .select('producto_nombre,sku_canon,precio_unidad,precio_kilo')
-          .not('precio_unidad', 'is', null)
-          .limit(500)
-        if (!data?.length) return
+        const rS = await safeSelect(
+          supabase.from('stock')
+            .select('producto_nombre,sku_canon,precio_unidad,precio_kilo')
+            .not('precio_unidad', 'is', null).limit(500),
+          { label: 'precios_stock' }
+        )
+        const data = rS.rows
+        if (!data.length) return
         const mapa = {}
         const mostrables = []
         for (const s of data) {

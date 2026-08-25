@@ -580,7 +580,13 @@ function TabMetas({ onFlash }) {
       const { error } = await supabase.from('metas').upsert(payload, { onConflict: 'ejecutivo_id,mes' })
       if (error) {
         // sin unique constraint: update/insert manual
-        const { data: existing } = await supabase.from('metas').select('id').eq('ejecutivo_id', row.ejecutivo_id).eq('mes', mes).maybeSingle()
+        // CRÍTICO: si este SELECT falla, `existing` queda undefined y el
+        // flujo caía al INSERT → META DUPLICADA en vez de actualizar.
+        // Ante error hay que abortar, nunca adivinar.
+        const { data: existing, error: eSel } = await supabase
+          .from('metas').select('id')
+          .eq('ejecutivo_id', row.ejecutivo_id).eq('mes', mes).maybeSingle()
+        if (eSel) throw new Error(`No se pudo verificar si la meta ya existe: ${eSel.message}`)
         if (existing?.id) {
           const { error: e2 } = await supabase.from('metas').update(payload).eq('id', existing.id)
           if (e2) throw e2

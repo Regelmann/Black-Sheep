@@ -22,7 +22,7 @@ export function pctAvanceFoco(f) {
 
 export function pctBar(pct) {
   const p = Math.min(Math.max(pct, 0), 200)
-  const color = pct >= 100 ? '#16a34a' : pct >= 80 ? '#2563eb' : pct >= 50 ? '#f59e0b' : '#ef4444'
+  const color = pct >= 100 ? 'var(--ok-mid)' : pct >= 80 ? 'var(--info)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)'
   return { width: `${Math.min(p, 100)}%`, background: color }
 }
 

@@ -205,7 +205,12 @@ export default function CatalogoCliente() {
         p_nota: nota || null,
       })
       if (error) throw error
-      setPedidoId(data?.id || data?.pedido_id || null)
+      // crear_pedido_publico devuelve un UUID ESCALAR, no un objeto.
+      // `data?.id` sobre un string es undefined → el cliente nunca veía
+      // su número de pedido.
+      setPedidoId(
+        typeof data === 'string' ? data : (data?.id || data?.pedido_id || null)
+      )
       setSent(true)
       setCart([])
     } catch (e) {

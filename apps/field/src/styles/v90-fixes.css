@@ -470,3 +470,52 @@
 .bs-page {
   padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
 }
+
+/* ------------------------------------------------------------
+   10. FOCOS DEL MES (en Hoy)
+   Rescatado de pages/Metas.jsx, que era código muerto.
+   ------------------------------------------------------------ */
+.bs-focos { margin: 14px 0 6px; }
+.bs-focos-title {
+  margin: 0 0 8px;
+  font-size: 12px; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+}
+.bs-foco-row {
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line, #ebe5dc);
+  background: #fff;
+}
+.bs-foco-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; min-width: 0;
+}
+.bs-foco-name {
+  font-size: 13.5px; font-weight: 700; color: var(--ink, #1c1917);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bs-foco-pct {
+  flex: 0 0 auto;
+  font-size: 14px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.bs-foco-bar {
+  height: 6px; margin-top: 7px;
+  border-radius: 999px; overflow: hidden;
+  background: var(--line, #ebe5dc);
+}
+.bs-foco-bar i {
+  display: block; height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) { .bs-foco-bar i { transition: none; } }
+.bs-foco-sub {
+  margin: 6px 0 0;
+  font-size: 11.5px; font-weight: 500; line-height: 1.35;
+  color: var(--ink-3, #78716c);
+  font-variant-numeric: tabular-nums;
+}

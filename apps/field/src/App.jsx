@@ -21,7 +21,7 @@ import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
 import { runSyncFlush } from './lib/sync/engine.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V9.2'
+export const BUILD_STAMP = 'v-BS-PLATFORM-V9.3'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 export const EjecutivoCtx = createContext(null)
@@ -210,6 +210,8 @@ export default function App() {
           <Route path="/mapa" element={<Ruta session={session} />} />
           <Route path="/visita/:id" element={<Visita session={session} />} />
           <Route path="/cartera" element={<Cartera session={session} />} />
+          {/* Redirect legacy: pages/Metas.jsx se eliminó en V9.3.
+              Su vista de focos vive ahora en Hoy (components/FocosMes.jsx). */}
           <Route path="/metas" element={<Navigate to="/" replace />} />
           <Route path="/stock" element={<Stock session={session} />} />
           <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
