@@ -9,8 +9,8 @@ import PedidoSheet from '../components/PedidoSheet.jsx'
 import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline'
-import { esNombreProducto } from '../lib/productDisplay'
-
+import { ClientActionBar } from '../components/domain/ClientActionBar.jsx'
+import { VisitCheckIn } from '../components/domain/VisitCheckIn.jsx'
 const money = n => {
   const v = Number(n)
   return isNaN(v) ? '$0' : '$' + v.toLocaleString('es-CL', { maximumFractionDigits: 0 })
@@ -73,8 +73,7 @@ export default function Visita({ session }) {
   const [showNoVenta, setShowNoVenta] = useState(false)
   const [noVentaMotivo, setNoVentaMotivo] = useState('')
   const [pedidoOk, setPedidoOk] = useState(false)
-  const [preciosPorNombre, setPreciosPorNombre] = useState({}) // nombre|sku → precio_unidad (solo para matchear)
-  const [listaMostrable, setListaMostrable] = useState([])      // {nombre, precio} con nombre real, para mostrar
+  const [preciosPorNombre, setPreciosPorNombre] = useState({}) // nombre → precio_unidad de lista
 
   const CARTERA_SEL =
     'cliente_key,nombre_cliente,razon_social,telefono,link_whatsapp,persona_contacto,direccion,comuna,ultima_compra,dias_sin_comprar,venta_mtd,venta_mensual,oferta_real,productos_top,sku_detalle,lat,lng,estado_fuga,ejecutivo_id'
@@ -314,23 +313,17 @@ export default function Visita({ session }) {
           .limit(500)
         if (!data?.length) return
         const mapa = {}
-        const mostrables = []
         for (const s of data) {
           const precio = Number(s.precio_unidad) || 0
           if (precio <= 0) continue
-          const nombre = String(s.producto_nombre || '').trim()
           // Indexar por nombre y por sku_canon para máxima cobertura de matches
           const keys = [
-            nombre.toLowerCase(),
+            String(s.producto_nombre || '').toLowerCase().trim(),
             String(s.sku_canon || '').toLowerCase().trim(),
           ].filter(k => k.length > 2)
           for (const k of keys) mapa[k] = precio
-          // Lista mostrable: SOLO nombres reales. El indice de precios tiene
-          // tambien los sku_canon (codigos) y no se pueden mostrar al vendedor.
-          if (esNombreProducto(nombre)) mostrables.push({ nombre, precio })
         }
         setPreciosPorNombre(mapa)
-        setListaMostrable(mostrables.slice(0, 12))
       } catch { /* silent — precios es un nice-to-have */ }
     })()
   }, [loading])
@@ -515,7 +508,7 @@ export default function Visita({ session }) {
   if (!visita) {
     return (
       <div className="wrap" style={{ paddingTop: 32, textAlign: 'center' }}>
-        <div style={{ fontSize: 16, fontWeight: 800, color: '#1c1917' }}>No se pudo abrir la visita</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>No se pudo abrir la visita</div>
         <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>{msg || 'Cliente no encontrado en cartera.'}</p>
         <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => nav(-1)}>
           Volver
@@ -531,10 +524,10 @@ export default function Visita({ session }) {
       <div className="wrap">
         <div className="card" style={{ textAlign: 'center', padding: 32 }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#1c1917' }}>Cliente no encontrado</div>
-          <div style={{ fontSize: 13, color: '#78716c', marginTop: 6 }}>Este cliente no está en tu cartera activa.</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>Cliente no encontrado</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 6 }}>Este cliente no está en tu cartera activa.</div>
           <button type="button" onClick={() => nav(-1)}
-            style={{ marginTop: 16, padding: '10px 20px', borderRadius: 10, border: 'none', background: '#1c1917', color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}>
+            style={{ marginTop: 16, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'var(--ink)', color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' }}>
             ← Volver
           </button>
         </div>
@@ -567,7 +560,7 @@ export default function Visita({ session }) {
 
   return (
     <>
-    <div className="visita-page" style={{ paddingBottom: 160, background: '#faf7f2', minHeight: '100dvh' }}>
+    <div className="visita-page" style={{ paddingBottom: 160, background: 'var(--bg-raised)', minHeight: '100dvh' }}>
       {/* Header azul */}
       <div
         style={{
@@ -594,8 +587,8 @@ export default function Visita({ session }) {
         </h1>
         <div style={{ marginTop: 10 }}>
           <span style={{
-            display: 'inline-block', background: yaLlego ? '#fef3c7' : 'rgba(255,255,255,0.2)',
-            color: yaLlego ? '#92400e' : '#fff',
+            display: 'inline-block', background: yaLlego ? 'var(--warn-lt3)' : 'rgba(255,255,255,0.2)',
+            color: yaLlego ? 'var(--warn-dk)' : '#fff',
             fontWeight: 800, fontSize: 12, padding: '5px 12px', borderRadius: 999,
           }}>
             {visita.estado === 'visitada' ? 'Completada' : yaLlego ? 'En progreso' : 'Pendiente'}
@@ -679,13 +672,13 @@ export default function Visita({ session }) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em' }}>DIRECCIÓN</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 3, lineHeight: 1.3 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--info-mid4)', letterSpacing: '0.06em' }}>DIRECCIÓN</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)', marginTop: 3, lineHeight: 1.3 }}>
                 {dir || visita.comuna || '—'}
                 {visita.comuna || cliente?.comuna ? ` · ${visita.comuna || cliente?.comuna}` : ''}
               </div>
               {(Number(cliente?.venta_mtd) > 0 || Number(cliente?.venta_mensual) > 0) && (
-                <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+                <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: 'var(--info-mid3)' }}>
                   {Number(cliente?.venta_mtd) > 0 ? money(cliente.venta_mtd) + ' mes' : money(cliente.venta_mensual) + ' prom'}
                   {cliente?.dias_sin_comprar != null ? ` · ${cliente.dias_sin_comprar}d sin compra` : ''}
                 </div>
@@ -694,7 +687,7 @@ export default function Visita({ session }) {
             <a href={mapsUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', flexShrink: 0 }}>
               <div style={{
                 textAlign: 'center', padding: '10px 16px', borderRadius: 12,
-                background: '#0f172a', color: '#fff', fontWeight: 800, fontSize: 13,
+                background: 'var(--navy)', color: '#fff', fontWeight: 800, fontSize: 13,
               }}>↗ Ir</div>
             </a>
           </div>
@@ -704,32 +697,42 @@ export default function Visita({ session }) {
             {telefono && (
               <a href={'tel:' + telefono} style={{
                 flex: 1, textAlign: 'center', minHeight: 42, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 12, background: '#f5f5f4', color: '#1c1917', fontWeight: 700, textDecoration: 'none', fontSize: 13,
+                borderRadius: 12, background: 'var(--line)', color: 'var(--ink)', fontWeight: 700, textDecoration: 'none', fontSize: 13,
               }}>Llamar</a>
             )}
             {wsp && (
               <a href={wsp} target="_blank" rel="noreferrer" style={{
                 flex: 1, textAlign: 'center', minHeight: 42, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 700, textDecoration: 'none', fontSize: 13,
+                borderRadius: 12, background: 'var(--ok-lt3)', color: 'var(--ok-dk)', fontWeight: 700, textDecoration: 'none', fontSize: 13,
               }}>WhatsApp</a>
             )}
-            {/* El Check-in vive UNA sola vez, en el sticky inferior (thumb zone).
-                Aca solo se muestra el estado de llegada. */}
-            {yaLlego && (
+            {!yaLlego ? (
+              <button
+                type="button"
+                onClick={hacerCheckin}
+                disabled={busy}
+                style={{
+                  flex: 1.2, minHeight: 42, borderRadius: 12, border: 'none',
+                  background: 'linear-gradient(180deg,#c2410c,#9a3412)', color: '#fff',
+                  fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
+                  cursor: busy ? 'wait' : 'pointer',
+                }}
+              >
+                {busy ? 'GPS…' : 'Check-in'}
+              </button>
+            ) : (
               <div style={{
                 flex: 1.2, minHeight: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: '#ecfdf5', color: '#15803d', fontWeight: 800, fontSize: 12,
+                background: 'var(--ok-lt)', color: 'var(--ok)', fontWeight: 800, fontSize: 12,
               }}>
                 ✓ {new Date(checkin.hora_llegada).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
               </div>
             )}
           </div>
-          {msg && <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>{msg}</div>}
+          {msg && <div style={{ fontSize: 12, color: 'var(--info-mid3)', marginTop: 8 }}>{msg}</div>}
         </div>
 
-        {/* RESULTADO DE LA VISITA — solo tiene sentido despues del check-in.
-            Antes, la unica accion valida es Check-in (sticky inferior). */}
-        {yaLlego && (
+        {/* CTA PRINCIPAL */}
         <div style={{
           background: '#fff', borderRadius: 16, padding: '10px 12px',
           boxShadow: '0 2px 8px rgba(194,65,12,0.08)', marginBottom: 8,
@@ -738,14 +741,14 @@ export default function Visita({ session }) {
           {pedidoOk ? (
             <div style={{
               padding: '12px 14px', borderRadius: 12, marginBottom: 10,
-              background: '#ecfdf5', color: '#15803d', fontWeight: 800, fontSize: 14, textAlign: 'center',
+              background: 'var(--ok-lt)', color: 'var(--ok)', fontWeight: 800, fontSize: 14, textAlign: 'center',
             }}>
               ✓ Pedido capturado · listo para cerrar
             </div>
           ) : resultado === 'no_venta' ? (
             <div style={{
               padding: '12px 14px', borderRadius: 12, marginBottom: 10,
-              background: '#fff7ed', color: '#9a3412', fontWeight: 800, fontSize: 14, textAlign: 'center',
+              background: 'var(--brand-lt2)', color: 'var(--brand-dk)', fontWeight: 800, fontSize: 14, textAlign: 'center',
             }}>
               No compró · {noVentaMotivo || 'sin motivo'}
             </div>
@@ -757,7 +760,7 @@ export default function Visita({ session }) {
             onClick={() => setOfertaOpen(true)}
             style={{
               width: '100%', marginTop: 8, padding: '6px 4px',
-              border: 'none', background: 'transparent', color: '#78716c',
+              border: 'none', background: 'transparent', color: 'var(--ink-3)',
               fontWeight: 650, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
               textDecoration: 'underline', textUnderlineOffset: 3,
             }}
@@ -770,7 +773,7 @@ export default function Visita({ session }) {
               onClick={() => setShowNoVenta(true)}
               style={{
                 minHeight: 42, borderRadius: 12, border: '1.5px solid #e7e5e4',
-                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 13,
+                background: '#fff', color: 'var(--ink-4)', fontWeight: 700, fontSize: 13,
                 fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
@@ -787,7 +790,7 @@ export default function Visita({ session }) {
               }}
               style={{
                 minHeight: 42, borderRadius: 12, border: '1.5px solid #e7e5e4',
-                background: '#fff', color: '#57534e', fontWeight: 700, fontSize: 13,
+                background: '#fff', color: 'var(--ink-4)', fontWeight: 700, fontSize: 13,
                 fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
@@ -795,7 +798,6 @@ export default function Visita({ session }) {
             </button>
           </div>
         </div>
-        )}
 
         {/* Productos sugeridos — compacto, máx 5, sin segundo CTA de pedido */}
         <div style={{
@@ -803,9 +805,9 @@ export default function Visita({ session }) {
           boxShadow: '0 2px 12px rgba(15,23,42,0.04)', marginBottom: 10,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>Qué ofrecer</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--navy)' }}>Qué ofrecer</div>
             {(cliente?.oferta_real || aReponer.length > 0) && (
-              <div style={{ fontSize: 11, color: '#15803d', fontWeight: 700 }}>
+              <div style={{ fontSize: 11, color: 'var(--ok)', fontWeight: 700 }}>
                 {aReponer.length > 0 ? `${aReponer.length} a reponer` : 'Oferta del día'}
               </div>
             )}
@@ -842,15 +844,14 @@ export default function Visita({ session }) {
               })
             }
             if (!items.length) {
-              listaMostrable.slice(0, 4).forEach(p => {
-                if (p.nombre && !items.some(x => x.nombre === p.nombre)) {
-                  items.push({ nombre: p.nombre, tag: 'Lista' })
-                }
+              const topLista = Object.keys(preciosPorNombre || {}).slice(0, 4)
+              topLista.forEach(n => {
+                if (n && !items.some(x => x.nombre === n)) items.push({ nombre: n, tag: 'Lista' })
               })
             }
             if (!items.length) {
               return (
-                <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.45 }}>
+                <div style={{ fontSize: 13, color: 'var(--info-mid3)', lineHeight: 1.45 }}>
                   Sin historial. Abrí <strong>Tomar pedido</strong> y elegí desde la lista completa.
                 </div>
               )
@@ -865,18 +866,18 @@ export default function Visita({ session }) {
                     )?.[1]
                   const qty = it.cantidadSugerida || it.qty || it.recompra?.qty
                   const tone = it.recompra?.tone || (String(it.tag || '').match(/Se le acaba|Atrasa|Sin compra/i) ? 'bad' : 'warn')
-                  const tagColor = tone === 'bad' ? '#b91c1c' : tone === 'warn' ? '#c2410c' : '#64748b'
+                  const tagColor = tone === 'bad' ? 'var(--danger-dk)' : tone === 'warn' ? 'var(--brand)' : 'var(--info-mid3)'
                   return (
                     <div key={i} style={{
                       display: 'flex', gap: 10, alignItems: 'center',
                       padding: '9px 0', borderBottom: i < Math.min(items.length, 5) - 1 ? '1px solid #f1f5f9' : 'none',
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', lineHeight: 1.3 }}>{it.nombre}</div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--navy)', lineHeight: 1.3 }}>{it.nombre}</div>
                         <div style={{ fontSize: 11, marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                           <span style={{ color: tagColor, fontWeight: 700 }}>{it.tag || it.recompra?.label || 'Sugerido'}</span>
                           {precioDeLista > 0 && (
-                            <span style={{ color: '#78716c', fontWeight: 600 }}>
+                            <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>
                               ${Math.round(precioDeLista).toLocaleString('es-CL')}
                             </span>
                           )}
@@ -885,10 +886,10 @@ export default function Visita({ session }) {
                       {qty > 0 && (
                         <div style={{
                           flexShrink: 0, minWidth: 44, textAlign: 'center',
-                          background: tone === 'bad' ? '#fef2f2' : '#fff7ed',
+                          background: tone === 'bad' ? 'var(--danger-lt)' : 'var(--brand-lt2)',
                           color: tagColor, fontWeight: 800, fontSize: 13,
                           borderRadius: 10, padding: '6px 8px',
-                          border: `1px solid ${tone === 'bad' ? '#fecaca' : '#fed7aa'}`,
+                          border: `1px solid ${tone === 'bad' ? 'var(--danger-lt3)' : 'var(--brand-lt6)'}`,
                         }}>
                           {qty}
                         </div>
@@ -897,7 +898,7 @@ export default function Visita({ session }) {
                   )
                 })}
                 {items.length > 5 && (
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: 'var(--info-mid4)', marginTop: 6, fontWeight: 600 }}>
                     +{items.length - 5} más en el pedido
                   </div>
                 )}
@@ -929,49 +930,25 @@ export default function Visita({ session }) {
           {fotoPreview ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <img src={fotoPreview} alt="foto" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Foto lista · tocá para cambiar</div>
+              <div style={{ fontSize: 12, color: 'var(--info-mid3)', fontWeight: 600 }}>Foto lista · tocá para cambiar</div>
             </div>
           ) : (
-            <div style={{ color: '#64748b', fontWeight: 600, fontSize: 13 }}>📷 Foto opcional</div>
+            <div style={{ color: 'var(--info-mid3)', fontWeight: 600, fontSize: 13 }}>📷 Foto opcional</div>
           )}
         </label>
 
         {/* Sticky bottom — cerrar visita (thumb zone) */}
-        <div style={{
-          position: 'sticky',
-          bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
-          zIndex: 20,
-          background: 'linear-gradient(180deg, transparent, #faf7f2 18%)',
-          paddingTop: 12,
-          paddingBottom: 8,
-        }}>
-          {/* UNA sola acción primaria según paso — Outfield / Team400 */}
-          {!yaLlego ? (
-            <button
-              type="button"
-              disabled={busy}
-              className="bs-cta-primary bs-visit-cta"
-              onClick={hacerCheckin}
-            >
-              {busy ? 'GPS…' : 'Check-in'}
-            </button>
-          ) : resultado !== 'no_venta' ? (
-            <>
-              <button
-                type="button"
-                disabled={busy}
-                className="bs-cta-primary bs-visit-cta"
-                style={{ boxShadow: '0 4px 14px rgba(194,65,12,0.3)' }}
-                onClick={() => setPedidoOpen(true)}
-              >
-                {pedidoOk ? 'Ver / editar pedido' : 'Tomar pedido'}
-              </button>
-              <div className="bs-visit-outcomes">
-                <button type="button" disabled={busy} onClick={() => registrarNoVenta()}>No compró</button>
-                <button type="button" disabled={busy} onClick={() => terminar('completada')}>Solo visita</button>
-              </div>
-            </>
-          ) : (
+        {/* V9.0 — VisitCheckIn: un solo CTA según estado, sin doble botón */}
+        <VisitCheckIn
+          status={!yaLlego ? 'pending' : resultado === 'no_venta' ? 'completed' : pedidoOk ? 'completed' : 'checked-in'}
+          address={visita?.direccion || cliente?.direccion}
+          isSubmitting={busy}
+          onCheckIn={hacerCheckin}
+          onContinue={() => setPedidoOpen(true)}
+          onSkip={() => terminar('skip')}
+          onNoSale={() => registrarNoVenta()}
+          onVisitOnly={() => terminar('completada')}
+        />
             <button
               type="button"
               disabled={busy}
@@ -1080,7 +1057,7 @@ export default function Visita({ session }) {
             }}
           >
             <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>¿Por qué no compró?</div>
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#78716c' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--ink-3)' }}>
               Queda registrado para gerencia y mejora la próxima visita.
             </p>
             {[
@@ -1100,8 +1077,8 @@ export default function Visita({ session }) {
                   minHeight: 48, padding: '12px 14px', marginBottom: 8,
                   borderRadius: 14, fontFamily: 'inherit', fontWeight: 650, fontSize: 14,
                   border: noVentaMotivo === m ? '2px solid #c2410c' : '1.5px solid #e7e5e4',
-                  background: noVentaMotivo === m ? '#fff7ed' : '#fff',
-                  color: '#1c1917', cursor: 'pointer',
+                  background: noVentaMotivo === m ? 'var(--brand-lt2)' : '#fff',
+                  color: 'var(--ink)', cursor: 'pointer',
                 }}
               >
                 {m}
@@ -1113,7 +1090,7 @@ export default function Visita({ session }) {
               onClick={registrarNoVenta}
               style={{
                 width: '100%', minHeight: 52, marginTop: 8, borderRadius: 14, border: 'none',
-                background: noVentaMotivo ? '#c2410c' : '#d6d3d1', color: '#fff',
+                background: noVentaMotivo ? 'var(--brand)' : 'var(--line-2)', color: '#fff',
                 fontWeight: 800, fontSize: 15, fontFamily: 'inherit',
                 cursor: noVentaMotivo ? 'pointer' : 'not-allowed',
               }}
@@ -1125,7 +1102,7 @@ export default function Visita({ session }) {
               onClick={() => setShowNoVenta(false)}
               style={{
                 width: '100%', minHeight: 44, marginTop: 8, border: 'none', background: 'transparent',
-                color: '#78716c', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
+                color: 'var(--ink-3)', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
               Cancelar
@@ -1238,7 +1215,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
     padding: '14px 16px',
     borderRadius: 14,
     border: '1.5px solid #e8eef7',
-    background: '#f8fafc',
+    background: 'var(--info-mid8)',
     fontSize: 15,
     fontFamily: 'inherit',
     outline: 'none',
@@ -1264,7 +1241,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
           maxWidth: 480,
           maxHeight: '92dvh',
           overflow: 'auto',
-          background: '#f1f5f9',
+          background: 'var(--info-mid7)',
           borderRadius: '24px 24px 0 0',
           paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
         }}
@@ -1328,11 +1305,11 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
           <div style={{ background: '#fff', borderRadius: 16, padding: '16px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
               <span style={{
-                width: 28, height: 28, borderRadius: 999, background: '#c2410c', color: '#fff',
+                width: 28, height: 28, borderRadius: 999, background: 'var(--brand)', color: '#fff',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 800,
               }}>1</span>
-              <span style={{ fontWeight: 700, fontSize: 15 }}>¿Se encuentra el encargado? <span style={{ color: '#dc2626' }}>*</span></span>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>¿Se encuentra el encargado? <span style={{ color: 'var(--danger)' }}>*</span></span>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               {[
@@ -1348,12 +1325,12 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
                     padding: '14px',
                     borderRadius: 12,
                     border: encargado === opt.v ? '2px solid #c2410c' : '1.5px solid #e2e8f0',
-                    background: encargado === opt.v ? '#fff7ed' : '#fff',
+                    background: encargado === opt.v ? 'var(--brand-lt2)' : '#fff',
                     fontWeight: 700,
                     fontSize: 15,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
-                    color: encargado === opt.v ? '#9a3412' : '#334155',
+                    color: encargado === opt.v ? 'var(--brand-dk)' : 'var(--info-mid2)',
                   }}
                 >
                   {opt.v ? '✓ Sí' : '✗ No'}
@@ -1366,7 +1343,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
           <div style={{ background: '#fff', borderRadius: 16, padding: '16px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
               <span style={{
-                width: 28, height: 28, borderRadius: 999, background: '#c2410c', color: '#fff',
+                width: 28, height: 28, borderRadius: 999, background: 'var(--brand)', color: '#fff',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 800,
               }}>2</span>
@@ -1384,7 +1361,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
           <div style={{ background: '#fff', borderRadius: 16, padding: '16px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
               <span style={{
-                width: 28, height: 28, borderRadius: 999, background: '#c2410c', color: '#fff',
+                width: 28, height: 28, borderRadius: 999, background: 'var(--brand)', color: '#fff',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 800,
               }}>3</span>
@@ -1403,7 +1380,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
           <div style={{ background: '#fff', borderRadius: 16, padding: '16px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
               <span style={{
-                width: 28, height: 28, borderRadius: 999, background: '#c2410c', color: '#fff',
+                width: 28, height: 28, borderRadius: 999, background: 'var(--brand)', color: '#fff',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 800,
               }}>4</span>
@@ -1422,7 +1399,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
           <div style={{ background: '#fff', borderRadius: 16, padding: '16px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
               <span style={{
-                width: 28, height: 28, borderRadius: 999, background: '#c2410c', color: '#fff',
+                width: 28, height: 28, borderRadius: 999, background: 'var(--brand)', color: '#fff',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 800,
               }}>5</span>
@@ -1438,7 +1415,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
           </div>
 
           {err && (
-            <div style={{ color: '#b91c1c', fontWeight: 600, fontSize: 13, padding: '0 4px' }}>{err}</div>
+            <div style={{ color: 'var(--danger-dk)', fontWeight: 600, fontSize: 13, padding: '0 4px' }}>{err}</div>
           )}
 
           <button
@@ -1451,7 +1428,7 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
               padding: '16px',
               borderRadius: 999,
               border: 'none',
-              background: puedeCerrar ? 'linear-gradient(180deg,#ea580c,#c2410c)' : '#cbd5e1',
+              background: puedeCerrar ? 'linear-gradient(180deg,#ea580c,#c2410c)' : 'var(--info-mid5)',
               color: '#fff',
               fontWeight: 800,
               fontSize: 16,

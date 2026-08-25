@@ -13,7 +13,7 @@ export default function DataBanner({ fecha, extra }) {
       background:'linear-gradient(90deg,#fff7ed,#fafaf9)',
       border:'1px solid #fed7aa',
       display:'flex', alignItems:'center', gap:8,
-      fontSize:12, color:'#9a3412', fontWeight:600,
+      fontSize:12, color:'var(--brand-dk)', fontWeight:600,
     }}>
       <span style={{ fontSize:14 }}>📅</span>
       <span style={{ flex:1 }}>

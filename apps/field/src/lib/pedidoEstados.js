@@ -7,13 +7,13 @@
  */
 
 export const ESTADOS_PEDIDO = [
-  { id: 'borrador', label: 'Borrador', color: '#78716c', next: ['recibido', 'confirmado', 'cancelado'] },
-  { id: 'recibido', label: 'Recibido', color: '#c2410c', next: ['confirmado', 'cancelado'] },
-  { id: 'confirmado', label: 'Confirmado', color: '#0369a1', next: ['preparado', 'enviado', 'cancelado'] },
-  { id: 'preparado', label: 'Preparado', color: '#7c3aed', next: ['enviado', 'entregado', 'cancelado'] },
-  { id: 'enviado', label: 'Enviado', color: '#0f766e', next: ['entregado'] },
-  { id: 'entregado', label: 'Entregado', color: '#15803d', next: [] },
-  { id: 'cancelado', label: 'Cancelado', color: '#b91c1c', next: [] },
+  { id: 'borrador', label: 'Borrador', color: 'var(--ink-3)', next: ['recibido', 'confirmado', 'cancelado'] },
+  { id: 'recibido', label: 'Recibido', color: 'var(--brand)', next: ['confirmado', 'cancelado'] },
+  { id: 'confirmado', label: 'Confirmado', color: 'var(--info-dk3)', next: ['preparado', 'enviado', 'cancelado'] },
+  { id: 'preparado', label: 'Preparado', color: 'var(--purple)', next: ['enviado', 'entregado', 'cancelado'] },
+  { id: 'enviado', label: 'Enviado', color: 'var(--teal)', next: ['entregado'] },
+  { id: 'entregado', label: 'Entregado', color: 'var(--ok)', next: [] },
+  { id: 'cancelado', label: 'Cancelado', color: 'var(--danger-dk)', next: [] },
 ]
 
 const MAP = Object.fromEntries(ESTADOS_PEDIDO.map(e => [e.id, e]))
@@ -34,7 +34,7 @@ export function etiquetaEstado(estado, fuente) {
 
 export function colorEstado(estado, fuente) {
   const id = normalizarEstado(estado, fuente)
-  return MAP[id]?.color || '#78716c'
+  return MAP[id]?.color || 'var(--ink-3)'
 }
 
 export function siguientesEstados(estado, fuente) {

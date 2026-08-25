@@ -122,14 +122,14 @@ function buildFechas() {
 const FECHAS = buildFechas()
 
 function pinColor(item) {
-  if (item._tipo === 'ruta') return '#1e3a8a'
-  if (item._tipo === 'prospecto') return '#16a34a'
-  if (item.es_bloqueado) return '#94a3b8'
+  if (item._tipo === 'ruta') return 'var(--info-dk2)'
+  if (item._tipo === 'prospecto') return 'var(--ok-mid)'
+  if (item.es_bloqueado) return 'var(--info-mid4)'
   const e = (item.estado_fuga || '').toUpperCase()
-  if (e.includes('ACTIV')) return '#2563eb'
-  if (e.includes('ENFRIANDO') || e.includes('RIESGO')) return '#f59e0b'
-  if (e.includes('DORMIDO') || e.includes('FUGADO') || e.includes('NUNCA')) return '#ef4444'
-  return '#64748b'
+  if (e.includes('ACTIV')) return 'var(--info)'
+  if (e.includes('ENFRIANDO') || e.includes('RIESGO')) return 'var(--warn)'
+  if (e.includes('DORMIDO') || e.includes('FUGADO') || e.includes('NUNCA')) return 'var(--danger)'
+  return 'var(--info-mid3)'
 }
 
 function pinSvg(color, label) {
@@ -143,11 +143,11 @@ function pinSvg(color, label) {
 }
 
 const FILTROS = [
-  { id: 'ruta', label: 'Ruta', color: '#1e3a8a' },
-  { id: 'riesgo', label: 'En riesgo', color: '#f59e0b' },
-  { id: 'activo', label: 'Activos', color: '#c2410c' },
-  { id: 'recuperar', label: 'Recuperar', color: '#ef4444' },
-  { id: 'prospecto', label: 'Prospectos', color: '#16a34a' },
+  { id: 'ruta', label: 'Ruta', color: 'var(--info-dk2)' },
+  { id: 'riesgo', label: 'En riesgo', color: 'var(--warn)' },
+  { id: 'activo', label: 'Activos', color: 'var(--brand)' },
+  { id: 'recuperar', label: 'Recuperar', color: 'var(--danger)' },
+  { id: 'prospecto', label: 'Prospectos', color: 'var(--ok-mid)' },
 ]
 
 export default function Ruta({ session }) {
@@ -625,9 +625,9 @@ export default function Ruta({ session }) {
         icon: {
           path: maps.SymbolPath.CIRCLE,
           scale: 12,
-          fillColor: '#2563eb',
+          fillColor: 'var(--info)',
           fillOpacity: 1,
-          strokeColor: '#ffffff',
+          strokeColor: 'var(--white)',
           strokeWeight: 4,
         },
       })
@@ -635,9 +635,9 @@ export default function Ruta({ session }) {
         map: mapInstance.current,
         center: pos,
         radius: Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200),
-        fillColor: '#3b82f6',
+        fillColor: 'var(--info-mid)',
         fillOpacity: 0.18,
-        strokeColor: '#2563eb',
+        strokeColor: 'var(--info)',
         strokeOpacity: 0.5,
         strokeWeight: 2,
         zIndex: 9998,
@@ -743,7 +743,7 @@ export default function Ruta({ session }) {
       polyRef.current = new maps.Polyline({
         path,
         geodesic: true,
-        strokeColor: '#c2410c',
+        strokeColor: 'var(--brand)',
         strokeOpacity: 0.85,
         strokeWeight: 3,
         map: mapInstance.current,
@@ -940,11 +940,11 @@ export default function Ruta({ session }) {
           style={{
             margin: '12px 16px',
             padding: 12,
-            background: '#fef3c7',
+            background: 'var(--warn-lt3)',
             border: '1px solid #fcd34d',
             borderRadius: 12,
             fontSize: 13,
-            color: '#92400e',
+            color: 'var(--warn-dk)',
           }}
         >
           {loadError}
@@ -966,7 +966,7 @@ export default function Ruta({ session }) {
             fontWeight: 700,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
-            color: '#fdba74',
+            color: 'var(--warn-lt5)',
             marginBottom: 6,
           }}
         >
@@ -1005,14 +1005,14 @@ export default function Ruta({ session }) {
                 boxShadow: '0 2px 10px rgba(15,23,42,0.06)',
               }}
             >
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)', lineHeight: 1.1 }}>
                 {m.val}
               </div>
               <div
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: '#94a3b8',
+                  color: 'var(--info-mid4)',
                   marginTop: 4,
                   textTransform: 'uppercase',
                   letterSpacing: '0.03em',
@@ -1036,8 +1036,8 @@ export default function Ruta({ session }) {
         <div style={{ padding: '14px 16px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Cerca de mí</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--navy)' }}>Cerca de mí</div>
+              <div style={{ fontSize: 12, color: 'var(--info-mid3)' }}>
                 {myPos?.lat
                   ? `Cerca de ti · ≤${radioKm} km · ${cercanos.length} puntos`
                   : 'Activá GPS para ordenar por cercanía'}
@@ -1064,8 +1064,8 @@ export default function Ruta({ session }) {
                 style={{
                   borderRadius: 999, padding: '8px 14px', fontWeight: 800, fontSize: 13,
                   border: radioKm === k ? 'none' : '1.5px solid #e2e8f0',
-                  background: radioKm === k ? '#c2410c' : '#fff',
-                  color: radioKm === k ? '#fff' : '#334155',
+                  background: radioKm === k ? 'var(--brand)' : '#fff',
+                  color: radioKm === k ? '#fff' : 'var(--info-mid2)',
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -1075,7 +1075,7 @@ export default function Ruta({ session }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflow: 'auto' }}>
             {myPos?.lat && cercanos.length === 0 && (
-              <div style={{ padding: 14, background: '#f8fafc', borderRadius: 14, fontSize: 13, color: '#64748b' }}>
+              <div style={{ padding: 14, background: 'var(--info-mid8)', borderRadius: 14, fontSize: 13, color: 'var(--info-mid3)' }}>
                 No hay clientes/prospectos con geo en este radio. Subí el radio o revisá coordenadas.
               </div>
             )}
@@ -1096,14 +1096,14 @@ export default function Ruta({ session }) {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--navy)' }}>
                       {item.nombre_cliente || item.nombre || '—'}
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: 13, color: '#c2410c', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--brand)', whiteSpace: 'nowrap' }}>
                       {dist}
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: 'var(--info-mid3)', marginTop: 4 }}>
                     {esPros ? 'Prospecto' : (item.comuna || 'Cliente')}
                     {item.oferta_real || item.oferta ? ` · ${String(item.oferta_real || item.oferta).slice(0, 60)}` : ''}
                   </div>
@@ -1121,7 +1121,7 @@ export default function Ruta({ session }) {
             display: 'block',
             fontSize: 10,
             fontWeight: 700,
-            color: '#64748b',
+            color: 'var(--info-mid3)',
             letterSpacing: '.04em',
             marginBottom: 4,
           }}
@@ -1140,7 +1140,7 @@ export default function Ruta({ session }) {
             fontSize: 15,
             fontWeight: 700,
             background: '#fff',
-            color: '#0f172a',
+            color: 'var(--navy)',
             appearance: 'auto',
           }}
         >
@@ -1180,7 +1180,7 @@ export default function Ruta({ session }) {
                 borderRadius: 999,
                 border: on ? `2px solid ${f.color}` : '1.5px solid #e2e8f0',
                 background: on ? f.color : '#fff',
-                color: on ? '#fff' : '#475569',
+                color: on ? '#fff' : 'var(--info-mid3)',
                 fontFamily: 'var(--font)',
                 fontSize: 12,
                 fontWeight: 700,
@@ -1201,7 +1201,7 @@ export default function Ruta({ session }) {
               {f.label}
               <span
                 style={{
-                  background: on ? 'rgba(255,255,255,.22)' : '#f1f5f9',
+                  background: on ? 'rgba(255,255,255,.22)' : 'var(--info-mid7)',
                   borderRadius: 999,
                   padding: '1px 7px',
                   fontSize: 11,
@@ -1244,7 +1244,7 @@ export default function Ruta({ session }) {
                 <div style={{ fontWeight: 700, fontSize: 14 }}>
                   {item.nombre_cliente || item.nombre_local || '—'}
                 </div>
-                <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                   {item._tipo === 'prospecto' ? 'Prospecto' : item._tipo === 'ruta' ? 'En ruta' : 'Cliente'}
                   {item.comuna ? ` · ${item.comuna}` : ''}
                 </div>
@@ -1259,7 +1259,7 @@ export default function Ruta({ session }) {
         <div
           ref={mapRef}
           className="map-box"
-          style={{ height: 360, marginBottom: 0, background: '#e2e8f0', borderRadius: 16 }}
+          style={{ height: 360, marginBottom: 0, background: 'var(--info-mid6)', borderRadius: 16 }}
         />
         <button
           type="button"
@@ -1275,7 +1275,7 @@ export default function Ruta({ session }) {
             height: 48,
             borderRadius: 14,
             border: 'none',
-            background: myPos?.lat ? '#2563eb' : '#c2410c',
+            background: myPos?.lat ? 'var(--info)' : 'var(--brand)',
             color: '#fff',
             fontSize: 20,
             fontWeight: 800,
@@ -1311,7 +1311,7 @@ export default function Ruta({ session }) {
           }}
         >
           <span>Itinerario del día ({visitas.length})</span>
-          <span style={{ color: '#64748b' }}>{listaOpen ? '▾' : '▸'}</span>
+          <span style={{ color: 'var(--info-mid3)' }}>{listaOpen ? '▾' : '▸'}</span>
         </button>
         {listaOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
@@ -1337,8 +1337,8 @@ export default function Ruta({ session }) {
                 disabled={busy}
                 style={{
                   width: '100%', padding: '10px 12px',
-                  borderRadius: 10, border: '1.5px solid #c2410c', background: '#fff7ed',
-                  color: '#9a3412', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
+                  borderRadius: 10, border: '1.5px solid #c2410c', background: 'var(--brand-lt2)',
+                  color: 'var(--brand-dk)', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
                   cursor: busy ? 'wait' : 'pointer',
                 }}
               >
@@ -1348,12 +1348,12 @@ export default function Ruta({ session }) {
             {rutaStats && visitas.length > 0 && (
               <div style={{
                 display: 'flex', justifyContent: 'space-between', gap: 8,
-                background: '#fafaf9', borderRadius: 10, padding: '10px 12px',
+                background: 'var(--bg-raised)', borderRadius: 10, padding: '10px 12px',
                 border: '1px solid #e7e5e4', fontSize: 12, fontWeight: 700,
               }}>
                 <span>{rutaStats.stops} paradas</span>
-                <span style={{ color: '#c2410c' }}>{rutaStats.km} km</span>
-                <span style={{ color: '#0d9488' }}>~{rutaStats.etaMin} min</span>
+                <span style={{ color: 'var(--brand)' }}>{rutaStats.km} km</span>
+                <span style={{ color: 'var(--teal)' }}>~{rutaStats.etaMin} min</span>
               </div>
             )}
           </div>
@@ -1362,10 +1362,10 @@ export default function Ruta({ session }) {
         {listaOpen && (
           <div>
             {!visitas.length && (
-              <div style={{ padding: '14px 16px', background: '#fafaf9', borderRadius: 12, margin: '8px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 13, color: '#a8a29e', fontWeight: 600 }}>Sin paradas en el itinerario</div>
-                <div style={{ fontSize: 12, color: '#c4bdb5', marginTop: 4 }}>
-                  Tocá <b style={{ color: '#c2410c' }}>Armar ruta del día</b> o añadí un pin desde el mapa.
+              <div style={{ padding: '14px 16px', background: 'var(--bg-raised)', borderRadius: 12, margin: '8px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>Sin paradas en el itinerario</div>
+                <div style={{ fontSize: 12, color: 'var(--muted-2)', marginTop: 4 }}>
+                  Tocá <b style={{ color: 'var(--brand)' }}>Armar ruta del día</b> o añadí un pin desde el mapa.
                 </div>
               </div>
             )}
@@ -1389,7 +1389,7 @@ export default function Ruta({ session }) {
                     width: 32,
                     height: 32,
                     borderRadius: 10,
-                    background: '#1c1917',
+                    background: 'var(--ink)',
                     color: '#fff',
                     fontWeight: 800,
                     fontSize: 14,
@@ -1409,7 +1409,7 @@ export default function Ruta({ session }) {
                     style={{
                       fontWeight: 700,
                       fontSize: 14,
-                      color: '#1c1917',
+                      color: 'var(--ink)',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -1417,16 +1417,16 @@ export default function Ruta({ session }) {
                   >
                     {v.nombre_local}
                   </div>
-                  <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
                     {v.comuna || v.direccion || '—'}
                   </div>
                   {v.oferta && (
                     <div
                       style={{
                         fontSize: 11,
-                        color: '#9a3412',
+                        color: 'var(--brand-dk)',
                         marginTop: 4,
-                        background: '#fff7ed',
+                        background: 'var(--brand-lt2)',
                         borderRadius: 8,
                         padding: '4px 8px',
                         display: 'inline-block',
@@ -1449,8 +1449,8 @@ export default function Ruta({ session }) {
                     height: 36,
                     borderRadius: 10,
                     border: '1.5px solid #fecaca',
-                    background: '#fef2f2',
-                    color: '#dc2626',
+                    background: 'var(--danger-lt)',
+                    color: 'var(--danger)',
                     fontWeight: 800,
                     fontSize: 18,
                     cursor: 'pointer',
@@ -1503,10 +1503,10 @@ export default function Ruta({ session }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 17, color: '#1c1917', lineHeight: 1.25 }}>
+                <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--ink)', lineHeight: 1.25 }}>
                   {selected.nombre_cliente || selected.nombre_local || 'Sin nombre'}
                 </div>
-                <div style={{ fontSize: 13, color: '#78716c', marginTop: 4 }}>
+                <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>
                   {selected._tipo === 'ruta'
                     ? `Parada #${selected.orden}`
                     : selected._tipo === 'prospecto'
@@ -1520,7 +1520,7 @@ export default function Ruta({ session }) {
                 onClick={() => setSelected(null)}
                 style={{
                   width: 36, height: 36, borderRadius: 10, border: 'none',
-                  background: '#f5f5f4', color: '#57534e', fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                  background: 'var(--line)', color: 'var(--ink-4)', fontSize: 18, fontWeight: 700, cursor: 'pointer',
                 }}
               >
                 ×
@@ -1528,7 +1528,7 @@ export default function Ruta({ session }) {
             </div>
 
             {(Number(selected.venta_mtd) > 0 || Number(selected.venta_mensual) > 0) && (
-              <div style={{ marginTop: 12, fontSize: 14, fontWeight: 700, color: '#c2410c' }}>
+              <div style={{ marginTop: 12, fontSize: 14, fontWeight: 700, color: 'var(--brand)' }}>
                 {Number(selected.venta_mtd) > 0
                   ? `${money(selected.venta_mtd)} este mes`
                   : `${money(selected.venta_mensual)} /mes prom.`}
@@ -1540,13 +1540,13 @@ export default function Ruta({ session }) {
                 {selected.telefono && (
                   <a href={`tel:${selected.telefono}`} style={{
                     flex: 1, textAlign: 'center', padding: '10px', borderRadius: 12,
-                    background: '#1c1917', color: '#fff', fontWeight: 700, fontSize: 13, textDecoration: 'none',
+                    background: 'var(--ink)', color: '#fff', fontWeight: 700, fontSize: 13, textDecoration: 'none',
                   }}>Llamar</a>
                 )}
                 {selected.link_whatsapp && (
                   <a href={selected.link_whatsapp} target="_blank" rel="noreferrer" style={{
                     flex: 1, textAlign: 'center', padding: '10px', borderRadius: 12,
-                    background: '#dcfce7', color: '#166534', fontWeight: 700, fontSize: 13, textDecoration: 'none',
+                    background: 'var(--ok-lt3)', color: 'var(--ok-dk)', fontWeight: 700, fontSize: 13, textDecoration: 'none',
                   }}>WhatsApp</a>
                 )}
               </div>
@@ -1555,7 +1555,7 @@ export default function Ruta({ session }) {
             {selected.oferta_real && (
               <div style={{
                 marginTop: 12, padding: '10px 12px', borderRadius: 12,
-                background: '#fff7ed', borderLeft: '3px solid #c2410c', fontSize: 13, color: '#9a3412',
+                background: 'var(--brand-lt2)', borderLeft: '3px solid #c2410c', fontSize: 13, color: 'var(--brand-dk)',
               }}>
                 <b>Ofrecé:</b> {limpiaOferta(selected.oferta_real)}
               </div>
@@ -1563,7 +1563,7 @@ export default function Ruta({ session }) {
             {selected.productos_top && (
               <div style={{
                 marginTop: 8, padding: '10px 12px', borderRadius: 12,
-                background: '#f8fafc', borderLeft: '3px solid #64748b', fontSize: 13, color: '#334155',
+                background: 'var(--info-mid8)', borderLeft: '3px solid #64748b', fontSize: 13, color: 'var(--info-mid2)',
               }}>
                 <b>Compraba:</b> {limpiaOferta(selected.productos_top)}
               </div>
@@ -1577,7 +1577,7 @@ export default function Ruta({ session }) {
               {selected._tipo !== 'prospecto' && (
                 <button type="button" onClick={() => setPedidoFromMap(selected)} style={{
                   flex: 1, padding: '11px', borderRadius: 12, border: 'none',
-                  background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 13,
+                  background: 'var(--brand)', color: '#fff', fontWeight: 800, fontSize: 13,
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}>Pedido</button>
               )}
@@ -1591,7 +1591,7 @@ export default function Ruta({ session }) {
                 rel="noreferrer"
                 style={{
                   flex: 1, textAlign: 'center', padding: '12px', borderRadius: 12,
-                  background: '#f5f5f4', color: '#1c1917', fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                  background: 'var(--line)', color: 'var(--ink)', fontWeight: 700, fontSize: 14, textDecoration: 'none',
                 }}
               >
                 Navegar
@@ -1603,7 +1603,7 @@ export default function Ruta({ session }) {
                   onClick={() => quitarDeRuta(selected.id)}
                   style={{
                     flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #fecaca',
-                    background: '#fef2f2', color: '#dc2626', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                    background: 'var(--danger-lt)', color: 'var(--danger)', fontWeight: 800, fontSize: 14, cursor: 'pointer',
                   }}
                 >
                   − Quitar
@@ -1615,7 +1615,7 @@ export default function Ruta({ session }) {
                   onClick={() => agregarARuta(selected)}
                   style={{
                     flex: 1, padding: '12px', borderRadius: 12, border: 'none',
-                    background: '#c2410c', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                    background: 'var(--brand)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer',
                   }}
                 >
                   + A la ruta
@@ -1652,7 +1652,7 @@ export default function Ruta({ session }) {
                 }}
                 style={{
                   width: '100%', marginTop: 10, padding: '12px', borderRadius: 12,
-                  border: 'none', background: '#1c1917', color: '#fff',
+                  border: 'none', background: 'var(--ink)', color: '#fff',
                   fontWeight: 800, fontSize: 14, cursor: 'pointer',
                 }}
               >
@@ -1683,7 +1683,7 @@ export default function Ruta({ session }) {
             bottom: 80,
             left: '50%',
             transform: 'translateX(-50%)',
-            background: '#0f172a',
+            background: 'var(--navy)',
             color: '#fff',
             padding: '10px 16px',
             borderRadius: 12,
@@ -1733,19 +1733,19 @@ function NotaRapidaMap({ cliente, session, onClose }) {
         width: '100%', maxWidth: 480, background: '#fff', borderRadius: '20px 20px 0 0',
         padding: '16px 16px 28px',
       }}>
-        <div style={{ width: 40, height: 4, background: '#e7e5e4', borderRadius: 4, margin: '0 auto 12px' }} />
-        <div style={{ fontSize: 11, fontWeight: 800, color: '#c2410c' }}>NOTA</div>
+        <div style={{ width: 40, height: 4, background: 'var(--line-3)', borderRadius: 4, margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--brand)' }}>NOTA</div>
         <div style={{ fontWeight: 800, fontSize: 17, margin: '4px 0 12px' }}>
           {cliente.nombre_cliente || cliente.nombre_local}
         </div>
-        {ok ? <div style={{ color: '#15803d', fontWeight: 700 }}>Guardada</div> : (
+        {ok ? <div style={{ color: 'var(--ok)', fontWeight: 700 }}>Guardada</div> : (
           <>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
               {tipos.map(x => (
                 <button key={x.v} type="button" onClick={() => setTipo(x.v)} style={{
                   padding: '7px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
                   border: tipo === x.v ? 'none' : '1.5px solid #e7e5e4',
-                  background: tipo === x.v ? '#1a1614' : '#fff',
+                  background: tipo === x.v ? 'var(--ink)' : '#fff',
                   color: tipo === x.v ? '#fff' : '#444', fontFamily: 'inherit',
                 }}>{x.l}</button>
               ))}
@@ -1756,7 +1756,7 @@ function NotaRapidaMap({ cliente, session, onClose }) {
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button type="button" onClick={onClose} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1.5px solid #e7e5e4', background: '#fff', fontWeight: 700, fontFamily: 'inherit' }}>Cancelar</button>
-              <button type="button" disabled={busy || !texto} onClick={guardar} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: texto ? '#c2410c' : '#d6d3d1', color: '#fff', fontWeight: 800, fontFamily: 'inherit' }}>{busy ? '…' : 'Guardar'}</button>
+              <button type="button" disabled={busy || !texto} onClick={guardar} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: texto ? 'var(--brand)' : 'var(--line-2)', color: '#fff', fontWeight: 800, fontFamily: 'inherit' }}>{busy ? '…' : 'Guardar'}</button>
             </div>
           </>
         )}

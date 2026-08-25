@@ -16,17 +16,6 @@ function unidadHint() {
   return 'kg'
 }
 
-/** Cobertura legible. Arriba de ~6 meses el numero no significa nada
- *  (rotacion casi cero) — decir "sin rotacion" es mas util que "2.193,5 dias". */
-function fmtCobertura(d) {
-  const v = Number(d)
-  if (d == null || d === '' || isNaN(v)) return null
-  if (v < 0) return { txt: 'sin dato', tono: 'muted' }
-  if (v > 180) return { txt: 'sin rotación', tono: 'alto' }
-  if (v > 90) return { txt: '+90 días cob.', tono: 'alto' }
-  return { txt: `${v.toLocaleString('es-CL', { maximumFractionDigits: 1 })} días cob.`, tono: null }
-}
-
 export default function Stock() {
   const [loading, setLoading] = useState(true)
   const [stock, setStock] = useState([])
@@ -40,19 +29,14 @@ export default function Stock() {
   useEffect(() => {
     ;(async () => {
       setLoading(true)
-      const [stockRes, cartRes] = (await Promise.allSettled([
-        supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }),
-        supabase
-          .from('cartera')
-          .select('cliente_key,nombre_cliente,sku_detalle,productos_top,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id')
-          .not('sku_detalle', 'is', null)   // solo clientes con mix cargado
-          .limit(3000),
-      ])).map(r => (r.status === 'fulfilled' ? r.value : { data: null, error: r.reason }))
-      if (cartRes?.error) console.error('[BS] cartera para compradores:', cartRes.error)
-      if (stockRes?.error) console.error('[BS] stock:', stockRes.error)
-      setCarteraStock(cartRes?.data || [])
-      setStock(stockRes?.data || [])
-      const snap = (stockRes?.data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
+      const { data } = await supabase.from('stock').select('*').order('es_foco_mes', { ascending: false })
+      const { data: cart } = await supabase
+        .from('cartera')
+        .select('cliente_key,nombre_cliente,razon_social,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado')
+        .limit(2000)
+      setCarteraStock(cart || [])
+      setStock(data || [])
+      const snap = (data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
       if (snap) setDataAsOf(snap)
       setLoading(false)
     })()
@@ -119,9 +103,9 @@ export default function Stock() {
         title: `${focosBajos.length} focos con stock bajo`,
         items: focosBajos.slice(0, 4).map(s => s.producto_nombre || s.sku_canon),
         accion: 'Proteger · no regalar',
-        color: '#b91c1c',
-        bg: '#fef2f2',
-        border: '#fecaca',
+        color: 'var(--danger-dk)',
+        bg: 'var(--danger-lt)',
+        border: 'var(--danger-lt3)',
       })
     }
     if (sobres.length) {
@@ -133,9 +117,9 @@ export default function Stock() {
           return `${n} · ${fmtNum(s.cobertura_dias)}d`
         }),
         accion: 'Empujar con oferta en Hoy',
-        color: '#c2410c',
-        bg: '#fff7ed',
-        border: '#fed7aa',
+        color: 'var(--brand)',
+        bg: 'var(--brand-lt2)',
+        border: 'var(--brand-lt6)',
       })
     }
     if (criticos.length && !focosBajos.length) {
@@ -144,9 +128,9 @@ export default function Stock() {
         title: `${stats.bajo + stats.neg} SKU críticos`,
         items: criticos.slice(0, 4).map(s => s.producto_nombre || s.sku_canon),
         accion: 'No vender agresivo · avisar ops',
-        color: '#b91c1c',
-        bg: '#fef2f2',
-        border: '#fecaca',
+        color: 'var(--danger-dk)',
+        bg: 'var(--danger-lt)',
+        border: 'var(--danger-lt3)',
       })
     }
     if (!out.length) {
@@ -155,8 +139,8 @@ export default function Stock() {
         title: 'Stock en rango saludable',
         body: 'Sin focos críticos ni sobrestock extremo detectado.',
         accion: 'Seguí el plan de Hoy (reponer + riesgo)',
-        color: '#15803d',
-        bg: '#ecfdf5',
+        color: 'var(--ok)',
+        bg: 'var(--ok-lt)',
       })
     }
     return out
@@ -243,7 +227,7 @@ export default function Stock() {
                   borderRadius: 999,
                   padding: '8px 12px',
                   border: `1.5px solid ${ins.color}`,
-                  background: ins.bg || '#fff7ed',
+                  background: ins.bg || 'var(--brand-lt2)',
                   color: ins.color,
                   fontWeight: 800,
                   fontSize: 12,
@@ -279,8 +263,8 @@ export default function Stock() {
                 fontWeight: 700,
                 minHeight: 32,
                 border: '1.5px solid #e7e0d8',
-                background: filtro === f ? '#1c1917' : '#fff',
-                color: filtro === f ? '#fff' : '#57534e',
+                background: filtro === f ? 'var(--ink)' : '#fff',
+                color: filtro === f ? '#fff' : 'var(--ink-4)',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
               }}
@@ -297,16 +281,16 @@ export default function Stock() {
           const crit = val < 0 || (!isNaN(cob) && cob < 7)
           const alto = !isNaN(cob) && cob >= 30
           let accion = null
-          if (val < 0 || /VENCID/i.test(s.estado_stock || '')) accion = { t: 'No ofrecer · revisar inventario', c: '#b91c1c' }
-          else if (crit) accion = { t: 'Proteger stock · solo clientes clave', c: '#b91c1c' }
-          else if (alto) accion = { t: 'Empujar en ruta con oferta', c: '#c2410c' }
-          else if (s.es_foco_mes) accion = { t: 'FOCO · priorizar en visitas', c: '#1e3a5f' }
+          if (val < 0 || /VENCID/i.test(s.estado_stock || '')) accion = { t: 'No ofrecer · revisar inventario', c: 'var(--danger-dk)' }
+          else if (crit) accion = { t: 'Proteger stock · solo clientes clave', c: 'var(--danger-dk)' }
+          else if (alto) accion = { t: 'Empujar en ruta con oferta', c: 'var(--brand)' }
+          else if (s.es_foco_mes) accion = { t: 'FOCO · priorizar en visitas', c: 'var(--navy-2)' }
           return (
             <div
               key={s.id || s.sku_canon}
               style={{
                 background: '#fff',
-                border: `1px solid ${crit ? '#fecaca' : alto ? '#fde68a' : '#e7e0d8'}`,
+                border: `1px solid ${crit ? 'var(--danger-lt3)' : alto ? 'var(--warn-lt4)' : 'var(--line-soft)'}`,
                 borderRadius: 14,
                 padding: 14,
                 marginBottom: 8,
@@ -319,20 +303,20 @@ export default function Stock() {
                     return (
                       <>
                         <div style={{
-                          fontWeight: 700, fontSize: 14, color: '#1c1917',
+                          fontWeight: 700, fontSize: 14, color: 'var(--ink)',
                           lineHeight: 1.25, wordBreak: 'break-word',
                         }}>
                           {d.title}
                           {d.isFallback ? (
                             <span style={{
                               marginLeft: 6, fontSize: 10, fontWeight: 650,
-                              color: '#c2410c', background: '#fff7ed',
+                              color: 'var(--brand)', background: 'var(--brand-lt2)',
                               border: '1px solid #fed7aa', borderRadius: 6,
                               padding: '1px 6px', verticalAlign: 'middle',
                             }}>sin nombre</span>
                           ) : null}
                         </div>
-                        <div style={{ fontSize: 12, color: '#78716c', marginTop: 3 }}>
+                        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 3 }}>
                           {d.subtitle}
                           {s.es_foco_mes ? ' · FOCO' : ''}
                         </div>
@@ -341,27 +325,22 @@ export default function Stock() {
                   })()}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: val < 0 ? '#dc2626' : '#1c1917' }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: val < 0 ? 'var(--danger)' : 'var(--ink)' }}>
                     {fmtNum(s.stock_operativo)}{' '}
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#78716c' }}>{u}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-3)' }}>{u}</span>
                   </div>
-                  {(() => {
-                    const c = fmtCobertura(s.cobertura_dias)
-                    if (!c) return null
-                    return (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          marginTop: 2,
-                          color: c.tono === 'muted' ? '#a8a29e'
-                            : crit ? '#dc2626' : (alto || c.tono === 'alto') ? '#d97706' : '#3f6212',
-                        }}
-                      >
-                        {c.txt}
-                      </div>
-                    )
-                  })()}
+                  {s.cobertura_dias != null && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginTop: 2,
+                        color: crit ? 'var(--danger)' : alto ? 'var(--warn)' : 'var(--ok-dk3)',
+                      }}
+                    >
+                      {fmtNum(s.cobertura_dias)} días cob.
+                    </div>
+                  )}
                 </div>
               </div>
               {accion && (
@@ -371,7 +350,7 @@ export default function Stock() {
                     fontSize: 11,
                     fontWeight: 700,
                     color: accion.c,
-                    background: '#fafaf9',
+                    background: 'var(--bg-raised)',
                     display: 'inline-block',
                     padding: '4px 8px',
                     borderRadius: 8,
@@ -398,21 +377,8 @@ export default function Stock() {
                     {res.enReposicion > 0 && (
                       <p className="bs-stock-buyers-sub">{res.enReposicion} en ventana de reposición</p>
                     )}
-                    {carteraStock.length === 0 ? (
-                      <p className="bs-stock-buyers-sub">
-                        No pude leer tu cartera — sin ella no puedo cruzar compradores.{' '}
-                        <button
-                          type="button"
-                          onClick={() => window.location.reload()}
-                          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand)', fontWeight: 800, fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline' }}
-                        >
-                          Reintentar
-                        </button>
-                      </p>
-                    ) : res.buyers.length === 0 ? (
-                      <p className="bs-stock-buyers-sub">
-                        Ninguno de tus {carteraStock.length} clientes con historial compró este producto.
-                      </p>
+                    {res.buyers.length === 0 ? (
+                      <p className="bs-stock-buyers-sub">Sin match en cartera con este SKU en historial.</p>
                     ) : (
                       res.buyers.slice(0, 8).map(b => (
                         <button
@@ -436,7 +402,7 @@ export default function Stock() {
           )
         })}
         {!lista.length && (
-          <div style={{ textAlign: 'center', padding: 24, color: '#78716c' }}>Sin productos con este filtro.</div>
+          <div style={{ textAlign: 'center', padding: 24, color: 'var(--ink-3)' }}>Sin productos con este filtro.</div>
         )}
       </div>
     </div>

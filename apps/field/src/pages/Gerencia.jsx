@@ -115,10 +115,10 @@ function exportCsv(nombre, cabeceras, filas) {
 }
 
 function barColor(pct) {
-  if (pct >= 100) return '#16a34a'
-  if (pct >= 80) return '#2563eb'
-  if (pct >= 50) return '#f59e0b'
-  return '#ef4444'
+  if (pct >= 100) return 'var(--ok-mid)'
+  if (pct >= 80) return 'var(--info)'
+  if (pct >= 50) return 'var(--warn)'
+  return 'var(--danger)'
 }
 
 function mesLabel(m) {
@@ -181,8 +181,6 @@ export default function Gerencia({ esGerente }) {
   const [carteraCache, setCarteraCache] = useState([]) // mix + bloqueos por zona de terreno
   const [actividad, setActividad] = useState(null) // { loading, rango, checkins, pedidos, notas, stats }
   const [actRango, setActRango] = useState('hoy') // hoy | 7d
-  const [fuentesOk, setFuentesOk] = useState({ gerencia: true, stock: true, cartera: true })
-  const [focosSinPrecio, setFocosSinPrecio] = useState(0) // SKU foco sin precio de lista
 
   useEffect(() => {
     ;(async () => {
@@ -211,36 +209,19 @@ export default function Gerencia({ esGerente }) {
                 .limit(2000),
             ]
 
-        // allSettled + unwrap seguro: si cae `notas_cliente` o `stock`, el
-        // tablero NO puede quedar en blanco. Cada fuente falla por separado.
-        const _res = await Promise.allSettled([
-          supabase.from('gerencia').select('*'),
-          supabase.from('tendencia').select('*'),
-          supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,precio,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
-          supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
-          Promise.allSettled(carPromises),
-          supabase
-            .from('notas_cliente')
-            .select('cliente_key,nombre_local,tipo,texto,created_at,creado_en')
-            .or('tipo.ilike.%bloqueo%,tipo.ilike.%bloqueo_cerrado%,tipo.ilike.%bloqueo_deuda%')
-            .limit(150),
-        ])
-        const _val = i => (_res[i].status === 'fulfilled' ? _res[i].value : null)
-        const _data = i => _val(i)?.data || null
-        const g = _data(0)
-        const t = _data(1)
-        const stock = _data(2)
-        const det = _data(3)
-        const carResults = (_val(4) || []).map(r => (r.status === 'fulfilled' ? r.value : { data: [] }))
-        const notasBlq = _data(5)
-
-        // Qué fuentes no llegaron — para no mostrar ceros inventados
-        const fuentes = {
-          gerencia: !!g,
-          stock: !!stock,
-          cartera: carResults.some(r => (r?.data || []).length > 0),
-        }
-        setFuentesOk(fuentes)
+        const [{ data: g }, { data: t }, { data: stock }, { data: det }, carResults, { data: notasBlq }] =
+          await Promise.all([
+            supabase.from('gerencia').select('*'),
+            supabase.from('tendencia').select('*'),
+            supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,precio,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
+            supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
+            Promise.all(carPromises),
+            supabase
+              .from('notas_cliente')
+              .select('cliente_key,nombre_local,tipo,texto,created_at,creado_en')
+              .or('tipo.ilike.%bloqueo%,tipo.ilike.%bloqueo_cerrado%,tipo.ilike.%bloqueo_deuda%')
+              .limit(150),
+          ])
 
         // mapa ejecutivo_id → zona (para cuando cartera.zona viene vacía)
         const zonaByEid = {}
@@ -348,9 +329,9 @@ export default function Gerencia({ esGerente }) {
           .slice(0, 25)
         setStockLento(lento)
         // Alerta: SKU de foco sin precio publicado
-        const sp = (sk || []).filter(s => s.es_foco_mes && !(Number(s.precio_unidad||0) > 0 || Number(s.precio_lista||0) > 0 || Number(s.precio||0) > 0))
-        if (sp.length) console.warn('[BS] Focos sin precio:', sp.length, sp.slice(0, 3).map(s => s.producto_nombre))
-        setFocosSinPrecio(sp.length)
+        const sp = (stock || []).filter(s => s.es_foco_mes && !(Number(s.precio_unidad||0) > 0 || Number(s.precio_lista||0) > 0 || Number(s.precio||0) > 0))
+        if (sp.length) console.warn('[BS] Focos sin precio:', sp.length)
+        window.__bs_foco_sin_precio = sp.length
       } catch (e) {
         setError(String(e.message || e))
       } finally {
@@ -906,8 +887,6 @@ export default function Gerencia({ esGerente }) {
       }
     }
 
-    const nomBuscar = (nombreHint || fromGer?.nombre_cliente || fromGer?.razon_social || '').trim()
-
     if (!skus.length && nomBuscar) {
       const q = String(nomBuscar).slice(0, 48).replace(/%/g, '')
       const { data } = await supabase
@@ -1026,30 +1005,11 @@ export default function Gerencia({ esGerente }) {
   }
 
 
-  /** Pulse gerencial. Regla: si una fuente no cargó, el contador va en null
-   *  y la UI muestra "—". Un 0 inventado se lee como "no hay problemas". */
-  const pulse = useMemo(() => {
-    const rows = gerencia || []
-    const total = rows.reduce((a, r) => a + (Number(r.venta_mtd) || 0), 0)
-
-    const ratio = r => (Number(r.venta_mtd) || 0) / (Number(r.meta_mensual) || 1)
-    const under = rows
-      .filter(r => Number(r.meta_mensual || 0) > 0 && Number(r.venta_mtd || 0) < Number(r.meta_mensual || 0))
-      .sort((a, b) => ratio(a) - ratio(b))
-      .slice(0, 3)
-
-    const risks = !fuentesOk.cartera
-      ? null
-      : (carteraCache || []).filter(c => {
-          const d = Number(c.dias_sin_comprar || 0)
-          if (d >= 180 || d <= 0) return false
-          return (d >= 30 && d <= 120) || /RIESGO|ENFRI|DORMIDO/i.test(String(c.estado_fuga || ''))
-        }).length
-
-    const slow = !fuentesOk.stock ? null : (stockLento || []).length
-
-    return { total, under, risks, slow }
-  }, [gerencia, carteraCache, stockLento, fuentesOk])
+  const pulse = useMemo(() => { const rows=gerencia||[]; const total=rows.reduce((a,r)=>a+(Number(r.venta_mtd)||0),0); const under=rows.filter(r=>Number(r.meta_mensual||0)>0&&Number(r.venta_mtd||0)<Number(r.meta_mensual||0)).sort((a,b)=>((Number(a.venta_mtd)||0)/(Number(a.meta_mensual)||1))-((Number(b.venta_mtd)||0)/(Number(b.meta_mensual)||1))).slice(0,3); const risks=(carteraCache||[]).filter(c=>{const d=Number(c.dias_sin_comprar||0);if(d>=180||d<=0)return false;return (d>=30&&d<=120)||/RIESGO|ENFRI|DORMIDO/i.test(String(c.estado_fuga||''));}).length;
+  // Alerta: SKU sin precio en lista → afecta pedidos del vendedor
+  const stockAll = carteraCache?.__stockAll || []
+  const sinPrecio = (stockLento || []).filter ? 0 : 0 // placeholder
+  return {total,under,risks,slow:(stockLento||[]).length, sinPrecio}; }, [gerencia,carteraCache,stockLento])
 
   const pred7 = useMemo(() => predict7Days(carteraCache || [], gerencia?.[0] || null, []), [carteraCache, gerencia])
 
@@ -1094,31 +1054,17 @@ export default function Gerencia({ esGerente }) {
             <span>zonas bajo meta</span>
           </div>
           <div>
-            <strong>{pulse.risks ?? '—'}</strong>
+            <strong>{pulse.risks}</strong>
             <span>clientes en riesgo</span>
           </div>
           <div>
-            <strong>{pulse.slow ?? '—'}</strong>
+            <strong>{pulse.slow}</strong>
             <span>SKUs lentos</span>
           </div>
         </div>
-        {(!fuentesOk.gerencia || !fuentesOk.stock || !fuentesOk.cartera) && (
-          <div className="bs-carga-aviso is-error" style={{ marginTop: 10 }}>
-            <span>
-              No cargó:{' '}
-              {[
-                !fuentesOk.gerencia && 'gerencia',
-                !fuentesOk.stock && 'stock',
-                !fuentesOk.cartera && 'cartera',
-              ].filter(Boolean).join(' · ')}
-              . Los contadores en "—" no son cero, son sin dato.
-            </span>
-            <button type="button" onClick={() => window.location.reload()}>Reintentar</button>
-          </div>
-        )}
-        {focosSinPrecio > 0 && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 12px', marginTop: 8, fontSize: 12, color: '#92400e', fontWeight: 700 }}>
-            ⚠️ {focosSinPrecio} foco{focosSinPrecio > 1 ? 's' : ''} sin precio en lista — el vendedor no puede cotizarlos. Actualizá la lista de precios en el ciclo.
+        {typeof window !== 'undefined' && window.__bs_foco_sin_precio > 0 && (
+          <div style={{ background: 'var(--warn-lt)', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 12px', marginTop: 8, fontSize: 12, color: 'var(--warn-dk)', fontWeight: 700 }}>
+            ⚠️ {window.__bs_foco_sin_precio} foco{window.__bs_foco_sin_precio > 1 ? 's' : ''} sin precio en lista — actualizá la lista de precios en el ciclo
           </div>
         )}
         {pulse.under.length > 0 && (
@@ -1216,9 +1162,9 @@ export default function Gerencia({ esGerente }) {
           <div className="card-label">Mes en curso · venta total compañía</div>
           <div style={{ marginTop: 8 }}>
             <div className="muted" style={{ fontSize: 10, fontWeight: 700 }}>VENDIDO TOTAL (todos los canales)</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#2563eb' }}>{money(totalVenta)}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--info)' }}>{money(totalVenta)}</div>
           </div>
-          <div style={{ marginTop: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 12 }}>
+          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--info-mid8)', borderRadius: 12 }}>
             <div className="muted" style={{ fontSize: 10, fontWeight: 700 }}>Solo terreno (3 zonas con meta)</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13 }}>
               <span>
@@ -1246,20 +1192,20 @@ export default function Gerencia({ esGerente }) {
                 <button type="button"
                   onClick={() => setCanalSel(openNoAsig ? null : '_NO_ASIGNADO')}
                   style={{ width: '100%', display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', padding: '10px 12px', background: '#fef3c7',
+                    alignItems: 'center', padding: '10px 12px', background: 'var(--warn-lt3)',
                     border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <div style={{ fontSize: 12, color: '#92400e', textAlign: 'left' }}>
+                  <div style={{ fontSize: 12, color: 'var(--warn-dk)', textAlign: 'left' }}>
                     <b>⚠ {money(noAsignado)}</b>
                     {' '}({Math.round((noAsignado / Math.max(totalVenta, 1)) * 100)}%) sin zona en maestra
-                    <span style={{ display: 'block', fontSize: 11, marginTop: 2, color: '#b45309' }}>
+                    <span style={{ display: 'block', fontSize: 11, marginTop: 2, color: 'var(--warn-dk2)' }}>
                       {openNoAsig ? '▲ cerrar' : `▼ ver ${cliNoAsig.length} clientes a asignar`}
                     </span>
                   </div>
                 </button>
                 {openNoAsig && (
-                  <div style={{ background: '#fffbeb', padding: '10px 12px 14px' }}>
+                  <div style={{ background: 'var(--warn-lt)', padding: '10px 12px 14px' }}>
                     {cliNoAsig.length === 0 && (
-                      <p style={{ fontSize: 12, color: '#92400e' }}>Sin detalle. Corré el ciclo v1.24.</p>
+                      <p style={{ fontSize: 12, color: 'var(--warn-dk)' }}>Sin detalle. Corré el ciclo v1.24.</p>
                     )}
                     {cliNoAsig.slice(0, 30).map((d, i) => (
                       <div key={d.cliente_key || i} style={{
@@ -1267,19 +1213,19 @@ export default function Gerencia({ esGerente }) {
                         padding: '7px 0', borderBottom: i < Math.min(cliNoAsig.length,30) - 1 ? '1px solid #fde68a' : 'none',
                       }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: '#1c1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {d.nombre_cliente || d.cliente_key}
                           </div>
-                          <div style={{ fontSize: 11, color: '#78716c' }}>
+                          <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
                             {d.cliente_key}{d.comuna ? ` · ${d.comuna}` : ''}
                           </div>
                         </div>
-                        <div style={{ fontWeight: 700, color: '#c2410c', flexShrink: 0, marginLeft: 8, fontSize: 13 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--brand)', flexShrink: 0, marginLeft: 8, fontSize: 13 }}>
                           {money(d.venta_mtd)}
                         </div>
                       </div>
                     ))}
-                    <div style={{ marginTop: 10, fontSize: 11, color: '#92400e', background: '#fef3c7', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
+                    <div style={{ marginTop: 10, fontSize: 11, color: 'var(--warn-dk)', background: 'var(--warn-lt3)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
                       → Abrí la maestra, buscá estos RUTs y asignales el ejecutivo. El próximo ciclo los mueve a la zona correcta.
                     </div>
                   </div>
@@ -1303,11 +1249,11 @@ export default function Gerencia({ esGerente }) {
               const isBest = val > 0 && val === maxMes
               const minPos = Math.min(...tendencia12.map(x => Number(x.venta_clp) || 0).filter(v => v > 0))
               const isWorst = val > 0 && val === minPos && tendencia12.filter(x => Number(x.venta_clp) > 0).length > 1
-              let barBg = '#93c5fd'
-              if (active) barBg = '#1e3a5f'
-              else if (isBest) barBg = '#16a34a'
-              else if (isWorst) barBg = '#ef4444'
-              else if (!val) barBg = '#e2e8f0'
+              let barBg = 'var(--info-lt4)'
+              if (active) barBg = 'var(--navy-2)'
+              else if (isBest) barBg = 'var(--ok-mid)'
+              else if (isWorst) barBg = 'var(--danger)'
+              else if (!val) barBg = 'var(--info-mid6)'
               return (
                 <button
                   key={String(t.mes)}
@@ -1336,7 +1282,7 @@ export default function Gerencia({ esGerente }) {
                       minHeight: 4,
                     }}
                   />
-                  <span style={{ fontSize: 9, color: isBest ? '#16a34a' : isWorst ? '#ef4444' : '#64748b', fontWeight: isBest || isWorst ? 700 : 400 }}>
+                  <span style={{ fontSize: 9, color: isBest ? 'var(--ok-mid)' : isWorst ? 'var(--danger)' : 'var(--info-mid3)', fontWeight: isBest || isWorst ? 700 : 400 }}>
                     {mesLabel(t.mes).split(' ')[0]}
                   </span>
                 </button>
@@ -1375,7 +1321,7 @@ export default function Gerencia({ esGerente }) {
                   Cerrar
                 </button>
               </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#1e3a5f', marginBottom: 4 }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--navy-2)', marginBottom: 4 }}>
                 {money(mesSelRow.venta_clp)}
               </div>
               {mesSelRow.clientes_activos != null && (
@@ -1405,7 +1351,7 @@ export default function Gerencia({ esGerente }) {
                           className="progress-fill"
                           style={{
                             width: Math.min(p.pct, 100) + '%',
-                            background: p.terreno ? '#2563eb' : esSinAsignar(p.canal) ? '#f59e0b' : '#94a3b8',
+                            background: p.terreno ? 'var(--info)' : esSinAsignar(p.canal) ? 'var(--warn)' : 'var(--info-mid4)',
                           }}
                         />
                       </div>
@@ -1452,8 +1398,8 @@ export default function Gerencia({ esGerente }) {
                 padding: '8px 14px',
                 borderRadius: 20,
                 border: tab === t.id ? '2px solid #1e3a5f' : '1px solid #e2e8f0',
-                background: tab === t.id ? '#1e3a5f' : '#fff',
-                color: tab === t.id ? '#fff' : '#475569',
+                background: tab === t.id ? 'var(--navy-2)' : '#fff',
+                color: tab === t.id ? '#fff' : 'var(--info-mid3)',
                 fontWeight: 700,
                 fontSize: 12,
                 whiteSpace: 'nowrap',
@@ -1488,7 +1434,7 @@ export default function Gerencia({ esGerente }) {
                       className="progress-fill"
                       style={{
                         width: Math.min(p.pct, 100) + '%',
-                        background: p.terreno ? '#2563eb' : esSinAsignar(p.ejecutivo) ? '#f59e0b' : '#94a3b8',
+                        background: p.terreno ? 'var(--info)' : esSinAsignar(p.ejecutivo) ? 'var(--warn)' : 'var(--info-mid4)',
                       }}
                     />
                   </div>
@@ -1502,18 +1448,18 @@ export default function Gerencia({ esGerente }) {
               style={{
                 marginBottom: 14,
                 border: bloqueados.length ? '1.5px solid #fecaca' : '1px solid #e7e5e4',
-                background: bloqueados.length ? '#fef2f2' : '#fff',
+                background: bloqueados.length ? 'var(--danger-lt)' : '#fff',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: '#b91c1c', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--danger-dk)', textTransform: 'uppercase' }}>
                     Clientes bloqueados
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: bloqueados.length ? '#b91c1c' : '#1c1917', marginTop: 2 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: bloqueados.length ? 'var(--danger-dk)' : 'var(--ink)', marginTop: 2 }}>
                     {bloqueados.length}
                   </div>
-                  <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
                     {bloqueados.length
                       ? 'Marcados en terreno (cerrado / deuda). No empujar venta hasta desbloquear.'
                       : 'Ningún cliente bloqueado en cartera visible.'}
@@ -1537,24 +1483,24 @@ export default function Gerencia({ esGerente }) {
                       }}
                     >
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: '#1c1917', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {b.nombre_cliente || b.razon_social || b.cliente_key}
                         </div>
-                        <div style={{ fontSize: 11, color: '#78716c' }}>
+                        <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
                           {(b.comuna || '—') + (b.zona ? ` · ${b.zona}` : '')}
                           {b.dias_sin_comprar != null ? ` · ${b.dias_sin_comprar}d` : ''}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: '#b91c1c' }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--danger-dk)' }}>
                           {money(Number(b.venta_mtd) || Number(b.venta_mensual) || 0)}
                         </div>
-                        <div style={{ fontSize: 10, color: '#a8a29e' }}>prom / mtd</div>
+                        <div style={{ fontSize: 10, color: 'var(--muted)' }}>prom / mtd</div>
                       </div>
                     </div>
                   ))}
                   {bloqueados.length > 8 && (
-                    <div style={{ fontSize: 11, color: '#78716c', textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'center' }}>
                       +{bloqueados.length - 8} más (filtro Bloqueados en Clientes por zona)
                     </div>
                   )}
@@ -1673,7 +1619,7 @@ export default function Gerencia({ esGerente }) {
                           <div
                             key={d.cliente_key}
                             style={{
-                              background: openCli ? '#fff7ed' : '#fff',
+                              background: openCli ? 'var(--brand-lt2)' : '#fff',
                               border: openCli ? '1.5px solid #fdba74' : '1px solid #e7e5e4',
                               borderRadius: 12,
                               padding: '10px 12px',
@@ -1691,14 +1637,14 @@ export default function Gerencia({ esGerente }) {
                               }}
                             >
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ fontWeight: 600, color: '#1c1917' }}>{d.nombre_cliente || d.cliente_key}</div>
+                                <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{d.nombre_cliente || d.cliente_key}</div>
                                 <div className="muted">
                                   {d.comuna || '—'} · {pctCli}% de la zona
                                   {det?.skus?.length ? ` · ${det.skus.length} SKU` : ''}
                                   {' · '}{openCli ? '▲' : '▼ mix'}
                                 </div>
                               </div>
-                              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', color: '#c2410c' }}>{money(d.venta_mtd)}</div>
+                              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--brand)' }}>{money(d.venta_mtd)}</div>
                             </button>
                             {openCli && (
                               <div style={{ padding: '0 0 10px 4px', fontSize: 12 }}>
@@ -1710,7 +1656,7 @@ export default function Gerencia({ esGerente }) {
                                   </div>
                                 )}
                                 {det?.oferta && (
-                                  <div style={{ background: '#fff7ed', padding: '6px 8px', borderRadius: 8, marginBottom: 6, color: '#9a3412' }}>
+                                  <div style={{ background: 'var(--brand-lt2)', padding: '6px 8px', borderRadius: 8, marginBottom: 6, color: 'var(--brand-dk)' }}>
                                     <b>Ofrecé:</b> {det.oferta}
                                   </div>
                                 )}
@@ -1721,21 +1667,21 @@ export default function Gerencia({ esGerente }) {
                                   const pct = promClpOk ? Math.min(300, Math.round((clp / s.promClp) * 100)) : s.promUd > 0 ? Math.min(300, Math.round(((Number(s.udMtd)||0) / Number(s.promUd)) * 100)) : clp > 0 ? 100 : 0
                                   const falta = Math.max(0, s.promUd - s.udMtd)
                                   const { recompra, cicloEst, diasUltima } = cicloReposicion(s)
-                                  const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']
+                                  const toneColor = { bad: 'var(--danger-dk)', warn: 'var(--warn-dk2)', ok: 'var(--ok)', muted: 'var(--ink-4)' }[recompra?.tone || 'muted']
                                   return (
                                     <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f4' }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                                         <div style={{ fontWeight: 600 }}>{s.nombre}</div>
-                                        <div style={{ fontWeight: 800, fontSize: 12, color: pct >= 100 ? '#15803d' : pct >= 50 ? '#b45309' : '#b91c1c' }}>{pct}%</div>
+                                        <div style={{ fontWeight: 800, fontSize: 12, color: pct >= 100 ? 'var(--ok)' : pct >= 50 ? 'var(--warn-dk2)' : 'var(--danger-dk)' }}>{pct}%</div>
                                       </div>
-                                      <div style={{ marginTop: 4, height: 5, borderRadius: 999, background: '#f5f5f4', overflow: 'hidden' }}>
-                                        <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
+                                      <div style={{ marginTop: 4, height: 5, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
+                                        <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? 'var(--ok-mid2)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)' }} />
                                       </div>
                                       <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
                                         Mes {fmtStock(s.udMtd)} ud · {money(clpEfectivo(s))} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
-                                        <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
+                                        <div style={{ fontSize: 11, color: 'var(--warn-dk2)' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
                                       )}
                                       {(diasUltima != null || cicloEst != null) && (
                                         <div style={{ fontSize: 11, color: toneColor, fontWeight: 600, marginTop: 2 }}>
@@ -1791,7 +1737,7 @@ export default function Gerencia({ esGerente }) {
                       <b>{g.ejecutivo}</b>
                       <span className="muted">{pct}% · {open ? '▲' : '▼'}</span>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 800, marginTop: 4, color: '#0f172a' }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, marginTop: 4, color: 'var(--navy)' }}>
                       {money(venta)}
                     </div>
                   </button>
@@ -1806,8 +1752,8 @@ export default function Gerencia({ esGerente }) {
                           <>
                             <div>{head || 'Canal sin meta de terreno'}</div>
                             {open && top && (
-                              <div style={{ marginTop: 6, fontSize: 11, color: '#78716c' }}>
-                                <b style={{ color: '#57534e' }}>Top mes:</b>{' '}
+                              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--ink-3)' }}>
+                                <b style={{ color: 'var(--ink-4)' }}>Top mes:</b>{' '}
                                 {top.split('|').slice(0, 5).map(s => s.trim()).filter(Boolean).join(' · ')}
                               </div>
                             )}
@@ -1837,7 +1783,7 @@ export default function Gerencia({ esGerente }) {
                           <div
                             key={d.cliente_key}
                             style={{
-                              background: cliSel === d.cliente_key ? '#fff7ed' : '#fff',
+                              background: cliSel === d.cliente_key ? 'var(--brand-lt2)' : '#fff',
                               border: cliSel === d.cliente_key ? '1.5px solid #fdba74' : '1px solid #e7e5e4',
                               borderRadius: 12,
                               padding: '10px 12px',
@@ -1863,13 +1809,13 @@ export default function Gerencia({ esGerente }) {
                               }}
                             >
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ fontWeight: 600, color: '#1c1917' }}>{d.nombre_cliente || d.cliente_key}</div>
+                                <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{d.nombre_cliente || d.cliente_key}</div>
                                 <div className="muted">
                                   {d.cliente_key} · {d.comuna || '—'}
                                   {cliSel === d.cliente_key ? ' · ▲' : ' · ▼ mix'}
                                 </div>
                               </div>
-                              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', color: '#c2410c' }}>{money(d.venta_mtd)}</div>
+                              <div style={{ fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--brand)' }}>{money(d.venta_mtd)}</div>
                             </button>
                             {cliSel === d.cliente_key && (
                               <div style={{ padding: '0 0 10px 4px', fontSize: 12 }}>
@@ -1877,7 +1823,7 @@ export default function Gerencia({ esGerente }) {
                                   <div className="muted">Cargando mix…</div>
                                 )}
                                 {cliSku[d.cliente_key]?.oferta && (
-                                  <div style={{ background: '#fff7ed', padding: '6px 8px', borderRadius: 8, marginBottom: 6, color: '#9a3412' }}>
+                                  <div style={{ background: 'var(--brand-lt2)', padding: '6px 8px', borderRadius: 8, marginBottom: 6, color: 'var(--brand-dk)' }}>
                                     <b>Ofrecé:</b> {cliSku[d.cliente_key].oferta}
                                   </div>
                                 )}
@@ -1888,21 +1834,21 @@ export default function Gerencia({ esGerente }) {
                                   const pct = promClpOk ? Math.min(300, Math.round((clp / s.promClp) * 100)) : s.promUd > 0 ? Math.min(300, Math.round(((Number(s.udMtd)||0) / Number(s.promUd)) * 100)) : clp > 0 ? 100 : 0
                                   const falta = Math.max(0, s.promUd - s.udMtd)
                                   const { recompra, cicloEst, diasUltima } = cicloReposicion(s)
-                                  const toneColor = { bad: '#b91c1c', warn: '#b45309', ok: '#15803d', muted: '#57534e' }[recompra?.tone || 'muted']
+                                  const toneColor = { bad: 'var(--danger-dk)', warn: 'var(--warn-dk2)', ok: 'var(--ok)', muted: 'var(--ink-4)' }[recompra?.tone || 'muted']
                                   return (
                                     <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f4' }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                                         <div style={{ fontWeight: 600 }}>{s.nombre}</div>
-                                        <div style={{ fontWeight: 800, fontSize: 12, color: pct >= 100 ? '#15803d' : pct >= 50 ? '#b45309' : '#b91c1c' }}>{pct}%</div>
+                                        <div style={{ fontWeight: 800, fontSize: 12, color: pct >= 100 ? 'var(--ok)' : pct >= 50 ? 'var(--warn-dk2)' : 'var(--danger-dk)' }}>{pct}%</div>
                                       </div>
-                                      <div style={{ marginTop: 4, height: 5, borderRadius: 999, background: '#f5f5f4', overflow: 'hidden' }}>
-                                        <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444' }} />
+                                      <div style={{ marginTop: 4, height: 5, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
+                                        <div style={{ width: Math.min(100, Math.max(0, pct)) + '%', height: '100%', borderRadius: 999, background: pct >= 100 ? 'var(--ok-mid2)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)' }} />
                                       </div>
                                       <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
                                         Mes {fmtStock(s.udMtd)} ud · {money(clpEfectivo(s))} · prom {fmtStock(s.promUd)} · {money(s.promClp)}
                                       </div>
                                       {falta > 0 && (
-                                        <div style={{ fontSize: 11, color: '#b45309' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
+                                        <div style={{ fontSize: 11, color: 'var(--warn-dk2)' }}>Faltan ~{fmtStock(falta)} ud a su ritmo</div>
                                       )}
                                       {(diasUltima != null || cicloEst != null) && (
                                         <div style={{ fontSize: 11, color: toneColor, fontWeight: 600, marginTop: 2 }}>
@@ -1945,8 +1891,8 @@ export default function Gerencia({ esGerente }) {
           <div className="card">
             <div className="card-label">Qué empujar este mes (foco + stock disponible)</div>
             <div style={{
-              background: '#eff6ff', borderRadius: 12, padding: '10px 12px', marginBottom: 12,
-              fontSize: 12, color: '#1e3a5f', lineHeight: 1.45,
+              background: 'var(--info-lt)', borderRadius: 12, padding: '10px 12px', marginBottom: 12,
+              fontSize: 12, color: 'var(--navy-2)', lineHeight: 1.45,
             }}>
               <b>Acción gerencial:</b> estos SKU son prioridad de venta. En ruta, ofrécelos a clientes con
               ciclo de recompra vencido. Si cobertura &lt; 15 días → proteger stock. Si cobertura &gt; 60 días →
@@ -1958,10 +1904,10 @@ export default function Gerencia({ esGerente }) {
             {topProd.map((s, i) => {
               const cob = Number(s.cobertura_dias)
               let accion = 'Ofrecer en visitas del día'
-              let tone = '#0f766e'
-              if (!isNaN(cob) && cob < 15) { accion = 'Proteger · stock bajo'; tone = '#b91c1c' }
-              else if (!isNaN(cob) && cob >= 60) { accion = 'Empujar con oferta'; tone = '#c2410c' }
-              else if (s.es_foco || /foco/i.test(String(s.decision || ''))) { accion = 'FOCO del mes · priorizar'; tone = '#1e3a5f' }
+              let tone = 'var(--teal)'
+              if (!isNaN(cob) && cob < 15) { accion = 'Proteger · stock bajo'; tone = 'var(--danger-dk)' }
+              else if (!isNaN(cob) && cob >= 60) { accion = 'Empujar con oferta'; tone = 'var(--brand)' }
+              else if (s.es_foco || /foco/i.test(String(s.decision || ''))) { accion = 'FOCO del mes · priorizar'; tone = 'var(--navy-2)' }
               return (
                 <div
                   key={s.sku_canon || s.id || i}
@@ -1989,7 +1935,7 @@ export default function Gerencia({ esGerente }) {
                   </div>
                   <div style={{
                     marginTop: 6, fontSize: 11, fontWeight: 700, color: tone,
-                    background: '#f8fafc', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
+                    background: 'var(--info-mid8)', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
                   }}>
                     → {accion}
                   </div>
@@ -2014,8 +1960,8 @@ export default function Gerencia({ esGerente }) {
                     padding: '7px 14px',
                     borderRadius: 999,
                     border: actRango === r.id ? '2px solid #c2410c' : '1px solid #e7e5e4',
-                    background: actRango === r.id ? '#c2410c' : '#fff',
-                    color: actRango === r.id ? '#fff' : '#57534e',
+                    background: actRango === r.id ? 'var(--brand)' : '#fff',
+                    color: actRango === r.id ? '#fff' : 'var(--ink-4)',
                     fontWeight: 700,
                     fontSize: 12,
                     fontFamily: 'inherit',
@@ -2044,15 +1990,15 @@ export default function Gerencia({ esGerente }) {
                   }}
                 >
                   {[
-                    { n: actividad.stats.checkins, l: 'Check-ins', c: '#1c1917' },
-                    { n: actividad.stats.pedidos, l: 'Pedidos', c: '#c2410c' },
-                    { n: money(actividad.stats.capturado), l: 'Capturado', c: '#0d9488' },
-                    { n: actividad.stats.noVenta, l: 'No venta', c: '#78716c' },
-                    { n: actividad.stats.bloqueos, l: 'Bloqueos', c: '#b91c1c' },
+                    { n: actividad.stats.checkins, l: 'Check-ins', c: 'var(--ink)' },
+                    { n: actividad.stats.pedidos, l: 'Pedidos', c: 'var(--brand)' },
+                    { n: money(actividad.stats.capturado), l: 'Capturado', c: 'var(--teal)' },
+                    { n: actividad.stats.noVenta, l: 'No venta', c: 'var(--ink-3)' },
+                    { n: actividad.stats.bloqueos, l: 'Bloqueos', c: 'var(--danger-dk)' },
                     {
                       n: (actividad.stats.conversion || 0) + '%',
                       l: 'Conv. visita',
-                      c: '#2563eb',
+                      c: 'var(--info)',
                     },
                   ].map(k => (
                     <div
@@ -2070,7 +2016,7 @@ export default function Gerencia({ esGerente }) {
                         style={{
                           fontSize: 9,
                           fontWeight: 700,
-                          color: '#a8a29e',
+                          color: 'var(--muted)',
                           textTransform: 'uppercase',
                           marginTop: 2,
                         }}
@@ -2110,7 +2056,7 @@ export default function Gerencia({ esGerente }) {
                           {d.no_venta ? ` · ${d.no_venta} no venta` : ''}
                         </div>
                       </div>
-                      <div style={{ fontWeight: 800, color: '#0d9488', fontSize: 14 }}>
+                      <div style={{ fontWeight: 800, color: 'var(--teal)', fontSize: 14 }}>
                         {money(d.$)}
                       </div>
                     </div>
@@ -2161,7 +2107,7 @@ export default function Gerencia({ esGerente }) {
                             {Array.isArray(p.lineas) ? ` · ${p.lineas.length} líneas` : ''}
                           </div>
                         </div>
-                        <div style={{ fontWeight: 800, color: '#c2410c', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 800, color: 'var(--brand)', whiteSpace: 'nowrap' }}>
                           {money(tot)}
                         </div>
                       </div>
@@ -2207,8 +2153,8 @@ export default function Gerencia({ esGerente }) {
                         </div>
                         <span style={{
                           fontWeight: 800, fontSize: 11, textTransform: 'uppercase',
-                          color: /pedido/i.test(res) ? '#0d9488' : /no.?venta/i.test(res) ? '#78716c' : '#1c1917',
-                          background: /pedido/i.test(res) ? '#ecfdf5' : '#f5f5f4',
+                          color: /pedido/i.test(res) ? 'var(--teal)' : /no.?venta/i.test(res) ? 'var(--ink-3)' : 'var(--ink)',
+                          background: /pedido/i.test(res) ? 'var(--ok-lt)' : 'var(--line)',
                           padding: '4px 8px', borderRadius: 8, whiteSpace: 'nowrap',
                         }}>
                           {resLabel}
@@ -2219,8 +2165,8 @@ export default function Gerencia({ esGerente }) {
                 </div>
 
                 {(actividad.notas || []).filter(n => /bloqueo/i.test(n.tipo || '')).length > 0 && (
-                  <div className="card" style={{ border: '1px solid #fecaca', background: '#fef2f2' }}>
-                    <div className="card-label" style={{ marginBottom: 8, color: '#b91c1c' }}>
+                  <div className="card" style={{ border: '1px solid #fecaca', background: 'var(--danger-lt)' }}>
+                    <div className="card-label" style={{ marginBottom: 8, color: 'var(--danger-dk)' }}>
                       Bloqueos registrados
                     </div>
                     {actividad.notas
@@ -2255,8 +2201,8 @@ export default function Gerencia({ esGerente }) {
           <div className="card">
             <div className="card-label">Sobrestock → candidatos a oferta / liquidación</div>
             <div style={{
-              background: '#fff7ed', borderRadius: 12, padding: '10px 12px', marginBottom: 12,
-              fontSize: 12, color: '#9a3412', lineHeight: 1.45,
+              background: 'var(--brand-lt2)', borderRadius: 12, padding: '10px 12px', marginBottom: 12,
+              fontSize: 12, color: 'var(--brand-dk)', lineHeight: 1.45,
             }}>
               <b>Qué hacer:</b> alta cobertura = capital parado. Pedí a cada ejecutivo que los ofrezca en
               las próximas 5 visitas (descuento o combo). Priorizá los de cobertura &gt; 30 días.
@@ -2283,8 +2229,8 @@ export default function Gerencia({ esGerente }) {
                     {s.decision || 'sin decisión'}
                   </div>
                   <div style={{
-                    marginTop: 6, fontSize: 11, fontWeight: 700, color: '#c2410c',
-                    background: '#fff7ed', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
+                    marginTop: 6, fontSize: 11, fontWeight: 700, color: 'var(--brand)',
+                    background: 'var(--brand-lt2)', display: 'inline-block', padding: '4px 8px', borderRadius: 8,
                   }}>
                     → {urg}
                   </div>

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, createContext, useContext } from 'react'
+import { useEffect, useState, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase, initSupabase, getActiveTenant } from './lib/supabase'
 import { resolveTenant, applyTenantBrand } from './lib/tenants'
@@ -13,81 +13,29 @@ import Gerencia from './pages/Gerencia.jsx'
 import Admin from './pages/Admin.jsx'
 import { NavBar } from './components.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
+// V9.0 — domain components
+import { ZoneTabs }  from './components/domain/ZoneTabs.jsx'
+import { SyncBanner } from './components/domain/SyncBanner.jsx'
+import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
+import { runSyncFlush } from './lib/sync/engine.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V8.2'
+export const BUILD_STAMP = 'v-BS-PLATFORM-V9.0'
 
 // ── Contexto global ──────────────────────────────────────────────────────
-// id/nombre/zona/rol del logueado + zonaVista/eidVista (zona que se está viendo)
 export const EjecutivoCtx = createContext(null)
 export function useEjecutivo() {
   return useContext(EjecutivoCtx)
 }
 
-const ZONA_COLOR = {
-  'NOR-ORIENTE': '#1e3a5f',
-  'NOR-PONIENTE': '#0f766e',
-  'ZONA SUR': '#7c2d12',
-}
-
-const ZONA_CHIP_COLOR = {
-  'NOR-ORIENTE': '#c2410c',
-  'NOR-PONIENTE': '#0d9488',
-  'ZONA SUR': '#ea580c',
-}
-
-/** Barra superior única: zonas (solo gerencia) + sello de build.
- *  Es sticky y OPACA — antes eran dos capas translúcidas y el hero
- *  oscuro se transparentaba a través de ellas en Android.
- *  Publica su alto real en --topbar-h para que los sticky de cada
- *  página se anclen debajo y no queden tapados. */
-function TopBar({ todos, zonaVista, onChange, stamp }) {
-  const ref = useRef(null)
-  const conZonas = !!todos?.length
-
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const publicar = () => {
-      const h = Math.round(el.getBoundingClientRect().height)
-      document.documentElement.style.setProperty('--topbar-h', h + 'px')
-    }
-    publicar()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publicar) : null
-    ro?.observe(el)
-    window.addEventListener('resize', publicar)
-    return () => {
-      ro?.disconnect()
-      window.removeEventListener('resize', publicar)
-      document.documentElement.style.setProperty('--topbar-h', '0px')
-    }
-  }, [conZonas])
-
-  return (
-    <header className="bs-topbar" ref={ref}>
-      {conZonas && (
-        <div className="kf-zone-bar" aria-label="Selector de zona">
-          {todos.map(e => {
-            const zona = e.zona || e.nombre
-            const activo = zona === zonaVista
-            return (
-              <button
-                key={e.id || zona}
-                type="button"
-                className={'kf-zone-btn' + (activo ? ' is-active' : '')}
-                style={{ '--zone-color': ZONA_CHIP_COLOR[zona] || '#c2410c' }}
-                aria-pressed={activo}
-                onClick={() => onChange(zona)}
-              >
-                {zona}
-              </button>
-            )
-          })}
-        </div>
-      )}
-      <div className="bs-topbar-stamp">{stamp}</div>
-    </header>
-  )
+// Handlers reales para el sync engine — los mismos que usan Hoy/Visita
+// SyncBanner los recibe para que "Reintentar" drene de verdad la outbox
+const SYNC_HANDLERS = {
+  checkin:   async (p) => { await supabase.from('checkins').insert(p) },
+  completar: async (p) => { await supabase.from('checkins').update({ estado: 'completada', hora_salida: p.hora_salida }).eq('id', p.id) },
+  nota:      async (p) => { await supabase.from('notas_visita').insert(p) },
+  pedido:    async (p) => { await supabase.from('pedidos').insert(p) },
+  skip:      async ()  => { /* skip no necesita backend */ },
 }
 
 
@@ -191,6 +139,7 @@ export default function App() {
     if (!ej) return
     setZonaVista(zona)
     setEidVista(ej.id)
+    applyZoneCssVars(zona) // V9.0 — colores de zona al DOM inmediatamente
   }
 
   if (window.location.pathname.startsWith('/catalogo/')) {
@@ -234,6 +183,7 @@ export default function App() {
   }
 
   const esGerente = !!ejecutivo.esSuperAdmin
+  const zonasDisponibles = zonesFromEjecutivos(todosEjecutivos)
   const ctxValue = {
     ...ejecutivo,
     zonaVista,
@@ -244,14 +194,19 @@ export default function App() {
 
   return (
     <EjecutivoCtx.Provider value={ctxValue}>
-      <TopBar
-        todos={esGerente ? todosEjecutivos : []}
-        zonaVista={zonaVista}
-        onChange={cambiarZona}
-        stamp={`${BUILD_STAMP}${typeof window !== 'undefined' && window.__BS_TENANT__ ? ` · ${window.__BS_TENANT__.name}` : ''}`}
-      />
+      {/* V9.0 — ZoneTabs con colores reales de zona */}
+      {esGerente && zonasDisponibles.length > 0 && (
+        <ZoneTabs
+          zones={zonasDisponibles}
+          activeZone={zonaVista}
+          onChange={cambiarZona}
+        />
+      )}
+      {/* V9.0 — SyncBanner con handlers reales (no banner mentiroso) */}
+      <SyncBanner handlers={SYNC_HANDLERS} />
       <AppShell>
       <div className="app-body">
+      <div className="build-stamp">{BUILD_STAMP}{typeof window !== 'undefined' && window.__BS_TENANT__ ? ` · ${window.__BS_TENANT__.name}` : ''}</div>
         <Routes>
           <Route path="/" element={<Hoy />} />
           <Route path="/mapa" element={<Ruta session={session} />} />

@@ -106,26 +106,26 @@ export default function OrderInbox({ ejecutivoId, onOpenPedido, onChanged }) {
           background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: '#c2410c' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: 'var(--brand)' }}>
           INBOX PEDIDOS
           {nPend > 0 && (
             <span style={{
-              marginLeft: 8, background: '#c2410c', color: '#fff', borderRadius: 999,
+              marginLeft: 8, background: 'var(--brand)', color: '#fff', borderRadius: 999,
               padding: '2px 8px', fontSize: 11,
             }}>
               {nPend}
             </span>
           )}
         </span>
-        <span style={{ fontSize: 12, color: '#a8a29e' }}>{open ? 'Ocultar' : 'Ver'}</span>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{open ? 'Ocultar' : 'Ver'}</span>
       </button>
 
       {open && (
         <div style={{ marginTop: 10 }}>
-          {loading && <div style={{ fontSize: 13, color: '#a8a29e' }}>Cargando…</div>}
-          {err && <div style={{ fontSize: 12, color: '#b91c1c', marginBottom: 8 }}>{err}</div>}
+          {loading && <div style={{ fontSize: 13, color: 'var(--muted)' }}>Cargando…</div>}
+          {err && <div style={{ fontSize: 12, color: 'var(--danger-dk)', marginBottom: 8 }}>{err}</div>}
           {!loading && rows.length === 0 && (
-            <div style={{ fontSize: 13, color: '#a8a29e' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>
               Sin pedidos recientes. Los del catálogo web aparecen acá.
             </div>
           )}
@@ -152,13 +152,13 @@ export default function OrderInbox({ ejecutivoId, onOpenPedido, onChanged }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#57534e', fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-4)', fontVariantNumeric: 'tabular-nums' }}>
                         {folioPedido(p.id)}
                       </span>
                       {isWeb && (
                         <span style={{
                           fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                          background: '#ccfbf1', color: '#0f766e',
+                          background: 'var(--teal-lt)', color: 'var(--teal)',
                         }}>
                           Web
                         </span>
@@ -170,10 +170,10 @@ export default function OrderInbox({ ejecutivoId, onOpenPedido, onChanged }) {
                         {et.label}
                       </span>
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: '#1c1917', lineHeight: 1.25 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)', lineHeight: 1.25 }}>
                       {p.nombre_cliente || p.cliente_key || 'Cliente'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#78716c', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
                       {n} línea{n === 1 ? '' : 's'}
                       {tot > 0 ? ` · $${Math.round(tot).toLocaleString('es-CL')}` : ''}
                       {hora ? ` · ${hora}` : ''}
@@ -254,7 +254,7 @@ export default function OrderInbox({ ejecutivoId, onOpenPedido, onChanged }) {
             type="button"
             onClick={load}
             style={{
-              marginTop: 6, border: 'none', background: 'none', color: '#a8a29e',
+              marginTop: 6, border: 'none', background: 'none', color: 'var(--muted)',
               fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0,
             }}
           >
@@ -274,7 +274,7 @@ const btnSoft = {
   minHeight: 40,
   border: '1px solid #e7e5e4',
   background: '#fff',
-  color: '#1c1917',
+  color: 'var(--ink)',
   cursor: 'pointer',
   fontFamily: 'inherit',
 }
@@ -285,7 +285,7 @@ const btnPrimary = {
   borderRadius: 12,
   minHeight: 40,
   border: 'none',
-  background: '#c2410c',
+  background: 'var(--brand)',
   color: '#fff',
   cursor: 'pointer',
   fontFamily: 'inherit',
@@ -297,8 +297,8 @@ const btnDanger = {
   borderRadius: 12,
   minHeight: 40,
   border: '1px solid #fecaca',
-  background: '#fef2f2',
-  color: '#b91c1c',
+  background: 'var(--danger-lt)',
+  color: 'var(--danger-dk)',
   cursor: 'pointer',
   fontFamily: 'inherit',
 }
