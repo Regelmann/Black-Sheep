@@ -49,8 +49,8 @@ export default function NotaModal({ cliente, ejecutivoId, onClose }) {
         }}
       >
         {/* Drag handle */}
-        <div style={{ width:40, height:4, background:'var(--line-3)', borderRadius:4, margin:'0 auto 14px' }} />
-        <div style={{ fontSize:11, fontWeight:800, color:'var(--brand)', letterSpacing:'.06em' }}>NOTA</div>
+        <div style={{ width:40, height:4, background:'#e7e5e4', borderRadius:4, margin:'0 auto 14px' }} />
+        <div style={{ fontSize:11, fontWeight:800, color:'#c2410c', letterSpacing:'.06em' }}>NOTA</div>
         <h3 style={{ margin:'4px 0 12px', fontSize:17, fontWeight:800 }}>{cliente.nombre_cliente}</h3>
 
         {ok ? (
@@ -65,8 +65,8 @@ export default function NotaModal({ cliente, ejecutivoId, onClose }) {
                   style={{
                     padding:'8px 13px', borderRadius:999, fontSize:12, fontWeight:700,
                     border: tipo===t.v ? 'none' : '1.5px solid #e7e5e4',
-                    background: tipo===t.v ? 'var(--ink)' : '#fff',
-                    color: tipo===t.v ? '#fff' : 'var(--ink-2)',
+                    background: tipo===t.v ? '#1c1917' : '#fff',
+                    color: tipo===t.v ? '#fff' : '#44403c',
                     cursor:'pointer', fontFamily:'inherit',
                   }}
                 >{t.l}</button>

@@ -49,9 +49,9 @@ export const TENANTS = [
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {
       name:        'KeyFoods',
-      accent:      'var(--brand)',   // naranja KeyFoods
-      accentDark:  'var(--brand-dk)',
-      accentSoft:  'var(--brand-lt)',
+      accent:      '#c2410c',   // naranja KeyFoods
+      accentDark:  '#9a3412',
+      accentSoft:  '#fff4eb',
       accentRing:  'rgba(194,65,12,0.20)',
       logoUrl:     null,        // usar logo de Black Sheep hasta que tengan el suyo
     },
@@ -67,9 +67,9 @@ export const TENANTS = [
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {
       name:        'Demo',
-      accent:      'var(--info-dk5)',   // azul demo → diferente del naranja de prod
-      accentDark:  'var(--info-dk4)',
-      accentSoft:  'var(--info-lt2)',
+      accent:      '#0ea5e9',   // azul demo → diferente del naranja de prod
+      accentDark:  '#0284c7',
+      accentSoft:  '#e0f2fe',
       accentRing:  'rgba(14,165,233,0.20)',
       logoUrl:     null,
     },
@@ -135,9 +135,17 @@ export function applyTenantBrand(tenant) {
   if (!tenant?.brand) return
   const r = document.documentElement
   const b = tenant.brand
-  r.style.setProperty('--brand',      b.accent)
-  r.style.setProperty('--brand-dk',   b.accentDark)
-  r.style.setProperty('--brand-lt',   b.accentSoft)
+  const safe = (v, fb) => {
+    const s = String(v || '')
+    if (!s || s.startsWith('var(')) {
+      if (typeof console !== 'undefined') console.warn('[tenants] accent inválido (var circular):', v)
+      return fb
+    }
+    return s
+  }
+  r.style.setProperty('--brand',      safe(b.accent, '#c2410c'))
+  r.style.setProperty('--brand-dk',   safe(b.accentDark, '#9a3412'))
+  r.style.setProperty('--brand-lt',   safe(b.accentSoft, '#fff4eb'))
   r.style.setProperty('--brand-ring', b.accentRing)
   // aliases backward-compat
   r.style.setProperty('--brand-dark', b.accentDark)

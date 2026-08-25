@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { safeRpc } from '../lib/query'
 import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios'
 import { productTitle } from '../lib/productDisplay'
 
@@ -18,13 +19,13 @@ const PLACEHOLDER =
     `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
       <defs>
         <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="var(--ink)"/>
-          <stop offset="100%" stop-color="var(--bs-shell-2)"/>
+          <stop offset="0%" stop-color="#1c1917"/>
+          <stop offset="100%" stop-color="#292524"/>
         </linearGradient>
       </defs>
       <rect fill="url(#g)" width="800" height="800"/>
-      <text x="400" y="390" text-anchor="middle" fill="var(--brand-soft)" font-family="system-ui,sans-serif" font-size="28" font-weight="700">${PUBLIC_BRAND}</text>
-      <text x="400" y="430" text-anchor="middle" fill="var(--muted)" font-family="system-ui,sans-serif" font-size="16">producto</text>
+      <text x="400" y="390" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="28" font-weight="700">${PUBLIC_BRAND}</text>
+      <text x="400" y="430" text-anchor="middle" fill="#a8a29e" font-family="system-ui,sans-serif" font-size="16">producto</text>
     </svg>`
   )
 
@@ -58,14 +59,16 @@ export default function CatalogoCliente() {
       setLoading(true)
       setErr('')
       try {
-        const { data, error } = await supabase.rpc('get_public_catalogo', { p_token: token })
+        const { data, error } = await safeRpc('get_public_catalogo', { p_token: token })
         if (dead) return
         if (error) {
           setCatalogo(null)
-          setErr(error.message || 'No se pudo cargar el catálogo')
-        } else if (!data || !data.nombre_cliente) {
+          setErr(String(error).includes('activa') || String(error).includes('column')
+            ? 'Catálogo desactualizado. Corré sql/01_FIX_CATALOGO_ACTIVA.sql en Supabase.'
+            : (error || 'No se pudo cargar el catálogo'))
+        } else if (!data || data.ok === false || (!data.items && !data.cliente_key)) {
           setCatalogo(null)
-          setErr('Link inválido o catálogo no disponible')
+          setErr((data && data.error) || 'Link inválido o catálogo no disponible')
         } else {
           const itemsNorm = (data.items || []).map(it => {
             const r = precioPublicoItem(it)

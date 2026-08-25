@@ -75,11 +75,11 @@ export default function Admin() {
 }
 
 const bannerOk = {
-  background: 'var(--ok-lt)', color: 'var(--ok)', borderRadius: 12, padding: '10px 12px',
+  background: '#ecfdf5', color: '#15803d', borderRadius: 12, padding: '10px 12px',
   fontSize: 13, fontWeight: 700, marginBottom: 10,
 }
 const bannerErr = {
-  background: 'var(--danger-lt)', color: 'var(--danger-dk)', borderRadius: 12, padding: '10px 12px',
+  background: '#fef2f2', color: '#b91c1c', borderRadius: 12, padding: '10px 12px',
   fontSize: 13, fontWeight: 700, marginBottom: 10,
 }
 
@@ -203,7 +203,7 @@ function TabClientes({ onFlash }) {
   )
 }
 
-const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', marginTop: 8 }
+const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: '#78716c', marginTop: 8 }
 
 /* ─── ZONAS ────────────────────────────────────────────────── */
 function TabZonas({ onFlash }) {
@@ -298,10 +298,10 @@ function TabZonas({ onFlash }) {
             {(byZona[z] || []).map(r => (
               <span key={r.comuna} style={{
                 fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 999,
-                background: 'var(--line)', border: '1px solid #e7e5e4',
+                background: '#f5f5f4', border: '1px solid #e7e5e4',
               }}>
                 {r.comuna}
-                <button type="button" style={{ marginLeft: 6, border: 'none', background: 'none', color: 'var(--brand)', fontWeight: 900, cursor: 'pointer' }}
+                <button type="button" style={{ marginLeft: 6, border: 'none', background: 'none', color: '#c2410c', fontWeight: 900, cursor: 'pointer' }}
                   onClick={() => saveZona(r.comuna, ZONAS[(ZONAS.indexOf(z) + 1) % ZONAS.length])}>↻</button>
               </span>
             ))}
@@ -477,13 +477,13 @@ function TabMedia({ onFlash }) {
         <div key={r.sku_canon} className="card" style={{ padding: 12, marginBottom: 10 }}>
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{
-              width: 72, height: 72, borderRadius: 12, overflow: 'hidden', background: 'var(--surface-3)', flex: '0 0 auto',
+              width: 72, height: 72, borderRadius: 12, overflow: 'hidden', background: '#f5f0e8', flex: '0 0 auto',
             }}>
               {r.imagen_url ? (
                 <img src={r.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={e => { e.currentTarget.style.opacity = '0.3' }} />
               ) : (
-                <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', fontSize: 11, color: 'var(--muted)' }}>Sin foto</div>
+                <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', fontSize: 11, color: '#a8a29e' }}>Sin foto</div>
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -801,7 +801,7 @@ function TabFocos({ onFlash }) {
               <div className="muted" style={{ fontSize: 11 }}>{nombreEj(f.ejecutivo_id)}</div>
             </div>
             <button type="button" onClick={() => deleteFoco(f.id)}
-              style={{ border: 'none', background: 'var(--danger-lt)', color: 'var(--danger-dk)', borderRadius: 8, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+              style={{ border: 'none', background: '#fef2f2', color: '#b91c1c', borderRadius: 8, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
               Eliminar
             </button>
           </div>
@@ -827,8 +827,8 @@ function TabFocos({ onFlash }) {
       {stockFiltrado.map(s => (
         <div key={s.sku_canon} className="card" style={{
           padding: 12, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-          borderColor: s.es_foco_mes ? 'var(--warn-lt5)' : undefined,
-          background: s.es_foco_mes ? 'var(--brand-lt2)' : undefined,
+          borderColor: s.es_foco_mes ? '#fdba74' : undefined,
+          background: s.es_foco_mes ? '#fff7ed' : undefined,
         }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 750, fontSize: 13 }}>{s.producto_nombre || s.sku_canon}</div>

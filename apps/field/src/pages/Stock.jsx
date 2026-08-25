@@ -3,6 +3,7 @@ import { productTitle } from '../lib/productDisplay'
 import { findBuyersForSku } from '../lib/stockIntel'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { safeSelect } from '../lib/query'
 import { DataAsOfBanner } from '../components.jsx'
 
 function fmtNum(n) {
@@ -26,21 +27,31 @@ export default function Stock() {
   const [filtro, setFiltro] = useState('Todos')
   const [dataAsOf, setDataAsOf] = useState(null)
 
-  useEffect(() => {
-    ;(async () => {
-      setLoading(true)
-      const { data } = await supabase.from('stock').select('*').order('es_foco_mes', { ascending: false })
-      const { data: cart } = await supabase
-        .from('cartera')
-        .select('cliente_key,nombre_cliente,razon_social,sku_detalle,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado')
-        .limit(2000)
-      setCarteraStock(cart || [])
-      setStock(data || [])
-      const snap = (data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
-      if (snap) setDataAsOf(snap)
-      setLoading(false)
-    })()
-  }, [])
+  const [loadError, setLoadError] = useState(null)
+  const [cartError, setCartError] = useState(null)
+
+  async function loadAll() {
+    setLoading(true)
+    setLoadError(null)
+    setCartError(null)
+    const [stockRes, cartRes] = await Promise.all([
+      safeSelect('stock', q => q.select('*').order('es_foco_mes', { ascending: false })),
+      safeSelect('cartera', q =>
+        q.select('cliente_key,nombre_cliente,sku_detalle,productos_top,dias_sin_comprar,venta_mtd,venta_mensual,ciclo_dias,es_bloqueado,zona,ejecutivo_id')
+          .not('sku_detalle', 'is', null)
+          .limit(3000)
+      ),
+    ])
+    if (stockRes.error) setLoadError(stockRes.error)
+    if (cartRes.error) setCartError(cartRes.error)
+    setStock(stockRes.data || [])
+    setCarteraStock(cartRes.data || [])
+    const snap = (stockRes.data || []).map(s => s.fecha_snapshot).filter(Boolean).sort().pop()
+    if (snap) setDataAsOf(snap)
+    setLoading(false)
+  }
+
+  useEffect(() => { loadAll() }, [])
 
   const stats = useMemo(() => {
     const focos = stock.filter(s => s.es_foco_mes).length
@@ -103,9 +114,9 @@ export default function Stock() {
         title: `${focosBajos.length} focos con stock bajo`,
         items: focosBajos.slice(0, 4).map(s => s.producto_nombre || s.sku_canon),
         accion: 'Proteger · no regalar',
-        color: 'var(--danger-dk)',
-        bg: 'var(--danger-lt)',
-        border: 'var(--danger-lt3)',
+        color: '#b91c1c',
+        bg: '#fef2f2',
+        border: '#fecaca',
       })
     }
     if (sobres.length) {
@@ -117,9 +128,9 @@ export default function Stock() {
           return `${n} · ${fmtNum(s.cobertura_dias)}d`
         }),
         accion: 'Empujar con oferta en Hoy',
-        color: 'var(--brand)',
-        bg: 'var(--brand-lt2)',
-        border: 'var(--brand-lt6)',
+        color: '#c2410c',
+        bg: '#fff7ed',
+        border: '#fed7aa',
       })
     }
     if (criticos.length && !focosBajos.length) {
@@ -128,9 +139,9 @@ export default function Stock() {
         title: `${stats.bajo + stats.neg} SKU críticos`,
         items: criticos.slice(0, 4).map(s => s.producto_nombre || s.sku_canon),
         accion: 'No vender agresivo · avisar ops',
-        color: 'var(--danger-dk)',
-        bg: 'var(--danger-lt)',
-        border: 'var(--danger-lt3)',
+        color: '#b91c1c',
+        bg: '#fef2f2',
+        border: '#fecaca',
       })
     }
     if (!out.length) {
@@ -139,8 +150,8 @@ export default function Stock() {
         title: 'Stock en rango saludable',
         body: 'Sin focos críticos ni sobrestock extremo detectado.',
         accion: 'Seguí el plan de Hoy (reponer + riesgo)',
-        color: 'var(--ok)',
-        bg: 'var(--ok-lt)',
+        color: '#15803d',
+        bg: '#ecfdf5',
       })
     }
     return out
@@ -188,7 +199,16 @@ export default function Stock() {
       </div>
 
       <div className="wrap bs-page-body">
-        {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${stock.length} SKU`} />}
+        {(loadError || cartError) && (
+        <div className="wrap" style={{ marginTop: 8 }}>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '10px 12px', fontSize: 12, color: '#991b1b' }}>
+            {loadError && <div>Stock: {loadError}</div>}
+            {cartError && <div>Cartera (compradores): {cartError}</div>}
+            <button type="button" onClick={loadAll} style={{ marginTop: 8, fontWeight: 800, border: 'none', background: '#991b1b', color: '#fff', borderRadius: 8, padding: '6px 12px' }}>Reintentar</button>
+          </div>
+        </div>
+      )}
+      {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${stock.length} SKU`} />}
 
         <div className="bs-hoy-kpis" style={{ marginBottom: 12 }}>
           {[
@@ -227,7 +247,7 @@ export default function Stock() {
                   borderRadius: 999,
                   padding: '8px 12px',
                   border: `1.5px solid ${ins.color}`,
-                  background: ins.bg || 'var(--brand-lt2)',
+                  background: ins.bg || '#fff7ed',
                   color: ins.color,
                   fontWeight: 800,
                   fontSize: 12,
@@ -263,8 +283,8 @@ export default function Stock() {
                 fontWeight: 700,
                 minHeight: 32,
                 border: '1.5px solid #e7e0d8',
-                background: filtro === f ? 'var(--ink)' : '#fff',
-                color: filtro === f ? '#fff' : 'var(--ink-4)',
+                background: filtro === f ? '#1c1917' : '#fff',
+                color: filtro === f ? '#fff' : '#57534e',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
               }}
@@ -281,16 +301,16 @@ export default function Stock() {
           const crit = val < 0 || (!isNaN(cob) && cob < 7)
           const alto = !isNaN(cob) && cob >= 30
           let accion = null
-          if (val < 0 || /VENCID/i.test(s.estado_stock || '')) accion = { t: 'No ofrecer · revisar inventario', c: 'var(--danger-dk)' }
-          else if (crit) accion = { t: 'Proteger stock · solo clientes clave', c: 'var(--danger-dk)' }
-          else if (alto) accion = { t: 'Empujar en ruta con oferta', c: 'var(--brand)' }
-          else if (s.es_foco_mes) accion = { t: 'FOCO · priorizar en visitas', c: 'var(--navy-2)' }
+          if (val < 0 || /VENCID/i.test(s.estado_stock || '')) accion = { t: 'No ofrecer · revisar inventario', c: '#b91c1c' }
+          else if (crit) accion = { t: 'Proteger stock · solo clientes clave', c: '#b91c1c' }
+          else if (alto) accion = { t: 'Empujar en ruta con oferta', c: '#c2410c' }
+          else if (s.es_foco_mes) accion = { t: 'FOCO · priorizar en visitas', c: '#1e3a5f' }
           return (
             <div
               key={s.id || s.sku_canon}
               style={{
                 background: '#fff',
-                border: `1px solid ${crit ? 'var(--danger-lt3)' : alto ? 'var(--warn-lt4)' : 'var(--line-soft)'}`,
+                border: `1px solid ${crit ? '#fecaca' : alto ? '#fde68a' : '#e7e0d8'}`,
                 borderRadius: 14,
                 padding: 14,
                 marginBottom: 8,
@@ -303,20 +323,20 @@ export default function Stock() {
                     return (
                       <>
                         <div style={{
-                          fontWeight: 700, fontSize: 14, color: 'var(--ink)',
+                          fontWeight: 700, fontSize: 14, color: '#1c1917',
                           lineHeight: 1.25, wordBreak: 'break-word',
                         }}>
                           {d.title}
                           {d.isFallback ? (
                             <span style={{
                               marginLeft: 6, fontSize: 10, fontWeight: 650,
-                              color: 'var(--brand)', background: 'var(--brand-lt2)',
+                              color: '#c2410c', background: '#fff7ed',
                               border: '1px solid #fed7aa', borderRadius: 6,
                               padding: '1px 6px', verticalAlign: 'middle',
                             }}>sin nombre</span>
                           ) : null}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 3 }}>
+                        <div style={{ fontSize: 12, color: '#78716c', marginTop: 3 }}>
                           {d.subtitle}
                           {s.es_foco_mes ? ' · FOCO' : ''}
                         </div>
@@ -325,9 +345,9 @@ export default function Stock() {
                   })()}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: val < 0 ? 'var(--danger)' : 'var(--ink)' }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: val < 0 ? '#dc2626' : '#1c1917' }}>
                     {fmtNum(s.stock_operativo)}{' '}
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-3)' }}>{u}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#78716c' }}>{u}</span>
                   </div>
                   {s.cobertura_dias != null && (
                     <div
@@ -335,7 +355,7 @@ export default function Stock() {
                         fontSize: 11,
                         fontWeight: 600,
                         marginTop: 2,
-                        color: crit ? 'var(--danger)' : alto ? 'var(--warn)' : 'var(--ok-dk3)',
+                        color: crit ? '#dc2626' : alto ? '#d97706' : '#3f6212',
                       }}
                     >
                       {fmtNum(s.cobertura_dias)} días cob.
@@ -350,7 +370,7 @@ export default function Stock() {
                     fontSize: 11,
                     fontWeight: 700,
                     color: accion.c,
-                    background: 'var(--bg-raised)',
+                    background: '#fafaf9',
                     display: 'inline-block',
                     padding: '4px 8px',
                     borderRadius: 8,
@@ -378,7 +398,7 @@ export default function Stock() {
                       <p className="bs-stock-buyers-sub">{res.enReposicion} en ventana de reposición</p>
                     )}
                     {res.buyers.length === 0 ? (
-                      <p className="bs-stock-buyers-sub">Sin match en cartera con este SKU en historial.</p>
+                      <p className="bs-stock-buyers-sub">Sin match en cartera con este SKU. Si ves error de lectura arriba, no es 'cero compradores'.</p>
                     ) : (
                       res.buyers.slice(0, 8).map(b => (
                         <button
@@ -402,7 +422,7 @@ export default function Stock() {
           )
         })}
         {!lista.length && (
-          <div style={{ textAlign: 'center', padding: 24, color: 'var(--ink-3)' }}>Sin productos con este filtro.</div>
+          <div style={{ textAlign: 'center', padding: 24, color: '#78716c' }}>Sin productos con este filtro.</div>
         )}
       </div>
     </div>

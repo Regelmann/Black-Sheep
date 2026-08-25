@@ -274,7 +274,7 @@ export default function PedidoSheet({ initialPedido,
           maxWidth: 480,
           maxHeight: '92dvh',
           overflow: 'auto',
-          background: 'var(--bg-soft)',
+          background: '#fffaf5',
           borderRadius: '20px 20px 0 0',
           padding: '12px 16px calc(var(--nav-h, 68px) + 16px)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
@@ -285,16 +285,16 @@ export default function PedidoSheet({ initialPedido,
             width: 40,
             height: 4,
             borderRadius: 4,
-            background: 'var(--line-3)',
+            background: '#e7e5e4',
             margin: '0 auto 12px',
           }}
         />
 
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--brand)' }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: '#c2410c' }}>
           PEDIDO EN TERRENO
         </div>
-        <div style={{ fontWeight: 900, fontSize: 20, color: 'var(--ink)', marginTop: 2 }}>{nombreCli}</div>
-        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
+        <div style={{ fontWeight: 900, fontSize: 20, color: '#1c1917', marginTop: 2 }}>{nombreCli}</div>
+        <div style={{ fontSize: 12, color: '#78716c', marginBottom: 12 }}>
           {[comuna, aReponer?.length ? `${aReponer.length} a reponer` : null, stock.length ? `${stock.length} SKU stock` : null]
             .filter(Boolean)
             .join(' · ')}
@@ -353,10 +353,10 @@ export default function PedidoSheet({ initialPedido,
                     fontFamily: 'inherit',
                   }}
                 >
-                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#1c1917' }}>
                     {s.producto_nombre}
                   </div>
-                  <div style={{ fontSize: 11, color: crit ? 'var(--danger)' : 'var(--ink-3)' }}>
+                  <div style={{ fontSize: 11, color: crit ? '#dc2626' : '#78716c' }}>
                     stock {kg.toLocaleString('es-CL')} · {s.estado_stock || 'OK'}
                     {s.es_foco_mes ? ' · FOCO' : ''}
                   </div>
@@ -364,7 +364,7 @@ export default function PedidoSheet({ initialPedido,
               )
             })}
             {!catalogFiltered.length && (
-              <div style={{ padding: 12, fontSize: 13, color: 'var(--muted)' }}>Sin resultados</div>
+              <div style={{ padding: 12, fontSize: 13, color: '#a8a29e' }}>Sin resultados</div>
             )}
           </div>
         )}
@@ -374,7 +374,7 @@ export default function PedidoSheet({ initialPedido,
             style={{
               padding: 20,
               textAlign: 'center',
-              color: 'var(--muted)',
+              color: '#a8a29e',
               fontSize: 14,
               background: '#fff',
               borderRadius: 14,
@@ -411,13 +411,13 @@ export default function PedidoSheet({ initialPedido,
                     style={{
                       fontWeight: 800,
                       fontSize: 14,
-                      color: 'var(--ink)',
+                      color: '#1c1917',
                       lineHeight: 1.25,
                     }}
                   >
                     {sanitizeNombreProducto(l.nombre) || l.sku || l.nombre}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>
+                  <div style={{ fontSize: 11, color: '#a8a29e', marginTop: 3 }}>
                     {l.motivo || 'línea'}
                     {kg != null
                       ? ` · stock ${kg.toLocaleString('es-CL')} ${l.unidad || 'kg'}`
@@ -449,8 +449,8 @@ export default function PedidoSheet({ initialPedido,
                     height: 36,
                     borderRadius: 10,
                     border: 'none',
-                    background: 'var(--danger-lt)',
-                    color: 'var(--danger)',
+                    background: '#fef2f2',
+                    color: '#dc2626',
                     fontWeight: 800,
                     cursor: 'pointer',
                   }}
@@ -467,7 +467,7 @@ export default function PedidoSheet({ initialPedido,
                   flexWrap: 'wrap',
                 }}
               >
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)' }}>Precio</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#78716c' }}>Precio</span>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -479,13 +479,13 @@ export default function PedidoSheet({ initialPedido,
                     padding: '6px 8px',
                     borderRadius: 8,
                     border: '1.5px solid #fed7aa',
-                    background: 'var(--brand-lt2)',
+                    background: '#fff7ed',
                     fontWeight: 700,
                     fontSize: 13,
                     fontFamily: 'inherit',
                   }}
                 />
-                <span style={{ fontSize: 12, fontWeight: 700, color: sub != null ? 'var(--brand)' : l.precio > 0 ? 'var(--ok)' : 'var(--muted)' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: sub != null ? '#c2410c' : l.precio > 0 ? '#15803d' : '#a8a29e' }}>
                   {sub != null ? money(sub) : l.precio > 0 ? `Lista: ${money(l.precio)}` : 'Sin precio — ingresá manualmente'}
                 </span>
               </div>
@@ -506,8 +506,8 @@ export default function PedidoSheet({ initialPedido,
               border: '1.5px solid #fdba74',
             }}
           >
-            <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--brand-dk)' }}>Total estimado</span>
-            <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--brand)' }}>{money(total)}</span>
+            <span style={{ fontWeight: 800, fontSize: 13, color: '#9a3412' }}>Total estimado</span>
+            <span style={{ fontWeight: 900, fontSize: 18, color: '#c2410c' }}>{money(total)}</span>
           </div>
         )}
 
@@ -533,8 +533,8 @@ export default function PedidoSheet({ initialPedido,
         {msg && (
           <div
             style={{
-              background: 'var(--danger-lt)',
-              color: 'var(--danger-dk)',
+              background: '#fef2f2',
+              color: '#b91c1c',
               padding: 10,
               borderRadius: 10,
               fontSize: 12,

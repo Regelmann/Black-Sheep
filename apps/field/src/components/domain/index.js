@@ -1,6 +1,0 @@
-export { ZoneTabs } from './ZoneTabs.jsx'
-export { SyncBanner } from './SyncBanner.jsx'
-export { GoalCard } from './GoalCard.jsx'
-export { ClientActionBar } from './ClientActionBar.jsx'
-export { BuyerSuggestions } from './BuyerSuggestions.jsx'
-export { VisitCheckIn } from './VisitCheckIn.jsx'

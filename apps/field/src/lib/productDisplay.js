@@ -3,6 +3,15 @@
  * Multi-tenant: no asume industria; solo normaliza lo que venga en stock/catálogo.
  */
 
+/** true si parece nombre de producto real (no solo código SKU) */
+export function esNombreProducto(name) {
+  const s = String(name || '').trim()
+  if (s.length < 3) return false
+  if (/^\d{4,}$/.test(s)) return false
+  if (/^[0-9A-Z_-]{6,}$/.test(s) && !/[a-z]/.test(s) && s.length < 14) return false
+  return /[a-zA-ZáéíóúñÁÉÍÓÚÑ]{3,}/.test(s)
+}
+
 export function looksLikeSkuOnly(name, sku) {
   const n = String(name || '').trim()
   const s = String(sku || '').trim()

@@ -213,21 +213,21 @@ export function etiquetaEstadoPedido(estado, fuente) {
   } catch (_) {}
   const e = String(estado || '').toLowerCase().trim()
   const map = {
-    borrador: { label: 'Borrador', color: 'var(--ink-3)' },
-    recibido: { label: 'Recibido', color: 'var(--brand)' },
-    confirmado: { label: 'Confirmado', color: 'var(--info-dk3)' },
-    preparado: { label: 'Preparado', color: 'var(--purple)' },
-    enviado: { label: 'Enviado', color: 'var(--teal)' },
-    entregado: { label: 'Entregado', color: 'var(--ok)' },
-    cancelado: { label: 'Cancelado', color: 'var(--danger-dk)' },
-    pendiente_carga: { label: 'Recibido', color: 'var(--brand)' },
+    borrador: { label: 'Borrador', color: '#78716c' },
+    recibido: { label: 'Recibido', color: '#c2410c' },
+    confirmado: { label: 'Confirmado', color: '#0369a1' },
+    preparado: { label: 'Preparado', color: '#7c3aed' },
+    enviado: { label: 'Enviado', color: '#0f766e' },
+    entregado: { label: 'Entregado', color: '#15803d' },
+    cancelado: { label: 'Cancelado', color: '#b91c1c' },
+    pendiente_carga: { label: 'Recibido', color: '#c2410c' },
   }
   if (!e && fuente === 'catalogo_publico') return map.recibido
   if (map[e]) return map[e]
   // aliases
   if (e === 'enviado_bodega') return map.enviado
   if (e === 'cargado' || e === 'ok') return map.entregado
-  return { label: e || 'Borrador', color: 'var(--muted)' }
+  return { label: e || 'Borrador', color: '#a8a29e' }
 }
 
 export function precioUnitarioDesdeSku(s) {

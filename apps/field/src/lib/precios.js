@@ -192,13 +192,13 @@ export function resolverPrecioCliente(stockItem, cliente, opts = {}) {
 export function estiloOrigenPrecio(origen) {
   switch (origen) {
     case 'negociado':
-      return { bg: 'var(--brand-lt2)', color: 'var(--brand)', border: 'var(--warn-lt5)' }
+      return { bg: '#fff7ed', color: '#c2410c', border: '#fdba74' }
     case 'historico':
-      return { bg: 'var(--ok-lt)', color: 'var(--ok-dk2)', border: 'var(--ok-lt4)' }
+      return { bg: '#ecfdf5', color: '#047857', border: '#a7f3d0' }
     case 'lista':
-      return { bg: 'var(--info-lt)', color: 'var(--info-dk)', border: 'var(--info-lt3)' }
+      return { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' }
     default:
-      return { bg: 'var(--line)', color: 'var(--ink-3)', border: 'var(--line-3)' }
+      return { bg: '#f5f5f4', color: '#78716c', border: '#e7e5e4' }
   }
 }
 

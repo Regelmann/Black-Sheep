@@ -12,7 +12,7 @@ export function pctNum(x) {
 
 export function pctBar(pct) {
   const p = Math.min(Math.max(pct, 0), 200)
-  const color = pct >= 100 ? 'var(--ok-mid)' : pct >= 80 ? 'var(--info)' : pct >= 50 ? 'var(--warn)' : 'var(--danger)'
+  const color = pct >= 100 ? '#16a34a' : pct >= 80 ? '#2563eb' : pct >= 50 ? '#f59e0b' : '#ef4444'
   return { width: `${Math.min(p, 100)}%`, background: color }
 }
 
@@ -43,4 +43,12 @@ export function mesLabel(m) {
   const nombres = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
   const mi = Number(mo)
   return nombres[mi] ? `${nombres[mi]} ${String(y).slice(2)}` : s.slice(0, 7)
+}
+
+/** Acepta fracción (0.76) o porcentaje (76). Devuelve 0–100. */
+export function pctAvanceFoco(v) {
+  const n = Number(v)
+  if (!Number.isFinite(n) || n < 0) return 0
+  if (n > 0 && n <= 1.5) return Math.round(n * 1000) / 10 // 0.7619 → 76.2
+  return Math.min(999, Math.round(n * 10) / 10)
 }

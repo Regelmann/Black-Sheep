@@ -85,17 +85,17 @@ export default function Login() {
             boxShadow: '0 0 40px rgba(57,255,20,0.25)',
           }}
         />
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', color: 'var(--bg-raised)' }}>
-          Black Sheep <span style={{ color: 'var(--lime)' }}>Field</span>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', color: '#fafafa' }}>
+          Black Sheep <span style={{ color: '#a3e635' }}>Field</span>
         </h1>
-        <p style={{ margin: '8px 0 0', color: 'var(--neutral-3)', fontSize: 14, fontWeight: 500 }}>
+        <p style={{ margin: '8px 0 0', color: '#a1a1aa', fontSize: 14, fontWeight: 500 }}>
           Una plataforma · muchas empresas
         </p>
       </div>
 
       <div
         style={{
-          background: 'var(--bs-dark-2)',
+          background: '#141414',
           borderRadius: 20,
           padding: '22px 18px',
           border: '1px solid #27272a',
@@ -108,7 +108,7 @@ export default function Login() {
         <form onSubmit={onSubmit}>
           {tenants.length > 1 && (
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--neutral-3)', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#a1a1aa', marginBottom: 6 }}>
                 Empresa
               </label>
               <select
@@ -120,8 +120,8 @@ export default function Login() {
                   padding: '12px 14px',
                   borderRadius: 12,
                   border: '1px solid #3f3f46',
-                  background: 'var(--bs-dark-3)',
-                  color: 'var(--bg-raised)',
+                  background: '#0a0a0a',
+                  color: '#fafafa',
                   fontSize: 15,
                   fontWeight: 600,
                 }}
@@ -136,7 +136,7 @@ export default function Login() {
           )}
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--neutral-3)', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#a1a1aa', marginBottom: 6 }}>
               Correo
             </label>
             <input
@@ -155,8 +155,8 @@ export default function Login() {
                 padding: '13px 14px',
                 border: '1.5px solid #3f3f46',
                 borderRadius: 12,
-                background: 'var(--bs-dark-3)',
-                color: 'var(--bg-raised)',
+                background: '#0a0a0a',
+                color: '#fafafa',
                 fontSize: 15,
                 boxSizing: 'border-box',
               }}
@@ -164,7 +164,7 @@ export default function Login() {
           </div>
 
           <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--neutral-3)', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#a1a1aa', marginBottom: 6 }}>
               Contraseña
             </label>
             <input
@@ -180,8 +180,8 @@ export default function Login() {
                 padding: '13px 14px',
                 border: '1.5px solid #3f3f46',
                 borderRadius: 12,
-                background: 'var(--bs-dark-3)',
-                color: 'var(--bg-raised)',
+                background: '#0a0a0a',
+                color: '#fafafa',
                 fontSize: 15,
                 boxSizing: 'border-box',
               }}
@@ -195,7 +195,7 @@ export default function Login() {
                 padding: '10px 12px',
                 borderRadius: 10,
                 background: 'rgba(239,68,68,0.12)',
-                color: 'var(--danger-lt4)',
+                color: '#fca5a5',
                 fontSize: 13,
                 fontWeight: 600,
               }}
@@ -212,8 +212,8 @@ export default function Login() {
               minHeight: 52,
               border: 'none',
               borderRadius: 12,
-              background: 'var(--lime)',
-              color: 'var(--bs-dark-3)',
+              background: '#a3e635',
+              color: '#0a0a0a',
               fontWeight: 900,
               fontSize: 15,
               cursor: loading ? 'wait' : 'pointer',
@@ -224,10 +224,10 @@ export default function Login() {
           </button>
         </form>
 
-        <p style={{ margin: '16px 0 0', fontSize: 12, color: 'var(--neutral)', lineHeight: 1.45, textAlign: 'center' }}>
+        <p style={{ margin: '16px 0 0', fontSize: 12, color: '#71717a', lineHeight: 1.45, textAlign: 'center' }}>
           {active ? (
             <>
-              Conectado a tenant <strong style={{ color: 'var(--neutral-4)' }}>{active.name}</strong>
+              Conectado a tenant <strong style={{ color: '#e4e4e7' }}>{active.name}</strong>
             </>
           ) : (
             'Seleccioná tu empresa o usá el correo corporativo'
@@ -235,7 +235,7 @@ export default function Login() {
         </p>
       </div>
 
-      <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--neutral-2)' }}>
+      <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#52525b' }}>
         black-sheep.cl · control central de empresas
       </p>
     </div>
