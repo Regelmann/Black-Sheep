@@ -445,9 +445,9 @@ export default function Stock() {
                           className="bs-stock-buyer-row"
                           onClick={() => nav('/visita/' + encodeURIComponent(b.cliente_key))}
                         >
-                          <span className="name">{b.nombre}</span>
+                          <span className="name">{b.nombre || b.cliente_key}</span>
                           <span className="meta">
-                            {b.dias > 0 ? `${b.dias}d` : '—'}
+                            {b.dias > 0 ? `${b.dias}d` : 'hoy'}
                             {b.enReposicion ? ' · reponer' : ''}
                           </span>
                         </button>

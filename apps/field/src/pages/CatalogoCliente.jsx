@@ -45,7 +45,7 @@ export default function CatalogoCliente() {
   const [nota, setNota] = useState('')
   const [ficha, setFicha] = useState(null)
   const [pedidoId, setPedidoId] = useState(null)
-  const [view, setView] = useState('grid') // grid | list
+  const [view, setView] = useState('list') // list-first: más legible en móvil
 
   useEffect(() => {
     let dead = false

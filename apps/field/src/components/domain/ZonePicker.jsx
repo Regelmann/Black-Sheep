@@ -1,7 +1,7 @@
 /**
- * ZonePicker — el color del nombre de zona indica selección.
- * Sin pastilla blanca/naranja a la derecha (pedido UX).
- * Tap en la zona abre sheet para cambiar.
+ * ZonePicker — saludo + zona en una sola línea compacta.
+ * Sin barra blanca. Tap en zona → bottom sheet.
+ * Inspirado en field apps 2026: glanceable, thumb-friendly, zero chrome.
  */
 import { useEffect, useState, useCallback } from 'react'
 import { getZoneTheme, applyZoneCssVars } from '../../lib/theme/zones'
@@ -27,35 +27,36 @@ export function ZonePicker({ nombre, zonaActiva, zonas = [], onChange, subtitulo
   }, [zonaActiva, onChange])
 
   const multi = (zonas || []).length > 1
-  const saludo = nombre ? `Hola, ${String(nombre).split(' ')[0]}` : 'Hola'
+  const first = nombre ? String(nombre).split(' ')[0] : ''
   const zonaLabel = subtitulo || theme.label || zonaActiva || '—'
 
   return (
     <>
-      <div className="bs-greet bs-greet--clean">
-        <div className="bs-greet-text">
-          <p className="bs-greet-hello">{saludo}</p>
-          {multi ? (
-            <button
-              type="button"
-              className="bs-greet-zone-btn"
-              onClick={() => setOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={open}
-              aria-label={`Zona ${zonaLabel}. Cambiar`}
-            >
-              <span className="bs-greet-zone-dot" aria-hidden="true" />
-              <span className="bs-greet-zone-name">{zonaLabel}</span>
-              <span className="bs-greet-zone-caret" aria-hidden="true">▾</span>
-            </button>
-          ) : (
-            <p className="bs-greet-zone">
-              <span className="bs-greet-zone-dot" aria-hidden="true" />
-              {zonaLabel}
-            </p>
-          )}
+      <header className="bs-topbar">
+        <div className="bs-topbar-inner">
+          <div className="bs-topbar-left">
+            <span className="bs-topbar-hello">{first ? `Hola, ${first}` : 'Hola'}</span>
+            {multi ? (
+              <button
+                type="button"
+                className="bs-topbar-zone"
+                onClick={() => setOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={open}
+              >
+                <i className="bs-topbar-dot" aria-hidden="true" />
+                <span>{zonaLabel}</span>
+                <span className="bs-topbar-caret" aria-hidden="true">▾</span>
+              </button>
+            ) : (
+              <span className="bs-topbar-zone is-static">
+                <i className="bs-topbar-dot" aria-hidden="true" />
+                {zonaLabel}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      </header>
 
       {open && multi && (
         <div
@@ -67,7 +68,7 @@ export function ZonePicker({ nombre, zonaActiva, zonas = [], onChange, subtitulo
         >
           <div className="bs-zone-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="bs-zone-sheet-handle" />
-            <p className="bs-zone-sheet-title">Cambiar zona</p>
+            <p className="bs-zone-sheet-title">Tu zona</p>
             {(zonas || []).map((z) => {
               const t = getZoneTheme(z)
               const active = z === zonaActiva
@@ -76,7 +77,10 @@ export function ZonePicker({ nombre, zonaActiva, zonas = [], onChange, subtitulo
                   key={z}
                   type="button"
                   className={'bs-zone-option' + (active ? ' is-active' : '')}
-                  style={{ '--zone-opt': t.chip || t.color || '#c2410c', '--zone-opt-soft': t.soft || '#fff7ed' }}
+                  style={{
+                    '--zone-opt': t.chip || t.color || '#c2410c',
+                    '--zone-opt-soft': t.soft || '#fff7ed',
+                  }}
                   onClick={() => pick(z)}
                   aria-current={active}
                 >
