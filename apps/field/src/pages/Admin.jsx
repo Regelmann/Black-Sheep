@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { PageShell } from '../shells/PageShell.jsx'
+import { FilterBar } from '../domain/FilterBar.jsx'
 import { ZONAS_COMUNAS, normComuna, zonaFromComuna } from '../lib/zonas'
 
 const ZONAS = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
@@ -36,25 +38,19 @@ export default function Admin() {
   }
 
   return (
-    <div className="page admin-page" style={{ paddingBottom: 100 }}>
-      <div className="bs-page-hero" style={{ marginBottom: 12 }}>
-        <div className="bs-eyebrow">Administración</div>
-        <h1>Control de la app</h1>
-        <p className="sub">Zonas, clientes, precios, catálogo, metas y focos</p>
-      </div>
-
-      <div className="filter-row" style={{ marginBottom: 12 }}>
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            className={'filter-btn' + (tab === t.id ? ' active' : '')}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <PageShell
+      eyebrow="Administración"
+      titulo="Control de la app"
+      subtitulo="Zonas, clientes, precios, catálogo, metas y focos"
+      filtros={
+        <FilterBar
+          ariaLabel="Sección de administración"
+          value={tab}
+          onChange={setTab}
+          options={TABS.map(t => ({ value: t.id, label: t.label }))}
+        />
+      }
+    >
 
       {msg && (
         <div style={bannerOk}>{msg}</div>
@@ -70,7 +66,7 @@ export default function Admin() {
       {tab === 'metas' && <TabMetas onFlash={flash} />}
       {tab === 'focos' && <TabFocos onFlash={flash} />}
       {tab === 'usuarios' && <TabUsuarios onFlash={flash} />}
-    </div>
+    </PageShell>
   )
 }
 

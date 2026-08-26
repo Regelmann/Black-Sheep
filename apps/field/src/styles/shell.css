@@ -1,0 +1,305 @@
+/* ============================================================
+   APP SHELL — la estructura de página. Una sola, para todas.
+   Se carga DESPUÉS de todo: gana sobre las capas heredadas.
+   ============================================================ */
+
+.bs-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  /* La barra inferior nunca tapa contenido. */
+  padding-bottom: calc(var(--nav-h, 68px) + 16px + env(safe-area-inset-bottom, 0px));
+}
+.bs-shell.has-cta {
+  padding-bottom: calc(var(--nav-h, 68px) + 78px + env(safe-area-inset-bottom, 0px));
+}
+
+/* --- 1 · HERO -------------------------------------------------- */
+.bs-shell-hero {
+  padding: 20px 16px 18px;
+  background: linear-gradient(162deg, #1c1917 0%, #292524 58%, #3a2f28 100%);
+  color: #fff;
+}
+.bs-shell-eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--zone-active, #fdba74);
+}
+.bs-shell-title {
+  margin: 0;
+  font-size: clamp(22px, 6.4vw, 27px);
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+  color: #fff;                       /* explícito: heredar daba negro sobre negro */
+}
+.bs-shell-sub {
+  margin: 6px 0 0;
+  font-size: 13px; font-weight: 500; line-height: 1.4;
+  color: rgba(255,255,255,.66);
+}
+.bs-shell-stamp {
+  margin: 8px 0 0;
+  font-size: 11.5px; font-weight: 700;
+  color: var(--zone-active, #fdba74);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 2 · STATS ------------------------------------------------- */
+.bs-shell-stats { padding: 14px 16px 0; }
+.bs-shell-stats .bs-statgrid { padding: 0; }
+
+/* --- 3 · CONTROLES --------------------------------------------- */
+/* Sticky: el vendedor filtra sin volver a subir. */
+.bs-shell-controls {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 10px;
+  background: var(--surface, #f7f4ef);
+  border-bottom: 1px solid transparent;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.bs-shell-controls:not(:first-child) { margin-top: 4px; }
+/* Al despegarse del tope se marca el borde: se nota que flota. */
+@supports (animation-timeline: scroll()) {
+  .bs-shell-controls {
+    animation: bs-stuck linear both;
+    animation-timeline: scroll();
+    animation-range: 0 80px;
+  }
+  @keyframes bs-stuck {
+    to {
+      border-bottom-color: var(--line, #ebe5dc);
+      box-shadow: 0 4px 14px rgba(28,25,23,.06);
+    }
+  }
+}
+.bs-shell-controls .bs-search   { margin: 0; }
+.bs-shell-controls .bs-filterbar { margin: 0; }
+
+/* --- 4 · CONTENIDO --------------------------------------------- */
+.bs-shell-body {
+  flex: 1 1 auto;
+  padding: 12px 16px 0;
+  min-width: 0;
+}
+/* Las listas van de borde a borde; el resto respeta el margen. */
+.bs-shell-body > .bs-list-flush {
+  margin-left: -16px;
+  margin-right: -16px;
+}
+
+/* --- 5 · CTA FIJA ---------------------------------------------- */
+.bs-shell-cta-wrap {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(var(--nav-h, 68px) + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  padding: 10px 16px 12px;
+  background: linear-gradient(to top,
+    var(--surface, #f7f4ef) 62%,
+    rgba(247,244,239,0) 100%);
+}
+.bs-shell-cta {
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--brand, #c2410c);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15.5px; font-weight: 800;
+  box-shadow: 0 6px 20px rgba(194,65,12,.28);
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.bs-shell-cta:active { transform: scale(.985); }
+.bs-shell-cta:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+/* ------------------------------------------------------------
+   NEUTRALIZAR LOS LAYOUTS VIEJOS
+   Las páginas traen contenedores heredados con su propio padding.
+   Dentro del shell no deben aplicarlo: si no, el margen se duplica
+   y cada pestaña queda distinta.
+   ------------------------------------------------------------ */
+.bs-shell .wrap,
+.bs-shell .bs-page-body,
+.bs-shell .container {
+  padding-left: 0;
+  padding-right: 0;
+  max-width: none;
+  margin: 0;
+}
+/* El hero viejo de cada página queda anulado: el del shell manda. */
+.bs-shell .bs-page-hero { display: none; }
+
+/* ============================================================
+   EDITOR DE CATÁLOGO
+   Los inputs no tenían estilo propio: el navegador los pintaba con
+   su apariencia nativa (borde gris fino, checkbox azul del sistema).
+   De ahí que "pareciera un sistema antiguo".
+   ============================================================ */
+
+.kf-offer-prices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.kf-offer-prices label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+  min-width: 0;
+}
+.kf-offer-prices input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1.5px solid var(--line-2, #d6cfc4);
+  border-radius: 12px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 16px;                  /* 16 reales: sin zoom en iOS */
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink, #1c1917);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.kf-offer-prices input:focus {
+  outline: none;
+  border-color: var(--brand, #c2410c);
+  box-shadow: 0 0 0 3px rgba(194,65,12,.14);
+}
+.kf-offer-prices input::placeholder {
+  font-weight: 500;
+  color: var(--muted, #a8a29e);
+}
+/* Las flechitas del number no sirven para plata y roban ancho */
+.kf-offer-prices input::-webkit-outer-spin-button,
+.kf-offer-prices input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+.kf-offer-prices input[type=number] { -moz-appearance: textfield; }
+
+/* El precio del cliente es el que importa: se distingue */
+.kf-offer-prices label:last-child input {
+  border-color: var(--ok-lt4, #a7f3d0);
+  background: #f8fffb;
+}
+.kf-offer-prices label:last-child input:focus {
+  border-color: var(--ok-mid, #16a34a);
+  box-shadow: 0 0 0 3px rgba(22,163,74,.14);
+}
+
+/* --- Flags como interruptores, no checkboxes del sistema --- */
+.kf-offer-flags {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.kf-offer-flags label {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1.5px solid var(--line-2, #d6cfc4);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-3, #78716c);
+  cursor: pointer;
+  user-select: none;
+  transition: all 140ms ease;
+}
+.kf-offer-flags label:has(input:checked) {
+  border-color: var(--brand, #c2410c);
+  background: var(--brand-lt, #fff4eb);
+  color: var(--brand, #c2410c);
+}
+.kf-offer-flags input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px; height: 18px;
+  margin: 0;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--line-3, #c7bfb2);
+  border-radius: 5px;
+  background: #fff;
+  position: relative;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+.kf-offer-flags input[type="checkbox"]:checked {
+  background: var(--brand, #c2410c);
+  border-color: var(--brand, #c2410c);
+}
+.kf-offer-flags input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px; top: 1px;
+  width: 5px; height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.kf-offer-flags input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--brand, #c2410c);
+  outline-offset: 2px;
+}
+
+/* --- La tarjeta del producto --- */
+.kf-offer-item {
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line, #ebe5dc);
+  border-radius: 16px;
+  background: #fff;
+}
+.kf-offer-remove {
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  border: 0; border-radius: 50%;
+  background: var(--line, #ebe5dc);
+  color: var(--ink-3, #78716c);
+  font-size: 17px; line-height: 1;
+  cursor: pointer;
+}
+.kf-offer-remove:active { transform: scale(.92); }
+
+/* --- KfProgress (design system) --- */
+.kf-progress-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 5px;
+}
+.kf-progress-label { font-size: 12px; font-weight: 800; }
+.kf-progress-value {
+  font-size: 13px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink, #1c1917);
+}
+.kf-progress-track {
+  height: 7px; border-radius: 999px;
+  background: var(--line, #ebe5dc); overflow: hidden;
+}
+.kf-progress-track i {
+  display: block; height: 100%; border-radius: 999px;
+  transition: width 420ms cubic-bezier(.32,.72,0,1);
+}
+@media (prefers-reduced-motion: reduce) { .kf-progress-track i { transition: none; } }

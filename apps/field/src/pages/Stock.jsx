@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { pick, auditar, columnasReales, CARTERA } from '../lib/columns'
 import { safeAll, safeSelect } from '../lib/query'
-import { DataError } from '../components/DataState.jsx'
+import { DataError } from '../ui/DataState.jsx'
+import { PageShell } from '../shells/PageShell.jsx'
 import { DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 
@@ -259,17 +260,17 @@ export default function Stock() {
     return [...rows].sort(sorters[orden] || sorters.foco)
   }, [stock, q, filtro, orden])
 
-  if (loading) return <div className="bs-spinner">Cargando stock…</div>
-
   return (
-    <div className="bs-page">
-      <div className="bs-page-hero">
-        <div className="bs-eyebrow">Inventario</div>
-        <h1>Stock operativo</h1>
-        <p className="sub">{stock.length} SKU · qué empujar y qué no vender agresivo</p>
-      </div>
-
-      <div className="wrap bs-page-body">
+    <PageShell
+      eyebrow="Inventario"
+      titulo="Stock operativo"
+      subtitulo={`${stock.length} SKU · qué empujar y qué no vender agresivo`}
+      sello={dataAsOf ? `Datos al ${String(dataAsOf).slice(0, 10)}` : null}
+      loading={loading}
+      error={errStock}
+      onRetry={cargar}
+    >
+      <div>
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${stock.length} SKU`} />}
 
         <div className="bs-hoy-kpis" style={{ marginBottom: 12 }}>
@@ -493,6 +494,6 @@ export default function Stock() {
           <div style={{ textAlign: 'center', padding: 24, color: 'var(--ink-3)' }}>Sin productos con este filtro.</div>
         )}
       </div>
-    </div>
+    </PageShell>
   )
 }

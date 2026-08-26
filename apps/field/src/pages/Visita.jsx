@@ -5,9 +5,9 @@ import { safeSelect } from '../lib/query'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
 import { skusAReponer } from '../lib/coach'
 import { decideClient, calcCommercialValue } from '../lib/decisionEngine'
-import { DecisionCard } from '../components/DecisionCard.jsx'
-import PedidoSheet from '../components/PedidoSheet.jsx'
-import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
+import { DecisionCard } from '../domain/DecisionCard.jsx'
+import PedidoSheet from '../domain/PedidoSheet.jsx'
+import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline'
 import { esNombreProducto } from '../lib/productDisplay'
@@ -127,19 +127,42 @@ export default function Visita({ session }) {
     })
   }
 
+  /**
+   * Busca el cliente tolerando cambios de esquema.
+   *
+   * ANTES: `select(CARTERA_SEL)` con una lista rígida. Si UNA columna
+   * no existía, PostgREST rechazaba la consulta entera y la función
+   * devolvía null — indistinguible de "el cliente no existe".
+   * Resultado en pantalla: "No se pudo abrir la visita".
+   *
+   * Devuelve { cliente, error } para que quien llama pueda decir la
+   * verdad: no es lo mismo "no existe" que "no se pudo consultar".
+   */
   async function buscarCarteraPorKey(key) {
-    if (!key) return null
+    if (!key) return { cliente: null, error: null }
     const k = String(key).trim()
-    // eq exacto
-    let { data, error } = await supabase.from('cartera').select(CARTERA_SEL).eq('cliente_key', k).limit(1)
-    if (!error && data?.[0]) return data[0]
-    // sin ceros a la izquierda / numérico
+    const claves = [k]
     const k2 = k.replace(/^0+/, '')
-    if (k2 && k2 !== k) {
-      const r2 = await supabase.from('cartera').select(CARTERA_SEL).eq('cliente_key', k2).limit(1)
-      if (r2.data?.[0]) return r2.data[0]
+    if (k2 && k2 !== k) claves.push(k2)
+
+    let ultimoError = null
+
+    for (const clave of claves) {
+      // 1) lista específica  2) '*' si la vista cambió
+      for (const cols of [CARTERA_SEL, '*']) {
+        const r = await safeSelect(
+          supabase.from('cartera').select(cols).eq('cliente_key', clave).limit(1),
+          { label: `cartera_key[${cols === '*' ? 'todo' : 'lista'}]` }
+        )
+        if (r.ok) {
+          if (r.rows[0]) return { cliente: r.rows[0], error: null }
+          break   // consultó bien y no está: probar la otra clave
+        }
+        ultimoError = r.error
+        if (r.error?.kind !== 'schema') break   // RLS/red: no insistir
+      }
     }
-    return null
+    return { cliente: null, error: ultimoError }
   }
 
   async function cargar() {
@@ -176,7 +199,7 @@ export default function Visita({ session }) {
         if (ve) console.warn('Visita.visitas', ve.message)
         if (v) {
           let cli = null
-          if (v.cliente_key) cli = await buscarCarteraPorKey(v.cliente_key)
+          if (v.cliente_key) cli = (await buscarCarteraPorKey(v.cliente_key)).cliente
           if (!cli && v.nombre_local) {
             const rC = await safeSelect(
               supabase.from('cartera').select(CARTERA_SEL)
@@ -230,7 +253,8 @@ export default function Visita({ session }) {
       }
 
       // 2) cliente_key desde Hoy / Mapa / deep link
-      let cli = await buscarCarteraPorKey(decodedId)
+      const rCartera = await buscarCarteraPorKey(decodedId)
+      let cli = rCartera.cliente
 
       // 3) prospecto
       if (!cli) {
@@ -269,7 +293,15 @@ export default function Visita({ session }) {
       } else {
         setVisita(null)
         setCliente(null)
-        setMsg('No se encontró el cliente. Volvé al mapa o a Hoy.')
+        // Decir la VERDAD: "no existe" y "no se pudo consultar" son
+        // cosas distintas y se arreglan distinto.
+        if (rCartera.error?.kind === 'permission') {
+          setMsg('No tenés acceso a este cliente. Puede estar asignado a otra zona.')
+        } else if (rCartera.error) {
+          setMsg(`No se pudo consultar el cliente: ${rCartera.error.user} Reintentá.`)
+        } else {
+          setMsg('No se encontró el cliente. Volvé al mapa o a Hoy.')
+        }
       }
     } catch (e) {
       console.error('Visita.cargar', e)

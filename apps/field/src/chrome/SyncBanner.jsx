@@ -5,7 +5,7 @@
  * Preferir: <SyncBanner handlers={syncHandlers} />
  * para que Reintentar ejecute el motor real.
  */
-import { useSyncQueue } from '../../hooks/useSyncQueue'
+import { useSyncQueue } from '../hooks/useSyncQueue'
 
 export function SyncBanner({
   pendingCount: pendingProp,

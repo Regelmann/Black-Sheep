@@ -568,3 +568,117 @@ input, select, textarea { font-size: max(16px, 1em); }
   gap: var(--s2);
   padding: var(--s4);
 }
+
+/* ============================================================
+   13 · CORRECCIONES V9.9.7 — sobre lo que se vio en el teléfono
+   ============================================================ */
+
+/* --- 13.1 · Header: el título se cortaba ("Hola, Se…")
+   Causa: título y segmented en la misma fila peleando por el ancho.
+   Fix: el saludo pasa a ser secundario y el segmented manda.
+   El nombre del vendedor no necesita 28px: lo que importa es la zona. */
+.bs-appheader-inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+}
+.bs-appheader-main { min-width: 0; }
+
+.bs-appheader-title {
+  font-size: var(--t-lg);        /* 17px, no 28: es un saludo */
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  margin: 0;
+}
+.bs-appheader.is-compact .bs-appheader-title { font-size: 15px; }
+
+.bs-appheader-sub {
+  margin: 1px 0 0;
+  font-size: var(--t-xs);
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--zone-active, var(--brand, #c2410c));
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bs-appheader-eyebrow { display: none; }   /* redundante con el subtítulo */
+
+/* --- 13.2 · Segmented: "Sur" se salía del fondo
+   Causa: el contenedor no reservaba ancho; el último botón desbordaba. */
+.bs-appheader-zone { min-width: 0; }
+.bs-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;        /* las tres del mismo ancho */
+  gap: 0;
+  padding: 3px;
+  max-width: 62vw;
+}
+.bs-seg-btn {
+  padding: 0 var(--s2);
+  font-size: 12px;
+  min-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- 13.3 · Barra inferior cortada
+   Se veía "nteStock Más": los ítems desbordaban a la izquierda.
+   Causa: ancho fijo mayor que la pantalla. */
+.bs-tabbar,
+.bs-bottomnav,
+nav[class*="tabbar"],
+nav[class*="bottom"] {
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - var(--s5));
+  max-width: 520px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  box-sizing: border-box;
+  padding-left: 0;
+  padding-right: 0;
+}
+.bs-tabbar > *,
+.bs-bottomnav > * {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 2px;
+  overflow: hidden;
+}
+.bs-tabbar > * span,
+.bs-bottomnav > * span {
+  font-size: 10.5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- 13.4 · Gerencia: botón activo ilegible
+   "Zonas / canales" salía texto oscuro sobre fondo oscuro. */
+.bs-tabs-inline button[aria-pressed="true"],
+.bs-tabs-inline .is-active,
+button.bs-tab.is-active {
+  background: var(--ink, #1c1917);
+  color: #fff;
+  border-color: var(--ink, #1c1917);
+}
+
+/* --- 13.5 · Gráfico de tendencia sin altura
+   Sólo se veía la barra de May: el contenedor colapsó a 0. */
+.bs-trend,
+.bs-trend-chart,
+[class*="tendencia"] .bars {
+  min-height: 140px;
+  align-items: flex-end;
+}
+.bs-trend-bar { min-height: 4px; }

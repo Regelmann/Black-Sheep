@@ -7,7 +7,7 @@ import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '
 import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach'
 import { formatDist, formatEta } from '../lib/geo'
 import { money } from '../components.jsx'
-import PedidoSheet from '../components/PedidoSheet.jsx'
+import PedidoSheet from '../domain/PedidoSheet.jsx'
 
 /** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
 /** Alineado a ZONAS_COMUNAS.csv de producción (fuente de verdad). */
@@ -37,7 +37,7 @@ function normComuna(s) {
     .trim()
 }
 
-import MisPedidosHoy from '../components/MisPedidosHoy.jsx'
+import MisPedidosHoy from '../domain/MisPedidosHoy.jsx'
 
 function saludoHora() {
   const h = new Date().getHours()

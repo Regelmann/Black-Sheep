@@ -1,8 +1,8 @@
 /**
  * GoalCard — meta de foco (pollo, etc.) con calcGoal.
  */
-import { calcGoal } from '../../lib/calculations/goal'
-import { KfProgress } from '../ui/index.jsx'
+import { calcGoal } from '../lib/calculations/goal'
+import { KfProgress } from '../ui/KfProgress.jsx'
 
 export function GoalCard({
   title,

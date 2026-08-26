@@ -21,7 +21,7 @@
  * · position: sticky, no fixed: no tapa contenido al final de la lista.
  */
 import { useEffect, useRef, useState } from 'react'
-import { ZoneSegmented } from './ZoneSegmented.jsx'
+import { ZoneSegmented } from '../domain/ZoneSegmented.jsx'
 
 export function AppHeader({
   eyebrow,
@@ -55,8 +55,6 @@ export function AppHeader({
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const saludo = nombre ? String(nombre).split(' ')[0] : null
-
   return (
     <header
       className={
@@ -70,9 +68,6 @@ export function AppHeader({
           {eyebrow && <p className="bs-appheader-eyebrow">{eyebrow}</p>}
           <h1 className="bs-appheader-title">{titulo}</h1>
           {subtitulo && <p className="bs-appheader-sub">{subtitulo}</p>}
-          {saludo && (
-            <p className="bs-appheader-hola">Hola, {saludo}</p>
-          )}
         </div>
 
         {zonas.length > 1 && (

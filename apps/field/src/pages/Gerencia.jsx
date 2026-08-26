@@ -1,9 +1,9 @@
-import { ZoneChip } from '../components/domain/ZonePicker.jsx'
+import { ZoneChip } from '../domain/ZonePicker.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
-import { DataError } from '../components/DataState.jsx'
+import { DataError } from '../ui/DataState.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { parseSkuDetalle, clpEfectivo } from '../lib/coach.js'
 import { predict7Days } from '../lib/predictor.js'
@@ -1139,11 +1139,14 @@ export default function Gerencia({ esGerente }) {
         {pred7?.resumen && <p className="bs-pulse-resumen">{pred7.resumen}</p>}
       </section>
 
-      <div className="bs-page-hero">
-        <div className="bs-hero-eyebrow">Vista gerencial</div>
-        <h1>Resultado del mes</h1>
-        <p className="bs-hero-sub">Venta total · terreno · canales</p>
-      </div>
+      {/* Hero del shell: misma estructura que el resto de las pestañas.
+          Antes Gerencia tenía su propio hero con otro padding y otro
+          tamaño de título, y por eso "se veía distinta". */}
+      <header className="bs-shell-hero" style={{ margin: '0 -16px' }}>
+        <p className="bs-shell-eyebrow">Vista gerencial</p>
+        <h1 className="bs-shell-title">Resultado del mes</h1>
+        <p className="bs-shell-sub">Venta total · terreno · canales</p>
+      </header>
       <div className="wrap">
 
         {fallos.length > 0 && (

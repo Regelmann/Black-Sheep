@@ -6,12 +6,12 @@ import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics'
 import { buildRecomendacionesHoy, resumenDia } from '../lib/recomendaciones'
 import { listarPedidosHoy } from '../lib/pedido'
-import HistorialPedidos from '../components/HistorialPedidos.jsx'
-import OrderInbox from '../components/OrderInbox.jsx'
-import PedidoSheet from '../components/PedidoSheet.jsx'
+import HistorialPedidos from '../domain/HistorialPedidos.jsx'
+import OrderInbox from '../domain/OrderInbox.jsx'
+import PedidoSheet from '../domain/PedidoSheet.jsx'
 import { syncHandlers } from '../lib/syncHandlers.js'
-import { FocosMes } from '../components/FocosMes.jsx'
-import { VentaHero } from '../components/VentaHero.jsx'
+import { FocosMes } from '../domain/FocosMes.jsx'
+import { VentaHero } from '../domain/VentaHero.jsx'
 import {
   loadActionQueue,
   flushActionQueue,
@@ -20,8 +20,8 @@ import {
 } from '../lib/offline'
 import { skusAReponer } from '../lib/coach'
 import { buildDecisionFeed, groupByAttention, daySummary } from '../lib/decisionEngine'
-import { DecisionCard, DecisionSection } from '../components/DecisionCard.jsx'
-import { ZoneChip } from '../components/domain/ZonePicker.jsx'
+import { DecisionCard, DecisionSection } from '../domain/DecisionCard.jsx'
+import { ZoneChip } from '../domain/ZonePicker.jsx'
 import { trackDecision } from '../lib/memory'
 import { predict7Days } from '../lib/predictor'
 
@@ -296,16 +296,13 @@ export default function Hoy() {
         </div>
       )}
 
-      {/* HERO ÚNICO — saludo + zona + fecha. Sin barra blanca arriba. */}
-      <header className="bs-hero">
-        <div className="bs-hero-row">
-          <p className="bs-hero-kicker">Black Sheep · Field</p>
-          <ZoneChip light />
-        </div>
-        <h1 className="bs-hero-title">
-          {saludo()}, {nombreCorto}
-        </h1>
-        <p className="bs-hero-sub">
+      {/* Hero del shell: mismas clases que Cartera, Stock y Gerencia.
+          Antes esta página usaba `bs-hero` con su propio tamaño y
+          padding — de ahí que ninguna pestaña se pareciera a la otra. */}
+      <header className="bs-shell-hero">
+        <p className="bs-shell-eyebrow">Black Sheep · Field</p>
+        <h1 className="bs-shell-title">{saludo()}, {nombreCorto}</h1>
+        <p className="bs-shell-sub">
           {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'short' })}
         </p>
       </header>

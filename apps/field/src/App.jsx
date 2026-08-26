@@ -42,16 +42,16 @@ function CargandoPagina() {
   )
 }
 import { NavBar } from './components.jsx'
-import { AppShell } from './components/layout/AppShell.jsx'
+import { AppShell } from './shells/AppShell.jsx'
 // V9.0 — domain components
-import { AppHeader } from './components/domain/AppHeader.jsx'
+import { AppHeader } from './chrome/AppHeader.jsx'
 import { syncHandlers } from './lib/syncHandlers.js'
-import { SyncBanner } from './components/domain/SyncBanner.jsx'
+import { SyncBanner } from './chrome/SyncBanner.jsx'
 import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
 import { runSyncFlush } from './lib/sync/engine.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V9.9.6'
+export const BUILD_STAMP = 'v-BS-PLATFORM-V10.0-SHELL'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 export const EjecutivoCtx = createContext(null)
@@ -231,8 +231,10 @@ export default function App() {
       {/* V9.9: header ÚNICO. Antes había franja blanca + hero de página
           apilados (~180px sin una sola acción). El selector de zona es
           segmented control: 3 opciones se muestran, no se esconden. */}
+      {/* Un solo saludo. Antes se pasaba `titulo` Y `nombre`, y el
+          componente renderizaba los dos: "Hola, Se…" arriba y
+          "Hola, Sebastian" abajo, con la zona en el medio. */}
       <AppHeader
-        nombre={ejecutivo?.nombre}
         zonaActiva={zonaVista}
         zonas={esGerente ? zonasDisponibles : []}
         onZonaChange={cambiarZona}

@@ -7,7 +7,7 @@
  * no en una franja separada encima de todo.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { getZoneTheme, applyZoneCssVars } from '../../lib/theme/zones'
+import { getZoneTheme, applyZoneCssVars } from '../lib/theme/zones'
 
 const ZoneCtx = createContext(null)
 

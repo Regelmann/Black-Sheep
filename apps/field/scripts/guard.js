@@ -127,6 +127,22 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R13 · Ninguna página define su propio hero ─────────────────────
+// El App Shell existe para que las 5 pestañas compartan estructura.
+// Si una página vuelve a montar `bs-page-hero`, se rompe la coherencia
+// y vuelve el problema de "cada pestaña se ve distinta".
+{
+  const dir = path.join(SRC, 'pages')
+  if (fs.existsSync(dir)) {
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.jsx'))) {
+      const txt = fs.readFileSync(path.join(dir, f), 'utf8')
+      if (/className="bs-page-hero"/.test(txt)) {
+        avisos.push(`[R13 hero propio]  pages/${f} — usar PageShell en vez de bs-page-hero`)
+      }
+    }
+  }
+}
+
 // ── R12 · Las páginas pesadas no se importan estáticamente ─────────
 // Gerencia (2.300 líneas) y Admin (958) los abre un gerente desde una
 // oficina. Importarlos estáticos los mete en el bundle que un vendedor

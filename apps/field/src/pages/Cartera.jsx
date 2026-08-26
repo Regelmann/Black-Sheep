@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import PedidoSheet from '../components/PedidoSheet.jsx'
-import HistorialPedidos from '../components/HistorialPedidos.jsx'
-import OfertaClienteSheet from '../components/OfertaClienteSheet.jsx'
+import PedidoSheet from '../domain/PedidoSheet.jsx'
+import HistorialPedidos from '../domain/HistorialPedidos.jsx'
+import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
 import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
-import { FilterBar, SearchField, StatGrid } from '../components/FilterBar.jsx'
-import { ClientActionBar } from '../components/domain/ClientActionBar.jsx'
-import NotaModal from '../components/NotaModal.jsx'
+import { FilterBar, SearchField, StatGrid } from '../domain/FilterBar.jsx'
+import { ClientActionBar } from '../domain/ClientActionBar.jsx'
+import { PageShell } from '../shells/PageShell.jsx'
+import NotaModal from '../domain/NotaModal.jsx'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
-import { ZoneChip } from '../components/domain/ZonePicker.jsx'
+import { ZoneChip } from '../domain/ZonePicker.jsx'
 import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach'
 import {
   esActivoMes,
@@ -467,26 +468,17 @@ export default function Cartera({ session }) {
     URL.revokeObjectURL(url)
   }
 
-  if (loading) return <div className="bs-spinner">Cargando cartera…</div>
-
   return (
-    <div className="bs-page">
-      <div className="bs-page-hero">
-        <div className="bs-hero-row">
-          <div className="bs-hero-eyebrow">Clientes</div>
-          <ZoneChip light />
-        </div>
-        <h1>Mi cartera</h1>
-        <p className="bs-hero-sub">
-          {clientes.length} en zona · {nActivosMes} con venta este mes · {nNuevos} nuevos
-        </p>
-        {dataAsOf && (
-          <p style={{ fontSize: 11, color: 'rgba(253,186,116,0.9)', fontWeight: 600, marginTop: 8 }}>
-            Datos al {String(dataAsOf).slice(0, 10)}
-          </p>
-        )}
-      </div>
-
+    /* PageShell: MISMA estructura que Hoy, Stock y Gerencia.
+       Antes esta página armaba su propio hero, su padding y su scroll —
+       por eso ninguna pestaña se parecía a la otra. */
+    <PageShell
+      eyebrow="Clientes"
+      titulo="Mi cartera"
+      subtitulo={`${clientes.length} en zona · ${nActivosMes} con venta este mes · ${nNuevos} nuevos`}
+      sello={dataAsOf ? `Datos al ${String(dataAsOf).slice(0, 10)}` : null}
+      loading={loading}
+    >
       <div className="wrap">
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${clientes.length} clientes · zona activa`} />}
         <StatGrid
@@ -1232,7 +1224,7 @@ export default function Cartera({ session }) {
         />
       )}
 
-    </div>
+    </PageShell>
   )
 }
 
