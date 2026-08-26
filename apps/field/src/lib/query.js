@@ -148,3 +148,50 @@ export async function safeSelectRetry(makeBuilder, opts = {}) {
   }
   return last
 }
+
+/**
+ * selectTolerante — una consulta NUNCA muere por una columna renombrada.
+ *
+ * EL PROBLEMA QUE RESUELVE
+ * PostgREST rechaza la consulta entera si UNA columna del select no
+ * existe: devuelve 400 y cero filas, no las columnas que sí están.
+ * Como el ETL evoluciona, cada renombre podía tumbar una pantalla
+ * completa del teléfono (Stock "no pude leer tu cartera", Gerencia
+ * "no cargó stock · notas").
+ *
+ * ESTRATEGIA
+ *   1. Intento con la lista específica (rápido, poco tráfico).
+ *   2. Si falla POR ESQUEMA, reintento con `*`.
+ *   3. Los campos se leen con pick() de columns.js, que tolera alias.
+ *
+ * Sólo reintenta ante errores de esquema. Un fallo de RLS o de red
+ * no se arregla pidiendo más columnas: ahí devuelve el error real.
+ *
+ * @param {(cols: string) => PromiseLike} construir  recibe la lista de columnas
+ * @param {string} columnas  lista específica del primer intento
+ */
+export async function selectTolerante(construir, columnas, opts = {}) {
+  const { label = 'query' } = opts
+
+  const primero = await safeSelect(construir(columnas), { ...opts, label })
+  if (primero.ok) return { ...primero, degradado: false }
+
+  if (primero.error?.kind !== 'schema') return { ...primero, degradado: false }
+
+  console.warn(
+    `[data:${label}] la vista cambió; reintento con "*". ` +
+    `Revisar la lista de columnas de esta consulta.`
+  )
+
+  const segundo = await safeSelect(construir('*'), { ...opts, label: `${label}:*` })
+  if (segundo.ok) {
+    return {
+      ...segundo,
+      degradado: true,
+      avisoDegradado:
+        'Algunos datos vienen de una vista desactualizada. ' +
+        'Lo que ves es correcto, pero puede faltar algún campo.',
+    }
+  }
+  return { ...segundo, degradado: false }
+}

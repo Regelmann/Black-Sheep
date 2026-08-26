@@ -11,6 +11,7 @@ import OrderInbox from '../components/OrderInbox.jsx'
 import PedidoSheet from '../components/PedidoSheet.jsx'
 import { syncHandlers } from '../lib/syncHandlers.js'
 import { FocosMes } from '../components/FocosMes.jsx'
+import { VentaHero } from '../components/VentaHero.jsx'
 import {
   loadActionQueue,
   flushActionQueue,
@@ -20,6 +21,7 @@ import {
 import { skusAReponer } from '../lib/coach'
 import { buildDecisionFeed, groupByAttention, daySummary } from '../lib/decisionEngine'
 import { DecisionCard, DecisionSection } from '../components/DecisionCard.jsx'
+import { ZoneChip } from '../components/domain/ZonePicker.jsx'
 import { trackDecision } from '../lib/memory'
 import { predict7Days } from '../lib/predictor'
 
@@ -294,28 +296,28 @@ export default function Hoy() {
         </div>
       )}
 
-      <div className="page-hero hoy-hero">
-        <div className="eyebrow">Black Sheep · One Brain</div>
-        <h1>
+      {/* HERO ÚNICO — saludo + zona + fecha. Sin barra blanca arriba. */}
+      <header className="bs-hero">
+        <div className="bs-hero-row">
+          <p className="bs-hero-kicker">Black Sheep · Field</p>
+          <ZoneChip light />
+        </div>
+        <h1 className="bs-hero-title">
           {saludo()}, {nombreCorto}
         </h1>
-        <p className="sub">
-          {zonaVista || '—'} ·{' '}
+        <p className="bs-hero-sub">
           {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'short' })}
         </p>
-      </div>
+      </header>
 
-      <div className="wrap hoy-wrap">
-        
-        {/* ONE BRAIN — una decisión manda */}
-        <section className="bs-hoy-action bs-one-brain">
-          <div className="bs-hoy-kicker">Tu día</div>
-          <h2 className="bs-hoy-title">Siguiente mejor acción</h2>
-
+      <div className="bs-hoy-body">
+        {/* ÚNICA acción primaria */}
+        <section className="bs-hoy-nba">
+          <p className="bs-hoy-nba-label">Siguiente mejor acción</p>
           {commandResults.length === 0 ? (
             <div className="bs-hoy-empty">
-              Sin acciones que justifiquen interrumpirte.
-              <button type="button" className="bs-hoy-route" style={{ marginTop: 12 }} onClick={() => nav('/mapa')}>
+              <p>Sin acciones urgentes ahora.</p>
+              <button type="button" className="bs-btn-primary" onClick={() => nav('/mapa')}>
                 Armar ruta
               </button>
             </div>
@@ -326,17 +328,13 @@ export default function Hoy() {
                 featured
                 onAction={handleDecisionAction}
               />
-
               {commandResults.length > 1 && (
-                <details className="bs-hoy-despues">
+                <details className="bs-hoy-more">
                   <summary>
                     Después · {commandResults.length - 1} más
-                    {commandResults.slice(1).reduce((s, d) => s + (Number(d.expectedValue) || 0), 0) > 0 && (
-                      <> · ${Math.round(commandResults.slice(1).reduce((s, d) => s + (Number(d.expectedValue) || 0), 0)).toLocaleString('es-CL')} potencial</>
-                    )}
                   </summary>
-                  <div className="bs-dc-stack" style={{ marginTop: 10 }}>
-                    {commandResults.slice(1).map(d => (
+                  <div className="bs-hoy-more-list">
+                    {commandResults.slice(1, 6).map((d) => (
                       <DecisionCard key={d.id} item={d} onAction={handleDecisionAction} />
                     ))}
                   </div>
@@ -344,86 +342,49 @@ export default function Hoy() {
               )}
             </>
           )}
-
-          {diaResumen && (
-            <div className="bs-hoy-day-summary">{diaResumen}</div>
-          )}
-
-          {/* Predicción secundaria — no compite con la acción */}
-          {pred7 && (pred7.ventaEsperada > 0 || pred7.ventaEnRiesgo > 0) && (
-            <details className="bs-pred7-secondary">
-              <summary>Horizonte 7 días</summary>
-              <div className="bs-pred7-grid" style={{ marginTop: 10 }}>
-                {pred7.ventaEsperada > 0 && (
-                  <div className="bs-pred7-cell ok">
-                    <strong>{money(pred7.ventaEsperada)}</strong>
-                    <span>Esperada</span>
-                  </div>
-                )}
-                {pred7.ventaEnRiesgo > 0 && (
-                  <div className="bs-pred7-cell risk">
-                    <strong>{money(pred7.ventaEnRiesgo)}</strong>
-                    <span>Riesgo</span>
-                  </div>
-                )}
-                {pred7.oportunidad > 0 && (
-                  <div className="bs-pred7-cell opp">
-                    <strong>{money(pred7.oportunidad)}</strong>
-                    <span>Oport.</span>
-                  </div>
-                )}
-              </div>
-              {pred7.resumen && <p className="bs-pred7-hint">{pred7.resumen}</p>}
-            </details>
-          )}
-
-          <button type="button" className="bs-hoy-route" onClick={() => nav('/mapa')}>
+          <button type="button" className="bs-btn-secondary bs-hoy-route-btn" onClick={() => nav('/mapa')}>
             Armar ruta del día
           </button>
         </section>
 
+        {/* V9.9: la venta manda, y el color sale del RITMO por días
+            hábiles — no de un umbral fijo. Antes era `pct >= 70 ? ok`,
+            que pinta igual un 70% el día 3 que el día 28. */}
+        <VentaHero
+          venta={m.ventaMtd}
+          meta={m.metaMensual}
+          zona={zonaVista}
+          clientes={cartera?.length}
+        />
 
-
+        <section className="bs-hoy-pace">
+          <div className="bs-hoy-kpis">
+            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=ReponerHoy')}>
+              <strong>{m.reponerHoy ?? '—'}</strong>
+              <span>Reponer</span>
+            </button>
+            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=RIESGO')}>
+              <strong>{m.nRiesgo ?? '—'}</strong>
+              <span>Riesgo</span>
+            </button>
+            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=Nuevos')}>
+              <strong>{m.nNuevos ?? '—'}</strong>
+              <span>Nuevos</span>
+            </button>
+            <button type="button" className="bs-hoy-kpi ghost" onClick={() => setShowHistorial(v => !v)}>
+              <strong>{actividadHoy.visitas || 0}</strong>
+              <span>Visitas</span>
+            </button>
+          </div>
+          {focos?.length > 0 && (
+            <details className="bs-hoy-focos-fold">
+              <summary>Focos del mes</summary>
+              <FocosMes focos={focos} />
+            </details>
+          )}
+        </section>
 
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${m.totalClientes} clientes`} />}
-
-        {/* Compact metrics — no Excel wall */}
-        <div className="bs-hoy-strip">
-          <div className="bs-hoy-strip-main">
-            <span className="bs-hoy-strip-label">Venta mes</span>
-            <strong>{money(m.ventaMtd)}</strong>
-            <span className={'bs-hoy-strip-pct ' + (m.pct >= 70 ? 'ok' : m.pct >= 40 ? 'mid' : 'low')}>{m.pct}%</span>
-          </div>
-          <div className="bs-hoy-strip-meta">
-            Meta {money(m.metaMensual)} · Faltan {money(m.brecha)}
-            {m.ritmoDia > 0 ? ` · ${money(m.ritmoDia)}/día` : ''}
-          </div>
-          <div className="bs-hoy-strip-bar">
-            <i style={{ width: Math.min(m.pct, 100) + '%' }} />
-          </div>
-        </div>
-
-        {/* Avance de focos — rescatado de la difunta pages/Metas.jsx */}
-        <FocosMes focos={focos} />
-
-        <div className="bs-hoy-kpis">
-          <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=ReponerHoy')}>
-            <strong>{m.reponerHoy ?? '—'}</strong>
-            <span>Reponer</span>
-          </button>
-          <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=RIESGO')}>
-            <strong>{m.nRiesgo ?? '—'}</strong>
-            <span>Riesgo</span>
-          </button>
-          <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=Nuevos')}>
-            <strong>{m.nNuevos ?? '—'}</strong>
-            <span>Nuevos</span>
-          </button>
-          <button type="button" className="bs-hoy-kpi ghost" onClick={() => setShowHistorial(v => !v)}>
-            <strong>{actividadHoy.visitas || 0}</strong>
-            <span>Visitas</span>
-          </button>
-        </div>
 
         {showHistorial && (
           <div className="card bs-hoy-hist">

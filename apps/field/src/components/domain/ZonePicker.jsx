@@ -1,14 +1,22 @@
 /**
- * ZonePicker — saludo + zona en una sola línea compacta.
- * Sin barra blanca. Tap en zona → bottom sheet.
- * Inspirado en field apps 2026: glanceable, thumb-friendly, zero chrome.
+ * Zone system — sin barra blanca global.
+ * - ZoneProvider: monta el bottom-sheet (una sola vez en App)
+ * - ZoneChip: control inline para héroes (color de zona, tap → sheet)
+ *
+ * Root fix: el saludo y la zona viven DENTRO del hero de cada pantalla,
+ * no en una franja separada encima de todo.
  */
-import { useEffect, useState, useCallback } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { getZoneTheme, applyZoneCssVars } from '../../lib/theme/zones'
 
-export function ZonePicker({ nombre, zonaActiva, zonas = [], onChange, subtitulo }) {
+const ZoneCtx = createContext(null)
+
+export function useZoneUi() {
+  return useContext(ZoneCtx)
+}
+
+export function ZoneProvider({ zonaActiva, zonas = [], onChange, children }) {
   const [open, setOpen] = useState(false)
-  const theme = getZoneTheme(zonaActiva)
 
   useEffect(() => {
     if (zonaActiva) applyZoneCssVars(zonaActiva)
@@ -27,37 +35,20 @@ export function ZonePicker({ nombre, zonaActiva, zonas = [], onChange, subtitulo
   }, [zonaActiva, onChange])
 
   const multi = (zonas || []).length > 1
-  const first = nombre ? String(nombre).split(' ')[0] : ''
-  const zonaLabel = subtitulo || theme.label || zonaActiva || '—'
+  const theme = getZoneTheme(zonaActiva)
+
+  const value = useMemo(() => ({
+    zonaActiva,
+    zonas,
+    multi,
+    theme,
+    openSheet: () => multi && setOpen(true),
+    label: theme.label || zonaActiva || '—',
+  }), [zonaActiva, zonas, multi, theme])
 
   return (
-    <>
-      <header className="bs-topbar">
-        <div className="bs-topbar-inner">
-          <div className="bs-topbar-left">
-            <span className="bs-topbar-hello">{first ? `Hola, ${first}` : 'Hola'}</span>
-            {multi ? (
-              <button
-                type="button"
-                className="bs-topbar-zone"
-                onClick={() => setOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={open}
-              >
-                <i className="bs-topbar-dot" aria-hidden="true" />
-                <span>{zonaLabel}</span>
-                <span className="bs-topbar-caret" aria-hidden="true">▾</span>
-              </button>
-            ) : (
-              <span className="bs-topbar-zone is-static">
-                <i className="bs-topbar-dot" aria-hidden="true" />
-                {zonaLabel}
-              </span>
-            )}
-          </div>
-        </div>
-      </header>
-
+    <ZoneCtx.Provider value={value}>
+      {children}
       {open && multi && (
         <div
           className="bs-zone-sheet-backdrop"
@@ -93,7 +84,43 @@ export function ZonePicker({ nombre, zonaActiva, zonas = [], onChange, subtitulo
           </div>
         </div>
       )}
-    </>
+    </ZoneCtx.Provider>
+  )
+}
+
+/** Chip inline para poner dentro de héroes oscuros o claros */
+export function ZoneChip({ light = false }) {
+  const ctx = useZoneUi()
+  if (!ctx) return null
+  const { label, multi, openSheet } = ctx
+  if (multi) {
+    return (
+      <button
+        type="button"
+        className={'bs-zone-chip' + (light ? ' is-light' : '')}
+        onClick={openSheet}
+        aria-label={`Zona ${label}. Cambiar`}
+      >
+        <i className="bs-zone-chip-dot" aria-hidden="true" />
+        <span>{label}</span>
+        <span className="bs-zone-chip-caret" aria-hidden="true">▾</span>
+      </button>
+    )
+  }
+  return (
+    <span className={'bs-zone-chip is-static' + (light ? ' is-light' : '')}>
+      <i className="bs-zone-chip-dot" aria-hidden="true" />
+      {label}
+    </span>
+  )
+}
+
+/** Compat: ZonePicker ya no pinta barra. Solo provider. */
+export function ZonePicker({ nombre, zonaActiva, zonas = [], onChange, children }) {
+  return (
+    <ZoneProvider zonaActiva={zonaActiva} zonas={zonas} onChange={onChange}>
+      {children}
+    </ZoneProvider>
   )
 }
 

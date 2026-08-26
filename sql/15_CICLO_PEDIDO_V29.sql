@@ -1,3 +1,9 @@
+-- ⚠️  ATENCIÓN · las políticas `using (true)` de este archivo quedan
+--     REEMPLAZADAS por 28_RLS_ESTRICTO.sql.
+--     `using (true)` = cualquier usuario autenticado ve TODO. Con un
+--     solo tenant no duele; con el segundo es fuga entre empresas.
+--     Correr 28 SIEMPRE después de este archivo.
+
 -- Pedido lifecycle + índices (V2.9)
 alter table public.pedidos add column if not exists estado text default 'borrador';
 alter table public.pedidos add column if not exists fuente text;

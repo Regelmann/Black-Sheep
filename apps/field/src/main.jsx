@@ -5,6 +5,9 @@ import App from './App.jsx'
 import './index.css'
 import './styles/v90-fixes.css'
 import './styles/ds-2026.css'
+import './styles/system.css'
+// V9.9 carga ÚLTIMA: es la capa que resuelve conflictos entre las anteriores.
+import './styles/v99-ux.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -3,7 +3,7 @@
 PWA de ventas en terreno para distribución de alimentos.
 Multi-tenant. Cliente principal: **KeyFoods** (Santiago, Chile).
 
-> **`v-BS-PLATFORM-V9.3`** · guard ✅ · 24/24 tests · build ✓
+> **`v-BS-PLATFORM-V9.9.6`** · guard ✅ · 24/24 tests · build ✓
 
 ---
 
@@ -191,7 +191,7 @@ la pestaña Deployments de Vercel: puede haber un rollback activo. Usar
 
 ## Estado y próximos pasos
 
-Ver [`ROADMAP.md`](ROADMAP.md).
+Ver [`ROADMAP.md`](ROADMAP.md), [`ARQUITECTURA.md`](ARQUITECTURA.md) y [`SEGURIDAD.md`](SEGURIDAD.md) y [`RENDIMIENTO.md`](RENDIMIENTO.md).
 
 Lo más urgente: **probar la cola offline con un teléfono real en un lugar sin
 señal.** Ningún test lo reemplaza, y es lo que decide si un vendedor confía en

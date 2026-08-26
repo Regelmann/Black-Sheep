@@ -49,11 +49,38 @@ export function offlineAgeMinutes(snap) {
 }
 
 /** Cola de acciones: checkin | pedido | nota | completar | no_venta */
+/**
+ * ID de operación estable y único.
+ *
+ * POR QUÉ IMPORTA (idempotencia)
+ * Si el insert LLEGA al servidor pero la respuesta se pierde en el
+ * camino — túnel, señal que cae a mitad del request — el item se queda
+ * en la cola, reintenta, y crea un DUPLICADO.
+ *
+ * Con un client_op_id estable, el reintento manda el MISMO id y la base
+ * lo rechaza por índice único: el reintento es inofensivo.
+ *
+ * crypto.randomUUID() en vez de Date.now()+Math.random(): dos acciones
+ * en el mismo milisegundo podían colisionar.
+ */
+function nuevoOpId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  // Respaldo para WebView viejos sin randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
 export function enqueueAction(action) {
   const q = loadActionQueue()
+  const opId = nuevoOpId()
   const item = {
-    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id: opId,
+    // Viaja al servidor: es la llave de idempotencia.
+    client_op_id: opId,
     enqueuedAt: new Date().toISOString(),
+    attempts: 0,
     ...action,
   }
   q.push(item)
@@ -122,10 +149,21 @@ export async function flushActionQueue(handlers = {}) {
         if (res && res.degraded) {
           console.warn('[outbox] item subido en modo degradado', item.type)
         }
+      } else if (res && res.descartar) {
+        // Item corrupto (payload vacío, formato inválido). Reintentarlo
+        // mil veces no lo arregla y bloquea la cola detrás suyo.
+        fail++
+        console.error('[outbox] item descartado por corrupto:', item.type, item.lastError)
       } else {
         fail++
         item.lastError = (res && res.error) || 'handler devolvio falso'
         item.attempts = (item.attempts || 0) + 1
+        // Tope de reintentos: 25 intentos con backoff son ~días. Más allá
+        // es una cola que nunca drena y esconde el problema real.
+        if (item.attempts >= 25) {
+          console.error('[outbox] item agotó reintentos:', item.type, item.lastError)
+          item.agotado = true
+        }
         remaining.push(item)
       }
     } catch (e) {

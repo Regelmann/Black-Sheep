@@ -68,14 +68,36 @@ jobs:
       # 5. Presupuesto de tamaño — hoy avisa, en Fase 3 bloquea
       - name: Presupuesto de bundle
         run: |
-          JS=$(find dist/assets -name '*.js' -printf '%s\n' | sort -rn | head -1)
-          KB=$((JS / 1024))
-          echo "Bundle principal: ${KB} kB" >> $GITHUB_STEP_SUMMARY
-          if [ "$KB" -gt 900 ]; then
-            echo "::error::Bundle ${KB} kB supera el techo duro de 900 kB"
+          # Se mide el chunk de la APP (index-*), no el mayor de todos.
+          # Los vendors son grandes pero se cachean entre deploys: lo que
+          # el vendedor vuelve a bajar en cada release es sólo la app.
+          APP=$(find dist/assets -name 'index-*.js' ! -name '*.map' -printf '%s\n' | sort -rn | head -1)
+          KB=$((APP / 1024))
+          TOTAL=$(find dist/assets -name '*.js' ! -name '*.map' -printf '%s\n' | awk '{s+=$1} END {print int(s/1024)}')
+
+          echo "### 📦 Bundle" >> $GITHUB_STEP_SUMMARY
+          echo "| Chunk | Tamaño |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| App (se rebaja en cada deploy) | ${KB} kB |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total inicial | ${TOTAL} kB |" >> $GITHUB_STEP_SUMMARY
+          find dist/assets -name '*.js' ! -name '*.map' -printf '%f %s\n' \
+            | sort -k2 -rn | head -8 \
+            | awk '{printf "| %s | %.1f kB |\n", $1, $2/1024}' >> $GITHUB_STEP_SUMMARY
+
+          if [ "$KB" -gt 350 ]; then
+            echo "::error::Chunk de app ${KB} kB supera el techo de 350 kB. Revisar imports."
             exit 1
-          elif [ "$KB" -gt 400 ]; then
-            echo "::warning::Bundle ${KB} kB — objetivo Fase 3 es < 250 kB"
+          elif [ "$KB" -gt 250 ]; then
+            echo "::warning::Chunk de app ${KB} kB — objetivo < 250 kB"
+          else
+            echo "✅ Chunk de app ${KB} kB (objetivo < 250 kB)"
+          fi
+
+          # El code-splitting no debe deshacerse por accidente.
+          N=$(find dist/assets -name '*.js' ! -name '*.map' | wc -l)
+          if [ "$N" -lt 4 ]; then
+            echo "::error::Sólo ${N} chunks — el code-splitting se rompió."
+            exit 1
           fi
 
       - name: Guardar dist

@@ -10,6 +10,7 @@ import { ClientActionBar } from '../components/domain/ClientActionBar.jsx'
 import NotaModal from '../components/NotaModal.jsx'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
+import { ZoneChip } from '../components/domain/ZonePicker.jsx'
 import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach'
 import {
   esActivoMes,
@@ -471,7 +472,10 @@ export default function Cartera({ session }) {
   return (
     <div className="bs-page">
       <div className="bs-page-hero">
-        <div className="bs-hero-eyebrow">Clientes</div>
+        <div className="bs-hero-row">
+          <div className="bs-hero-eyebrow">Clientes</div>
+          <ZoneChip light />
+        </div>
         <h1>Mi cartera</h1>
         <p className="bs-hero-sub">
           {clientes.length} en zona · {nActivosMes} con venta este mes · {nNuevos} nuevos

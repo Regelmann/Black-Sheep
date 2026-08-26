@@ -49,74 +49,9 @@ CREATE POLICY "oci_public_read" ON public.oferta_cliente_items
   FOR SELECT TO anon USING (true);
 
 -- RPC pública: retorna el catálogo completo dado un token
-CREATE OR REPLACE FUNCTION public.get_public_catalogo(p_token TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_oferta  JSONB;
-  v_items   JSONB;
-  v_stock   JSONB;
-  v_result  JSONB;
-BEGIN
-  -- 1. Buscar la oferta activa
-  SELECT to_jsonb(o) INTO v_oferta
-  FROM ofertas_cliente o
-  WHERE o.token = p_token AND o.activo = true
-  LIMIT 1;
+-- get_public_catalogo() → definición ÚNICA en 25_CATALOGO_FINAL.sql
+-- Este archivo conserva SOLO las tablas ofertas_cliente / oferta_cliente_items.
 
-  IF v_oferta IS NULL THEN
-    RETURN jsonb_build_object('error', 'Catálogo no encontrado');
-  END IF;
-
-  -- 2. Items de la oferta
-  SELECT jsonb_agg(
-    jsonb_build_object(
-      'sku_canon',       i.sku_canon,
-      'producto_nombre', i.producto_nombre,
-      'precio_lista',    i.precio_lista,
-      'precio_cliente',  i.precio_cliente,
-      'visible',         i.visible,
-      'destacado',       i.destacado,
-      'prioridad',       i.prioridad,
-      -- Enriquecer con stock actual
-      'stock_operativo', s.stock_operativo,
-      'stock_disponible', CASE WHEN COALESCE(s.stock_operativo, 0) > 0 THEN true ELSE false END,
-      'cobertura_dias',  s.cobertura_dias,
-      'imagen_url',      s.imagen_url,
-      'subfamilia',      s.subfamilia,
-      'resena',          s.resena,
-      'es_foco_mes',     COALESCE(s.es_foco_mes, false),
-      'precio_unidad',   COALESCE(i.precio_cliente, i.precio_lista, s.precio_unidad),
-      'precio_origen',   CASE
-        WHEN i.precio_cliente IS NOT NULL THEN 'negociado'
-        WHEN i.precio_lista   IS NOT NULL THEN 'historico'
-        WHEN s.precio_unidad  IS NOT NULL THEN 'lista'
-        ELSE 'consultar'
-      END
-    )
-    ORDER BY i.destacado DESC, i.prioridad ASC
-  )
-  INTO v_items
-  FROM oferta_cliente_items i
-  LEFT JOIN stock s ON s.sku_canon = i.sku_canon
-  WHERE i.oferta_id = (v_oferta->>'id')::BIGINT
-    AND i.visible = true;
-
-  -- 3. Retornar todo
-  RETURN jsonb_build_object(
-    'nombre_cliente',  v_oferta->>'nombre_cliente',
-    'cliente_key',     v_oferta->>'cliente_key',
-    'ejecutivo_id',    v_oferta->>'ejecutivo_id',
-    'token',           v_oferta->>'token',
-    'actualizado_en',  v_oferta->>'actualizado_en',
-    'items',           COALESCE(v_items, '[]'::jsonb),
-    'total_items',     jsonb_array_length(COALESCE(v_items, '[]'::jsonb))
-  );
-END;
-$$;
 
 -- Permisos públicos al RPC
 GRANT EXECUTE ON FUNCTION public.get_public_catalogo(TEXT) TO anon;

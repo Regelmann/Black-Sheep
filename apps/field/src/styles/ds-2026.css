@@ -588,3 +588,255 @@ nav.bs-nav {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   V9.7 ROOT — un solo hero, sin barra blanca global
+   ═══════════════════════════════════════════════════════════ */
+
+/* Matar cualquier topbar/greet residual */
+.bs-topbar,
+.bs-greet,
+.bs-greet--clean {
+  display: none !important;
+}
+
+/* Chip de zona dentro del hero */
+.bs-zone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.bs-zone-chip.is-static { cursor: default; }
+.bs-zone-chip:not(.is-light) {
+  border-color: var(--line-2);
+  background: var(--surface);
+  color: var(--zone-active, var(--brand));
+}
+.bs-zone-chip-dot {
+  width: 7px; height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.bs-zone-chip-caret { font-size: 9px; opacity: 0.7; }
+
+.bs-hero-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* Hero único Hoy */
+.bs-hero {
+  background: linear-gradient(165deg, #1c1917 0%, #292524 55%, #3f2e22 100%);
+  color: #fff;
+  padding: 20px 16px 24px;
+  border-radius: 0 0 20px 20px;
+  margin-bottom: 8px;
+}
+.bs-hero-kicker {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fb923c;
+}
+.bs-hero-title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: #fff;
+}
+.bs-hero-sub {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255,255,255,0.55);
+}
+
+.bs-hoy-body {
+  padding: 0 14px 24px;
+  max-width: var(--max-w, 480px);
+  margin: 0 auto;
+}
+
+.bs-hoy-nba {
+  margin-top: 8px;
+}
+.bs-hoy-nba-label {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.bs-hoy-empty {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+.bs-hoy-empty .bs-btn-primary { margin-top: 12px; }
+
+.bs-hoy-more {
+  margin: 10px 0;
+  border-radius: 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  padding: 0 12px;
+}
+.bs-hoy-more > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+  cursor: pointer;
+  list-style: none;
+}
+.bs-hoy-more > summary::-webkit-details-marker { display: none; }
+.bs-hoy-more-list { padding-bottom: 10px; }
+
+.bs-hoy-route-btn {
+  margin-top: 12px;
+}
+
+/* Ritmo compacto */
+.bs-hoy-pace {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.05));
+}
+.bs-hoy-pace-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+.bs-hoy-pace-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.bs-hoy-pace-row strong {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.bs-hoy-pace-pct span {
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.bs-hoy-pace-pct .ok { color: var(--ok); }
+.bs-hoy-pace-pct .mid { color: var(--warn); }
+.bs-hoy-pace-pct .low { color: var(--danger); }
+.bs-hoy-pace-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  margin: 10px 0 6px;
+  overflow: hidden;
+}
+.bs-hoy-pace-bar i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: 999px;
+}
+.bs-hoy-pace-meta {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.bs-hoy-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.bs-hoy-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  font-family: inherit;
+  cursor: pointer;
+}
+.bs-hoy-kpi strong {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.bs-hoy-kpi span {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bs-hoy-kpi.ghost {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.bs-hoy-focos-fold {
+  margin-top: 12px;
+}
+.bs-hoy-focos-fold > summary {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  cursor: pointer;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+/* Page heroes (Cartera / Gerencia) — misma fila con chip */
+.bs-page-hero .bs-hero-row {
+  margin-bottom: 6px;
+}
+.bs-page-hero .bs-hero-eyebrow {
+  margin: 0;
+}

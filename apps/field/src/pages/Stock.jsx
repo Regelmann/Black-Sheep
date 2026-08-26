@@ -3,6 +3,7 @@ import { productTitle } from '../lib/productDisplay'
 import { findBuyersForSku } from '../lib/stockIntel'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { pick, auditar, columnasReales, CARTERA } from '../lib/columns'
 import { safeAll, safeSelect } from '../lib/query'
 import { DataError } from '../components/DataState.jsx'
 import { DataAsOfBanner } from '../components.jsx'
@@ -38,22 +39,51 @@ export default function Stock() {
     setErrStock(null); setErrCartera(null)
     // Solo la cartera del ejecutivo en vista — NUNCA mezclar zonas.
     const eid = eje?.eidVista
-    // Columnas mínimas comprobadas en producción (sin venta_mensual/ciclo_dias/es_bloqueado/razon_social)
+    // Las cuatro listas anteriores incluían TODAS sku_detalle,
+    // cliente_key y nombre_cliente: si una sola no existía, fallaban las
+    // cuatro. No había respaldo final. Y el filtro .eq('ejecutivo_id')
+    // rompe la consulta aunque el select esté bien, si esa columna
+    // cambió de nombre. Por eso se veía "Esta vista está desactualizada".
     const tries = [
       'cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id',
-      'cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,ejecutivo_id',
       'cliente_key,nombre_cliente,sku_detalle,venta_mtd,ejecutivo_id',
       'cliente_key,nombre_cliente,sku_detalle',
+      '*',   // ÚLTIMO RECURSO: traer todo antes que no traer nada.
     ]
     let carteraRows = []
     let cartErr = null
-    for (const cols of tries) {
+    let degradado = false
+
+    for (let i = 0; i < tries.length; i++) {
+      const cols = tries[i]
       let q = supabase.from('cartera').select(cols).limit(3000)
-      if (eid) q = q.eq('ejecutivo_id', eid)
-      const rCart = await safeSelect(q)
-      if (rCart.ok) { carteraRows = rCart.rows || []; cartErr = null; break }
+      // El filtro por ejecutivo sólo se aplica mientras el select sea
+      // específico. En el intento con '*' se filtra en JS, para que una
+      // columna renombrada no tumbe también el filtro.
+      if (eid && cols !== '*') q = q.eq('ejecutivo_id', eid)
+
+      const rCart = await safeSelect(q, { label: `cartera[${i}]` })
+      if (rCart.ok) {
+        carteraRows = rCart.rows || []
+        cartErr = null
+        degradado = cols === '*'
+        break
+      }
       cartErr = rCart.error
-      if (!/column|42703|PGRST204/i.test(String(cartErr?.dev || cartErr?.user || ''))) break
+      // RLS o red no se arreglan pidiendo otras columnas.
+      if (cartErr?.kind !== 'schema') break
+    }
+
+    if (degradado) {
+      // Filtrado en JS tolerando el nombre real de la columna.
+      if (eid) {
+        carteraRows = carteraRows.filter(
+          (r) => String(pick(r, CARTERA.ejecutivoId, '')) === String(eid)
+        )
+      }
+      auditar(carteraRows, CARTERA, 'cartera')
+      columnasReales(carteraRows, 'cartera')
+      console.warn('[stock] cartera leída en modo tolerante — revisar nombres de columnas')
     }
     const rStock = await safeSelect(supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }))
     const r = { stock: rStock.ok ? rStock.rows : [], errors: { stock: rStock.ok ? null : rStock.error, cartera: cartErr } }

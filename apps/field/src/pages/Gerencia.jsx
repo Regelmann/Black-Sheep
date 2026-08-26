@@ -1,3 +1,4 @@
+import { ZoneChip } from '../components/domain/ZonePicker.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
@@ -217,14 +218,16 @@ export default function Gerencia({ esGerente }) {
         const _settled = await Promise.allSettled([
           supabase.from('gerencia').select('*'),
           supabase.from('tendencia').select('*'),
-          supabase.from('stock').select('sku_canon,producto_nombre,precio_unidad,precio_lista,cobertura_dias,estado_stock,es_foco_mes,stock_operativo').limit(500),
+          // '*' en vez de 8 columnas fijas: si UNA cambió de nombre,
+          // PostgREST rechazaba la consulta entera y este bloque quedaba
+          // en "—". Ese era el "No cargó: stock" de la pantalla.
+          supabase.from('stock').select('*').limit(500),
           supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
           Promise.all(carPromises),
-          supabase
-            .from('notas_cliente')
-            .select('cliente_key,nombre_local,tipo,texto,creado_en')
-            .or('tipo.ilike.%bloqueo%,tipo.ilike.%bloqueo_cerrado%,tipo.ilike.%bloqueo_deuda%')
-            .limit(150),
+          // Igual que stock: '*' y el filtro por tipo se hace en JS.
+          // Un .or() sobre una columna renombrada rompe la consulta
+          // aunque el select esté bien.
+          supabase.from('notas_cliente').select('*').limit(300),
         ])
 
         const _NOMBRES = ['gerencia', 'tendencia', 'stock', 'clientes', 'cartera', 'notas']
@@ -254,7 +257,12 @@ export default function Gerencia({ esGerente }) {
           _fallos.push('cartera')
           console.error('[gerencia:cartera]', _settled[4].reason)
         }
-        const notasBlq = _pick(5)?.data || []
+        // El filtro por tipo se aplica acá, no en la consulta: así una
+        // columna renombrada no tumba la lectura completa.
+        const notasBlq = (_pick(5)?.data || []).filter((n) => {
+          const t = String(n?.tipo ?? n?.tipo_nota ?? n?.categoria ?? '').toLowerCase()
+          return t.includes('bloqueo')
+        })
         setFallos(_fallos)
 
         // mapa ejecutivo_id → zona (para cuando cartera.zona viene vacía)
@@ -1076,7 +1084,10 @@ export default function Gerencia({ esGerente }) {
       <section className="bs-executive-pulse">
         <div className="bs-pulse-top">
           <div>
-            <span className="bs-command-kicker">GERENCIA · PULSE</span>
+            <div className="bs-hero-row">
+              <span className="bs-command-kicker">GERENCIA · PULSE</span>
+              <ZoneChip />
+            </div>
             <h2>¿Dónde actuar ahora?</h2>
             <p>Venta del mes y desviaciones que importan.</p>
           </div>

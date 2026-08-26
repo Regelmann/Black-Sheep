@@ -1,6 +1,6 @@
 # DEPLOY — paso a paso
 
-**Versión:** `v-BS-PLATFORM-V9.3`
+**Versión:** `v-BS-PLATFORM-V9.9.6`
 
 Este documento se actualiza **en cada entrega**. Si una versión trae SQL nuevo,
 aparece en la sección 2.
@@ -74,6 +74,12 @@ uno termine antes del siguiente.
 19_CATALOGO_OFERTA_CLIENTE.sql
 20_CATALOGO_CANONICO.sql        ← catálogo público
 21_PEDIDO_PUBLICO_CANONICO.sql  ← pedido del cliente
+22_HOTFIX_V931.sql
+23_DATA_ISOLATION_CATALOGO.sql
+25_CATALOGO_FINAL.sql           ← sanea esquema + elimina sobrecargas
+26_CATALOGO_ORDEN.sql           ← orden: compra → sugerido → resto
+27_IDEMPOTENCIA.sql             ← evita duplicados al reintentar la cola
+28_RLS_ESTRICTO.sql             ← aislamiento por ejecutivo y tenant
 ```
 
 Los saltos (05, 10, 12, 16, 18) son a propósito: esos archivos se eliminaron por
@@ -159,7 +165,7 @@ borrados antes de confirmar.
 Vercel despliega solo al recibir el push. Verificar:
 
 1. **Deployments** → el último debe decir *Ready*
-2. Abrir `app.black-sheep.cl` → el stamp abajo debe decir **`v-BS-PLATFORM-V9.3`**
+2. Abrir `app.black-sheep.cl` → el stamp abajo debe decir **`v-BS-PLATFORM-V9.9.6`**
 
 **Si el stamp no cambió:** hay un rollback activo. Deployments → buscar el
 deploy correcto → menú `⋯` → **Promote to Production**.
@@ -260,7 +266,7 @@ GDRIVE_SA_JSON · GDRIVE_FOLDER_ID
 [ ] 2 · 00_VERIFICAR_ESTADO.sql de nuevo → sin ❌
 [ ] 3 · npm run verify → verde
 [ ] 3 · git push
-[ ] 4 · Stamp en pantalla dice v-BS-PLATFORM-V9.3
+[ ] 4 · Stamp en pantalla dice v-BS-PLATFORM-V9.9.6
 [ ] 5 · Puntos 1-8 de la prueba de humo
 [ ] 5 · Punto 9 — modo avión (el que importa)
 ```

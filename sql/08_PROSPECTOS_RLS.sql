@@ -1,3 +1,9 @@
+-- ⚠️  ATENCIÓN · las políticas `using (true)` de este archivo quedan
+--     REEMPLAZADAS por 28_RLS_ESTRICTO.sql.
+--     `using (true)` = cualquier usuario autenticado ve TODO. Con un
+--     solo tenant no duele; con el segundo es fuga entre empresas.
+--     Correr 28 SIEMPRE después de este archivo.
+
 -- Permitir que cualquier usuario autenticado lea prospectos de todas las zonas
 -- (necesario para el selector de gerencia / multi-ejecutivo)
 

@@ -127,6 +127,48 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R12 · Las páginas pesadas no se importan estáticamente ─────────
+// Gerencia (2.300 líneas) y Admin (958) los abre un gerente desde una
+// oficina. Importarlos estáticos los mete en el bundle que un vendedor
+// descarga en 4G para abrir "Hoy".
+{
+  const app = path.resolve(SRC, 'App.jsx')
+  if (fs.existsSync(app)) {
+    const txt = fs.readFileSync(app, 'utf8')
+    for (const pagina of ['Gerencia', 'Admin', 'Stock', 'CatalogoCliente']) {
+      const estatico = new RegExp(`^import\\s+${pagina}\\s+from`, 'm')
+      if (estatico.test(txt)) {
+        problemas.push(
+          `[R12 import estático]  App.jsx importa ${pagina} sin lazy() — ` +
+          `entra al bundle inicial`
+        )
+      }
+    }
+  }
+}
+
+// ── R11 · Ninguna política RLS con USING(true) ─────────────────────
+// `using (true)` = cualquier usuario autenticado ve TODO. Con un solo
+// tenant no duele; con el segundo es fuga de datos entre empresas.
+// Excepciones legítimas: tablas de referencia sin datos sensibles, y
+// las policies de `anon` que sirven el catálogo público por token.
+if (fs.existsSync(SQL)) {
+  const EXENTAS = ['zonas_comunas']
+  for (const f of fs.readdirSync(SQL).filter((x) => x.endsWith('.sql'))) {
+    const txt = fs.readFileSync(path.join(SQL, f), 'utf8')
+    const lineas = txt.split('\n')
+    lineas.forEach((l, i) => {
+      if (!/using\s*\(\s*true\s*\)/i.test(l)) return
+      // Contexto: la policy puede abarcar varias líneas
+      const ctx = lineas.slice(Math.max(0, i - 4), i + 1).join(' ')
+      if (/\bto\s+anon\b/i.test(ctx)) return                    // catálogo público
+      if (EXENTAS.some((t) => ctx.includes(t))) return           // tabla de referencia
+      if (!/create\s+policy/i.test(ctx)) return
+      avisos.push(`[R11 política abierta]  sql/${f}:${i + 1} — using(true) expone todo el tenant`)
+    })
+  }
+}
+
 // ── R9 · La documentación de deploy debe citar el stamp actual ──────
 // DEPLOY.md decía "V68 CLOSE" y el README decía "v2.4" cuando la app
 // iba en V9.2. Documentación desactualizada = pasos de deploy erróneos.

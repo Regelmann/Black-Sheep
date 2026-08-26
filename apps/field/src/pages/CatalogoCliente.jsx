@@ -119,8 +119,9 @@ export default function CatalogoCliente() {
 
   const items = catalogo?.items || []
   const categories = useMemo(() => {
-    const set = new Set(items.map(i => i.subfamilia || 'General'))
-    return ['Todos', ...Array.from(set).sort()]
+    // El RPC devuelve `rubro`; se mantiene `subfamilia` como alias.
+    const set = new Set(items.map(i => i.rubro || i.subfamilia || 'General'))
+    return ['Todos', ...Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))]
   }, [items])
 
   const filtered = useMemo(() => {
@@ -484,10 +485,28 @@ function ShopSection({ title, subtitle, items, view, onAdd, onFicha, featured })
         </div>
         <span>{items.length}</span>
       </div>
+      {/* El RPC ya devuelve los items ORDENADOS:
+            1 · lo que el cliente ya compra (lo más reciente arriba)
+            2 · sugeridos de sus mismos rubros
+            3 · resto del catálogo
+          Acá sólo se ponen los encabezados donde cambia el grupo.
+          NO se reordena: el orden es regla de negocio y vive en SQL. */}
       <div className={view === 'list' ? 'bs-shop-list' : 'bs-shop-grid'}>
-        {items.map(i => (
-          <ProductCard key={i.sku_canon} item={i} view={view} onAdd={onAdd} onFicha={onFicha} />
-        ))}
+        {items.map((i, idx) => {
+          const g = i.grupo ?? 3
+          const gPrev = idx > 0 ? (items[idx - 1].grupo ?? 3) : null
+          const nuevoGrupo = g !== gPrev
+          return (
+            <div key={i.sku_canon} className="bs-shop-cell" style={{ display: 'contents' }}>
+              {nuevoGrupo && (
+                <h3 className={`bs-shop-group bs-shop-group--${g}`}>
+                  {i.grupo_nombre || (g === 1 ? 'Lo que compras' : g === 2 ? 'Para tu rubro' : 'Más productos')}
+                </h3>
+              )}
+              <ProductCard item={i} view={view} onAdd={onAdd} onFicha={onFicha} />
+            </div>
+          )
+        })}
       </div>
     </section>
   )

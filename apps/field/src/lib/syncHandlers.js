@@ -7,6 +7,10 @@ import { supabase } from './supabase'
 export async function handleCheckin(item) {
   const p = item.payload || {}
   const row = {
+    // Llave de idempotencia: si el insert llegó pero la respuesta se
+    // perdió, el reintento manda el MISMO id y el índice único lo
+    // rechaza en vez de duplicar el check-in.
+    client_op_id: item.client_op_id || item.id || null,
     visita_id: p.visita_id || null,
     cliente_key: p.cliente_key || null,
     ejecutivo_id: p.ejecutivo_id || null,
@@ -15,7 +19,18 @@ export async function handleCheckin(item) {
     lng_real: p.lng_real ?? p.lng ?? null,
   }
   // Quitar nulls innecesarios si la tabla no tiene la columna
-  const { error } = await supabase.from('checkins').insert(row)
+  // .select() fuerza que Postgres devuelva la fila insertada:
+  // confirmación en el mismo viaje, sin una segunda consulta.
+  const { data, error } = await supabase.from('checkins').insert(row).select('id')
+  // 23505 = unique_violation. Significa que ESTE MISMO op ya se insertó
+  // en un intento anterior cuya respuesta se perdió. Es éxito, no error:
+  // el dato está en la base. Tratarlo como fallo dejaría el item en la
+  // cola reintentando para siempre.
+  if (error && (error.code === '23505' || /duplicate key|already exists/i.test(String(error.message)))) {
+    console.info('[sync:checkin] ya estaba guardado (idempotencia)')
+    return { ok: true, yaExistia: true }
+  }
+
   if (error) {
     // Reintento sin columnas opcionales SOLO si el fallo es de esquema.
     // Ante RLS/red hay que reintentar completo mas tarde, no mutilar la fila.
@@ -50,7 +65,10 @@ export async function handleCompletar(item) {
       .from('visitas').update({ estado: 'visitada' }).eq('id', p.visita_id)
     if (error) return { ok: false, error: error.message }
   }
-  return { ok: true }
+  if (!data || !data.length) {
+    return { ok: false, error: 'check-in sin confirmar — no volvió la fila' }
+  }
+  return { ok: true, id: data[0].id }
 }
 
 export async function handleNota(item) {
@@ -60,10 +78,23 @@ export async function handleNota(item) {
 
 export async function handlePedido(item) {
   const p = item.payload || {}
-  if (!p || !Object.keys(p).length) return { ok: true }
+
+  // Un payload vacío NO es un éxito: es un item corrupto. Devolver
+  // {ok:true} lo borraba de la cola como si se hubiera subido.
+  if (!p || !Object.keys(p).length) {
+    console.error('[sync:pedido] payload vacío — item corrupto, se descarta')
+    return { ok: false, error: 'payload vacío', descartar: true }
+  }
+
   if (p.table && p.row) {
-    const { error } = await supabase.from(p.table).insert(p.row)
-    return error ? { ok: false, error: error.message } : { ok: true }
+    const { data, error } = await supabase.from(p.table).insert(p.row).select('id')
+    if (error) return { ok: false, error: error.message }
+    // DOBLE CHEQUEO: el insert "sin error" no basta. Si no volvió id,
+    // no hay confirmación de que la fila exista.
+    if (!data || !data.length) {
+      return { ok: false, error: 'el insert no devolvió fila — sin confirmar' }
+    }
+    return { ok: true, id: data[0].id }
   }
   // Insert directo (nunca reencolar desde acá: lo maneja flushActionQueue).
   const row = {

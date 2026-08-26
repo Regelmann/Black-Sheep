@@ -2,26 +2,56 @@ import { useEffect, useState, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase, initSupabase, getActiveTenant } from './lib/supabase'
 import { resolveTenant, applyTenantBrand } from './lib/tenants'
+/* ------------------------------------------------------------------
+   CARGA POR RUTA
+   Antes las 9 páginas viajaban en un solo archivo de 738 kB. Un
+   vendedor descargaba Gerencia (2.300 líneas) y Admin (958) para
+   abrir "Hoy", en 4G de terreno.
+
+   CRITERIO — qué va directo y qué a demanda:
+   · Directo: lo que se usa EN LA CALLE, sin señal garantizada.
+     Login, Hoy, Ruta, Visita, Cartera. Si el vendedor entra a un
+     subterráneo y la ruta no está descargada, no puede trabajar.
+   · A demanda: lo que se abre desde una oficina con wifi.
+     Gerencia, Admin, Stock, Catálogo.
+
+   El catálogo público es su propio bundle: lo abre el CLIENTE, que no
+   necesita descargar nada de la app del vendedor.
+   ------------------------------------------------------------------ */
+import { lazy, Suspense } from 'react'
 import Login from './pages/Login.jsx'
 import Hoy from './pages/Hoy.jsx'
 import Ruta from './pages/Ruta.jsx'
 import Visita from './pages/Visita.jsx'
 import Cartera from './pages/Cartera.jsx'
-import CatalogoCliente from './pages/CatalogoCliente.jsx'
-import Stock from './pages/Stock.jsx'
-import Gerencia from './pages/Gerencia.jsx'
-import Admin from './pages/Admin.jsx'
+
+const CatalogoCliente = lazy(() => import('./pages/CatalogoCliente.jsx'))
+const Stock           = lazy(() => import('./pages/Stock.jsx'))
+const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
+const Admin           = lazy(() => import('./pages/Admin.jsx'))
+
+/** Placeholder de carga. Nunca pantalla en blanco. */
+function CargandoPagina() {
+  return (
+    <div className="bs-page-loading" role="status" aria-live="polite">
+      <div className="bs-skel" style={{ height: 92 }} />
+      <div className="bs-skel" style={{ height: 58 }} />
+      <div className="bs-skel" style={{ height: 58 }} />
+      <span className="bs-sr">Cargando…</span>
+    </div>
+  )
+}
 import { NavBar } from './components.jsx'
 import { AppShell } from './components/layout/AppShell.jsx'
 // V9.0 — domain components
-import { ZonePicker } from './components/domain/ZonePicker.jsx'
+import { AppHeader } from './components/domain/AppHeader.jsx'
 import { syncHandlers } from './lib/syncHandlers.js'
 import { SyncBanner } from './components/domain/SyncBanner.jsx'
 import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
 import { runSyncFlush } from './lib/sync/engine.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V9.6-SYSTEM'
+export const BUILD_STAMP = 'v-BS-PLATFORM-V9.9.6'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 export const EjecutivoCtx = createContext(null)
@@ -141,7 +171,11 @@ export default function App() {
   }
 
   if (window.location.pathname.startsWith('/catalogo/')) {
-    return <Routes><Route path="/catalogo/:token" element={<CatalogoCliente />} /></Routes>
+    return (
+      <Suspense fallback={<CargandoPagina />}>
+        <Routes><Route path="/catalogo/:token" element={<CatalogoCliente />} /></Routes>
+      </Suspense>
+    )
   }
   if (session === undefined) {
     return (
@@ -192,41 +226,53 @@ export default function App() {
 
   return (
     <EjecutivoCtx.Provider value={ctxValue}>
-      {/* V9.0 — la zona vive en el saludo, no en una barra de pills.
-          Con una sola zona no se muestra ningún control. */}
-      <ZonePicker
+      {/* ROOT FIX V9.7: sin barra de zona global.
+          La zona vive dentro del hero de cada pantalla (ZoneChip). */}
+      {/* V9.9: header ÚNICO. Antes había franja blanca + hero de página
+          apilados (~180px sin una sola acción). El selector de zona es
+          segmented control: 3 opciones se muestran, no se esconden. */}
+      <AppHeader
         nombre={ejecutivo?.nombre}
         zonaActiva={zonaVista}
         zonas={esGerente ? zonasDisponibles : []}
-        onChange={cambiarZona}
+        onZonaChange={cambiarZona}
+        titulo={ejecutivo?.nombre ? `Hola, ${String(ejecutivo.nombre).split(' ')[0]}` : 'Black Sheep'}
+        subtitulo={zonaVista}
       />
-      {/* V9.0 — SyncBanner con handlers reales (no banner mentiroso) */}
-      <SyncBanner handlers={SYNC_HANDLERS} />
-      <AppShell>
-      <div className="app-body">
-      <div className="build-stamp">{BUILD_STAMP}{typeof window !== 'undefined' && window.__BS_TENANT__ ? ` · ${window.__BS_TENANT__.name}` : ''}</div>
-        <Routes>
-          <Route path="/" element={<Hoy />} />
-          <Route path="/mapa" element={<Ruta session={session} />} />
-          <Route path="/visita/:id" element={<Visita session={session} />} />
-          <Route path="/cartera" element={<Cartera session={session} />} />
-          {/* Redirect legacy: pages/Metas.jsx se eliminó en V9.3.
-              Su vista de focos vive ahora en Hoy (components/FocosMes.jsx). */}
-          <Route path="/metas" element={<Navigate to="/" replace />} />
-          <Route path="/stock" element={<Stock session={session} />} />
-          <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
-          <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-      </AppShell>
-      <NavBar
-        esGerente={esGerente}
-        onLogout={async () => {
-          await supabase.auth.signOut()
-          window.location.href = '/'
-        }}
-      />
+      <>
+        <SyncBanner handlers={SYNC_HANDLERS} />
+        <AppShell>
+          <div className="app-body">
+            <div className="build-stamp">
+              {BUILD_STAMP}
+              {typeof window !== 'undefined' && window.__BS_TENANT__ ? ` · ${window.__BS_TENANT__.name}` : ''}
+            </div>
+            {/* Suspense envuelve TODAS las rutas: las directas lo
+                ignoran, las lazy muestran el esqueleto mientras baja
+                su chunk. */}
+            <Suspense fallback={<CargandoPagina />}>
+            <Routes>
+              <Route path="/" element={<Hoy />} />
+              <Route path="/mapa" element={<Ruta session={session} />} />
+              <Route path="/visita/:id" element={<Visita session={session} />} />
+              <Route path="/cartera" element={<Cartera session={session} />} />
+              <Route path="/metas" element={<Navigate to="/" replace />} />
+              <Route path="/stock" element={<Stock session={session} />} />
+              <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
+              <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            </Suspense>
+          </div>
+        </AppShell>
+        <NavBar
+          esGerente={esGerente}
+          onLogout={async () => {
+            await supabase.auth.signOut()
+            window.location.href = '/'
+          }}
+        />
+      </>
     </EjecutivoCtx.Provider>
   )
 }
