@@ -97,7 +97,7 @@ export async function guardarPedido({
   // total_estimado si la columna existe (ignore error)
   try {
     row.total_estimado = total > 0 ? Math.round(total) : null
-  } catch (_) {}
+  } catch (_) { void _ }
 
   const { data, error } = await supabase.from('pedidos').insert(row).select().maybeSingle()
   if (error) {

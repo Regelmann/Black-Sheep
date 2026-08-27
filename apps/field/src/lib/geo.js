@@ -193,7 +193,7 @@ export async function getPositionPrecise(opts = {}) {
       settled = true
       try {
         navigator.geolocation.clearWatch(watchId)
-      } catch (_) {}
+      } catch (_) { void _ }
       clearTimeout(timer)
       resolve(result)
     }
@@ -309,6 +309,6 @@ export function watchPosition(onUpdate, opts = {}) {
   return () => {
     try {
       navigator.geolocation.clearWatch(id)
-    } catch (_) {}
+    } catch (_) { void _ }
   }
 }

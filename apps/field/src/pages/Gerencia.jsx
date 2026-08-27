@@ -750,7 +750,7 @@ export default function Gerencia({ esGerente }) {
       try {
         const fv = await mixDesdeVentasLineas(fromGer.cliente_key)
         if (fv.length >= skusFast.length) skusFast = fv
-      } catch (_) {}
+      } catch (_) { void _ }
 
       if (skusFast.length) {
         setCliSku(prev => ({ ...prev, [key]: {
@@ -929,8 +929,10 @@ export default function Gerencia({ esGerente }) {
       }
     }
 
-    if (!skus.length && nomBuscar) {
-      const q = String(nomBuscar).slice(0, 48).replace(/%/g, '')
+    // Era `nomBuscar`, que no existe: el parámetro se llama nombreHint.
+    // ReferenceError al buscar SKU de un cliente sin coincidencia por key.
+    if (!skus.length && nombreHint) {
+      const q = String(nombreHint).slice(0, 48).replace(/%/g, '')
       const { data } = await supabase
         .from('cartera')
         .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente,razon_social')

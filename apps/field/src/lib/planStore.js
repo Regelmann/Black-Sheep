@@ -17,9 +17,7 @@ export function savePlanDia(plan, meta = {}) {
         },
       })
     )
-  } catch {
-    /* quota */
-  }
+  } catch { void 0 }
 }
 
 export function loadPlanDia() {

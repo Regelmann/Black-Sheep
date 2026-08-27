@@ -5,10 +5,82 @@
  */
 
 const KEY = 'kf_offline_v1'
-export const QUEUE_KEY = 'kf_action_queue_v1'
+import { leerCola, escribirCola, agregarItem, LEGACY_KEY } from './outboxDb.js'
+
+export const QUEUE_KEY = LEGACY_KEY
+
+/**
+ * BACKOFF EXPONENCIAL CON JITTER
+ *
+ * Antes: 25 reintentos seguidos. Al volver la señal, 50 items disparaban
+ * 50 requests simultáneos contra Supabase — justo cuando la red recién
+ * se recupera y es más frágil.
+ *
+ * El jitter importa tanto como el backoff: sin él, TODOS los teléfonos
+ * de la flota reintentan en el mismo instante y se pisan entre sí.
+ *
+ * Tope de 30 min: más allá, la espera deja de tener sentido y conviene
+ * mandar el item a la bandeja de agotados para que decida una persona.
+ */
+export const MAX_INTENTOS = 8
+const ESPERA_BASE = 2000
+const ESPERA_TOPE = 30 * 60 * 1000
+
+/**
+ * @param {number} intentos
+ * @returns {number} milisegundos de espera
+ */
+export function calcularEspera(intentos) {
+  const n = Math.max(1, Number(intentos) || 1)
+  const base = Math.min(ESPERA_TOPE, ESPERA_BASE * Math.pow(2, n - 1))
+  // ±25% de jitter para desincronizar la flota
+  return Math.round(base * (0.75 + Math.random() * 0.5))
+}
+
+/** ¿A este item ya le toca reintentar? */
+/**
+ * @param {any} item
+ * @param {number} [ahora]
+ * @returns {boolean}
+ */
+function leToca(item, ahora = Date.now()) {
+  if (!item.nextAttemptAt) return true
+  return ahora >= item.nextAttemptAt
+}
+
+/**
+ * Items que agotaron los reintentos. NO se borran: un pedido agotado es
+ * plata real. Quedan visibles para que el vendedor decida.
+ */
+export function itemsAgotados() {
+  return leerCola().filter(i => i?.agotado)
+}
+
+/** Reintento manual: revive un item agotado. */
+/**
+ * @param {string} id
+ * @returns {any|null}
+ */
+export function revivirItem(id) {
+  const q = leerCola().map(i =>
+    i?.id === id ? { ...i, agotado: false, attempts: 0, nextAttemptAt: 0 } : i
+  )
+  escribirCola(q)
+  return q.find(i => i?.id === id) || null
+}
 const HOY_KEY = 'kf_hoy_resultados_v1'
 
+/**
+ * JSON.parse tolerante. Guarda explícita contra null/undefined: los
+ * getItem() de localStorage devuelven null cuando la clave no existe,
+ * y JSON.parse(null) devuelve null en vez de lanzar — un comportamiento
+ * que enmascara el caso "no hay dato".
+ *
+ * @param {string|null|undefined} s
+ * @returns {any}
+ */
 function safeParse(s) {
+  if (s === null || s === undefined) return null
   try {
     return JSON.parse(s)
   } catch {
@@ -16,6 +88,7 @@ function safeParse(s) {
   }
 }
 
+/** @param {any} payload */
 export function saveOfflineSnapshot(payload) {
   const data = {
     ...payload,
@@ -41,6 +114,7 @@ export function isProbablyOffline() {
   return typeof navigator !== 'undefined' && navigator.onLine === false
 }
 
+/** @param {any} snap @returns {number|null} */
 export function offlineAgeMinutes(snap) {
   if (!snap?.savedAt) return null
   const t = new Date(snap.savedAt).getTime()
@@ -72,8 +146,11 @@ function nuevoOpId() {
   })
 }
 
+/**
+ * @param {{type:string, payload?:any}} action
+ * @returns {any}
+ */
 export function enqueueAction(action) {
-  const q = loadActionQueue()
   const opId = nuevoOpId()
   const item = {
     id: opId,
@@ -83,108 +160,103 @@ export function enqueueAction(action) {
     attempts: 0,
     ...action,
   }
-  q.push(item)
-  try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(q))
-  } catch {
-    /* quota */
-  }
+  // Escritura durable: IndexedDB + respaldo en localStorage.
+  agregarItem(item)
   return item
 }
 
 export function loadActionQueue() {
-  try {
-    const q = safeParse(localStorage.getItem(QUEUE_KEY))
-    return Array.isArray(q) ? q : []
-  } catch {
-    return []
-  }
+  return leerCola()
 }
 
 export function clearActionQueue() {
-  try {
-    localStorage.removeItem(QUEUE_KEY)
-  } catch {
-    /* */
-  }
-}
-
-export function removeActionFromQueue(id) {
-  const q = loadActionQueue().filter(x => x.id !== id)
-  try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(q))
-  } catch {
-    /* */
-  }
-  return q
+  escribirCola([])
 }
 
 /**
- * Intenta sincronizar la cola. `handlers` mapea tipo → async (item) => boolean (ok).
- * Devuelve { ok, fail, remaining }.
+ * @param {string} id
+ */
+export function removeActionFromQueue(id) {
+  escribirCola(leerCola().filter(i => i?.id !== id))
+}
+
+/**
+ * @param {Record<string, (item:any)=>Promise<any>|any>} [handlers]
+ * @returns {Promise<{ok:number,fail:number,remaining:number,pospuestos:number}>}
  */
 export async function flushActionQueue(handlers = {}) {
-  const q = loadActionQueue()
-  if (!q.length) return { ok: 0, fail: 0, remaining: 0 }
-  let ok = 0
-  let fail = 0
+  const q = leerCola()
+  if (!q.length) return { ok: 0, fail: 0, remaining: 0, pospuestos: 0 }
+
+  let ok = 0, fail = 0, pospuestos = 0
   const remaining = []
+  const ahora = Date.now()
+
   for (const item of q) {
+    // Agotado: espera decisión de una persona, no se reintenta solo.
+    if (item?.agotado) { remaining.push(item); continue }
+
+    // Todavía en backoff: se pospone sin gastar red.
+    if (!leToca(item, ahora)) { remaining.push(item); pospuestos++; continue }
+
     const fn = handlers[item.type]
-    if (!fn) {
-      remaining.push(item)
-      continue
-    }
+    if (!fn) { remaining.push(item); continue }
+
     try {
       const res = await fn(item)
-      // CONTRATO: un handler puede devolver boolean o { ok, error }.
-      // Antes se evaluaba `if (res)` y `{ ok:false }` es un OBJETO TRUTHY:
-      // cada fallo BORRABA el item de la cola como si se hubiera subido.
-      // Eso perdia check-ins y pedidos en silencio.
-      const success =
-        res === true ||
-        (res && typeof res === 'object' && res.ok === true)
-      if (success) {
+      // CONTRATO: boolean o { ok }. `{ok:false}` es un objeto TRUTHY:
+      // evaluar `if (res)` borraba de la cola los items que fallaron.
+      const exito = res === true || (res && typeof res === 'object' && res.ok === true)
+
+      if (exito) {
         ok++
-        if (res && res.degraded) {
-          console.warn('[outbox] item subido en modo degradado', item.type)
-        }
+        if (res && res.degraded) console.warn('[outbox] subido en modo degradado', item.type)
       } else if (res && res.descartar) {
-        // Item corrupto (payload vacío, formato inválido). Reintentarlo
-        // mil veces no lo arregla y bloquea la cola detrás suyo.
+        // Item corrupto: reintentarlo mil veces no lo arregla y bloquea
+        // la cola detrás suyo.
         fail++
-        console.error('[outbox] item descartado por corrupto:', item.type, item.lastError)
+        console.error('[outbox] descartado por corrupto:', item.type, res.error)
       } else {
         fail++
-        item.lastError = (res && res.error) || 'handler devolvio falso'
-        item.attempts = (item.attempts || 0) + 1
-        // Tope de reintentos: 25 intentos con backoff son ~días. Más allá
-        // es una cola que nunca drena y esconde el problema real.
-        if (item.attempts >= 25) {
-          console.error('[outbox] item agotó reintentos:', item.type, item.lastError)
-          item.agotado = true
-        }
-        remaining.push(item)
+        remaining.push(marcarFallo(item, (res && res.error) || 'handler devolvió falso'))
       }
     } catch (e) {
       fail++
-      item.lastError = String(e?.message || e)
-      item.attempts = (item.attempts || 0) + 1
-      remaining.push(item)
+      remaining.push(marcarFallo(item, String(/** @type {any} */ (e)?.message || e)))
     }
   }
-  try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining))
-  } catch {
-    /* */
-  }
-  return { ok, fail, remaining: remaining.length }
+
+  escribirCola(remaining)
+  return { ok, fail, remaining: remaining.length, pospuestos }
 }
 
-/** Resultados del día por cliente_key — sobrevive offline */
+/** Registra el fallo, programa el próximo intento y agota si corresponde. */
+/**
+ * @param {any} item
+ * @param {string} motivo
+ * @returns {any}
+ */
+function marcarFallo(item, motivo) {
+  const attempts = (item.attempts || 0) + 1
+  const agotado = attempts >= MAX_INTENTOS
+  if (agotado) {
+    console.error(`[outbox] agotado tras ${attempts} intentos:`, item.type, motivo)
+  }
+  return {
+    ...item,
+    attempts,
+    lastError: motivo,
+    agotado,
+    nextAttemptAt: agotado ? 0 : Date.now() + calcularEspera(attempts),
+  }
+}
+
+/** Clave del día: los resultados de "Hoy" se guardan por fecha local. */
 function hoyBucketKey() {
   const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `kf_hoy_resultados_${d.getFullYear()}-${mm}-${dd}`
 }
 
 export function loadHoyResultados() {
@@ -202,6 +274,7 @@ export function loadHoyResultados() {
  * @param {'visitado'|'pedido'|'no_venta'|'checkin'} resultado
  * @param {object} [extra]
  */
+/** @param {string} clienteKey @param {string} resultado @param {any} [extra] */
 export function markHoyResultado(clienteKey, resultado, extra = {}) {
   if (!clienteKey) return
   try {
@@ -210,6 +283,7 @@ export function markHoyResultado(clienteKey, resultado, extra = {}) {
     const bucket = all[day] || {}
     const prev = bucket[clienteKey] || {}
     // pedido gana sobre visitado; no_venta también es cierre
+    /** @type {Record<string, number>} */
     const rank = { checkin: 1, visitado: 2, no_venta: 3, pedido: 4 }
     const nextRank = rank[resultado] || 1
     const prevRank = rank[prev.resultado] || 0
@@ -225,14 +299,14 @@ export function markHoyResultado(clienteKey, resultado, extra = {}) {
     // limpiar días viejos (dejar solo hoy + ayer)
     const keys = Object.keys(all).sort()
     while (keys.length > 3) {
-      delete all[keys.shift()]
+      const k = keys.shift()
+      if (k) delete all[k]
     }
     localStorage.setItem(HOY_KEY, JSON.stringify(all))
-  } catch {
-    /* quota */
-  }
+  } catch { void 0 }
 }
 
+/** @param {string} clienteKey */
 export function getHoyResultado(clienteKey) {
   if (!clienteKey) return null
   return loadHoyResultados()[clienteKey] || null

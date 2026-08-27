@@ -29,7 +29,17 @@ export const DATA_STATE = Object.freeze({
  * y que un dev pueda depurar.
  */
 export function explainError(error) {
-  if (!error) return null
+  // NUNCA devolver null: quien llama hace `info.dev` / `info.user` y un
+  // null acá se convierte en un TypeError que tapa el error original.
+  // Un `Promise.reject(null)` es raro pero pasa (abortos, extensiones).
+  if (!error) {
+    return {
+      kind: 'unknown',
+      code: '',
+      user: 'No se pudieron cargar los datos.',
+      dev: 'Error sin detalle (null/undefined)',
+    }
+  }
   const code = error.code || ''
   const msg = String(error.message || '')
 
@@ -38,6 +48,10 @@ export function explainError(error) {
     const col = msg.match(/column "?([\w.]+)"?/i)?.[1]
     return {
       kind: 'schema',
+      // El code viaja hasta la política de reintento: sin él, un 42703
+      // se reintentaría como si fuera un fallo de red. Una columna que no
+      // existe no aparece por reintentar.
+      code,
       user: 'Esta vista está desactualizada. Avisá a soporte.',
       dev: `Columna inexistente${col ? `: ${col}` : ''}. La vista cambió y el select no.`,
     }
@@ -46,6 +60,7 @@ export function explainError(error) {
   if (code === '42501' || code === 'PGRST301' || /permission denied|RLS|row-level/i.test(msg)) {
     return {
       kind: 'permission',
+      code,
       user: 'No tenés acceso a estos datos. Cerrá sesión y volvé a entrar.',
       dev: 'RLS o JWT vencido. Revisar policy de la tabla.',
     }
@@ -53,12 +68,14 @@ export function explainError(error) {
   if (/Failed to fetch|NetworkError|network/i.test(msg)) {
     return {
       kind: 'network',
+      code,
       user: 'Sin conexión. Los datos que ves pueden estar viejos.',
       dev: 'Fetch falló — offline o CORS.',
     }
   }
   return {
     kind: 'unknown',
+    code,
     user: 'No se pudieron cargar los datos.',
     dev: msg || 'Error desconocido',
   }

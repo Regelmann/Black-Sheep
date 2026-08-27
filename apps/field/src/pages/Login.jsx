@@ -17,7 +17,7 @@ export default function Login() {
     try {
       const q = new URLSearchParams(window.location.search).get('tenant')
       if (q && tenants.some(x => x.id === q || x.slug === q)) return q
-    } catch {}
+    } catch { /* ignorado a propósito */ void 0 }
     return initial?.id || tenants[0]?.id || 'keyfoods'
   })
   const [loading, setLoading] = useState(false)

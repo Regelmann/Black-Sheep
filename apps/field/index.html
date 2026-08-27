@@ -2,7 +2,11 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Sin maximum-scale ni user-scalable=no: bloquean el zoom y un vendedor
+         de 50 años bajo sol directo necesita poder agrandar el texto (WCAG 1.4.4).
+         El zoom automático de iOS al enfocar inputs se evita con font-size:16px
+         reales en los campos, no capando el zoom del usuario. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#c2410c" />
     <meta http-equiv="Permissions-Policy" content="geolocation=(self)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

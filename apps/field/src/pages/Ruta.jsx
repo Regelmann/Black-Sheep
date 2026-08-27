@@ -226,7 +226,7 @@ export default function Ruta({ session }) {
             mapInstance.current.panTo({ lat: Number(pos.lat), lng: Number(pos.lng) })
             mapInstance.current.setZoom(16)
           }
-        } catch (_) {}
+        } catch (_) { void _ }
       } else {
         tip(geoErrorMessage(pos?.error || 'unavailable'))
       }
@@ -592,7 +592,7 @@ export default function Ruta({ session }) {
         } else {
           try {
             maps.event.trigger(mapInstance.current, 'resize')
-          } catch (_) {}
+          } catch (_) { void _ }
         }
         setMapReady(true)
       } catch {
@@ -615,7 +615,7 @@ export default function Ruta({ session }) {
         setMyPos(prev => prev?.lat != null ? prev : { lat: null, lng: null, accuracy: pos.accuracy, pending: true })
       }
     }, { enableHighAccuracy: true, acceptAccM: 250, hardRejectM: 2500, minMoveM: 8 })
-    return () => { try { stop() } catch {} }
+    return () => { try { stop() } catch { /* ignorado a propósito */ void 0 } }
   }, [])
 
   // Actualizar marcador "yo" sin tocar fitBounds de la ruta
@@ -667,7 +667,7 @@ export default function Ruta({ session }) {
       try {
         mapInstance.current.panTo(pos)
         mapInstance.current.setZoom(16)
-      } catch (_) {}
+      } catch (_) { void _ }
     }
   }, [mapReady, myPos])
 
@@ -686,7 +686,7 @@ export default function Ruta({ session }) {
             mapInstance.current.setZoom(16)
           }
         }
-      } catch (_) {}
+      } catch (_) { void _ }
     })()
   }, [mapReady])
 
@@ -737,7 +737,7 @@ export default function Ruta({ session }) {
 
     // Polyline del itinerario (paradas de ruta ordenadas)
     if (polyRef.current) {
-      try { polyRef.current.setMap(null) } catch (_) {}
+      try { polyRef.current.setMap(null) } catch (_) { void _ }
       polyRef.current = null
     }
     const rutaPts = (visitas || [])

@@ -44,6 +44,12 @@ export default defineConfig({
 
     // El sourcemap no se sirve al usuario, pero permite depurar los
     // errores de producción que reporta un vendedor.
-    sourcemap: true,
+    // 'hidden': genera los .map para depurar, pero NO agrega el comentario
+    // //# sourceMappingURL al bundle. Sin ese comentario el navegador no
+    // los pide: dejan de servirse al público.
+    //
+    // Con sourcemap:true cualquiera podía leer la lógica de precios,
+    // márgenes y scoring desde DevTools. Son ~2,6 MB de código fuente.
+    sourcemap: 'hidden',
   },
 })

@@ -8,7 +8,9 @@
 
 /* ── RESET ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+/* rem, no px: fijar font-size en px anula el ajuste de tamaño de letra
+   que el usuario configuró en el sistema operativo. */
+html { font-size: 100%; -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--font);
   background: var(--bg);
@@ -830,7 +832,7 @@ input, textarea, select { font-family: inherit; }
 .filter-row { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding: 8px 14px; }
 
 /* Search */
-.search { width: 100%; min-height: 44px; padding: 10px 14px 10px 38px; background: var(--surface); border: 1.5px solid var(--line-2); border-radius: var(--r-md); font-size: 14px; font-family: inherit; outline: none; color: var(--ink); }
+.search { width: 100%; min-height: 44px; padding: 10px 14px 10px 38px; background: var(--surface); border: 1.5px solid var(--line-2); border-radius: var(--r-md); font-size: 16px; /* 16 reales: menos dispara zoom en iOS */ font-family: inherit; outline: none; color: var(--ink); }
 .search:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
 
 /* Section title */

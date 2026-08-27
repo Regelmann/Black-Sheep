@@ -96,7 +96,7 @@ export function resolveTenantFromEmail(email) {
   return getTenantById('keyfoods') || available[0] || null
 }
 
-export const saveTenantId    = id => { try { id ? localStorage.setItem(STORAGE_KEY, id) : localStorage.removeItem(STORAGE_KEY) } catch {} }
+export const saveTenantId    = id => { try { id ? localStorage.setItem(STORAGE_KEY, id) : localStorage.removeItem(STORAGE_KEY) } catch { /* ignorado a propósito */ void 0 } }
 export const loadSavedTenantId = () => { try { return localStorage.getItem(STORAGE_KEY) } catch { return null } }
 
 export function resolveTenantFromUrl() {
@@ -110,7 +110,7 @@ export function resolveTenantFromUrl() {
       const sub = parts[0]
       if (sub && sub !== 'app' && sub !== 'www') return getTenantById(sub)
     }
-  } catch {}
+  } catch { /* ignorado a propósito */ void 0 }
   return null
 }
 

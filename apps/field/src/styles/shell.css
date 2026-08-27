@@ -303,3 +303,386 @@
   transition: width 420ms cubic-bezier(.32,.72,0,1);
 }
 @media (prefers-reduced-motion: reduce) { .kf-progress-track i { transition: none; } }
+
+
+/* ============================================================
+   BARRA INFERIOR — se veía cortada ("ntes Stock Más")
+   Causa: .navbar-inner es flex con `space-around` y los ítems no
+   encogen. Con 5 destinos y etiquetas largas ("Clientes"), el
+   contenido desborda y la barra se corre hacia la izquierda.
+   Fix: grid de columnas iguales + min-width:0 para que puedan encoger.
+   ============================================================ */
+.navbar {
+  padding-left: 12px;
+  padding-right: 12px;
+  box-sizing: border-box;
+}
+.navbar-inner,
+.navbar-inner-4 {
+  display: grid !important;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;         /* todos los destinos, mismo ancho */
+  justify-content: stretch;
+  gap: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.nav-item {
+  min-width: 0;                    /* la clave: permite encoger */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 2px;
+  overflow: hidden;
+  text-align: center;
+}
+/* La etiqueta se recorta con puntos suspensivos en vez de desbordar */
+.nav-item > span,
+.nav-item .nav-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  line-height: 1.1;
+}
+.nav-item svg { flex: 0 0 auto; }
+
+/* ============================================================
+   BARRA INFERIOR — se cortaba el primer ítem ("ntes Stock Más")
+   Causa: .navbar tiene width:100% MÁS padding:0 12px. Sin
+   box-sizing:border-box eso da 100%+24px — más ancho que la
+   pantalla. Con translateX(-50%) desborda por ambos lados y el
+   primer ítem queda fuera.
+   Se veía en TODAS las pantallas.
+   ============================================================ */
+.navbar {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: min(var(--max-w, 520px), 100vw);
+}
+.navbar *, .navbar *::before, .navbar *::after { box-sizing: border-box; }
+
+.navbar-inner,
+.navbar-inner-4 {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;      /* los 5 ítems del mismo ancho */
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.nav-item {
+  min-width: 0;                /* la clave: permite encoger sin desbordar */
+  flex: initial;
+  overflow: hidden;
+  padding: 6px 2px;
+  gap: 3px;
+}
+.nav-item > span,
+.nav-item > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-item svg { flex: 0 0 auto; }
+
+/* --- Header: el nombre no se corta ---------------------------
+   Se veía "Hola, Sebast…" porque el título competía por el ancho
+   con el segmented Y con un subtítulo que repetía la zona.
+   La zona ya la muestra la pastilla activa: el subtítulo sobraba. */
+.bs-appheader-inner { gap: 10px; }
+.bs-appheader-title {
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bs-appheader-zone { flex: 0 0 auto; }
+.bs-seg { max-width: none; }
+.bs-seg-btn { font-size: 12.5px; padding: 0 10px; }
+
+/* ============================================================
+   CATÁLOGO DEL CLIENTE — encabezados y tarjetas
+   El contador de la sección (<span>15</span>) caía DEBAJO del
+   título porque .bs-shop-section-head no era flex: se veía un "15"
+   suelto bajo "Tus habituales".
+   ============================================================ */
+.bs-shop-section { margin-bottom: 22px; }
+
+.bs-shop-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+.bs-shop-section-head > div { min-width: 0; }
+.bs-shop-section-head h2 {
+  margin: 0;
+  font-size: 17px; font-weight: 800;
+  letter-spacing: -.02em; line-height: 1.2;
+  color: var(--ink, #1c1917);
+}
+.bs-shop-section-head p {
+  margin: 3px 0 0;
+  font-size: 12.5px; font-weight: 500; line-height: 1.35;
+  color: var(--ink-3, #78716c);
+}
+/* El contador: pastilla a la derecha, no un número suelto abajo */
+.bs-shop-section-head > span {
+  flex: 0 0 auto;
+  min-width: 26px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--line, #ebe5dc);
+  color: var(--ink-3, #78716c);
+  font-size: 12px; font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* "Tus habituales" es la sección que importa: se destaca */
+.bs-shop-section.is-featured .bs-shop-section-head h2 { color: var(--brand, #c2410c); }
+.bs-shop-section.is-featured .bs-shop-section-head > span {
+  background: var(--brand-lt, #fff4eb);
+  color: var(--brand, #c2410c);
+}
+
+/* --- Tarjetas de producto en lista --- */
+.bs-shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
+}
+.bs-shop-list > * {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 62px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #ebe5dc);
+  border-radius: 14px;
+  background: #fff;
+  min-width: 0;
+}
+/* El nombre puede ocupar dos líneas, pero no empujar al precio */
+.bs-shop-list > * > :first-child {
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bs-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 0 16px;
+}
+
+/* ============================================================
+   TOKENS FANTASMA
+   El gráfico de tendencia usaba --info-lt4, --info-mid6, --navy-2
+   y --ok-mid. NINGUNO estaba definido: CSS resuelve una variable
+   inexistente como valor inválido y el fondo queda transparente.
+   Sólo se veía la barra de May, la única que usaba --danger.
+   Mismo patrón que el var() circular de tenants.js: una variable
+   que no resuelve no da error, da un elemento invisible.
+   ============================================================ */
+:root {
+  --navy-2:     #1e3a5f;   /* barra seleccionada */
+  --ok-mid:     #16a34a;   /* mejor mes */
+  --info-lt4:   #bfdbfe;   /* meses normales */
+  --info-mid6:  #e2e8f0;   /* mes sin venta */
+  --info-dk4:   #0284c7;
+  --info-dk5:   #0ea5e9;
+  --info-lt2:   #e0f2fe;
+  --ok-lt4:     #a7f3d0;
+  --ok-dk:      #166534;
+  --danger-dk:  #b91c1c;
+  --danger-lt:  #fef2f2;
+  --danger-lt3: #fecaca;
+  --warn-lt5:   #fdba74;
+  --line-3:     #c7bfb2;
+  --max-w:      520px;
+}
+
+/* Piso visible: una barra con venta > 0 nunca desaparece */
+.bs-trend-bar, [class*="trend"] i { min-height: 4px; }
+
+/* ------------------------------------------------------------
+   Escalas completas.
+   El guard (R14) encontró 42 tokens usados y nunca definidos.
+   Un var() que no resuelve NO da error: deja el elemento invisible.
+   Se definen todos, respetando la nomenclatura que ya usa el código.
+   ------------------------------------------------------------ */
+:root {
+  --white: #ffffff;
+
+  /* Neutros */
+  --neutral:    #78716c;
+  --neutral-2:  #57534e;
+  --neutral-3:  #44403c;
+  --neutral-4:  #292524;
+  --bs-dark-2:  #292524;
+  --bs-dark-3:  #3d2f26;
+  --navy:       #1e3a5f;
+
+  /* Azules / info */
+  --info-lt3:   #dbeafe;
+  --info-mid:   #60a5fa;
+  --info-mid2:  #3b82f6;
+  --info-mid3:  #2563eb;
+  --info-mid4:  #93c5fd;
+  --info-mid5:  #bfdbfe;
+  --info-mid7:  #eff6ff;
+  --info-mid8:  #f8fafc;
+  --info-dk2:   #1d4ed8;
+  --info-dk3:   #1e40af;
+
+  /* Verdes */
+  --ok-lt3:     #d1fae5;
+  --ok-mid2:    #22c55e;
+  --ok-dk2:     #15803d;
+  --ok-dk3:     #14532d;
+
+  /* Rojos */
+  --danger-lt4: #fee2e2;
+  --danger-dk2: #991b1b;
+  --danger-dk3: #7f1d1d;
+
+  /* Ámbar */
+  --warn-lt3:   #fef3c7;
+  --warn-lt4:   #fde68a;
+  --warn-lt6:   #fff7ed;
+  --warn-lt7:   #fffbeb;
+  --warn-dk2:   #b45309;
+
+  /* Marca y acentos */
+  --brand-lt6:  #ffedd5;
+  --teal:       #0d9488;
+  --teal-lt:    #ccfbf1;
+  --purple:     #7c3aed;
+  --lime:       #a3e635;   /* identidad Black Sheep */
+
+  /* Geometría y sombras */
+  --r-pill:     999px;
+  --sh-xs: 0 1px 2px rgba(28,25,23,.06);
+  --sh-sm: 0 2px 6px rgba(28,25,23,.08);
+  --sh-md: 0 6px 18px rgba(28,25,23,.10);
+  --leading-normal: 1.5;
+}
+
+/* --- ErrorBoundary: nunca pantalla blanca en la calle --------- */
+.bs-crash {
+  min-height: 70vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 16px;
+}
+.bs-crash-box { max-width: 420px; width: 100%; text-align: center; }
+.bs-crash-title {
+  margin: 0 0 8px;
+  font-size: 20px; font-weight: 800; letter-spacing: -.02em;
+  color: var(--ink, #1c1917);
+}
+.bs-crash-desc {
+  margin: 0 0 14px;
+  font-size: 13.5px; color: var(--ink-3, #78716c); line-height: 1.45;
+}
+.bs-crash-safe {
+  margin: 0 0 20px; padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--ok-lt3, #d1fae5);
+  color: var(--ok-dk, #166534);
+  font-size: 13px; font-weight: 600; line-height: 1.45;
+}
+.bs-crash-cta, .bs-crash-alt {
+  width: 100%; min-height: 50px; margin-bottom: 8px;
+  border-radius: 13px; border: 0;
+  font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
+}
+.bs-crash-cta { background: var(--brand, #c2410c); color: #fff; }
+.bs-crash-alt {
+  background: transparent;
+  border: 1.5px solid var(--line-2, #d6cfc4);
+  color: var(--ink-2, #44403c);
+}
+.bs-crash-dev {
+  margin-top: 16px; padding: 10px; text-align: left;
+  font-size: 10.5px; line-height: 1.4;
+  background: var(--surface-2, #f0ece6); border-radius: 10px;
+  overflow: auto; max-height: 200px;
+}
+
+/* --- Bandeja de acciones que no subieron --------------------- */
+.bs-agotados-pill {
+  position: fixed;
+  left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  z-index: 95;
+  min-height: 38px; padding: 0 16px;
+  border: 0; border-radius: 999px;
+  background: var(--danger-dk, #b91c1c); color: #fff;
+  font-family: inherit; font-size: 13px; font-weight: 800;
+  box-shadow: 0 6px 20px rgba(185,28,28,.35);
+  cursor: pointer;
+}
+.bs-agotados-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(28,25,23,.5);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.bs-agotados-sheet {
+  width: 100%; max-width: 520px;
+  max-height: 82vh; overflow-y: auto;
+  background: #fff; border-radius: 20px 20px 0 0;
+  padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+.bs-agotados-title { margin: 0 0 6px; font-size: 19px; font-weight: 800; }
+.bs-agotados-desc {
+  margin: 0 0 16px; font-size: 13px; line-height: 1.45;
+  color: var(--ink-3, #78716c);
+}
+.bs-agotado {
+  padding: 12px; margin-bottom: 8px;
+  border: 1px solid var(--danger-lt3, #fecaca);
+  border-radius: 14px; background: var(--danger-lt, #fef2f2);
+}
+.bs-agotado-tipo { margin: 0; font-size: 14px; font-weight: 800; }
+.bs-agotado-when {
+  margin: 2px 0 0; font-size: 11.5px; color: var(--ink-3, #78716c);
+  font-variant-numeric: tabular-nums;
+}
+.bs-agotado-err {
+  margin: 6px 0 0; font-size: 11px; line-height: 1.35;
+  color: var(--danger-dk, #b91c1c);
+  word-break: break-word;
+}
+.bs-agotado-acciones { display: flex; gap: 8px; margin-top: 10px; }
+.bs-agotado-retry, .bs-agotado-drop {
+  flex: 1; min-height: 40px; border-radius: 10px;
+  font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
+}
+.bs-agotado-retry { border: 0; background: var(--brand, #c2410c); color: #fff; }
+.bs-agotado-drop {
+  border: 1.5px solid var(--line-2, #d6cfc4);
+  background: transparent; color: var(--ink-3, #78716c);
+}
+.bs-agotados-cerrar {
+  width: 100%; min-height: 48px; margin-top: 10px;
+  border: 0; border-radius: 12px;
+  background: var(--line, #ebe5dc); color: var(--ink-2, #44403c);
+  font-family: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer;
+}

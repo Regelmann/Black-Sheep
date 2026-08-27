@@ -152,7 +152,10 @@
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: 15px; /* 16px real evita zoom en iOS; 15 + no-zoom meta */
+  /* 16px REALES. Antes eran 15px y funcionaba sólo porque el viewport
+     tenía user-scalable=no. Al desbloquear el zoom (WCAG 1.4.4), 15px
+     dispara el zoom automático de iOS al enfocar el campo. */
+  font-size: 16px;
   color: var(--ink, #1c1917);
 }
 .bs-search-input::-webkit-search-cancel-button { display: none; }
@@ -280,7 +283,7 @@
   min-width: 0;
 }
 .bs-client-name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.2;
   color: var(--ink, #1c1917);
@@ -290,7 +293,7 @@
 }
 .bs-client-amount {
   flex: 0 0 auto;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--brand, #c2410c);
   font-variant-numeric: tabular-nums;
@@ -584,7 +587,7 @@
   border-radius: 12px;
   background: transparent;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #1c1917;
   cursor: pointer;
@@ -710,7 +713,7 @@
   min-width: 0;
 }
 .bs-topbar-hello {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--ink, #1c1917);
   letter-spacing: -0.02em;
@@ -859,7 +862,7 @@
   border: 1.5px solid #e7e5e4;
   border-radius: 12px;
   background: #fff;
-  font-size: 15px;
+  font-size: 16px;
   color: #1c1917;
   outline: none;
 }

@@ -45,13 +45,18 @@ import { NavBar } from './components.jsx'
 import { AppShell } from './shells/AppShell.jsx'
 // V9.0 — domain components
 import { AppHeader } from './chrome/AppHeader.jsx'
+import { ErrorBoundary } from './chrome/ErrorBoundary.jsx'
+import { BandejaAgotados } from './chrome/BandejaAgotados.jsx'
+// Fuente ÚNICA del sello. Vive en su módulo para evitar el ciclo
+// App → ErrorBoundary → App.
+import { BUILD_STAMP } from './lib/buildStamp.js'
+export { BUILD_STAMP }
 import { syncHandlers } from './lib/syncHandlers.js'
 import { SyncBanner } from './chrome/SyncBanner.jsx'
 import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
 import { runSyncFlush } from './lib/sync/engine.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-export const BUILD_STAMP = 'v-BS-PLATFORM-V10.0-SHELL'
 
 // ── Contexto global ──────────────────────────────────────────────────────
 export const EjecutivoCtx = createContext(null)
@@ -239,10 +244,10 @@ export default function App() {
         zonas={esGerente ? zonasDisponibles : []}
         onZonaChange={cambiarZona}
         titulo={ejecutivo?.nombre ? `Hola, ${String(ejecutivo.nombre).split(' ')[0]}` : 'Black Sheep'}
-        subtitulo={zonaVista}
       />
       <>
         <SyncBanner handlers={SYNC_HANDLERS} />
+      <BandejaAgotados />
         <AppShell>
           <div className="app-body">
             <div className="build-stamp">
@@ -252,6 +257,10 @@ export default function App() {
             {/* Suspense envuelve TODAS las rutas: las directas lo
                 ignoran, las lazy muestran el esqueleto mientras baja
                 su chunk. */}
+            {/* Boundary por ruta, no una sola global: si Gerencia explota,
+                el resto de la app sigue funcionando. `key` con la ruta hace
+                que el boundary se resetee al navegar. */}
+            <ErrorBoundary stamp={BUILD_STAMP} zona={window.location.pathname}>
             <Suspense fallback={<CargandoPagina />}>
             <Routes>
               <Route path="/" element={<Hoy />} />
@@ -265,6 +274,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </Suspense>
+            </ErrorBoundary>
           </div>
         </AppShell>
         <NavBar

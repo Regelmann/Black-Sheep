@@ -140,10 +140,20 @@ export default function CatalogoCliente() {
 
   // RPC pública no trae stock_disponible: mostrar TODOS los items del catálogo
   const available = filtered
-  const habituales = available.filter(i => i.es_habitual || i.recomendado || i.destacado)
-  const rest = available.filter(i => !(i.es_habitual || i.recomendado || i.destacado))
-  const reposicion = []
-  const ofertas = habituales
+  /* El ORDEN y la agrupación los define el SQL (26_CATALOGO_ORDEN):
+       grupo 1 = lo que el cliente ya compra
+       grupo 2 = sugeridos de sus mismos rubros
+       grupo 3 = resto del catálogo
+     Antes el front reagrupaba por su cuenta con `es_habitual ||
+     recomendado || destacado` — campos distintos — y el conteo decía
+     15 pero la lista salía vacía. Y `ofertas = habituales` mostraba
+     la misma lista dos veces.
+     El front NO reordena: sólo separa por el grupo que ya viene. */
+  const grupoDe = (i) => Number(i.grupo) || (i.es_habitual ? 1 : 3)
+  const habituales  = available.filter(i => grupoDe(i) === 1)
+  const reposicion  = available.filter(i => grupoDe(i) === 2)
+  const rest        = available.filter(i => grupoDe(i) === 3)
+  const ofertas     = []
   const liquidacion = []
   const cartCount = cart.reduce((a, i) => a + Number(i.cantidad || 0), 0)
   const total = cart.reduce((a, i) => a + Number(i.precio || 0) * Number(i.cantidad || 0), 0)
@@ -302,7 +312,7 @@ export default function CatalogoCliente() {
           <ShopSection title="Tus habituales" subtitle="Lo que ya comprás — con tu precio" items={habituales} view={view} onAdd={add} onFicha={setFicha} featured />
         )}
         {reposicion.length > 0 && (
-          <ShopSection title="Para reponer" subtitle="Según tu ritmo de compra" items={reposicion} view={view} onAdd={add} onFicha={setFicha} />
+          <ShopSection title="Para tu rubro" subtitle="Productos de las categorías que ya comprás" items={reposicion} view={view} onAdd={add} onFicha={setFicha} />
         )}
         {ofertas.length > 0 && (
           <ShopSection title="Destacados" subtitle="Selección del mes" items={ofertas} view={view} onAdd={add} onFicha={setFicha} />
@@ -485,28 +495,12 @@ function ShopSection({ title, subtitle, items, view, onAdd, onFicha, featured })
         </div>
         <span>{items.length}</span>
       </div>
-      {/* El RPC ya devuelve los items ORDENADOS:
-            1 · lo que el cliente ya compra (lo más reciente arriba)
-            2 · sugeridos de sus mismos rubros
-            3 · resto del catálogo
-          Acá sólo se ponen los encabezados donde cambia el grupo.
-          NO se reordena: el orden es regla de negocio y vive en SQL. */}
+      {/* Los items llegan ya ordenados desde el SQL. ShopSection sólo
+          los pinta: no reordena ni reagrupa. */}
       <div className={view === 'list' ? 'bs-shop-list' : 'bs-shop-grid'}>
-        {items.map((i, idx) => {
-          const g = i.grupo ?? 3
-          const gPrev = idx > 0 ? (items[idx - 1].grupo ?? 3) : null
-          const nuevoGrupo = g !== gPrev
-          return (
-            <div key={i.sku_canon} className="bs-shop-cell" style={{ display: 'contents' }}>
-              {nuevoGrupo && (
-                <h3 className={`bs-shop-group bs-shop-group--${g}`}>
-                  {i.grupo_nombre || (g === 1 ? 'Lo que compras' : g === 2 ? 'Para tu rubro' : 'Más productos')}
-                </h3>
-              )}
-              <ProductCard item={i} view={view} onAdd={onAdd} onFicha={onFicha} />
-            </div>
-          )
-        })}
+        {items.map(i => (
+          <ProductCard key={i.sku_canon} item={i} view={view} onAdd={onAdd} onFicha={onFicha} />
+        ))}
       </div>
     </section>
   )

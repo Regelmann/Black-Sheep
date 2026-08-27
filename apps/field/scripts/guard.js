@@ -127,6 +127,74 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R15 · ESLint tiene que estar y correr en verify ────────────────
+// La auditoría V11 lo dijo con razón: guard.js es defensa RETROSPECTIVA
+// (sólo detecta bugs que YA ocurrieron). Un `data` sin declarar es una
+// clase de error que ninguna de estas reglas contempla y que ESLint
+// atrapa desde 2013.
+{
+  const raiz = path.resolve(SRC, '..')
+  const cfg = ['eslint.config.js', 'eslint.config.mjs', '.eslintrc.json', '.eslintrc.cjs']
+  if (!cfg.some((f) => fs.existsSync(path.join(raiz, f)))) {
+    problemas.push('[R15 sin ESLint]  falta eslint.config.js — el análisis estático no es opcional')
+  }
+  const pkgPath = path.join(raiz, 'package.json')
+  if (fs.existsSync(pkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+    if (!/lint/.test(pkg.scripts?.verify || '')) {
+      problemas.push('[R15 lint fuera de verify]  npm run verify debe correr el lint antes del build')
+    }
+  }
+}
+
+// ── R14 · No usar tokens CSS que no existen ────────────────────────
+// `var(--no-existe)` NO da error: CSS lo resuelve como valor inválido.
+// Un color inexistente = fondo transparente = elemento INVISIBLE.
+// Así se perdió el gráfico de tendencia de Gerencia: 4 de sus 5
+// colores eran tokens fantasma y sólo se veía una barra.
+{
+  const definidos = new Set()
+  const stylesDir = path.join(SRC, 'styles')
+  const cssFiles = []
+  if (fs.existsSync(stylesDir)) {
+    for (const f of fs.readdirSync(stylesDir)) if (f.endsWith('.css')) cssFiles.push(path.join(stylesDir, f))
+  }
+  for (const f of ['index.css', 'index.legacy.css']) {
+    const p2 = path.join(SRC, f)
+    if (fs.existsSync(p2)) cssFiles.push(p2)
+  }
+  for (const f of cssFiles) {
+    const t = fs.readFileSync(f, 'utf8')
+    for (const m of t.matchAll(/--([a-z0-9-]+)\s*:/gi)) definidos.add(m[1])
+  }
+  // Tokens que un componente define en línea (style={{ '--x': ... }})
+  // o vía setProperty. Son válidos aunque no estén en un .css.
+  for (const f of archivos.filter((x) => /\.jsx?$/.test(x))) {
+    const t = fs.readFileSync(f, 'utf8')
+    for (const m of t.matchAll(/['"](--[a-z0-9-]+)['"]\s*:/gi)) definidos.add(m[1].slice(2))
+    for (const m of t.matchAll(/setProperty\(\s*['"]--([a-z0-9-]+)/gi)) definidos.add(m[1])
+  }
+
+  const usados = new Map()
+  const todos = [...cssFiles, ...archivos.filter((f) => /\.jsx?$/.test(f))]
+  for (const f of todos) {
+    const t = fs.readFileSync(f, 'utf8')
+    t.split('\n').forEach((l, i) => {
+      for (const m of l.matchAll(/var\(\s*--([a-z0-9-]+)/gi)) {
+        // var(--x, fallback) es seguro: tiene respaldo
+        const idx = m.index + m[0].length
+        if (l.slice(idx, idx + 2).trim().startsWith(',')) continue
+        if (!definidos.has(m[1]) && !usados.has(m[1])) {
+          usados.set(m[1], `${rel(f)}:${i + 1}`)
+        }
+      }
+    })
+  }
+  for (const [tok, donde] of usados) {
+    problemas.push(`[R14 token inexistente]  --${tok} en ${donde} — no resuelve, el elemento queda invisible`)
+  }
+}
+
 // ── R13 · Ninguna página define su propio hero ─────────────────────
 // El App Shell existe para que las 5 pestañas compartan estructura.
 // Si una página vuelve a montar `bs-page-hero`, se rompe la coherencia

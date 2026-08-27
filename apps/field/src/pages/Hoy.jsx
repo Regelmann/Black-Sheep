@@ -65,9 +65,7 @@ export default function Hoy() {
       // Drenar cola offline al recuperar red
       try {
         await flushActionQueue(syncHandlers)
-      } catch {
-        /* silent */
-      }
+      } catch { void 0 }
     }
     const off = () => setOffline(true)
     window.addEventListener('online', on)

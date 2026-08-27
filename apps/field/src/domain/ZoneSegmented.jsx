@@ -33,8 +33,11 @@ import { getZoneTheme, applyZoneCssVars } from '../lib/theme/zones'
 function corta(zona, theme) {
   if (theme?.short) return theme.short
   const z = String(zona || '').toUpperCase()
-  if (z.includes('ORIENTE') && z.includes('NOR')) return 'N-Oriente'
-  if (z.includes('PONIENTE')) return 'N-Poniente'
+  // Etiquetas cortas: con tres pastillas visibles el contexto ya está
+  // dado. "NOR-PONIENTE" completo obliga a truncar y se lee peor que
+  // "Poniente".
+  if (z.includes('ORIENTE')) return 'Oriente'
+  if (z.includes('PONIENTE')) return 'Poniente'
   if (z.includes('SUR')) return 'Sur'
   return z.replace(/^ZONA\s+/, '')
 }

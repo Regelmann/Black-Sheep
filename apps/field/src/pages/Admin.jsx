@@ -178,7 +178,7 @@ function TabClientes({ onFlash }) {
               onBlur={e => { if (e.target.value.trim() !== (c.comuna || '')) saveRow(c, { comuna: e.target.value.trim() }) }} />
           </label>
           <label style={lbl}>Zona
-            <select className="search" style={{ marginTop: 4 }} value={ejByID[c.ejecutivo_id]?.zona || ''} disabled={saving === c.cliente_key}
+            <select className="search" style={{ marginTop: 4 }} value={ejecutivos.find(e => e.id === c.ejecutivo_id)?.zona || ''} disabled={saving === c.cliente_key}
               onChange={e => saveRow(c, { zona: e.target.value })}>
               <option value="">—</option>
               {ZONAS.map(z => <option key={z} value={z}>{z}</option>)}

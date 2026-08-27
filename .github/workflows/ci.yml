@@ -37,7 +37,13 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      # 1. Reglas de regresión — cada una nació de un bug real en producción
+      # 1. Análisis estático — detecta bugs que TODAVÍA no ocurrieron.
+      #    guard.js es retrospectivo; ESLint es preventivo. Se necesitan
+      #    los dos: un `data` sin declarar no lo ve ninguna regla del guard.
+      - name: Lint
+        run: npm run lint
+
+      # 2. Reglas de regresión — cada una nació de un bug real en producción
       - name: Guard (regresiones conocidas)
         run: npm run guard
 

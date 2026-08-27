@@ -83,7 +83,7 @@ function alertaCliente(c) {
         : `Lleva ${dias || '—'}d sin comprar. Agendá visita de recuperación.`,
     }
   }
-  if (/RIESGO|ENFRIANDO/i.test(c.estado_fuga || '') || (dias === dias && dias >= 21)) {
+  if (/RIESGO|ENFRIANDO/i.test(c.estado_fuga || '') || (!isNaN(dias) && dias >= 21)) {
     return {
       tone: 'warn',
       title: 'Hoy deberías contactarlo',
@@ -163,7 +163,7 @@ export default function Cartera({ session }) {
       }
       try {
         saveOfflineSnapshot({ tipo: 'cartera', clientes: data || [], savedAt: new Date().toISOString() })
-      } catch (_) {}
+      } catch (_) { void _ }
     setLoading(false)
   }
 

@@ -65,10 +65,10 @@ export async function handleCompletar(item) {
       .from('visitas').update({ estado: 'visitada' }).eq('id', p.visita_id)
     if (error) return { ok: false, error: error.message }
   }
-  if (!data || !data.length) {
-    return { ok: false, error: 'check-in sin confirmar — no volvió la fila' }
-  }
-  return { ok: true, id: data[0].id }
+
+  // Un cierre sin checkin_id ni visita_id no tiene nada que escribir,
+  // pero tampoco es un fallo: el item sale de la cola.
+  return { ok: true }
 }
 
 export async function handleNota(item) {
@@ -112,7 +112,7 @@ export async function handlePedido(item) {
       (a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0),
       0
     )
-  } catch (_) {}
+  } catch (_) { void _ }
   const { error } = await supabase.from('pedidos').insert(row)
   if (error) {
     const minimal = {
