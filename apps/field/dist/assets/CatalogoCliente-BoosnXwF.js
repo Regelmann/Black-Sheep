@@ -1,4 +1,4 @@
-import{b as is,r as d,j as s}from"./vendor-react-Bnt15BzN.js";import{s as X,p as cs,a as z,e as Z}from"./index-CsdAonhv.js";import"./vendor-supabase-D4bFpRx9.js";import"./vendor-Cgi6DKmr.js";const p=a=>{const t=Number(a);return!t||t<=0?"Consultar":"$"+Math.round(t).toLocaleString("es-CL")},Y="Black Sheep",j="data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+import{b as is,r as d,j as s}from"./vendor-react-Bnt15BzN.js";import{s as X,p as cs,a as z,e as Z}from"./index-DP9pYM-k.js";import"./vendor-supabase-D4bFpRx9.js";import"./vendor-Cgi6DKmr.js";const p=a=>{const t=Number(a);return!t||t<=0?"Consultar":"$"+Math.round(t).toLocaleString("es-CL")},Y="Black Sheep",j="data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
       <rect fill="#f5f0eb" width="800" height="800"/>
       <rect x="200" y="220" width="400" height="280" rx="24" fill="#e7e0d8"/>
       <text x="400" y="380" text-anchor="middle" fill="#c2410c" font-family="system-ui,sans-serif" font-size="28" font-weight="700">Black Sheep</text>
