@@ -1,5 +1,4 @@
 // Barril de domain — importar desde acá, no del archivo suelto.
-// Si un componente cambia de nombre o de carpeta, sólo se toca esta línea.
 export * from './BuyerSuggestions.jsx'
 export * from './ClientActionBar.jsx'
 export * from './DecisionCard.jsx'
@@ -16,3 +15,5 @@ export * from './VentaHero.jsx'
 export * from './VisitCheckIn.jsx'
 export * from './ZonePicker.jsx'
 export * from './ZoneSegmented.jsx'
+export * from './cantidad.js'
+export * from './stockTexto.js'
