@@ -29,6 +29,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.2.5",
     "globals": "^17.11.0",
+    "jsdom": "^30.0.1",
     "typescript": "^7.0.2",
     "vite": "^5.4.0"
   }
