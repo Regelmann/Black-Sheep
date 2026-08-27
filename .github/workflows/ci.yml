@@ -53,7 +53,16 @@ jobs:
 
       # 3. Build — el paso que faltaba
       - name: Build
-        run: npm run build
+        run: |
+          # Vite avisa "Circular chunk: A -> B -> A" como WARNING. Ese aviso
+          # precede a un TypeError de createContext en producción → pantalla
+          # en blanco. Acá se trata como error.
+          npm run build 2>&1 | tee /tmp/build.log
+          if grep -q "Circular chunk" /tmp/build.log; then
+            echo "::error::Vite reportó un chunk circular. Agrupá el paquete con vendor-react."
+            grep "Circular chunk" /tmp/build.log
+            exit 1
+          fi
 
       # 4. El stamp tiene que estar y ser único
       - name: Verificar BUILD_STAMP

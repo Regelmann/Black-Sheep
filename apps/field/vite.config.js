@@ -21,17 +21,42 @@ export default defineConfig({
          *
          * Separados: un deploy normal sólo baja el chunk de la app.
          */
+        /**
+         * SEPARACIÓN DE VENDORS — con una regla que se aprendió a la mala.
+         *
+         * 🔴 EL BUG QUE ESTO ARREGLA
+         * La versión anterior mandaba React a `vendor-react` y TODO lo demás
+         * a `vendor`. Pero @tanstack/react-query LLAMA a React.createContext
+         * a nivel de módulo. Si `vendor` se evalúa antes que `vendor-react`,
+         * React todavía no existe:
+         *
+         *   Uncaught TypeError: Cannot read properties of undefined
+         *   (reading 'createContext')      ← PANTALLA EN BLANCO
+         *
+         * Vite lo avisaba en cada build:
+         *   "Circular chunk: vendor -> vendor-react -> vendor"
+         * y nadie lo miraba, porque era un warning y no un error.
+         *
+         * REGLA: cualquier paquete que dependa de React va EN EL MISMO chunk
+         * que React. Separar una librería de su runtime es pedir un problema
+         * de orden de evaluación.
+         */
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
-          // Supabase es el más pesado y el que menos cambia.
+          // Supabase no toca React: puede ir solo, y es el más pesado.
           if (id.includes('@supabase')) return 'vendor-supabase'
 
-          // React + router: el núcleo, estable entre versiones.
-          if (id.includes('/react/') ||
-              id.includes('/react-dom/') ||
-              id.includes('react-router') ||
-              id.includes('@remix-run')) return 'vendor-react'
+          // React y TODO lo que lo usa, juntos. El orden deja de importar.
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/scheduler/') ||
+            id.includes('react-router') ||
+            id.includes('@remix-run') ||
+            id.includes('@tanstack') ||
+            /node_modules\/[^/]*react[^/]*\//.test(id)
+          ) return 'vendor-react'
 
           return 'vendor'
         },

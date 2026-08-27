@@ -127,6 +127,42 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R17 · Ningún paquete que use React fuera del chunk de React ────
+// Un chunk que llama React.createContext y se evalúa ANTES que React da
+// "Cannot read properties of undefined (reading 'createContext')" y
+// PANTALLA EN BLANCO. Pasó con @tanstack/react-query en V10.3.
+// Vite lo avisa como "Circular chunk", pero es un warning: no frena nada.
+{
+  const vc = path.resolve(SRC, '..', 'vite.config.js')
+  if (fs.existsSync(vc)) {
+    const t = fs.readFileSync(vc, 'utf8')
+    if (/manualChunks/.test(t)) {
+      const pkg = JSON.parse(fs.readFileSync(path.resolve(SRC, '..', 'package.json'), 'utf8'))
+      const deps = Object.keys(pkg.dependencies || {})
+      // Paquetes que dependen de React por convención de nombre.
+      const reactivos = deps.filter((d) => /react/i.test(d) && !/^react(-dom)?$/.test(d))
+      const bloque = t.slice(t.indexOf('manualChunks'), t.indexOf('chunkFileNames'))
+      for (const d of reactivos) {
+        // Se acepta cualquier prefijo que cubra al paquete: `react-router`
+        // agrupa a `react-router-dom`. Sin esto daba falso positivo.
+        const cubierto =
+          bloque.includes(d) ||
+          bloque.includes(d.split('/')[0]) ||
+          d.split('-').some((_, i, a) => {
+            const pre = a.slice(0, i + 1).join('-')
+            return pre.length > 4 && bloque.includes(pre)
+          })
+        if (!cubierto) {
+          problemas.push(
+            `[R17 chunk de React]  ${d} usa React pero no está agrupado en vendor-react — ` +
+            `riesgo de "createContext of undefined" y pantalla en blanco`
+          )
+        }
+      }
+    }
+  }
+}
+
 // ── R16 · El CI debe leer el sello de donde REALMENTE está ─────────
 // El sello se movió de App.jsx a lib/buildStamp.js y el workflow siguió
 // buscándolo en App.jsx: `grep` sin resultado → exit 1 → CI en rojo.
