@@ -1,0 +1,145 @@
+/**
+ * Resolución de precios — 256 líneas que deciden cuánto se le cobra a un
+ * cliente, sin un solo test hasta ahora.
+ *
+ * La jerarquía documentada es: override > histórico > lista > consultar,
+ * y la regla de oro del módulo es "nunca devolver 0: null + Consultar".
+ * Un 0 se ve como un precio real y se suma al total; un null se muestra
+ * como "Consultar" y obliga a preguntar.
+ *
+ * Estos tests fijan esa jerarquía y las defensas que ya existen, para
+ * que el rediseño visual no las rompa sin que nadie se entere.
+ */
+import { test, describe } from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  numPos,
+  precioDesdeLista,
+  precioDesdeHistSku,
+  resolverPrecio,
+  formatPrecioClp,
+} from './precios.js'
+
+describe('numPos · sólo números positivos son precio', () => {
+  test('acepta positivos', () => {
+    assert.equal(numPos(1290), 1290)
+    assert.equal(numPos('1290'), 1290)
+  })
+
+  test('rechaza 0, negativos y basura', () => {
+    for (const v of [0, '0', -100, null, undefined, '', 'abc', NaN, Infinity, {}]) {
+      assert.equal(numPos(v), null, `${JSON.stringify(v)} no es un precio`)
+    }
+  })
+})
+
+describe('precio de lista · la unidad manda sobre la caja', () => {
+  test('con precio_unidad se ignora el de caja', () => {
+    // Tomar el precio de caja como unitario multiplicaría la cuenta por 12.
+    assert.equal(precioDesdeLista({ precio_unidad: 1290, precio_caja: 15480 }), 1290)
+  })
+
+  test('sin unidad cae a caja o kilo', () => {
+    assert.equal(precioDesdeLista({ precio_caja: 15480 }), 15480)
+    assert.equal(precioDesdeLista({ precio_kilo: 890 }), 890)
+  })
+
+  test('sin ningún precio devuelve null, nunca 0', () => {
+    for (const v of [null, undefined, {}, { precio_unidad: 0 }, { precio_unidad: -5 }]) {
+      assert.equal(precioDesdeLista(v), null, JSON.stringify(v))
+    }
+  })
+})
+
+describe('precio histórico · promedios sin dividir por cero', () => {
+  test('calcula el unitario desde el promedio', () => {
+    assert.equal(precioDesdeHistSku({ promClp: 15000, promUd: 10 }), 1500)
+  })
+
+  test('un precio explícito gana sobre el promedio', () => {
+    assert.equal(precioDesdeHistSku({ precio: 1290, promClp: 15000, promUd: 10 }), 1290)
+  })
+
+  test('unidades 0 no produce Infinity', () => {
+    const p = precioDesdeHistSku({ promClp: 15000, promUd: 0 })
+    assert.equal(p, null)
+    assert.ok(p === null || Number.isFinite(p))
+  })
+
+  test('un promedio absurdo se descarta en vez de cobrarse', () => {
+    // Un promClp mal parseado no puede convertirse en el precio del cliente.
+    assert.equal(precioDesdeHistSku({ promClp: 1e12, promUd: 1 }), null)
+  })
+
+  test('sin datos devuelve null', () => {
+    for (const v of [null, undefined, {}, { promClp: 0, promUd: 0 }]) {
+      assert.equal(precioDesdeHistSku(v), null, JSON.stringify(v))
+    }
+  })
+})
+
+describe('resolverPrecio · la jerarquía documentada', () => {
+  const stock = { precio_unidad: 1500 }
+  const hist = { precio: 1200 }
+
+  test('override gana sobre todo', () => {
+    const r = resolverPrecio({ override: 1000, histSku: hist, stockItem: stock })
+    assert.equal(r.precio, 1000)
+    assert.equal(r.origen, 'negociado')
+  })
+
+  test('sin override manda el histórico del cliente', () => {
+    const r = resolverPrecio({ histSku: hist, stockItem: stock })
+    assert.equal(r.precio, 1200)
+    assert.equal(r.origen, 'historico')
+  })
+
+  test('sin histórico manda la lista', () => {
+    const r = resolverPrecio({ stockItem: stock })
+    assert.equal(r.precio, 1500)
+    assert.equal(r.origen, 'lista')
+  })
+
+  test('sin nada: Consultar, y el precio es null (no 0)', () => {
+    const r = resolverPrecio({})
+    assert.equal(r.precio, null, 'un 0 se sumaría al total como si fuera gratis')
+    assert.equal(r.origen, 'consultar')
+    assert.equal(r.etiqueta, 'Consultar')
+  })
+
+  // Un override de 0 sería "regalado": tiene que pedir confirmación
+  // explícita, no colarse como precio.
+  test('un override de 0 o negativo no se toma como precio', () => {
+    for (const v of [0, -500]) {
+      const r = resolverPrecio({ override: v })
+      assert.notEqual(r.origen, 'negociado', `override ${v} no puede valer como precio`)
+      assert.equal(r.precio, null)
+    }
+  })
+
+  test('la etiqueta distingue "Tu precio" de "Promedio"', () => {
+    const conFecha = resolverPrecio({ histSku: { precio: 1200, ultima: '2026-08-01' } })
+    const sinFecha = resolverPrecio({ histSku: { precio: 1200 } })
+    assert.equal(conFecha.etiqueta, 'Tu precio')
+    assert.equal(sinFecha.etiqueta, 'Promedio')
+  })
+
+  test('nunca devuelve NaN en el precio', () => {
+    for (const opts of [{}, { override: 'abc' }, { histSku: {} }, { stockItem: {} }, null]) {
+      const r = resolverPrecio(opts || {})
+      assert.ok(r.precio === null || Number.isFinite(r.precio), JSON.stringify(opts))
+    }
+  })
+})
+
+describe('formato', () => {
+  test('formatea en pesos chilenos', () => {
+    assert.equal(formatPrecioClp(1290), '$1.290')
+  })
+
+  test('sin precio devuelve null, no "$0"', () => {
+    for (const v of [0, null, undefined, -5, 'abc']) {
+      assert.equal(formatPrecioClp(v), null, `${JSON.stringify(v)} no debe imprimirse como precio`)
+    }
+  })
+})

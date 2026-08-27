@@ -2,7 +2,7 @@
  * Handlers del outbox — SSoT para flush desde Hoy, SyncBanner y online event.
  * Tipos: checkin | completar | nota | pedido | no_venta
  */
-import { supabase } from './supabase'
+import { supabase } from './supabase.js'
 
 export async function handleCheckin(item) {
   const p = item.payload || {}

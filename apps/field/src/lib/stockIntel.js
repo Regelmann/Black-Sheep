@@ -2,7 +2,7 @@
  * Stock → compradores
  * Match: sku_canon · nombre producto · productos_top (si existe)
  */
-import { parseSkuDetalle } from './coach'
+import { parseSkuDetalle } from './coach.js'
 
 const n = v => Number(v) || 0
 

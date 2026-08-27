@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
 import HistorialPedidos from '../domain/HistorialPedidos.jsx'
 import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
-import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
+import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline.js'
 import { FilterBar, SearchField, StatGrid } from '../domain/FilterBar.jsx'
 import { ClientActionBar } from '../domain/ClientActionBar.jsx'
 import { PageShell } from '../shells/PageShell.jsx'
@@ -12,7 +12,7 @@ import NotaModal from '../domain/NotaModal.jsx'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { ZoneChip } from '../domain/ZonePicker.jsx'
-import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach'
+import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach.js'
 import {
   esActivoMes,
   esNuevoMes,
@@ -21,7 +21,7 @@ import {
   skusAReponer,
   clienteTocaReponer,
   computeConsistentMetrics,
-} from '../lib/metrics'
+} from '../lib/metrics.js'
 
 function estadoInfo(estado) {
   const e = (estado || '').toLowerCase()

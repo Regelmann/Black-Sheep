@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Sin maximum-scale ni user-scalable=no: bloquean el zoom y un vendedor
+         de 50 años bajo sol directo necesita poder agrandar el texto (WCAG 1.4.4).
+         El zoom automático de iOS al enfocar inputs se evita con font-size:16px
+         reales en los campos, no capando el zoom del usuario. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#c2410c" />
+    <meta http-equiv="Permissions-Policy" content="geolocation=(self)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Black Sheep" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Black Sheep Field" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/logo-mark-32.png" />
+    <link rel="apple-touch-icon" href="/brand/logo-mark-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/brand/logo-mark-192.png" />
+    <link rel="apple-touch-icon" href="/brand/logo-mark-180.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Black Sheep Field</title>
+    <script type="module" crossorigin src="/assets/index-DP9pYM-k.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-Bnt15BzN.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-Cgi6DKmr.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-supabase-D4bFpRx9.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-B2t42xUv.css">
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         GUARDIA DE ARRANQUE
+
+         Si el JS falla ANTES de que React monte, el ErrorBoundary no
+         existe todavía: el vendedor ve una pantalla en blanco y no
+         tiene forma de saber si es la app, la señal o su teléfono.
+
+         Este bloque es JS clásico (no módulo): corre aunque el bundle
+         no cargue. Si a los 8 segundos #root sigue vacío, muestra una
+         pantalla con salida y el error real.
+
+         No arregla la causa. Impide que la causa sea invisible.
+         ══════════════════════════════════════════════════════════════ -->
+    <script>
+      (function () {
+        var fallo = null
+        window.addEventListener('error', function (e) {
+          fallo = fallo || (e.message + (e.filename ? ' · ' + e.filename.split('/').pop() : ''))
+        })
+        window.addEventListener('unhandledrejection', function (e) {
+          fallo = fallo || ('promesa: ' + (e.reason && e.reason.message ? e.reason.message : e.reason))
+        })
+
+        setTimeout(function () {
+          var root = document.getElementById('root')
+          if (root && root.children.length > 0) return   // React montó: todo bien
+
+          var cola = 0
+          try {
+            var q = JSON.parse(localStorage.getItem('kf_action_queue_v1') || '[]')
+            cola = Array.isArray(q) ? q.length : 0
+          } catch (_) {}
+
+          root.innerHTML =
+            '<div style="font-family:system-ui,sans-serif;padding:28px 20px;max-width:440px;margin:0 auto;text-align:center">' +
+              '<h1 style="font-size:20px;font-weight:800;margin:36px 0 8px;color:#1c1917">La app no pudo abrir</h1>' +
+              '<p style="font-size:14px;color:#78716c;line-height:1.5;margin:0 0 16px">' +
+                'No es tu teléfono. Probá recargar; si sigue igual, avisá a soporte.' +
+              '</p>' +
+              (cola > 0
+                ? '<p style="font-size:13px;font-weight:600;background:#d1fae5;color:#166534;padding:12px;border-radius:12px;margin:0 0 16px;line-height:1.45">' +
+                  'Tenés <b>' + cola + '</b> ' + (cola === 1 ? 'acción guardada' : 'acciones guardadas') +
+                  ' en el teléfono. <b>No se perdieron.</b></p>'
+                : '') +
+              '<button onclick="location.reload()" style="width:100%;min-height:52px;border:0;border-radius:13px;background:#c2410c;color:#fff;font-size:15px;font-weight:800;cursor:pointer">Recargar</button>' +
+              '<button onclick="if(window.caches){caches.keys().then(function(k){return Promise.all(k.map(function(n){return caches.delete(n)}))}).then(function(){location.reload(true)})}else{location.reload(true)}" ' +
+                'style="width:100%;min-height:48px;margin-top:8px;border:1.5px solid #d6cfc4;border-radius:12px;background:transparent;color:#44403c;font-size:14px;font-weight:700;cursor:pointer">' +
+                'Limpiar caché y recargar</button>' +
+              (fallo
+                ? '<p style="margin-top:20px;font-size:11px;color:#b91c1c;word-break:break-word;text-align:left;background:#fef2f2;padding:10px;border-radius:10px">' + fallo + '</p>'
+                : '') +
+            '</div>'
+        }, 8000)
+      })()
+    </script>
+
+  </body>
+</html>

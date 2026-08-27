@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
 import { PageShell } from '../shells/PageShell.jsx'
 import { FilterBar } from '../domain/FilterBar.jsx'
-import { ZONAS_COMUNAS, normComuna, zonaFromComuna } from '../lib/zonas'
+import { ZONAS_COMUNAS, normComuna, zonaFromComuna } from '../lib/zonas.js'
 
 const ZONAS = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
 

@@ -6,7 +6,7 @@
  * Separadores de producto: salto de línea o  ·  o ||
  */
 
-import { haversineM } from './geo'
+import { haversineM } from './geo.js'
 
 function isGarbageName(n) {
   if (!n || n.length < 3) return true
@@ -16,10 +16,47 @@ function isGarbageName(n) {
   return false
 }
 
+/**
+ * Número tolerante al formato chileno.
+ *
+ * Antes hacía `String(v).replace(',', '.')`, que trata el punto como
+ * decimal. Con separador de miles eso corrompe la plata en silencio:
+ * "1.290" pasaba a 1.29, y el precio histórico de un cliente caía de $54
+ * a $1. sku_detalle es texto libre que llega de vistas y CSV, así que el
+ * formato no está garantizado.
+ *
+ * Reglas:
+ *   "1290"      -> 1290
+ *   "1.290"     -> 1290   (punto como miles: 3 dígitos exactos detrás)
+ *   "1.290,50"  -> 1290.5 (coma decimal, punto miles)
+ *   "1290.5"    -> 1290.5 (punto decimal: no son 3 dígitos)
+ *   "1,5"       -> 1.5
+ */
 function num(v) {
   if (v == null || v === '') return 0
-  const n = Number(String(v).replace(',', '.'))
-  return isNaN(n) ? 0 : n
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+
+  let t = String(v).trim().replace(/\s/g, '')
+  if (!t) return 0
+
+  const tieneComa = t.includes(',')
+  const tienePunto = t.includes('.')
+
+  if (tieneComa && tienePunto) {
+    // El último separador que aparece es el decimal.
+    if (t.lastIndexOf(',') > t.lastIndexOf('.')) t = t.replace(/\./g, '').replace(',', '.')
+    else t = t.replace(/,/g, '')
+  } else if (tieneComa) {
+    t = t.replace(',', '.')
+  } else if (tienePunto) {
+    /* Un punto seguido de exactamente 3 dígitos, repetido hasta el final,
+       es separador de miles: "1.290", "1.234.567". Cualquier otra cosa
+       ("1290.5") es decimal y se deja como está. */
+    if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '')
+  }
+
+  const n = Number(t)
+  return Number.isFinite(n) ? n : 0
 }
 
 function parseOneBlock(block) {
@@ -94,6 +131,10 @@ export function parseSkuDetalle(text) {
       }
     }).filter(Boolean)
   }
+  // Un objeto suelto (no array) daba String(obj) === '[object Object]' y
+  // se colaba como el nombre de un producto en pantalla.
+  if (typeof text === 'object') return []
+
   const raw = String(text).trim()
   if (!raw) return []
   if (raw.startsWith('[') || raw.startsWith('{')) {

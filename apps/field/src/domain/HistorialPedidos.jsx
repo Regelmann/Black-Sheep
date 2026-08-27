@@ -6,7 +6,7 @@ import {
   formatFechaPedido,
   etiquetaEstadoPedido,
   marcarPedidoEstado,
-} from '../lib/pedido'
+} from '../lib/pedido.js'
 
 const money = n => {
   const v = Number(n)

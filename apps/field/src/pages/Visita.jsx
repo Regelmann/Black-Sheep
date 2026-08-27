@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { safeSelect } from '../lib/query'
-import { getPositionPrecise, haversineM, formatDist } from '../lib/geo'
-import { skusAReponer } from '../lib/coach'
-import { decideClient, calcCommercialValue } from '../lib/decisionEngine'
+import { supabase } from '../lib/supabase.js'
+import { safeSelect } from '../lib/query.js'
+import { getPositionPrecise, haversineM, formatDist } from '../lib/geo.js'
+import { evaluarCheckin } from '../lib/checkinVerificacion.js'
+import { skusAReponer } from '../lib/coach.js'
+import { decideClient, calcCommercialValue } from '../lib/decisionEngine.js'
 import { DecisionCard } from '../domain/DecisionCard.jsx'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
 import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
-import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline'
-import { esNombreProducto } from '../lib/productDisplay'
+import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline.js'
+import { esNombreProducto } from '../lib/productDisplay.js'
 
 const money = n => {
   const v = Number(n)
@@ -402,11 +403,14 @@ export default function Visita({ session }) {
     }
 
     let dist = null
-    let verificado = false
     if (lat != null && visita?.lat != null && visita?.lng != null) {
       dist = haversineM(lat, lng, visita.lat, visita.lng)
-      verificado = dist != null && dist <= 150
     }
+    /* `verificado` queda en la base como evidencia de que el vendedor
+       estuvo en el local. Estar "a 140 m" no prueba nada si el GPS trae
+       ±2000 m de margen: el margen tiene que ser menor que el radio. */
+    const evaluacion = evaluarCheckin({ distancia: dist, accuracy })
+    const verificado = evaluacion.verificado
 
     const payload = {
       visita_id: id,
@@ -452,6 +456,8 @@ export default function Visita({ session }) {
     if (payload.cliente_key) markHoyResultado(payload.cliente_key, 'checkin')
     if (verificado) {
       setMsg(`Check-in verificado · a ${formatDist(dist)} del local` + (accuracy ? ` (±${Math.round(accuracy)} m)` : ''))
+    } else if (evaluacion.motivo === 'impreciso') {
+      setMsg(`${evaluacion.texto}. Quedó guardado igual.`)
     } else if (dist != null) {
       setMsg(`Check-in OK pero lejos del pin (${formatDist(dist)}). Revisá GPS o la dirección.`)
     } else {

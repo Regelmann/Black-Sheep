@@ -1,7 +1,7 @@
 // Componentes compartidos: navegación inferior (4 tabs + Más) y helpers
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from './lib/supabase'
+import { supabase } from './lib/supabase.js'
 
 export const money = n => {
   const v = Number(n)

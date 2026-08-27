@@ -7,14 +7,14 @@ import {
   etiquetaEstadoPedido,
   marcarPedidoEstado,
   buildWhatsAppBodega,
-} from '../lib/pedido'
+} from '../lib/pedido.js'
 import {
   siguientesEstados,
   normalizarEstado,
   esPendienteOperativo,
   colorEstado,
   ESTADOS_PEDIDO,
-} from '../lib/pedidoEstados'
+} from '../lib/pedidoEstados.js'
 
 /**
  * Order Inbox — ciclo catálogo/field → confirmar → bodega → entregado
