@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { crearQueryClient } from './lib/queryClient.js'
+import { ErrorBoundary } from './chrome/ErrorBoundary.jsx'
+import { BUILD_STAMP } from './lib/buildStamp.js'
 
 // Cliente único para toda la app. Reemplaza los useEffect+useState a mano:
 // da caché, dedupe, revalidación al volver al foco y cancelación.
@@ -50,9 +52,14 @@ initOutbox()
 try {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}><App /></QueryClientProvider>
-      </BrowserRouter>
+      {/* El boundary va POR FUERA de los providers: si QueryClientProvider
+          o BrowserRouter fallan al montar, adentro no hay nadie que lo
+          atrape y vuelve la pantalla en blanco. */}
+      <ErrorBoundary stamp={BUILD_STAMP} zona="raiz">
+        <BrowserRouter>
+          <QueryClientProvider client={queryClient}><App /></QueryClientProvider>
+        </BrowserRouter>
+      </ErrorBoundary>
     </React.StrictMode>
   )
 } catch (e) {
@@ -68,8 +75,24 @@ try {
   }
 }
 
-if ('serviceWorker' in navigator) {
+/**
+ * SERVICE WORKER
+ *
+ * Causa probable de la pantalla en blanco: un SW viejo cacheando el
+ * index.html. El HTML cacheado apunta a chunks con hash que ya no
+ * existen en el servidor → los imports fallan → nada monta.
+ *
+ * Dos cambios:
+ *  · Sólo en PROD. En desarrollo un SW cachea el bundle de dev y deja
+ *    de reflejar los cambios; peor, sobrevive al `npm run dev`.
+ *  · En dev se DESREGISTRAN los que hayan quedado de un build anterior.
+ */
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {})
   })
+} else if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then(rs => rs.forEach(r => r.unregister()))
+    .catch(() => {})
 }

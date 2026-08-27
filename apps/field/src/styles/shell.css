@@ -686,3 +686,26 @@
   background: var(--line, #ebe5dc); color: var(--ink-2, #44403c);
   font-family: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer;
 }
+
+/* ============================================================
+   ÁREA TÁCTIL ≥ 44px  ·  lo exige styles/tactil.test.js
+   La app se usa a una mano, caminando, a veces con guantes.
+   Un chip de 32px es tocable en un mouse; en la calle, no.
+   ============================================================ */
+.bs-chip,
+.bs-seg-btn,
+.bs-stock-buyers-btn,
+.bs-sync-btn,
+.bs-tray-toggle,
+.bs-confirm-actions button,
+.bs-pedido-secondary button {
+  min-height: 44px;
+}
+/* El chip sigue viéndose compacto: el alto extra es padding, no texto. */
+.bs-chip { padding-top: 5px; padding-bottom: 5px; }
+.bs-chip::before { content: none; }   /* ya no hace falta el pseudo-área */
+.bs-seg { padding: 4px; }
+.bs-seg-btn { padding-top: 6px; padding-bottom: 6px; }
+.bs-shop-qty button,
+.bs-visit-outcomes button,
+.cli-acciones .acc-btn { min-height: 44px; }

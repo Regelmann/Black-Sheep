@@ -55,6 +55,16 @@ export const supabase = new Proxy(
   {
     get(_t, prop) {
       const c = ensure()
+      // Sin esta guarda, `c[prop]` lanza "Cannot read properties of null"
+      // — un TypeError genérico que no dice NADA sobre la causa real, que
+      // es que faltan las credenciales. Con la app ya montada eso termina
+      // en pantalla en blanco sin pista.
+      if (!c) {
+        throw new Error(
+          'Supabase sin configurar: faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. ' +
+          'Definirlas en .env (local) o en las Environment Variables de Vercel.'
+        )
+      }
       const v = c[prop]
       return typeof v === 'function' ? v.bind(c) : v
     },

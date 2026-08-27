@@ -127,6 +127,24 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R16 · El CI debe leer el sello de donde REALMENTE está ─────────
+// El sello se movió de App.jsx a lib/buildStamp.js y el workflow siguió
+// buscándolo en App.jsx: `grep` sin resultado → exit 1 → CI en rojo.
+{
+  const raiz = path.resolve(SRC, '..', '..', '..')
+  const wf = path.join(raiz, '.github', 'workflows', 'ci.yml')
+  const stampFiles = archivos.filter((f) => /export const BUILD_STAMP/.test(fs.readFileSync(f, 'utf8')))
+  if (stampFiles.length !== 1) {
+    problemas.push(`[R16 sello duplicado]  BUILD_STAMP definido en ${stampFiles.length} archivos — debe ser 1`)
+  } else if (fs.existsSync(wf)) {
+    const real = rel(stampFiles[0])                       // p.ej. lib/buildStamp.js
+    const yml = fs.readFileSync(wf, 'utf8')
+    if (yml.includes('BUILD_STAMP') && !yml.includes(real)) {
+      problemas.push(`[R16 CI desincronizado]  ci.yml no lee el sello de src/${real}`)
+    }
+  }
+}
+
 // ── R15 · ESLint tiene que estar y correr en verify ────────────────
 // La auditoría V11 lo dijo con razón: guard.js es defensa RETROSPECTIVA
 // (sólo detecta bugs que YA ocurrieron). Un `data` sin declarar es una

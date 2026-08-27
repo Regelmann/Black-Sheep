@@ -58,14 +58,20 @@ jobs:
       # 4. El stamp tiene que estar y ser único
       - name: Verificar BUILD_STAMP
         run: |
-          STAMP=$(grep -oP "BUILD_STAMP = '\K[^']+" src/App.jsx)
+          # El stamp vive en lib/buildStamp.js desde V10.2 — se movió para
+          # romper el ciclo App → ErrorBoundary → App. El CI seguía
+          # buscándolo en App.jsx y fallaba con exit 1.
+          STAMP_FILE=src/lib/buildStamp.js
+          STAMP=$(grep -oP "BUILD_STAMP = '\K[^']+" "$STAMP_FILE" || true)
           if [ -z "$STAMP" ]; then
-            echo "::error::No se encontró BUILD_STAMP en App.jsx"
+            echo "::error::No se encontró BUILD_STAMP en $STAMP_FILE"
             exit 1
           fi
-          N=$(grep -c "export const BUILD_STAMP" src/App.jsx)
+          # Fuente ÚNICA: nadie más puede declararlo.
+          N=$(grep -rl "export const BUILD_STAMP" src | wc -l)
           if [ "$N" -ne 1 ]; then
-            echo "::error::BUILD_STAMP definido $N veces (debe ser 1)"
+            echo "::error::BUILD_STAMP declarado en $N archivos (debe ser 1)"
+            grep -rn "export const BUILD_STAMP" src
             exit 1
           fi
           echo "✅ BUILD_STAMP = $STAMP"

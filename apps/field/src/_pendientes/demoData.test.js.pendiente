@@ -1,0 +1,107 @@
+/**
+ * El modo demo mostraba TODO en cero: venta $0, meta $0, 0 reponer,
+ * 0 nuevos, 0 visitas. No era un problema de estilos ni de carga: los
+ * datos de demostración usan nombres de columna que el código no lee.
+ *
+ *   demoData escribe        el código lee
+ *   ────────────────        ─────────────
+ *   venta_mensual           venta_mtd        (metrics.js)
+ *   metas.objetivo          meta_mensual     (computeConsistentMetrics)
+ *   —                       sku_detalle      (skusAReponer → "Reponer")
+ *
+ * Como supabaseFake nunca falla y las métricas hacen `|| 0`, el error se
+ * mostraba como una pantalla llena de ceros perfectamente válidos. Es el
+ * peor resultado posible en una demo: parece que la app no calcula nada.
+ *
+ * Estos tests atan el dataset de demo a las columnas reales. Si alguien
+ * renombra una columna en el dominio, la demo deja de mentir en silencio.
+ */
+import { test, describe } from 'node:test'
+import assert from 'node:assert/strict'
+import { computeConsistentMetrics } from './metrics.js'
+import { supabaseDemo } from './demoData.js'
+
+async function tabla(nombre) {
+  const { data } = await supabaseDemo.from(nombre).select('*')
+  return data || []
+}
+
+async function metricas() {
+  const cartera = await tabla('cartera')
+  const metas = await tabla('metas')
+  return computeConsistentMetrics(cartera, metas[0])
+}
+
+describe('modo demo · la pantalla no puede quedar en ceros', () => {
+  test('la venta del mes no es cero', async () => {
+    const m = await metricas()
+    assert.ok(
+      m.ventaMtd > 0,
+      'ventaMtd = 0: la cartera de demo no trae la columna venta_mtd',
+    )
+  })
+
+  test('hay una meta mensual cargada', async () => {
+    const m = await metricas()
+    assert.ok(
+      m.metaMensual > 0,
+      'metaMensual = 0: metas de demo no trae la columna meta_mensual',
+    )
+  })
+
+  test('la venta es coherente con la meta (demo creíble)', async () => {
+    const m = await metricas()
+    const pct = (m.ventaMtd / m.metaMensual) * 100
+    assert.ok(
+      pct > 20 && pct < 130,
+      `avance ${pct.toFixed(0)}%: una demo con un avance absurdo no sirve`,
+    )
+  })
+
+  test('los tres KPI accionables tienen números', async () => {
+    const m = await metricas()
+    assert.ok(m.reponerHoy > 0, 'REPONER en 0: falta sku_detalle en la demo')
+    assert.ok(m.nRiesgo > 0, 'RIESGO en 0')
+    assert.ok(m.nNuevos > 0, 'NUEVOS en 0: ningún cliente de demo es nuevo del mes')
+  })
+
+  // Los KPI también tienen que ser creíbles: si "Nuevos" marca 6 de 8
+  // clientes, el número está mal aunque no sea cero. Pasó: sin
+  // venta_historica, esNuevoMes() daba por nuevo a casi todos.
+  test('los KPI no marcan más clientes de los que existen', async () => {
+    const m = await metricas()
+    const total = m.totalClientes
+    for (const [nombre, valor] of [
+      ['reponerHoy', m.reponerHoy],
+      ['nRiesgo', m.nRiesgo],
+      ['nNuevos', m.nNuevos],
+    ]) {
+      assert.ok(valor <= total, `${nombre}=${valor} con ${total} clientes`)
+    }
+    assert.ok(
+      m.nNuevos <= total * 0.4,
+      `nNuevos=${m.nNuevos} de ${total}: demasiados "nuevos" para ser real`,
+    )
+  })
+
+  test('la cola de acciones de Hoy no está vacía', async () => {
+    const m = await metricas()
+    assert.ok(
+      m.actionQueue.length > 0,
+      'sin acciones, la pantalla principal queda muda',
+    )
+  })
+
+  test('cada cliente de demo trae las columnas que el dominio lee', async () => {
+    const cartera = await tabla('cartera')
+    assert.ok(cartera.length > 0)
+    for (const c of cartera) {
+      for (const col of ['venta_mtd', 'sku_detalle', 'dias_sin_comprar']) {
+        assert.ok(
+          c[col] !== undefined,
+          `${c.cliente_key} no trae "${col}"`,
+        )
+      }
+    }
+  })
+})
