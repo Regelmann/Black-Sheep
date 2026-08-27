@@ -22,7 +22,7 @@
  * Números tabulares para que no "salten" al actualizarse.
  */
 import { useMemo } from 'react'
-import { calcGoal } from '../lib/calculations/goal'
+import { calcGoal } from '../lib/calculations/goal.js'
 
 const clp = (n) =>
   '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')

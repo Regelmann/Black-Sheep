@@ -6,7 +6,7 @@
  * Separadores de producto: salto de línea o  ·  o ||
  */
 
-import { haversineM } from './geo'
+import { haversineM } from './geo.js'
 
 function isGarbageName(n) {
   if (!n || n.length < 3) return true

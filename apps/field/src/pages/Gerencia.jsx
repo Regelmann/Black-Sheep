@@ -1,7 +1,7 @@
 import { ZoneChip } from '../domain/ZonePicker.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { DataError } from '../ui/DataState.jsx'
 import { useEjecutivo } from '../App.jsx'

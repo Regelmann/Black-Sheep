@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { parseSkuDetalle } from '../lib/coach'
-import { precioUnitarioDesdeSku } from '../lib/pedido'
-import { resolverPrecio, resolverPrecioCliente, estiloOrigenPrecio, formatPrecioClp, precioDesdeLista } from '../lib/precios'
+import { supabase } from '../lib/supabase.js'
+import { parseSkuDetalle } from '../lib/coach.js'
+import { precioUnitarioDesdeSku } from '../lib/pedido.js'
+import { resolverPrecio, resolverPrecioCliente, estiloOrigenPrecio, formatPrecioClp, precioDesdeLista } from '../lib/precios.js'
 
 const money = n => {
   const v = Number(n)
