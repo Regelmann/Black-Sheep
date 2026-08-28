@@ -6,7 +6,7 @@
  * realmente genera ventas y ajusta los scores.
  *
  * Uso:
- *   import { trackDecision, trackPedido } from '../lib/memory.js'
+ *   import { trackDecision, trackPedido } from '../lib/memory'
  *
  *   // Al abrir una DecisionCard
  *   trackDecision({ decisionId, decisionType, attention, clienteKey, ejecutivoId, accion: 'visto' })
@@ -14,7 +14,7 @@
  *   // Al guardar un pedido originado en una decisión
  *   trackPedido({ decisionId, clienteKey, ejecutivoId, pedidoId, total })
  */
-import { supabase } from './supabase.js'
+import { supabase } from './supabase'
 
 /** Registra cualquier acción sobre una decisión */
 export async function trackDecision({

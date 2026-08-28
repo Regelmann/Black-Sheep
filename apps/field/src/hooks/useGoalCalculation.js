@@ -2,7 +2,7 @@
  * Hook + re-export del cálculo puro de meta.
  * Preferir importar calcGoal desde lib en tests.
  */
-import { calcGoal } from '../lib/calculations/goal.js'
+import { calcGoal } from '../lib/calculations/goal'
 
 export { calcGoal }
 

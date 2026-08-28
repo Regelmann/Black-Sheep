@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../lib/supabase'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
-import { computeConsistentMetrics } from '../lib/metrics.js'
-import { buildRecomendacionesHoy, resumenDia } from '../lib/recomendaciones.js'
-import { listarPedidosHoy } from '../lib/pedido.js'
+import { computeConsistentMetrics } from '../lib/metrics'
+import { buildRecomendacionesHoy, resumenDia } from '../lib/recomendaciones'
+import { listarPedidosHoy } from '../lib/pedido'
 import HistorialPedidos from '../domain/HistorialPedidos.jsx'
 import OrderInbox from '../domain/OrderInbox.jsx'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
@@ -17,13 +17,13 @@ import {
   flushActionQueue,
   isProbablyOffline,
   loadHoyResultados,
-} from '../lib/offline.js'
-import { skusAReponer } from '../lib/coach.js'
-import { buildDecisionFeed, groupByAttention, daySummary } from '../lib/decisionEngine.js'
+} from '../lib/offline'
+import { skusAReponer } from '../lib/coach'
+import { buildDecisionFeed, groupByAttention, daySummary } from '../lib/decisionEngine'
 import { DecisionCard, DecisionSection } from '../domain/DecisionCard.jsx'
 import { ZoneChip } from '../domain/ZonePicker.jsx'
-import { trackDecision } from '../lib/memory.js'
-import { predict7Days } from '../lib/predictor.js'
+import { trackDecision } from '../lib/memory'
+import { predict7Days } from '../lib/predictor'
 
 function limpiaEstado(e) {
   return (e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')

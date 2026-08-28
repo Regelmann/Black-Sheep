@@ -12,7 +12,7 @@
  * `pct_avance` cuando la bajada lo entrega como FRACCIÓN (0.7619 en vez de 76).
  * Acá se usa la función, no una copia.
  */
-import { pctAvanceFoco, pctBar } from '../lib/utils.js'
+import { pctAvanceFoco, pctBar } from '../lib/utils'
 
 function nombreFoco(f) {
   return (

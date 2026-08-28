@@ -2,8 +2,8 @@
  * Motor de "qué hacer hoy" — usa cartera + stock + focos ya cargados.
  * No inventa datos: prioriza reponer, riesgo, foco del mes, nuevos.
  */
-import { clienteTocaReponer } from './metrics.js'
-import { cicloReposicion, skusAReponer, parseSkuDetalle } from './coach.js'
+import { clienteTocaReponer } from './metrics'
+import { cicloReposicion, skusAReponer, parseSkuDetalle } from './coach'
 
 function nom(c) {
   return c?.nombre_cliente || c?.razon_social || c?.nombre || c?.cliente_key || 'Cliente'

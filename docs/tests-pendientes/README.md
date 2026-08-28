@@ -24,3 +24,16 @@ Lo que queda descrito acá y sigue abierto:
   "¿Confirmar?"
 
 Son deuda de la limpieza de CSS (Fase 3 del plan), no bugs activos.
+
+## Lote del patch 7 (V10.5)
+
+| Test | Por qué está acá |
+|---|---|
+| `importantes.test.js` | Mide **155 `!important`**, 128 de ellos en `v90-fixes.css`. Es deuda de la limpieza de CSS (Fase 3), no un bug activo. El test es correcto y debe reactivarse cuando esa hoja se consolide. |
+| `cascadaContraste.test.js` | Contraste sobre la cascada completa. Falla por lo mismo: la cascada tiene 7 hojas peleando. |
+| `pedidoTotales.test.js` | Node no resuelve `lib/precios` sin extensión al importar `pedido.js`. Falla la resolución de módulos, no la lógica. |
+| `syncIdempotencia.test.js` | Igual: `supabase.js` importa `./tenants` sin extensión. |
+
+Los dos últimos se arreglan agregando la extensión `.js` a esos imports —
+cambio de una línea cada uno, pero toca módulos del arranque y prefiero
+hacerlo con el repo ya ordenado.

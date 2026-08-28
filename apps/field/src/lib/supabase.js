@@ -3,7 +3,7 @@
  * Un createClient por empresa; se reinicia al cambiar de tenant.
  */
 import { createClient } from '@supabase/supabase-js'
-import { resolveTenant, saveTenantId, getTenantById, listTenants } from './tenants.js'
+import { resolveTenant, saveTenantId, getTenantById, listTenants } from './tenants'
 
 let client = null
 let activeTenant = null

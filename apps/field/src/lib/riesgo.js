@@ -11,7 +11,7 @@
  *   1_ACTIVO | 2_ENFRIANDO | 3_EN_RIESGO | 4_DORMIDO | 5_FUGADO | 0_NUNCA
  */
 
-import { parseSkuDetalle } from './coach.js'
+import { parseSkuDetalle } from './coach'
 
 function num(v, d = 0) {
   const n = Number(v)

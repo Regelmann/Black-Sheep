@@ -17,7 +17,7 @@
  * Va por ruta, no una sola global: si Gerencia explota, Hoy sigue viva.
  */
 import { Component } from 'react'
-import { loadActionQueue } from '../lib/offline.js'
+import { loadActionQueue } from '../lib/offline'
 
 export class ErrorBoundary extends Component {
   constructor(props) {

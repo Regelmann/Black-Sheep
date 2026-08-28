@@ -12,7 +12,7 @@ import {
   loadActionQueue,
   isProbablyOffline,
   clearActionQueue,
-} from '../offline.js'
+} from '../offline'
 
 /**
  * @typedef {Object} SyncHandlers

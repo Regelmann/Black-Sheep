@@ -20,8 +20,8 @@
  *    pasaran props. Ahora `enabled:false` desconecta todo.
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { loadActionQueue, isProbablyOffline, QUEUE_KEY } from '../lib/offline.js'
-import { runSyncFlush, discardSyncQueue } from '../lib/sync/engine.js'
+import { loadActionQueue, isProbablyOffline, QUEUE_KEY } from '../lib/offline'
+import { runSyncFlush, discardSyncQueue } from '../lib/sync/engine'
 
 /* ---------------- store singleton ---------------- */
 

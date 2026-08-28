@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
-import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios.js'
-import { productTitle } from '../lib/productDisplay.js'
+import { supabase } from '../lib/supabase'
+import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios'
+import { productTitle } from '../lib/productDisplay'
 
 const money = n => {
   const v = Number(n)

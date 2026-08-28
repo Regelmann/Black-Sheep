@@ -3,8 +3,35 @@
  * Estrategia: red/WiFi rápido → GPS preciso → watch en vivo
  */
 
+/**
+ * Distancia en metros entre dos puntos.
+ *
+ * 🔴 BUG QUE CORRIGE (encontrado por geo.test.js)
+ * La guarda anterior era:
+ *   [a,b,c,d].some(v => v == null || isNaN(Number(v)))
+ *
+ * `Number('')` devuelve 0, no NaN. Y `Number([])` también, y `Number(false)`
+ * también. Así que una coordenada VACÍA pasaba la validación y se trataba
+ * como el punto (0,0) — que está en el Golfo de Guinea.
+ *
+ * En terreno eso significa que un cliente sin lat/lng cargada aparece a
+ * 12.000 km y contamina el orden de la ruta del día.
+ *
+ * @returns {number|null} metros, o null si falta alguna coordenada
+ */
 export function haversineM(lat1, lng1, lat2, lng2) {
-  if ([lat1, lng1, lat2, lng2].some(v => v == null || isNaN(Number(v)))) return null
+  const valida = (v) => {
+    // Sólo número o string numérico. Todo lo demás —'', '   ', [], {},
+    // false, Infinity— se rechaza: Number() los convierte a 0 o a
+    // valores sin sentido geográfico.
+    if (typeof v === 'number') return isFinite(v)
+    if (typeof v !== 'string') return false
+    const t = v.trim()
+    if (t === '') return false
+    const n = Number(t)
+    return !isNaN(n) && isFinite(n)
+  }
+  if (![lat1, lng1, lat2, lng2].every(valida)) return null
   const R = 6371000
   const toRad = d => (Number(d) * Math.PI) / 180
   const dLat = toRad(lat2 - lat1)

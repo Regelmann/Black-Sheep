@@ -1,14 +1,41 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
-import { safeSelect } from '../lib/query.js'
+import { supabase } from '../lib/supabase'
+import { safeSelect } from '../lib/query'
 import { useEjecutivo } from '../App.jsx'
-import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo.js'
-import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach.js'
-import { formatDist, formatEta } from '../lib/geo.js'
+import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo'
+import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach'
+import { formatDist, formatEta } from '../lib/geo'
 import { money } from '../components.jsx'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
-import { normComuna, prospectoVisible, cargarIndiceZonas } from '../lib/zonas.js'
+
+/** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
+/** Alineado a ZONAS_COMUNAS.csv de producción (fuente de verdad). */
+const ZONAS_COMUNAS = {
+  // Fuente de verdad operativa KeyFoods — comunas de terreno por zona
+  'NOR-ORIENTE': [
+    'LAS CONDES', 'VITACURA', 'LO BARNECHEA', 'LA REINA',
+    'PENALOLEN', 'PEÑALOLEN', 'MACUL',
+  ],
+  'NOR-PONIENTE': [
+    'NUNOA', 'ÑUÑOA', 'PROVIDENCIA', 'RECOLETA', 'INDEPENDENCIA', 'HUECHURABA',
+    'QUILICURA', 'RENCA', 'CONCHALI', 'COLINA', 'LAMPA', 'CERRO NAVIA',
+    'QUINTA NORMAL', 'SANTIAGO', 'ESTACION CENTRAL', 'ESTACIÓN CENTRAL',
+  ],
+  'ZONA SUR': [
+    'LA FLORIDA', 'MAIPU', 'MAIPÚ', 'SAN MIGUEL', 'SAN JOAQUIN', 'SAN JOAQUÍN',
+    'EL BOSQUE', 'LA CISTERNA', 'PAINE', 'PIRQUE', 'SAN BERNARDO', 'PUENTE ALTO',
+    'LA PINTANA', 'SAN RAMON', 'SAN RAMÓN', 'PEDRO AGUIRRE CERDA',
+  ],
+}
+function normComuna(s) {
+  return String(s || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 import MisPedidosHoy from '../domain/MisPedidosHoy.jsx'
 
@@ -132,7 +159,6 @@ export default function Ruta({ session }) {
   const [fecha, setFecha] = useState(HOY)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  const [comunasSinMapear, setComunasSinMapear] = useState([])
   const [ruta, setRuta] = useState(null)
   const [visitas, setVisitas] = useState([])
   const [territorio, setTerritorio] = useState([])
@@ -290,12 +316,7 @@ export default function Ruta({ session }) {
       const zonaNom = String(eje?.zonaVista || eje?.zona || '').toUpperCase().trim()
       let pros = []
       let ep = null
-      // Índice comuna→zona vivo: lo que Admin edita en `zonas_comunas`.
-      // Cae al mapa del código si la tabla no responde.
-      const { indice: idxZonas } = await cargarIndiceZonas(supabase)
-      const comunaSet = new Set(
-        Object.entries(idxZonas).filter(([, z]) => z === zonaNom).map(([c]) => c),
-      )
+      const comunaSet = new Set((ZONAS_COMUNAS[zonaNom] || []).map(normComuna))
       // 1) por zona exacta
       if (zonaNom) {
         const r2 = await supabase
@@ -327,10 +348,7 @@ export default function Ruta({ session }) {
         } else if (r1.error) ep = r1.error
       }
       // 3) sin zona en DB: traer lote amplio y filtrar por comuna de la zona (cubre Providencia en Nor-Poniente)
-      // Antes esto sólo corría si pros.length < 200, así que en una zona con
-      // muchos prospectos el rescate NUNCA se ejecutaba y se perdían los que
-      // tenían la zona vacía en la base.
-      if (comunaSet.size) {
+      if (comunaSet.size && pros.length < 200) {
         const r3 = await supabase
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
@@ -342,7 +360,9 @@ export default function Ruta({ session }) {
           for (const p of r3.data) {
             const k = p.cliente_key || p.nombre_cliente
             if (!k || seen.has(k)) continue
-            if (prospectoVisible(p, zonaNom, uid, idxZonas).visible) {
+            const cz = normComuna(p.comuna)
+            const pz = String(p.zona || '').toUpperCase().trim()
+            if (pz === zonaNom || (cz && comunaSet.has(cz))) {
               seen.add(k)
               pros.push(p)
               added++
@@ -352,21 +372,16 @@ export default function Ruta({ session }) {
         }
       }
       if (ep) console.warn('prospectos', ep.message)
-      // La asignación explícita manda sobre la geografía; una comuna que no
-      // está en el mapa se muestra marcada en vez de desaparecer.
-      const sinMapear = new Set()
-      if (zonaNom) {
+      // FILTER_BY_COMUNA_ZONE: zona de Places a veces incorrecta; manda comuna.
+      if (comunaSet.size) {
         const before = pros.length
-        pros = pros
-          .map(p => {
-            const v = prospectoVisible(p, zonaNom, uid, idxZonas)
-            if (v.visible && v.motivo === 'sin_mapear' && p.comuna) sinMapear.add(normComuna(p.comuna))
-            return v.visible ? { ...p, _motivoZona: v.motivo } : null
-          })
-          .filter(Boolean)
-        console.log('prospectos zona', zonaNom, before, '→', pros.length)
+        pros = pros.filter(p => {
+          const cz = normComuna(p.comuna)
+          if (cz) return comunaSet.has(cz)
+          return String(p.zona || '').toUpperCase().trim() === zonaNom
+        })
+        console.log('prospectos filtrados por comuna zona', zonaNom, before, '→', pros.length)
       }
-      setComunasSinMapear([...sinMapear])
       let nPros = 0, nSkipGeo = 0
       ;(pros || []).forEach(p => {
         if (p.lat == null || p.lng == null) { nSkipGeo++; return }
@@ -941,23 +956,6 @@ export default function Ruta({ session }) {
           }}
         >
           {loadError}
-        </div>
-      )}
-      {comunasSinMapear.length > 0 && (
-        <div
-          style={{
-            margin: '12px 16px',
-            padding: 12,
-            background: 'var(--warn-lt3)',
-            border: '1px solid #fcd34d',
-            borderRadius: 12,
-            fontSize: 13,
-            color: 'var(--warn-dk)',
-          }}
-        >
-          {comunasSinMapear.length === 1
-            ? `Hay prospectos en ${comunasSinMapear[0]}, una comuna sin zona asignada. Se muestran igual — asignala en Admin › Zonas.`
-            : `Hay prospectos en ${comunasSinMapear.length} comunas sin zona asignada (${comunasSinMapear.slice(0, 3).join(', ')}${comunasSinMapear.length > 3 ? '…' : ''}). Se muestran igual — asignalas en Admin › Zonas.`}
         </div>
       )}
       <div

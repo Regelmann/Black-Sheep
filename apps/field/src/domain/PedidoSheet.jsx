@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
-import { productTitle, productLabel } from '../lib/productDisplay.js'
+import { supabase } from '../lib/supabase'
+import { productTitle, productLabel } from '../lib/productDisplay'
 import {
   buildWhatsAppPedido,
   buildWhatsAppBodega,
@@ -11,8 +11,8 @@ import {
   sanitizeNombreProducto,
   imprimirPedidoPdf,
   marcarPedidoEstado,
-} from '../lib/pedido.js'
-import { precioDesdeLista, resolverPrecio } from '../lib/precios.js'
+} from '../lib/pedido'
+import { precioDesdeLista, resolverPrecio } from '../lib/precios'
 
 const money = n => {
   const v = Number(n)

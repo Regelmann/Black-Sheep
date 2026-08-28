@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listarPedidosHoy, folioPedido } from '../lib/pedido.js'
+import { listarPedidosHoy, folioPedido } from '../lib/pedido'
 
 /**
  * Lista compacta de pedidos guardados hoy (P0 terreno).

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { supabase, initSupabase, getActiveTenant, availableTenants } from '../lib/supabase.js'
-import { resolveTenantFromEmail, resolveTenant, saveTenantId, applyTenantBrand } from '../lib/tenants.js'
+import { supabase, initSupabase, getActiveTenant, availableTenants } from '../lib/supabase'
+import { resolveTenantFromEmail, resolveTenant, saveTenantId, applyTenantBrand } from '../lib/tenants'
 
 export default function Login() {
   const tenants = useMemo(() => availableTenants(), [])

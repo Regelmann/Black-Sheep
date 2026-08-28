@@ -2,8 +2,8 @@
  * Single source of truth — métricas de campo KeyFoods
  * Usado por Hoy, Cartera y Mapa para que "Reponer hoy" sea siempre el mismo número.
  */
-import { parseSkuDetalle, skusAReponer, cantidadSugerida, smartReorderBadge, cicloReposicion as cicloCoach } from './coach.js'
-import { calcularRiesgoFuga, enrichCarteraRiesgo, resumenRiesgo } from './riesgo.js'
+import { parseSkuDetalle, skusAReponer, cantidadSugerida, smartReorderBadge, cicloReposicion as cicloCoach } from './coach'
+import { calcularRiesgoFuga, enrichCarteraRiesgo, resumenRiesgo } from './riesgo'
 
 export function esActivoMes(c) {
   return Number(c?.venta_mtd) > 0
@@ -37,7 +37,7 @@ export function esRecuperadoMes(c) {
 }
 
 // cicloReposicion + skusAReponer: single source en coach.js (Smart Reorder V2.4)
-export { skusAReponer, cantidadSugerida, smartReorderBadge } from './coach.js'
+export { skusAReponer, cantidadSugerida, smartReorderBadge } from './coach'
 export const cicloReposicion = cicloCoach
 
 export function clienteTocaReponer(c) {
@@ -247,4 +247,4 @@ export function computeConsistentMetrics(cartera, metaRow) {
 
 
 
-export { calcularRiesgoFuga, enrichCarteraRiesgo, resumenRiesgo } from './riesgo.js'
+export { calcularRiesgoFuga, enrichCarteraRiesgo, resumenRiesgo } from './riesgo'

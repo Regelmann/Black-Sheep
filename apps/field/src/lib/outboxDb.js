@@ -205,7 +205,7 @@ function tx(modo, fn) {
  * @returns {Promise<{ durable: boolean, items: number, migrados: number }>}
  */
 export async function initOutbox() {
-  if (hidratado) return { durable: !!disponible, items: espejo.length, migrados: 0 }
+  if (hidratado) return { durable: !!disponible, items: espejo.length, migrados: 0, rescatados: 0 }
   hidratado = true
   cerrado = false
 
@@ -218,7 +218,7 @@ export async function initOutbox() {
     espejo = legado
     console.warn('[outbox] IndexedDB no disponible — se usa localStorage (menos durable)')
     notificar()
-    return { durable: false, items: espejo.length, migrados: 0 }
+    return { durable: false, items: espejo.length, migrados: 0, rescatados: 0 }
   }
 
   disponible = true
@@ -240,12 +240,30 @@ export async function initOutbox() {
   for (const it of desdeDb) if (it?.id) porId.set(it.id, it)
 
   let migrados = 0
+  let rescatados = 0
   for (const it of legado) {
-    if (it?.id && !porId.has(it.id)) {
-      porId.set(it.id, it)
+    if (!it || typeof it !== 'object') continue      // basura real: no es un item
+
+    // Un item SIN id no se puede descartar en silencio: es trabajo de
+    // terreno —un check-in, un pedido— que el vendedor ya dio por hecho.
+    // El object store usa keyPath 'id', así que sin esa propiedad ni
+    // siquiera se puede guardar. Se le asigna uno y se reporta.
+    let item = it
+    if (!item.id) {
+      const nuevo = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `rescatado_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      item = { ...item, id: nuevo, client_op_id: item.client_op_id || nuevo, rescatado: true }
+      rescatados++
+      console.warn('[outbox] item sin id rescatado en la migración:', item.type)
+    }
+
+    if (!porId.has(item.id)) {
+      porId.set(item.id, item)
       migrados++
     }
   }
+  if (rescatados) console.warn(`[outbox] ${rescatados} item(s) rescatados sin id`)
 
   espejo = [...porId.values()].sort((a, b) =>
     String(a.enqueuedAt || '').localeCompare(String(b.enqueuedAt || ''))
@@ -273,7 +291,7 @@ export async function initOutbox() {
   }
 
   notificar()
-  return { durable: true, items: espejo.length, migrados }
+  return { durable: true, items: espejo.length, migrados, rescatados }
 }
 
 /* ── API síncrona (espejo en memoria) ─────────────────────────────────── */

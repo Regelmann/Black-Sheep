@@ -10,7 +10,7 @@
  * Nunca devolver 0: null + etiqueta Consultar.
  */
 
-import { parseSkuDetalle } from './coach.js'
+import { parseSkuDetalle } from './coach'
 
 export function numPos(v) {
   const n = Number(v)

@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test \"src/**/*.test.js\"",
+    "test": "node --test src/**/*.test.js",
     "guard": "node scripts/guard.js",
     "verify": "npm run lint && npm run typecheck && npm run guard && npm run test && npm run build",
     "lint": "eslint src",

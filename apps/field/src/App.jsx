@@ -1,7 +1,7 @@
 import { useEffect, useState, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { supabase, initSupabase, getActiveTenant } from './lib/supabase.js'
-import { resolveTenant, applyTenantBrand } from './lib/tenants.js'
+import { supabase, initSupabase, getActiveTenant } from './lib/supabase'
+import { resolveTenant, applyTenantBrand } from './lib/tenants'
 /* ------------------------------------------------------------------
    CARGA POR RUTA
    Antes las 9 páginas viajaban en un solo archivo de 738 kB. Un
