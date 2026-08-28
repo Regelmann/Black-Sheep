@@ -32,6 +32,7 @@ import './styles/system.css'
 import './styles/v99-ux.css'
 // El shell carga ÚLTIMO: es la estructura que gana sobre las capas viejas.
 import './styles/shell.css'
+import './styles/arreglos-ux.css'
 
 // Hidratar la cola ANTES de montar React: si un vendedor cerró la app con
 // acciones pendientes, tienen que estar disponibles desde el primer render.

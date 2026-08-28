@@ -75,6 +75,12 @@ export function diasHabilesDelMes(ahora = new Date()) {
  * @returns {number|null}
  */
 export function proyeccionCierre(ventaMtd, ahora = new Date(), minimoDias = 3) {
+  // Number(null), Number('') y Number([]) devuelven 0 — pasarían la
+  // validación y proyectarían un cierre de $0 como dato legítimo.
+  // Un ejecutivo sin venta cargada vería "Proyección $0 · $74M bajo
+  // meta": alarmante y falso. Mismo patrón que el bug de haversineM.
+  if (typeof ventaMtd !== 'number' && typeof ventaMtd !== 'string') return null
+  if (typeof ventaMtd === 'string' && ventaMtd.trim() === '') return null
   const v = Number(ventaMtd)
   if (!Number.isFinite(v) || v < 0) return null
   const { transcurridos, totales } = diasHabilesDelMes(ahora)

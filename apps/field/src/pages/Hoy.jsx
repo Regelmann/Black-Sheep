@@ -12,6 +12,7 @@ import PedidoSheet from '../domain/PedidoSheet.jsx'
 import { syncHandlers } from '../lib/syncHandlers.js'
 import { FocosMes } from '../domain/FocosMes.jsx'
 import { VentaHero } from '../domain/VentaHero.jsx'
+import { ProyeccionMes, HoyEnTerreno } from '../domain/ProyeccionMes.jsx'
 import {
   loadActionQueue,
   flushActionQueue,
@@ -350,6 +351,25 @@ export default function Hoy() {
           meta={m.metaMensual}
           zona={zonaVista}
           clientes={cartera?.length}
+        />
+
+        {/* La venta dice DÓNDE ESTÁS. La proyección dice A DÓNDE LLEGÁS
+            si el ritmo no cambia — que es lo que genera la acción.
+            Un 56% el día 24 y un 56% el día 8 son el mismo número y
+            problemas opuestos. */}
+        <ProyeccionMes
+          ventaMtd={m.ventaMtd}
+          meta={m.metaMensual}
+          onActuar={() => nav('/mapa')}
+        />
+
+        {/* "¿Cómo viene mi día?" a las 3 de la tarde, cuando todavía
+            se puede corregir. El resto de la pantalla habla del mes. */}
+        <HoyEnTerreno
+          checkins={actividadHoy.visitas}
+          pedidos={actividadHoy.pedidos}
+          capturado={actividadHoy.totalPedidos}
+          onHistorial={() => setShowHistorial(true)}
         />
 
         <section className="bs-hoy-pace">

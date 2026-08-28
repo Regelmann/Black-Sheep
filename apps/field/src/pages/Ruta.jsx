@@ -78,7 +78,24 @@ const limpiaEstado = e => String(e || '').replace(/^\d+_?/, '').replace(/_/g, ' 
 const limpiaOferta = t => String(t || '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
 
 // RM ampliada: incluye Maipú, San Bernardo, Puente Alto, Colina
-const BOUNDS = { latMin: -33.85, latMax: -33.10, lngMin: -71.05, lngMax: -70.30 }
+/**
+ * Recuadro de la Región Metropolitana COMPLETA.
+ *
+ * 🔴 EL BUG QUE CORRIGE
+ * Era { -33.85..-33.10, -71.05..-70.30 } — el Gran Santiago urbano.
+ * Dejaba fuera Melipilla, Tiltil, Lampa, Buin, Talagante, San Pedro
+ * y Alhué: siete comunas de la misma región.
+ *
+ * Un prospecto en Melipilla se descartaba del mapa y el único rastro
+ * era `console.log('skip geo')`, que nadie mira. El vendedor no veía
+ * el punto ni sabía que existía.
+ *
+ * Contradice la regla del proyecto: si algo no se puede ubicar bien,
+ * se MUESTRA MARCADO, no se oculta en silencio.
+ *
+ * Límites reales de la RM: lat -34.30..-32.90 · lng -71.75..-69.75
+ */
+const BOUNDS = { latMin: -34.30, latMax: -32.90, lngMin: -71.75, lngMax: -69.75 }
 function inSantiago(lat, lng) {
   const la = Number(lat),
     lo = Number(lng)
@@ -323,6 +340,18 @@ export default function Ruta({ session }) {
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .eq('zona', zonaNom)
+          // 🔴 SIN ORDER, el limit corta por el orden interno de la
+          // tabla: si hay más de 5.000 se pierden prospectos al azar,
+          // no los peores.
+          //
+          // Se ordena por `score` —no por `potencial`— porque es el
+          // mismo campo con el que planDia.js rankea después. Cortar
+          // por un criterio y priorizar por otro pierde justo a los
+          // que iban a quedar arriba.
+          //
+          // nullsFirst:false: los que no tienen score cargado quedan
+          // al final y no se comen el cupo.
+          .order('score', { ascending: false, nullsFirst: false })
           .limit(5000)
         if (!r2.error && r2.data?.length) {
           pros = r2.data
@@ -338,6 +367,7 @@ export default function Ruta({ session }) {
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .eq('ejecutivo_id', uid)
+          .order('score', { ascending: false, nullsFirst: false })
           .limit(5000)
         if (!r1.error && r1.data?.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
@@ -353,6 +383,16 @@ export default function Ruta({ session }) {
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .not('lat', 'is', null)
+          // 🔴 HAY 9.886 PROSPECTOS EN LA BASE. Con limit 8.000 quedan
+          // 1.886 fuera SIEMPRE — no es un riesgo teórico, pasa hoy.
+          //
+          // Sin `order` el corte lo decidía el orden interno de Postgres:
+          // se perdían 1.886 al azar. Ordenando por potencial, lo que
+          // queda fuera es lo de menos valor.
+          //
+          // El arreglo de fondo es paginar o filtrar por zona en la
+          // consulta. Mientras tanto, al menos se pierde lo correcto.
+          .order('score', { ascending: false, nullsFirst: false })
           .limit(8000)
         if (!r3.error && r3.data?.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
@@ -372,14 +412,45 @@ export default function Ruta({ session }) {
         }
       }
       if (ep) console.warn('prospectos', ep.message)
-      // FILTER_BY_COMUNA_ZONE: zona de Places a veces incorrecta; manda comuna.
+      // FILTER_BY_COMUNA_ZONE: la zona que asigna Places a veces es
+      // incorrecta, así que manda la comuna.
+      //
+      // 🔴 EL HUECO QUE ESTO CIERRA
+      // Se traía con .eq('zona', zonaNom) y se descartaba por comuna.
+      // Cuando los dos campos se contradicen, el prospecto DESAPARECE
+      // PARA TODOS:
+      //
+      //   fila: zona='NOR-ORIENTE', comuna='MAIPU' (→ ZONA SUR)
+      //   · el de Nor-Oriente:  la consulta lo trae, el filtro lo tira
+      //   · el de Zona Sur:     el filtro lo aceptaría, la consulta
+      //                         nunca lo trae
+      //
+      // Nadie lo ve, y el único rastro era un console.log.
+      // Se conserva el criterio de comuna, pero lo descartado se
+      // REPORTA con nombre, para poder corregir el dato de origen.
       if (comunaSet.size) {
         const before = pros.length
+        const contradictorios = []
         pros = pros.filter(p => {
           const cz = normComuna(p.comuna)
-          if (cz) return comunaSet.has(cz)
-          return String(p.zona || '').toUpperCase().trim() === zonaNom
+          const pz = String(p.zona || '').toUpperCase().trim()
+          if (cz) {
+            const ok = comunaSet.has(cz)
+            // Trajo por zona pero su comuna es de otra: dato inconsistente.
+            if (!ok && pz === zonaNom) {
+              contradictorios.push(`${p.nombre_cliente || p.cliente_key} (${p.comuna})`)
+            }
+            return ok
+          }
+          return pz === zonaNom
         })
+        if (contradictorios.length) {
+          console.warn(
+            `[ruta] ${contradictorios.length} prospecto(s) con zona y comuna ` +
+            `contradictorias: NO los ve ningún vendedor. Corregir en la maestra.`,
+            contradictorios.slice(0, 10)
+          )
+        }
         console.log('prospectos filtrados por comuna zona', zonaNom, before, '→', pros.length)
       }
       let nPros = 0, nSkipGeo = 0
@@ -399,6 +470,14 @@ export default function Ruta({ session }) {
           _enRuta: false,
         })
       })
+      if (nSkipGeo > 0) {
+        // Antes era un console.log entre otros. Si se descartan puntos
+        // del mapa, tiene que doler al verlo.
+        console.warn(
+          `[ruta] ${nSkipGeo} prospecto(s) fuera del recuadro y NO se dibujan. ` +
+          `Revisar sus coordenadas o ampliar BOUNDS.`
+        )
+      }
       console.log('prospectos cargados', nPros, 'skip geo', nSkipGeo, 'uid', uid, 'zona', zonaNom)
 
       setTerritorio(items)

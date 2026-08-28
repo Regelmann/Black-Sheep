@@ -22,7 +22,11 @@ export function SyncBanner({
   const retry = onRetry || queue.retry
   const discard = onDiscard || queue.discard
 
-  if (pendingCount === 0 && (status === 'idle' || status === 'success')) {
+  // Con la cola vacía no se muestra NADA, tampoco sin señal.
+  // Se veía "0 acciónes en cola · sin conexión" con Reintentar y
+  // Descartar: ruido que sugiere un problema inexistente. Estar sin
+  // señal no es un error — perder datos sí, y para eso no hay cola.
+  if (pendingCount === 0 && status !== 'error') {
     if (status === 'success') {
       return (
         <div className="bs-sync-banner is-success" role="status" aria-live="polite">

@@ -709,3 +709,195 @@
 .bs-shop-qty button,
 .bs-visit-outcomes button,
 .cli-acciones .acc-btn { min-height: 44px; }
+
+/* --- Aviso de copia offline ----------------------------------
+   Sin señal la cartera se sirve de la copia guardada. El vendedor
+   tiene que saber que está viendo datos de ayer, no de ahora. */
+.bs-cache-aviso {
+  margin: 10px 0 4px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--warn-lt6, #fff7ed);
+  border: 1px solid var(--warn-lt5, #fdba74);
+  color: var(--warn-dk2, #b45309);
+  font-size: 12.5px; font-weight: 700; line-height: 1.35;
+}
+.bs-cache-error {
+  margin: 10px 0 4px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: var(--danger-lt, #fef2f2);
+  border: 1px solid var(--danger-lt3, #fecaca);
+  color: var(--danger-dk, #b91c1c);
+  font-size: 13px; font-weight: 700; line-height: 1.4;
+}
+
+/* ============================================================
+   HEADER — vuelta al patrón que funcionaba
+   Se veía "Hola, Seb…" cortado y el segmented desbordando por la
+   derecha, con "Sur" fuera del fondo. Causa: saludo y segmented
+   peleando por el ancho en la MISMA fila.
+   Solución: dos filas. Las tres zonas a ancho completo, como en
+   la versión que Sebastián prefería.
+   ============================================================ */
+.bs-appheader-inner {
+  display: block;                /* deja de ser grid de 2 columnas */
+  padding: 10px 14px 12px;
+}
+
+/* Fila 1 · saludo, con todo el ancho */
+.bs-appheader-main { margin-bottom: 10px; }
+.bs-appheader-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  white-space: normal;           /* ya no hace falta cortarlo */
+  overflow: visible;
+}
+
+/* Fila 2 · zonas a ancho completo, las tres iguales */
+.bs-appheader-zone { width: 100%; }
+.bs-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  width: 100%;
+  max-width: none;
+  padding: 4px;
+  box-sizing: border-box;
+}
+.bs-seg-btn {
+  min-height: 44px;
+  font-size: 13.5px;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+.bs-seg-thumb { box-sizing: border-box; }
+
+/* Compacto al scrollear: el saludo se va, las zonas quedan */
+.bs-appheader.is-compact .bs-appheader-main {
+  max-height: 0; opacity: 0; margin: 0; overflow: hidden;
+}
+.bs-appheader.is-compact .bs-appheader-inner { padding: 6px 14px 8px; }
+
+/* El banner de sync no puede tapar el header */
+.bs-syncbanner, [class*="syncbanner"] { position: relative; z-index: 55; }
+
+/* ============================================================
+   PROYECCIÓN DEL MES · HOY EN TERRENO
+   Recuperados de la versión que Sebastián prefería.
+   "El ejecutivo tiene que saber su camino, sino no genera acciones."
+   ============================================================ */
+.bs-proy {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 10px 16px;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--line, #ebe5dc);
+  border-radius: 16px;
+  background: #fff;
+  font-family: inherit;
+  box-shadow: var(--sh-sm, 0 2px 6px rgba(28,25,23,.08));
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+.bs-proy:disabled { cursor: default; }
+.bs-proy:not(:disabled):active { transform: scale(.99); }
+
+.bs-proy-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; margin-bottom: 4px;
+}
+.bs-proy-label {
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+  line-height: 1.3;
+}
+.bs-proy-dif {
+  flex: 0 0 auto; text-align: right;
+  font-size: 14.5px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.bs-proy-dif em {
+  display: block;
+  font-size: 10.5px; font-weight: 600; font-style: normal;
+  color: var(--ink-3, #78716c);
+  margin-top: 1px;
+}
+.bs-proy.is-sobre .bs-proy-dif { color: var(--ok-mid, #16a34a); }
+.bs-proy.is-bajo  .bs-proy-dif { color: var(--danger, #ef4444); }
+
+.bs-proy-monto {
+  margin: 0;
+  font-size: 26px; font-weight: 800;
+  letter-spacing: -.035em; line-height: 1.1;
+  color: var(--ink, #1c1917);
+  font-variant-numeric: tabular-nums;
+}
+.bs-proy-pie {
+  margin: 7px 0 0;
+  font-size: 12.5px; font-weight: 500; line-height: 1.4;
+  color: var(--ink-3, #78716c);
+}
+.bs-proy-pie strong {
+  color: var(--brand, #c2410c); font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Hoy en terreno --- */
+.bs-hoy-terreno {
+  margin: 10px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line, #ebe5dc);
+  border-radius: 16px;
+  background: #fff;
+}
+.bs-hoy-terreno-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 12px;
+}
+.bs-hoy-terreno-title {
+  margin: 0;
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+}
+.bs-hoy-terreno-link {
+  min-height: 34px; padding: 0 12px;
+  border: 0; border-radius: 999px;
+  background: var(--surface-2, #f0ece6);
+  color: var(--ink-2, #44403c);
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  cursor: pointer;
+}
+.bs-hoy-terreno-nums {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.bs-hoy-terreno-num {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; min-width: 0;
+}
+.bs-htn-valor {
+  font-size: 24px; font-weight: 800;
+  letter-spacing: -.03em; line-height: 1;
+  color: var(--ink, #1c1917);
+  font-variant-numeric: tabular-nums;
+}
+.bs-htn-valor.is-money { font-size: 19px; }
+.bs-htn-valor.is-ok    { color: var(--ok-mid, #16a34a); }
+.bs-htn-valor.is-cero  { color: var(--brand, #c2410c); }
+.bs-htn-label {
+  font-size: 10.5px; font-weight: 700;
+  color: var(--ink-3, #78716c);
+  text-align: center;
+}
+.bs-hoy-terreno-vacio {
+  margin: 12px 0 0; padding-top: 10px;
+  border-top: 1px solid var(--line, #ebe5dc);
+  font-size: 12px; color: var(--ink-3, #78716c); text-align: center;
+}
