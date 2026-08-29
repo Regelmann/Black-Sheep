@@ -80,7 +80,11 @@ BEGIN
       i.sku_canon,
       COALESCE(NULLIF(TRIM(i.producto_nombre), ''), st.producto_nombre, i.sku_canon) AS nombre,
       COALESCE(NULLIF(TRIM(st.subfamilia), ''), 'SIN RUBRO')                          AS rubro,
-      COALESCE(i.precio_lista, 0)                                                     AS p_lista,
+      -- Si la oferta no guardó precio_lista, se cae al de stock.
+      -- Sin este fallback el producto salía en $0 y el cliente veía
+      -- "consultar" o un precio vacío en el catálogo.
+      COALESCE(NULLIF(i.precio_lista, 0), NULLIF(st.precio_unidad, 0),
+               NULLIF(st.precio_caja, 0), 0)                                            AS p_lista,
       COALESCE(i.precio_cliente, 0)                                                   AS p_cliente,
       COALESCE(i.destacado, false)                                                    AS destacado,
       COALESCE(i.prioridad, 0)                                                        AS prioridad,

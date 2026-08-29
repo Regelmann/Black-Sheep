@@ -159,13 +159,16 @@ BEGIN
     RAISE EXCEPTION 'PEDIDO_SIN_LINEAS_VALIDAS';
   END IF;
 
+  -- token_catalogo se PERSISTE: sin él, el cliente no puede consultar
+  -- el historial de sus propios pedidos desde el link del catálogo.
+  -- El portal (39_PORTAL_PEDIDOS.sql) busca por este campo.
   INSERT INTO public.pedidos (
     ejecutivo_id, cliente_key, nombre_cliente,
-    lineas, nota, estado, fuente, total_estimado
+    lineas, nota, estado, fuente, total_estimado, token_catalogo
   ) VALUES (
     o.ejecutivo_id, o.cliente_key, o.nombre_cliente,
     valid, NULLIF(trim(COALESCE(p_nota, '')), ''),
-    'recibido', 'catalogo_publico', total
+    'recibido', 'catalogo_publico', total, trim(p_token)
   )
   RETURNING id INTO pid;
 

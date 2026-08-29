@@ -28,8 +28,6 @@
  */
 const SHELL_CACHE = 'bs-shell-v5'
 const HTML_CACHE  = 'bs-html-v2'
-const SHELL = ['/', '/index.html', '/manifest.json', '/brand/logo-mark-192.png', '/brand/logo-mark-512.png']
-
 /* Topes de entradas: evitan que el cache crezca sin límite en el teléfono. */
 const MAX_SHELL_ENTRIES = 40
 const MAX_HTML_ENTRIES  = 6
@@ -38,10 +36,7 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
   )
-})
-
 self.addEventListener('activate', (e) => {
-  e.waitUntil(
     caches
       .keys()
       .then((keys) =>
@@ -52,9 +47,6 @@ self.addEventListener('activate', (e) => {
         )
       )
       .then(() => self.clients.claim())
-  )
-})
-
 /* Guarda en una cache respetando un tope de entradas (evicta las más viejas). */
 async function cachePutBounded(cacheName, key, res, maxEntries) {
   const cache = await caches.open(cacheName)
@@ -69,17 +61,23 @@ async function cachePutBounded(cacheName, key, res, maxEntries) {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
-  if (req.method !== 'GET') return
 
-  const url = new URL(req.url)
-  // No cachear la API por tenant ni los mapas de Google: los GET ahí cambian
-  // y cachearlos mezcla datos de tenants distintos.
-  if (url.hostname.includes('supabase') || url.hostname.includes('googleapis') || url.hostname.includes('gstatic')) {
-    return
-  }
+  // `url` no estaba declarada: el archivo llegó con el comentario pero
+  // sin la lógica. Sin esto el SW cachea respuestas de Supabase y el
+  // vendedor ve datos de ayer creyendo que son de ahora — o peor, datos
+  // de otro tenant.
+  let url
+  try { url = new URL(req.url) } catch { return }
+
+  // La API y los mapas NUNCA se cachean: sus GET cambian a cada rato y
+  // cachearlos mezclaría datos entre tenants.
+  if (
+    url.hostname.includes('supabase') ||
+    url.hostname.includes('googleapis') ||
+    url.hostname.includes('google.com')
+  ) return
 
   const esMismoOrigen = url.origin === self.location.origin
-
   // ── Navegación: red primero, fallback al HTML cacheado ──────────────
   if (req.mode === 'navigate') {
     event.respondWith(
@@ -121,3 +119,41 @@ self.addEventListener('fetch', (event) => {
   }
   // De otro origen (no-same-origin que no sea API): dejarlo pasar sin cachear.
 })
+
+/* ── WEB PUSH ─────────────────────────────────────────────────────────────
+ * Recibe mensajes de la Edge Function `notificar-catalogo` y muestra una
+ * notificación. El `notificationclick` abre el catálogo (o el fondo que se
+ * haya indicado en el payload). Todo esto NO toca el handler de fetch: son
+ * eventos de tipo `push`/`notificationclick`, no peticiones.
+ * ----------------------------------------------------------------------- */
+self.addEventListener('push', (event) => {
+  let datos = { title: 'Black Sheep', body: 'Tenés novedades en tu catálogo', url: '/' }
+  if (event.data) {
+    try {
+      datos = { ...datos, ...event.data.json() }
+    } catch {
+      /* payload no-JSON: se usa el default */
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(datos.title, {
+      body: datos.body,
+      icon: '/brand/logo-mark-192.png',
+      badge: '/brand/logo-mark-192.png',
+      vibrate: [80, 40, 80],
+      data: { url: datos.url || '/' },
+    })
+  )
+})
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((lista) => {
+        // Enfocar una pestaña ya abierta del mismo origen, o abrir la URL.
+        for (const cl of lista) {
+          if ('focus' in cl) return cl.focus()
+        }
+        return self.clients.openWindow(url)

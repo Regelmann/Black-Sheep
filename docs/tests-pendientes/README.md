@@ -37,3 +37,20 @@ Son deuda de la limpieza de CSS (Fase 3 del plan), no bugs activos.
 Los dos últimos se arreglan agregando la extensión `.js` a esos imports —
 cambio de una línea cada uno, pero toca módulos del arranque y prefiero
 hacerlo con el repo ya ordenado.
+
+## Reintentados en V11.6 — siguen sin poder correr
+
+Con los 86 imports sin extensión corregidos en V11.5 esperaba que
+arrancaran. No es un problema de resolución:
+
+```
+SyntaxError: './pedido.js' does not provide an export named 'lineasValidas'
+```
+
+**Esperan funciones que nunca se escribieron.** Son tests de una versión
+de `pedido.js` y `syncHandlers.js` que existió en el árbol de la otra
+herramienta y no acá.
+
+Reactivarlos exige escribir `lineasValidas()` y el resto de la API que
+asumen — no es renombrar un archivo. Queda anotado como trabajo real,
+no como pendiente administrativo.
