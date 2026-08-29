@@ -131,7 +131,7 @@ function PlanCard({ plan }: { plan: Plan }) {
         href="#demo"
         className={`group mt-7 inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-bold transition-all active:scale-95 ${
           plan.featured
-            ? "bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary-soft"
+            ? "bg-primary text-[#0c0a09] shadow-lg shadow-primary/30 hover:bg-primary-soft"
             : "border border-line/80 bg-navy/60 text-mist hover:border-primary/50 hover:bg-panel"
         }`}
       >

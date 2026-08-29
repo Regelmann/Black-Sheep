@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/login",     destination: "https://app.black-sheep.cl/", permanent: true },
-      { source: "/dashboard", destination: "https://app.black-sheep.cl/", permanent: true },
+      { source: "/dashboard", destination: "https://app.black-sheep.cl/dashboard", permanent: true },
       { source: "/app",       destination: "https://app.black-sheep.cl/", permanent: true },
     ];
   },

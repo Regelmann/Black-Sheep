@@ -235,7 +235,7 @@ export default function CTAForm() {
                 <button
                   type="submit"
                   disabled={status === "sending"}
-                  className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-sm font-black text-white shadow-xl shadow-primary/25 transition-all hover:bg-primary-soft hover:shadow-primary/45 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+                  className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-[#0c0a09] px-6 py-4 text-sm font-black text-white shadow-xl shadow-primary/25 transition-all hover:bg-primary-soft hover:shadow-primary/45 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {status === "sending" ? (
                     <>

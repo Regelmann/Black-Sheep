@@ -33,7 +33,7 @@ export default function GlobalError({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-soft active:scale-95"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary text-[#0c0a09] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-soft active:scale-95"
           >
             <RotateCcw size={15} />
             Reintentar

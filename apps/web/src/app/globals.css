@@ -16,8 +16,16 @@
   --color-card-soft: #231f1c;
   --color-panel: #292524;
   --color-line: #3f3a36;
-  --color-primary: #ea580c;
-  --color-primary-soft: #fb923c;
+  /* ══════════════════════════════════════════════════════════════
+     IDENTIDAD BLACK SHEEP — negro + lima fluorescente.
+     El naranja #a3e635 que había acá es el color de KeyFoods, que es
+     un TENANT. La marca de la plataforma es otra: negro y lima.
+     Regla: el naranja sólo aparece DENTRO de la app después del login,
+     aplicado por applyTenantBrand(). Nunca en black-sheep.cl.
+     ══════════════════════════════════════════════════════════════ */
+  --color-primary: #a3e635;        /* lima Black Sheep */
+  --color-primary-soft: #bef264;
+  --color-primary-deep: #65a30d;   /* para texto sobre fondo claro */
   --color-mint: #34d399;
   --color-rose: #f87171;
   --color-amber: #fbbf24;
@@ -69,7 +77,7 @@ body::after {
 }
 
 ::selection {
-  background: rgba(234, 88, 12, 0.45);
+  background: rgba(163, 230, 53, 0.45);
   color: #ffffff;
 }
 
@@ -98,16 +106,19 @@ body::after {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #fff7ed 0%, #fdba74 40%, #ea580c 100%);
+  /* Identidad Black Sheep: blanco → lima. */
+  background: linear-gradient(135deg, #ffffff 0%, #d9f99d 45%, #a3e635 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, #fb923c, #ea580c);
+  /* Texto NEGRO sobre lima: 13.1:1.
+     Al revés (lima sobre blanco) da 1.51:1 — ilegible. */
+  background: linear-gradient(180deg, #bef264, #a3e635);
   color: #0c0a09;
-  box-shadow: 0 10px 32px rgba(234, 88, 12, 0.28);
+  box-shadow: 0 10px 32px rgba(163, 230, 53, 0.30);
 }
 .btn-primary:hover {
   filter: brightness(1.06);

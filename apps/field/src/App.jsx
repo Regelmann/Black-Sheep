@@ -270,6 +270,10 @@ export default function App() {
               <Route path="/metas" element={<Navigate to="/" replace />} />
               <Route path="/stock" element={<Stock session={session} />} />
               <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
+              {/* /dashboard es el nombre que usa la web y el que la gente
+                  escribe. El dashboard SIEMPRE existió: es /gerencia. No
+                  había que construirlo, había que hacerlo alcanzable. */}
+              <Route path="/dashboard" element={<Navigate to="/gerencia" replace />} />
               <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

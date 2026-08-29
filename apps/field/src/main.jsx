@@ -33,6 +33,9 @@ import './styles/v99-ux.css'
 // El shell carga ÚLTIMO: es la estructura que gana sobre las capas viejas.
 import './styles/shell.css'
 import './styles/arreglos-ux.css'
+// El catálogo público carga ÚLTIMO: es la pantalla que ve el cliente
+// y no puede quedar a merced de la cascada heredada.
+import './styles/catalogo.css'
 
 // Hidratar la cola ANTES de montar React: si un vendedor cerró la app con
 // acciones pendientes, tienen que estar disponibles desde el primer render.
