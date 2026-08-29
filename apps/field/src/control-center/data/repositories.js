@@ -1,52 +1,56 @@
 import { supabase } from '../../lib/supabase.js'
 
-function unwrap({ data, error }) {
+function result(data, error) {
   if (error) throw error
   return data || []
 }
 
 export const ventasRepo = {
   async resumen() {
-    return unwrap(await supabase.from('gerencia').select('*'))
+    const { data, error } = await supabase.from('gerencia').select('*')
+    return result(data, error)
   },
   async tendencia() {
-    return unwrap(await supabase.from('tendencia').select('*'))
+    const { data, error } = await supabase.from('tendencia').select('*')
+    return result(data, error)
   },
 }
 
 export const clientesRepo = {
   async resumen(limit = 3000) {
-    return unwrap(await supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(limit))
+    const { data, error } = await supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(limit)
+    return result(data, error)
   },
   async cartera(ejecutivoId, limit = 800) {
     let q = supabase.from('cartera').select('*').limit(limit)
     if (ejecutivoId) q = q.eq('ejecutivo_id', ejecutivoId)
-    return unwrap(await q)
+    const { data, error } = await q
+    return result(data, error)
   },
   async mix(clienteKey, limit = 800) {
     if (!clienteKey) return []
-    return unwrap(await supabase.from('ventas_lineas')
-      .select('sku_canon,producto_nombre,cantidad,venta_neta_clp,fecha')
-      .eq('cliente_key', String(clienteKey))
-      .order('fecha', { ascending: false })
-      .limit(limit))
+    const { data, error } = await supabase.from('ventas_lineas').select('sku_canon,producto_nombre,cantidad,venta_neta_clp,fecha').eq('cliente_key', String(clienteKey)).order('fecha', { ascending: false }).limit(limit)
+    return result(data, error)
   },
 }
 
 export const ejecutivosRepo = {
   async listar() {
-    return unwrap(await supabase.from('ejecutivos').select('id,nombre,zona,rol'))
+    const { data, error } = await supabase.from('ejecutivos').select('id,nombre,zona,rol')
+    return result(data, error)
   },
 }
 
 export const stockRepo = {
   async listar(limit = 500) {
-    return unwrap(await supabase.from('stock').select('*').limit(limit))
+    const { data, error } = await supabase.from('stock').select('*').limit(limit)
+    return result(data, error)
   },
 }
 
 export const notasRepo = {
   async listar(limit = 300) {
-    return unwrap(await supabase.from('notas_cliente').select('*').limit(limit))
+    const { data, error } = await supabase.from('notas_cliente').select('*').limit(limit)
+    return result(data, error)
   },
 }
