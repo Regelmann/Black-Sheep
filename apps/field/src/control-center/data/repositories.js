@@ -32,6 +32,11 @@ export const clientesRepo = {
     const { data, error } = await supabase.from('ventas_lineas').select('sku_canon,producto_nombre,cantidad,venta_neta_clp,fecha').eq('cliente_key', String(clienteKey)).order('fecha', { ascending: false }).limit(limit)
     return result(data, error)
   },
+  async historial(clienteKey, limit = 120) {
+    if (!clienteKey) return []
+    const { data, error } = await supabase.from('ventas_lineas').select('sku_canon,producto_nombre,cantidad,venta_neta_clp,fecha').eq('cliente_key', String(clienteKey)).order('fecha', { ascending: false }).limit(limit)
+    return result(data, error)
+  },
 }
 
 export const ejecutivosRepo = {
@@ -44,6 +49,22 @@ export const ejecutivosRepo = {
 export const stockRepo = {
   async listar(limit = 500) {
     const { data, error } = await supabase.from('stock').select('*').limit(limit)
+    return result(data, error)
+  },
+}
+
+export const catalogoRepo = {
+  async cliente(clienteKey, limit = 500) {
+    if (!clienteKey) return []
+    const { data, error } = await supabase.from('catalogo_b2b').select('*').eq('cliente_key', String(clienteKey)).limit(limit)
+    return result(data, error)
+  },
+}
+
+export const pedidosRepo = {
+  async cliente(clienteKey, limit = 100) {
+    if (!clienteKey) return []
+    const { data, error } = await supabase.from('pedidos').select('*').eq('cliente_key', String(clienteKey)).order('created_at', { ascending: false }).limit(limit)
     return result(data, error)
   },
 }
