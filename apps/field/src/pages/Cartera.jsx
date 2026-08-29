@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
 import HistorialPedidos from '../domain/HistorialPedidos.jsx'
 import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
-import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline'
+import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline.js'
 import { FilterBar, SearchField, StatGrid } from '../domain/FilterBar.jsx'
 import { ClientActionBar } from '../domain/ClientActionBar.jsx'
 import { PageShell } from '../shells/PageShell.jsx'
@@ -12,7 +12,7 @@ import NotaModal from '../domain/NotaModal.jsx'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { ZoneChip } from '../domain/ZonePicker.jsx'
-import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach'
+import { parseSkuDetalle, pctRitmo, clpEfectivo } from '../lib/coach.js'
 import {
   esActivoMes,
   esNuevoMes,
@@ -21,7 +21,7 @@ import {
   skusAReponer,
   clienteTocaReponer,
   computeConsistentMetrics,
-} from '../lib/metrics'
+} from '../lib/metrics.js'
 
 function estadoInfo(estado) {
   const e = (estado || '').toLowerCase()
@@ -517,7 +517,6 @@ export default function Cartera({ session }) {
     >
       <div className="wrap">
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${clientes.length} clientes · zona activa`} />}
-HEAD
         <StatGrid
           cols={4}
           items={[
@@ -741,17 +740,6 @@ HEAD
                   Limpiar filtros
                 </button>
               )}
-        <StatGrid cols={4} items={[{label:'Con venta mes',value:nActivosMes,tone:'ok',active:filtro==='ActivosMes',onClick:()=>{setFiltro(filtro==='ActivosMes'?'Todos':'ActivosMes');setShow(PAGE)}},{label:'Sin venta mes',value:nSinVentaMes,tone:'warn',active:filtro==='SinVentaMes',onClick:()=>{setFiltro(filtro==='SinVentaMes'?'Todos':'SinVentaMes');setShow(PAGE)}},{label:'Nuevos mes',value:nNuevos,tone:'info',active:filtro==='Nuevos',onClick:()=>{setFiltro(filtro==='Nuevos'?'Todos':'Nuevos');setShow(PAGE)}},...estadosOrd.filter(e=>/RIESGO|FUGADO|DORMIDO|ENFRIANDO/i.test(e)).map(e=>({label:limpiaEstado(e),value:resumen[e],tone:/FUGADO/i.test(e)?'danger':'warn',active:filtro===e,onClick:()=>{setFiltro(filtro===e?'Todos':e);setShow(PAGE)}}))]}/>
-        <p className="muted" style={{fontSize:11,margin:'4px 0 8px'}}>Con venta mes = facturó en el mes en curso. Salud (riesgo/fugado) es histórico.</p>
-        <SearchField value={q} placeholder="Buscar cliente o comuna…" onChange={v=>{setQ(v);setShow(PAGE)}} />
-        <FilterBar ariaLabel="Filtrar cartera" value={filtro} onChange={v=>{setFiltro(v);setShow(PAGE)}} options={[{value:'Todos',label:'Todos'},...(nBloqueados>0?[{value:'Bloqueados',label:'Bloqueados',count:nBloqueados,tone:'danger'}]:[]),{value:'Nuevos',label:'Nuevos',count:nNuevos},...(nRecuperados>0?[{value:'Recuperados',label:'Recuperados',count:nRecuperados,tone:'ok'}]:[]),{value:'ReponerHoy',label:'Reponer',count:reponerHoy.length,tone:'warn'}]} trailing={null}/>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',margin:'8px 0 12px'}}><div style={{fontSize:12,color:'var(--ink-3)',fontWeight:600}}>{Math.min(show,lista.length)} de {lista.length}</div></div>
-        {lista.slice(0,show).map(c=>{
-          const info=estadoInfo(c.estado_fuga), cardKey=c.id||c.cliente_key, abierto=expandido===cardKey, nav=mapsUrl(c), skus=parseSkuDetalle(c.sku_detalle), aReponer=skusAReponer(c), nSkuMix=skus.length, mtd=Number(c.venta_mtd)||0,prom=Number(c.venta_mensual)||0,pct=pctRitmo(mtd,prom),pctBar=pct!=null?Math.min(100,Math.max(0,pct)):0,ofertaTxt=limpiaOferta(c.oferta_real),topReponer=aReponer.slice(0,2),decision=decideClient(c)
-          return <div key={cardKey} style={{background:'#fff',border:c.es_bloqueado?'1.5px solid #fecaca':'1px solid #ebe6e0',borderRadius:14,marginBottom:7,overflow:'hidden',boxShadow:abierto?'0 8px 24px rgba(26,22,20,.08)':'0 1px 2px rgba(26,22,20,.04)'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,padding:'11px 12px',cursor:'pointer'}} onClick={()=>setExpandido(abierto?null:cardKey)}>
-              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:750,fontSize:14,color:'var(--ink)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{nombreCliente(c)}</div><div style={{marginTop:4,display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}><span className={'badge '+info.cls}>{limpiaEstado(c.estado_fuga)}</span>{c.es_bloqueado&&<span className="badge b-red">Bloqueado</span>}{esNuevoMes(c)&&<span className="badge b-blue">Nuevo</span>}{aReponer.length>0&&<span className="badge" style={{background:'var(--danger-lt)',color:'var(--danger-dk)'}}>Reponer {aReponer.length}</span>}{decision&&<span className="badge" style={{background:decision.attention==='now'?'#fee2e2':'#fff7ed',color:decision.attention==='now'?'#b91c1c':'#9a3412'}}>Acción {decision.score}</span>}<span style={{fontSize:12,color:'var(--muted)'}}>{c.comuna}</span></div></div>
-              <div style={{textAlign:'right',flexShrink:0}}><div style={{fontWeight:800,fontSize:16,color:'var(--brand)'}}>{money(mtd>0?mtd:prom)}</div><div style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>{mtd>0?'este mes':'prom. mes'}</div></div><div style={{color:'var(--line-2)',fontSize:18,fontWeight:700,transform:abierto?'rotate(90deg)':'none'}}>›</div> bfac8003419229e6e7ea9b08711499d928ecb373
             </div>
           </div>
         )}

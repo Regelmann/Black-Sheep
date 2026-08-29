@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
 
 const TIPOS = [
   { v: 'sin_stock',     l: 'Sin stock'   },

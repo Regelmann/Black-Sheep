@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { safeSelect } from '../lib/query'
+import { supabase } from '../lib/supabase.js'
+import { safeSelect } from '../lib/query.js'
+import { traerTodo } from '../lib/traerTodo.js'
 import { useEjecutivo } from '../App.jsx'
-import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo'
-import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach'
-import { formatDist, formatEta } from '../lib/geo'
+import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo.js'
+import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach.js'
+import { dondeIr, tituloDondeIr } from '../lib/dondeIr.js'
+import { Oportunidad } from '../domain/Oportunidad.jsx'
+import { formatDist, formatEta } from '../lib/geo.js'
 import { money } from '../components.jsx'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
 
@@ -190,6 +193,14 @@ export default function Ruta({ session }) {
   const [mapReady, setMapReady] = useState(false)
   const [listaOpen, setListaOpen] = useState(true)
   const [myPos, setMyPos] = useState(null) // {lat,lng,accuracy}
+  // DÓNDE IR AHORA — el orden ES la recomendación.
+  //
+  // Un mapa con 300 pines no decide nada: le pasa el problema al
+  // vendedor. Y ordenar sólo por cercanía premia al almacén de la
+  // esquina que compra $30.000 sobre el cliente de $800.000 que está
+  // a seis cuadras: es ordenar por lo más fácil, no por lo que rinde.
+  //
+  //   puntaje = valor × urgencia ÷ costo de llegar
   const [gpsBusy, setGpsBusy] = useState(false)
   const [radioKm, setRadioKm] = useState(1) // 1 | 3 | 5 cerca de mí
 
@@ -203,6 +214,18 @@ export default function Ruta({ session }) {
   const userCentered = useRef(false) // ya centramos en GPS del vendedor
   const autoGpsOnce = useRef(false)
 
+
+  // Las 5 mejores oportunidades de AHORA, sobre el territorio cargado.
+  const recomendadas = useMemo(() => {
+    const distancia = (a, b) =>
+      haversineM(a?.lat, a?.lng, Number(b?.lat), Number(b?.lng))
+    return dondeIr({
+      items: territorio,
+      myPos,
+      distancia,
+      limite: 5,
+    })
+  }, [territorio, myPos])
 
   const cercanos = (() => {
     if (!myPos?.lat || !myPos?.lng) return []
@@ -336,7 +359,10 @@ export default function Ruta({ session }) {
       const comunaSet = new Set((ZONAS_COMUNAS[zonaNom] || []).map(normComuna))
       // 1) por zona exacta
       if (zonaNom) {
-        const r2 = await supabase
+        // 🔴 .limit() NO sube el techo de 1.000 filas de PostgREST:
+        // sólo puede BAJARLO. Se paginaba de hecho sin saberlo, y la
+        // app mostraba 1.000 prospectos de 3.627 sin ningún aviso.
+        const r2 = await traerTodo((d, h) => supabase
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .eq('zona', zonaNom)
@@ -352,9 +378,9 @@ export default function Ruta({ session }) {
           // nullsFirst:false: los que no tienen score cargado quedan
           // al final y no se comen el cupo.
           .order('score', { ascending: false, nullsFirst: false })
-          .limit(5000)
-        if (!r2.error && r2.data?.length) {
-          pros = r2.data
+          .range(d, h), { label: 'prospectos_zona' })
+        if (r2.ok && r2.rows.length) {
+          pros = r2.rows
           console.log('prospectos por zona', zonaNom, pros.length)
         } else if (r2.error) {
           console.warn('prospectos zona', r2.error.message)
@@ -363,15 +389,15 @@ export default function Ruta({ session }) {
       }
       // 2) por ejecutivo_id
       if (uid) {
-        const r1 = await supabase
+        const r1 = await traerTodo((d, h) => supabase
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .eq('ejecutivo_id', uid)
           .order('score', { ascending: false, nullsFirst: false })
-          .limit(5000)
-        if (!r1.error && r1.data?.length) {
+          .range(d, h), { label: 'prospectos_ejecutivo' })
+        if (r1.ok && r1.rows.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
-          for (const p of r1.data) {
+          for (const p of r1.rows) {
             const k = p.cliente_key || p.nombre_cliente
             if (k && !seen.has(k)) { seen.add(k); pros.push(p) }
           }
@@ -379,7 +405,7 @@ export default function Ruta({ session }) {
       }
       // 3) sin zona en DB: traer lote amplio y filtrar por comuna de la zona (cubre Providencia en Nor-Poniente)
       if (comunaSet.size && pros.length < 200) {
-        const r3 = await supabase
+        const r3 = await traerTodo((d, h) => supabase
           .from('prospectos')
           .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
           .not('lat', 'is', null)
@@ -393,11 +419,11 @@ export default function Ruta({ session }) {
           // El arreglo de fondo es paginar o filtrar por zona en la
           // consulta. Mientras tanto, al menos se pierde lo correcto.
           .order('score', { ascending: false, nullsFirst: false })
-          .limit(8000)
-        if (!r3.error && r3.data?.length) {
+          .range(d, h), { label: 'prospectos_barrido' })
+        if (r3.ok && r3.rows.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
           let added = 0
-          for (const p of r3.data) {
+          for (const p of r3.rows) {
             const k = p.cliente_key || p.nombre_cliente
             if (!k || seen.has(k)) continue
             const cz = normComuna(p.comuna)
@@ -1378,6 +1404,28 @@ export default function Ruta({ session }) {
 
       {/* Listado de la ruta del día — siempre visible */}
       <div style={{ padding: '12px 16px 24px' }}>
+        {/* DÓNDE IR AHORA · antes del itinerario.
+            El itinerario es lo que YA se decidió; esto es lo que
+            conviene decidir. Va primero porque es la pregunta que el
+            vendedor tiene a las 8 de la mañana. */}
+        {recomendadas.length > 0 && (
+          <section className="bs-donde-ir">
+            <h3 className="bs-donde-ir-title">
+              {tituloDondeIr({}, !myPos?.lat)}
+            </h3>
+            <div className="bs-donde-ir-lista">
+              {recomendadas.map((op) => (
+                <Oportunidad
+                  key={op.cliente_key || op.id || op.nombre_cliente}
+                  item={op}
+                  onAccion={() => nav(`/visita/${encodeURIComponent(op.cliente_key || op.id)}`)}
+                  onVerCliente={() => nav(`/visita/${encodeURIComponent(op.cliente_key || op.id)}`)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         <button
           type="button"
           onClick={() => setListaOpen(o => !o)}

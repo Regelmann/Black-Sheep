@@ -1,7 +1,8 @@
 import { ZoneChip } from '../domain/ZonePicker.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
+import { safeSelect } from '../lib/query.js'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { DataError } from '../ui/DataState.jsx'
 import { useEjecutivo } from '../App.jsx'
@@ -611,11 +612,15 @@ export default function Gerencia({ esGerente }) {
       const visitaIds = [...new Set(checkins.map(c => c.visita_id).filter(Boolean))]
       let visitaMap = {}
       if (visitaIds.length) {
-        const { data: vs } = await supabase
-          .from('visitas')
-          .select('id,cliente_key,nombre_cliente,nombre_local')
-          .in('id', visitaIds.slice(0, 100))
-        for (const v of vs || []) visitaMap[v.id] = v
+        const rVs = await safeSelect(
+          supabase
+            .from('visitas')
+            .select('id,cliente_key,nombre_cliente,nombre_local')
+            .in('id', visitaIds.slice(0, 100)),
+          { label: 'gerencia_visitas_ids' }
+        )
+        if (!rVs.ok) console.error('[gerencia] no se pudieron leer las visitas', rVs.error)
+        for (const v of rVs.rows) visitaMap[v.id] = v
       }
       checkins = checkins.map(c => {
         const v = visitaMap[c.visita_id]
@@ -899,14 +904,18 @@ export default function Gerencia({ esGerente }) {
       const keysToTry = [...new Set([clienteKey, keyBase, keyBase + '-0'])]
       for (const k of keysToTry) {
         if (skus.length) break
-        const { data } = await supabase
-          .from('cartera')
-          .select(
-            'sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra,cliente_key,razon_social,nombre_cliente'
-          )
-          .eq('cliente_key', k)
-          .limit(1)
-        const row = data?.[0]
+        const rC = await safeSelect(
+          supabase
+            .from('cartera')
+            .select(
+              'sku_detalle,oferta_real,productos_top,venta_mtd,venta_mensual,dias_sin_comprar,ultima_compra,cliente_key,razon_social,nombre_cliente'
+            )
+            .eq('cliente_key', k)
+            .limit(1),
+          { label: 'gerencia_cartera_key' }
+        )
+        if (!rC.ok) console.error('[gerencia] no se pudo leer la cartera por key', rC.error)
+        const row = rC.rows[0]
         if (row) {
           skus = parseSkuDetalle(row.sku_detalle)
           oferta = oferta || row.oferta_real
@@ -915,12 +924,16 @@ export default function Gerencia({ esGerente }) {
       }
       // Si aún sin SKU, intentar búsqueda parcial por los primeros 8 dígitos del RUT
       if (!skus.length && keyBase.length >= 7) {
-        const { data } = await supabase
-          .from('cartera')
-          .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente')
-          .like('cliente_key', `${keyBase}%`)
-          .limit(3)
-        const row = (data || []).find(r => parseSkuDetalle(r.sku_detalle).length > 0) || data?.[0]
+        const rC = await safeSelect(
+          supabase
+            .from('cartera')
+            .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente')
+            .like('cliente_key', `${keyBase}%`)
+            .limit(3),
+          { label: 'gerencia_cartera_like' }
+        )
+        if (!rC.ok) console.error('[gerencia] no se pudo leer la cartera por prefijo', rC.error)
+        const row = rC.rows.find(r => parseSkuDetalle(r.sku_detalle).length > 0) || rC.rows[0]
         if (row) {
           skus = parseSkuDetalle(row.sku_detalle)
           oferta = oferta || row.oferta_real
@@ -933,11 +946,16 @@ export default function Gerencia({ esGerente }) {
     // ReferenceError al buscar SKU de un cliente sin coincidencia por key.
     if (!skus.length && nombreHint) {
       const q = String(nombreHint).slice(0, 48).replace(/%/g, '')
-      const { data } = await supabase
-        .from('cartera')
-        .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente,razon_social')
-        .or(`nombre_cliente.ilike.%${q}%,razon_social.ilike.%${q}%`)
-        .limit(8)
+      const rC = await safeSelect(
+        supabase
+          .from('cartera')
+          .select('sku_detalle,oferta_real,productos_top,cliente_key,nombre_cliente,razon_social')
+          .or(`nombre_cliente.ilike.%${q}%,razon_social.ilike.%${q}%`)
+          .limit(8),
+        { label: 'gerencia_cartera_nombre' }
+      )
+      if (!rC.ok) console.error('[gerencia] no se pudo buscar la cartera por nombre', rC.error)
+      const data = rC.rows
       const row =
         (data || []).find(r => parseSkuDetalle(r.sku_detalle).length > 0) ||
         (data || []).find(
@@ -982,19 +1000,29 @@ export default function Gerencia({ esGerente }) {
       for (const k of [...new Set(keys.filter(Boolean))]) {
         if (skus.length) break
         try {
-          const { data: vl } = await supabase
-            .from('ventas_lineas')
-            .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
-            .eq('cliente_key', k)
-            .limit(300)
+          const rVl = await safeSelect(
+            supabase
+              .from('ventas_lineas')
+              .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
+              .eq('cliente_key', k)
+              .limit(300),
+            { label: 'gerencia_ventas_key' }
+          )
+          if (!rVl.ok) console.error('[gerencia] no se leyeron las ventas por key', rVl.error)
+          const vl = rVl.rows
           if (vl?.length) skus = aggFromVl(vl)
           // Prefijo numérico del RUT/código
           if (!skus.length && base && base.length >= 7) {
-            const { data: vl2 } = await supabase
-              .from('ventas_lineas')
-              .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
-              .like('cliente_key', base + '%')
-              .limit(300)
+            const rVl2 = await safeSelect(
+              supabase
+                .from('ventas_lineas')
+                .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key')
+                .like('cliente_key', base + '%')
+                .limit(300),
+              { label: 'gerencia_ventas_prefijo' }
+            )
+            if (!rVl2.ok) console.error('[gerencia] no se leyeron las ventas por prefijo', rVl2.error)
+            const vl2 = rVl2.rows
             if (vl2?.length) skus = aggFromVl(vl2)
           }
         } catch {
@@ -1008,11 +1036,16 @@ export default function Gerencia({ esGerente }) {
       if (nom.length > 4) {
         try {
           const token = nom.split(/\s+/)[0].slice(0, 16)
-          const { data: vl } = await supabase
-            .from('ventas_lineas')
-            .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key,nombre_cliente')
-            .ilike('nombre_cliente', `%${token}%`)
-            .limit(200)
+          const rVl = await safeSelect(
+            supabase
+              .from('ventas_lineas')
+              .select('producto_nombre,sku_canon,venta_neta_clp,cantidad,cantidad_unidad,cliente_key,nombre_cliente')
+              .ilike('nombre_cliente', `%${token}%`)
+              .limit(200),
+            { label: 'gerencia_ventas_nombre' }
+          )
+          if (!rVl.ok) console.error('[gerencia] no se leyeron las ventas por nombre', rVl.error)
+          const vl = rVl.rows
           if (vl?.length) {
             const agg = {}
             for (const r of vl) {

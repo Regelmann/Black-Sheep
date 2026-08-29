@@ -9,7 +9,7 @@
  * algo que una persona tiene que decidir. Lo único correcto es mostrarlo.
  */
 import { useEffect, useState, useCallback } from 'react'
-import { itemsAgotados, revivirItem, removeActionFromQueue, flushActionQueue } from '../lib/offline'
+import { itemsAgotados, revivirItem, removeActionFromQueue, flushActionQueue } from '../lib/offline.js'
 import { syncHandlers } from '../lib/syncHandlers.js'
 import { onOutboxChange } from '../lib/outboxDb.js'
 

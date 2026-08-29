@@ -901,3 +901,205 @@
   border-top: 1px solid var(--line, #ebe5dc);
   font-size: 12px; color: var(--ink-3, #78716c); text-align: center;
 }
+
+/* ============================================================
+   DESBORDE HORIZONTAL — la causa real de que se corte la navbar
+   y el contenido de la derecha.
+
+   DIAGNÓSTICO
+   Hay sangrados legítimos (`margin: 0 -14px`) para que un bloque
+   llegue de borde a borde. Pero SIN un contenedor que los contenga,
+   empujan la página fuera del viewport por ambos lados. El navegador
+   ensancha el documento, y todo lo `fixed` —la barra inferior— se
+   posiciona respecto de ese ancho mayor, no del de la pantalla.
+
+   Por eso se veía "ntes Stock Más": la nav estaba completa, pero
+   corrida hacia la derecha fuera de la pantalla.
+
+   POR QUÉ NO ALCANZA `overflow-x: hidden` EN EL BODY
+   Rompe `position: sticky` de los descendientes — el header dejaría
+   de pegarse arriba. Es un parche, no la solución.
+
+   SOLUCIÓN
+   Contener el desborde en el elemento de scroll de la app, no en el
+   body, y garantizar que ningún hijo pueda excederlo.
+   ============================================================ */
+
+html, body {
+  max-width: 100%;
+  overflow-x: clip;        /* clip NO rompe sticky; hidden sí */
+}
+
+#root {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Nada puede ser más ancho que su contenedor. Los sangrados
+   negativos siguen funcionando, pero ya no ensanchan el documento. */
+.bs-shell,
+.wrap,
+.bs-page,
+.bs-hoy-body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* La barra inferior se posiciona contra el ancho REAL de la pantalla */
+.navbar {
+  left: 0;
+  right: 0;
+  transform: none;         /* se centra con margin, no con translate */
+  margin-inline: auto;
+  width: auto;
+  max-width: min(520px, 100%);
+  box-sizing: border-box;
+}
+
+/* Ningún texto largo empuja el ancho: si no entra, se corta o parte */
+.bs-row-title, .bs-client-name, .bs-shell-title,
+.bs-appheader-title, .nav-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Las tarjetas del catálogo: 2 columnas reales, sin mínimo que desborde */
+.bs-shop-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 359px) {
+  .bs-shop-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ============================================================
+   DÓNDE IR AHORA · Oportunidad
+   Regla del sistema que trae este componente:
+     OSCURO = INTELIGENCIA   ·   CLARO = ACCIÓN
+   Lo que la app CALCULA va sobre fondo oscuro. Lo que el vendedor
+   TOCA va claro y contrastado. Es la razón por la que el VentaHero
+   funciona y el botón naranja se ve.
+   ============================================================ */
+.bs-donde-ir { margin: 12px 0 16px; }
+.bs-donde-ir-title {
+  margin: 0 0 10px;
+  font-size: 12px; font-weight: 800;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+}
+.bs-donde-ir-lista { display: flex; flex-direction: column; gap: 10px; }
+
+/* --- La tarjeta: oscura, porque es análisis --- */
+.bs-op {
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(158deg, #1c1917 0%, #292524 62%, #33302c 100%);
+  color: #fff;
+  box-shadow: var(--sh-md, 0 6px 18px rgba(28,25,23,.10));
+  position: relative;
+  overflow: hidden;
+}
+/* La urgencia se lee por color antes que por texto */
+.bs-op::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
+  background: var(--warn, #f59e0b);
+}
+.bs-op.att-now::before      { background: var(--danger, #ef4444); }
+.bs-op.att-today::before    { background: var(--warn, #f59e0b); }
+.bs-op.att-thisweek::before { background: var(--info, #2563eb); }
+
+.bs-op-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; margin-bottom: 6px;
+}
+.bs-op-urgencia {
+  font-size: 10.5px; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--warn-lt5, #fdba74);
+}
+.bs-op.att-now .bs-op-urgencia { color: #fca5a5; }
+.bs-op-monto {
+  font-size: 17px; font-weight: 800;
+  color: var(--ok-mid, #16a34a);
+  font-variant-numeric: tabular-nums;
+}
+.bs-op-cliente {
+  margin: 0 0 4px;
+  font-size: 15.5px; font-weight: 800; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.bs-op-ritmo {
+  margin: 0 0 10px;
+  font-size: 12px; color: rgba(255,255,255,.62); line-height: 1.35;
+}
+
+/* Los productos: lista compacta sobre el fondo oscuro */
+.bs-op-productos {
+  margin: 0 0 12px; padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+}
+.bs-op-prod {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 12.5px; line-height: 1.5; min-width: 0;
+}
+.bs-op-prod-nom {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bs-op-prod-cant {
+  flex: 0 0 auto; font-weight: 800; color: var(--warn-lt5, #fdba74);
+  font-variant-numeric: tabular-nums;
+}
+.bs-op-prod-precio {
+  flex: 0 0 auto; color: rgba(255,255,255,.55);
+  font-variant-numeric: tabular-nums;
+}
+.bs-op-sinstock {
+  color: var(--danger, #ef4444); font-size: 11.5px; font-weight: 700;
+}
+
+/* --- Las acciones: CLARAS, porque se tocan --- */
+.bs-op-acciones { display: flex; gap: 8px; align-items: center; }
+.bs-op-cta {
+  flex: 1 1 auto;
+  min-height: 46px;
+  border: 0; border-radius: 12px;
+  background: var(--brand, #c2410c);
+  color: #fff;
+  font-family: inherit; font-size: 14.5px; font-weight: 800;
+  cursor: pointer;
+}
+.bs-op-cta:active { transform: scale(.985); }
+.bs-op-link {
+  flex: 0 0 auto;
+  min-height: 46px; padding: 0 14px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 12px;
+  background: transparent; color: rgba(255,255,255,.85);
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+}
+
+/* --- Versión mini, para listas densas --- */
+.bs-opm {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 11px 13px;
+  border-radius: 12px;
+  background: var(--surface-2, #f0ece6);
+  border: 1px solid var(--line, #ebe5dc);
+  width: 100%; text-align: left;
+  font-family: inherit; cursor: pointer; min-width: 0;
+}
+.bs-opm-info { min-width: 0; }
+.bs-opm-cliente {
+  font-size: 13.5px; font-weight: 700; color: var(--ink, #1c1917);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bs-opm-razon {
+  font-size: 11.5px; color: var(--ink-3, #78716c); margin-top: 1px;
+}
+.bs-opm-monto {
+  flex: 0 0 auto; font-size: 14px; font-weight: 800;
+  color: var(--ok-dk, #166534);
+  font-variant-numeric: tabular-nums;
+}

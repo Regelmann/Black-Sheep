@@ -4,7 +4,9 @@
    ═══════════════════════════════════════════════════════════════ */
 
 @import url('./styles/tokens.css');
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
+
+/* La fuente DM Sans ya se carga desde index.html con <link> + preconnect:
+   cargarla además por @import es un request render-blocking redundante. */
 
 /* ── RESET ───────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

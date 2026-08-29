@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { productTitle, productLabel } from '../lib/productDisplay'
+import { supabase } from '../lib/supabase.js'
+import { safeSelect } from '../lib/query.js'
+import { productTitle, productLabel } from '../lib/productDisplay.js'
 import {
   buildWhatsAppPedido,
   buildWhatsAppBodega,
@@ -11,8 +12,8 @@ import {
   sanitizeNombreProducto,
   imprimirPedidoPdf,
   marcarPedidoEstado,
-} from '../lib/pedido'
-import { precioDesdeLista, resolverPrecio } from '../lib/precios'
+} from '../lib/pedido.js'
+import { precioDesdeLista, resolverPrecio } from '../lib/precios.js'
 
 const money = n => {
   const v = Number(n)
@@ -73,12 +74,18 @@ export default function PedidoSheet({ initialPedido,
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const { data } = await supabase
-        .from('stock')
-        .select('sku_canon,producto_nombre,stock_operativo,cobertura_dias,estado_stock,es_foco_mes,foco,precio_unidad,precio_lista,precio,precio_caja,precio_kilo')
-        .order('producto_nombre')
-        .limit(500)
-      if (!cancelled) setStock(data || [])
+      // safeSelect: si el stock no se lee, `rows` es [] pero `ok:false` lo dice.
+      const rStock = await safeSelect(
+        supabase
+          .from('stock')
+          .select('sku_canon,producto_nombre,stock_operativo,cobertura_dias,estado_stock,es_foco_mes,foco,precio_unidad,precio_lista,precio,precio_caja,precio_kilo')
+          .order('producto_nombre')
+          .limit(500),
+        { label: 'pedido_stock' }
+      )
+      const data = rStock.rows
+      if (!rStock.ok) console.error('[pedido] no se pudo leer el stock', rStock.error)
+      if (!cancelled) setStock(data)
 
       // Precio dinámico desde ventas si faltaba
       const enriched = await enriquecerPreciosDesdeVentas(

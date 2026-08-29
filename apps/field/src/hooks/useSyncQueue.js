@@ -20,8 +20,8 @@
  *    pasaran props. Ahora `enabled:false` desconecta todo.
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { loadActionQueue, isProbablyOffline, QUEUE_KEY } from '../lib/offline'
-import { runSyncFlush, discardSyncQueue } from '../lib/sync/engine'
+import { loadActionQueue, isProbablyOffline, QUEUE_KEY } from '../lib/offline.js'
+import { runSyncFlush, discardSyncQueue } from '../lib/sync/engine.js'
 
 /* ---------------- store singleton ---------------- */
 
@@ -33,9 +33,25 @@ const _subs = new Set()
 function emit() { _subs.forEach((fn) => fn()) }
 
 function setItems(next) {
+  // 🔴 BUG QUE CORRIGE: se comparaba `it?.ts`, pero un item de la cola no
+  // tiene campo `ts` (usa `enqueuedAt`, `attempts`, `agotado`, `lastError`).
+  // Como `it?.ts` era siempre `undefined` en ambos lados, esa comparación
+  // daba siempre `false`. Resultado: cuando un item FALLABA y pasaba a
+  // `agotado` (misma longitud, mismo `type`), el store no se actualizaba y
+  // la UI (BandejaAgotados / contador de pendientes) no se re-renderizaba.
+  //
+  // Se detecta cambio por REFERENCIA del arreglo (outboxDb reasigna el
+  // espejo en cada escritura) Y por el estado mutable de cada item:
+  // attempts / agotado / lastError. La segunda es la que da cuenta del
+  // paso a "agotado", que es justo el caso que la app existe para cubrir.
+  const firma = (it) =>
+    it
+      ? [it.id, it.attempts, it.agotado, it.lastError, it.type].join('|')
+      : String(it)
   const changed =
+    next !== _items ||
     next.length !== _items.length ||
-    next.some((it, i) => it?.ts !== _items[i]?.ts || it?.type !== _items[i]?.type)
+    next.some((it, i) => firma(it) !== firma(_items[i]))
   if (changed) { _items = next; emit() }
 }
 function setStatus(s) { if (s !== _status) { _status = s; emit() } }
@@ -43,13 +59,16 @@ function setStatus(s) { if (s !== _status) { _status = s; emit() } }
 function refresh() { setItems(loadActionQueue()) }
 
 /** Un solo flush a la vez, sin importar cuántos componentes lo pidan. */
-async function flush(handlers) {
+async function flush(handlers, force = false) {
   if (_inFlight) return
-  if (isProbablyOffline()) { setStatus('offline'); return }
+  // El gate por navigator.onLine es para los flush automáticos. El Reintentar
+  // manual (force) lo salta: si onLine miente en falso, la cola quedaba
+  // atascada sin forma de drenarla.
+  if (!force && isProbablyOffline()) { setStatus('offline'); return }
   _inFlight = true
   setStatus('syncing')
   try {
-    const res = await runSyncFlush(handlers)
+    const res = await runSyncFlush(handlers, { force })
     setItems(loadActionQueue())
     if (res.status === 'success') {
       setStatus('success')
@@ -109,7 +128,10 @@ export function useSyncQueue(handlers = {}, opts = {}) {
   }, [enabled])
 
   const retry = useCallback(async () => {
-    await flush(hRef.current)
+    // force:true — el usuario apretó Reintentar, hay que intentar aunque
+    // navigator.onLine diga falso. Si está realmente offline, cada handler
+    // devuelve {ok:false} y el item va a backoff, no se pierde.
+    await flush(hRef.current, true)
     force((n) => n + 1)
   }, [])
 

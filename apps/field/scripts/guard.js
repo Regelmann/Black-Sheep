@@ -127,6 +127,29 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R18 · Un test que no puede correr no es un test ────────────────
+// Llegó un catalogControlCenter.test.js escrito para `vitest`, que NO es
+// dependencia del proyecto. `npm test` lo salteaba: el archivo se veía
+// como cobertura y nunca corría. Es el mismo patrón de confianza falsa
+// que ya detectamos con el parser de CSS que "pasaba leyendo nada".
+{
+  const pkgP = path.resolve(SRC, '..', 'package.json')
+  const deps = fs.existsSync(pkgP)
+    ? { ...JSON.parse(fs.readFileSync(pkgP, 'utf8')).devDependencies,
+        ...JSON.parse(fs.readFileSync(pkgP, 'utf8')).dependencies }
+    : {}
+  for (const f of archivos.filter((x) => /\.test\.js$/.test(x))) {
+    const t = fs.readFileSync(f, 'utf8')
+    const m = t.match(/from ['"](vitest|jest|mocha|@jest\/globals)['"]/)
+    if (m && !deps[m[1].split('/')[0].replace('@', '@')]) {
+      problemas.push(
+        `[R18 test que no corre]  ${rel(f)} importa "${m[1]}", que no está ` +
+        `instalado — npm test lo saltea y da cobertura falsa`
+      )
+    }
+  }
+}
+
 // ── R17 · Ningún paquete que use React fuera del chunk de React ────
 // Un chunk que llama React.createContext y se evalúa ANTES que React da
 // "Cannot read properties of undefined (reading 'createContext')" y
@@ -310,9 +333,12 @@ if (fs.existsSync(SQL)) {
 // ── R9 · La documentación de deploy debe citar el stamp actual ──────
 // DEPLOY.md decía "V68 CLOSE" y el README decía "v2.4" cuando la app
 // iba en V9.2. Documentación desactualizada = pasos de deploy erróneos.
-const APP = path.resolve(SRC, 'App.jsx')
-if (fs.existsSync(APP)) {
-  const stamp = fs.readFileSync(APP, 'utf8').match(/BUILD_STAMP\s*=\s*'([^']+)'/)?.[1]
+// El stamp vive en lib/buildStamp.js (se movió para romper el ciclo
+// App → ErrorBoundary → App). R16 ya sabe leerlo de ahí; acá se usa la
+// MISMA fuente para no dejar la regla muerta leyendo App.jsx.
+const stampFile = archivos.find((f) => /export const BUILD_STAMP/.test(fs.readFileSync(f, 'utf8')))
+if (stampFile) {
+  const stamp = fs.readFileSync(stampFile, 'utf8').match(/BUILD_STAMP\s*=\s*'([^']+)'/)?.[1]
   if (stamp) {
     const raiz = path.resolve(SRC, '..', '..', '..')
     for (const doc of ['DEPLOY.md', 'README.md']) {

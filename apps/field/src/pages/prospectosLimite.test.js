@@ -1,89 +1,69 @@
 /**
- * LOS 1.886 PROSPECTOS QUE LA APP NUNCA VE
+ * EL CORTE DE PROSPECTOS — historia de dos bugs.
  *
- * El diagnóstico contra la base real dio:
+ * BUG 1 (V11.0): `.limit()` sin `.order()`
+ * El corte lo decidía el orden interno de Postgres: se perdían filas al
+ * azar, no las de menos valor. Se agregó `.order('score')` — el mismo
+ * campo con el que planDia.js rankea después.
  *
- *     total 9886 · con_coords 9886 · sin_zona 0 · sin_comuna 0
- *     repetidos 0 · invisibles 1886
+ * BUG 2 (V11.2): `.limit()` no sirve para nada
+ * PostgREST corta en 1.000 filas por defecto y `.limit(5000)` NO sube
+ * ese tope: el límite del cliente sólo puede BAJARLO. La app mostraba
+ * 917 / 462 / 1.000 con 2.389 / 3.870 / 3.627 en la base.
  *
- * Los datos están impecables. El problema es el techo del código:
- * Ruta.jsx corta con .limit(8000) y hay 9.886 con coordenadas, así que
- * 1.886 quedan afuera SIEMPRE.
+ * El 1.000 redondo era la pista. Y no fallaba: 200 con menos filas.
  *
- * Lo grave no era el corte —un tope es razonable— sino que ninguna de
- * las tres consultas tenía ORDER BY. Sin orden explícito PostgREST
- * devuelve las filas como se le antoja al planner: cuáles 1.886 se
- * pierden podía cambiar entre dos cargas de la misma pantalla. Un
- * prospecto aparecía hoy y mañana no, sin que nadie tocara nada, y el
- * vendedor no tenía forma de saberlo.
- *
- * Con ORDER BY score lo que se pierde son los de menor puntaje: sigue
- * habiendo un corte, pero es predecible y se lleva lo que menos vale.
+ * Este test verifica que ya NO se use `.limit()` para eso.
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import path from 'node:path'
 
-const fuente = fs.readFileSync(
-  path.join(import.meta.dirname, 'Ruta.jsx'), 'utf8',
-)
+const RUTA = fs.readFileSync(new URL('./Ruta.jsx', import.meta.url), 'utf8')
 
-/** Cada cadena de consulta a `prospectos`, desde .from hasta el .limit. */
-function consultasDeProspectos() {
-  const out = []
-  const re = /\.from\('prospectos'\)([\s\S]*?)\.limit\((\d+)\)/g
-  let m
-  while ((m = re.exec(fuente))) out.push({ cuerpo: m[1], limite: Number(m[2]) })
-  return out
-}
-
-describe('el corte de prospectos no puede ser arbitrario', () => {
-  test('hay tres consultas con tope', () => {
-    // Si aparece una cuarta sin orden, este test la caza.
-    assert.equal(consultasDeProspectos().length, 3)
+describe('las consultas de prospectos paginan', () => {
+  test('ninguna usa .limit() para traer prospectos', () => {
+    // `.limit(5000)` daba una falsa sensación de completitud.
+    const bloque = RUTA.slice(RUTA.indexOf("from('prospectos')"))
+      .slice(0, 4000)
+    assert.doesNotMatch(bloque, /\.limit\(\s*[0-9]{4,}\s*\)/,
+      '.limit() con números grandes no sube el techo de 1.000 del servidor')
   })
 
-  for (const [i, q] of consultasDeProspectos().entries()) {
-    test(`consulta ${i + 1} (limit ${q.limite}) ordena antes de cortar`, () => {
-      assert.match(q.cuerpo, /\.order\(/,
-        `sin ORDER BY, cuáles filas quedan fuera del limit(${q.limite}) lo ` +
-        'decide el planner y puede cambiar entre dos cargas')
-    })
+  test('usan traerTodo, que pagina con .range()', () => {
+    const usos = [...RUTA.matchAll(/traerTodo\(/g)]
+    assert.ok(usos.length >= 3,
+      `sólo ${usos.length} consultas paginan; deberían ser las 3 de prospectos`)
+  })
 
-    test(`consulta ${i + 1} ordena por score, no por cualquier cosa`, () => {
-      // Ordenar por nombre o por id haría el corte estable pero absurdo:
-      // se perderían prospectos buenos por empezar con Z.
-      assert.match(q.cuerpo, /\.order\('score'/,
-        'el criterio tiene que ser el valor del prospecto')
-    })
-
-    test(`consulta ${i + 1} pone los mejores primero`, () => {
-      assert.match(q.cuerpo, /ascending:\s*false/,
-        'ascending true dejaría afuera justo a los mejores')
-    })
-
-    test(`consulta ${i + 1} manda los sin score al final`, () => {
-      // En Postgres los NULL van primero en DESC por defecto: sin
-      // nullsFirst:false, los prospectos sin puntaje coparían el cupo y
-      // desplazarían a los buenos.
-      assert.match(q.cuerpo, /nullsFirst:\s*false/,
-        'los NULL irían primero y se comerían el limit')
-    })
-  }
+  test('cada página se pide con .range(d, h)', () => {
+    assert.match(RUTA, /\.range\(d,\s*h\)/,
+      'sin .range() no hay paginación real')
+  })
 })
 
-describe('el techo sigue existiendo y hay que saberlo', () => {
-  test('el tope más alto es 8000', () => {
-    const max = Math.max(...consultasDeProspectos().map(q => q.limite))
-    assert.equal(max, 8000,
-      'si alguien cambia el tope, que sea a conciencia: con 9.886 en la ' +
-      'base, 8.000 deja 1.886 afuera')
+describe('el orden del corte sigue siendo el correcto', () => {
+  test('ordenan por score, no por potencial', () => {
+    // planDia.js rankea por `score`. Ordenar la consulta por otro campo
+    // haría que se pierdan justo los que iban a quedar arriba.
+    const ordenes = [...RUTA.matchAll(/\.order\('(\w+)'/g)].map((m) => m[1])
+    assert.ok(ordenes.includes('score'))
   })
 
-  test('está documentado por qué', () => {
-    assert.match(fuente, /9\.?886|1\.?886/,
-      'el comentario tiene que decir cuántos se pierden, si no el próximo ' +
-      'que lea el código va a pensar que 8000 alcanza para todos')
+  test('los nulos van al final, no se comen el cupo', () => {
+    assert.match(RUTA, /nullsFirst:\s*false/,
+      'sin esto los prospectos sin score cargado quedarían primeros')
+  })
+})
+
+describe('el recuadro del mapa no descarta en silencio', () => {
+  test('lo descartado se avisa con warn, no con log', () => {
+    assert.match(RUTA, /console\.warn\([\s\S]{0,200}fuera del recuadro/,
+      'un console.log entre otros no lo mira nadie')
+  })
+
+  test('los prospectos con zona y comuna contradictorias se reportan', () => {
+    assert.match(RUTA, /contradictorias/,
+      'esos prospectos no los ve NINGÚN vendedor: hay que poder detectarlos')
   })
 })

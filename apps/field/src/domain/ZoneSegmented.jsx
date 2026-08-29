@@ -27,7 +27,7 @@
  * · prefers-reduced-motion desactiva el deslizamiento, no lo ralentiza.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { getZoneTheme, applyZoneCssVars } from '../lib/theme/zones'
+import { getZoneTheme, applyZoneCssVars } from '../lib/theme/zones.js'
 
 /** Etiqueta corta: "NOR-ORIENTE" no entra tres veces en 360px. */
 function corta(zona, theme) {

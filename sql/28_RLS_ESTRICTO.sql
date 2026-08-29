@@ -258,15 +258,29 @@ BEGIN
         WITH CHECK (public.soy_admin() OR ejecutivo_id::text = public.mi_ejecutivo_id())
         $f$, t||'_update', t);
     ELSE
+      -- Sin ejecutivo_id no se puede aislar por autor, pero SÍ por tenant.
+      -- Antes acá había USING (true) / WITH CHECK (true): cualquier usuario
+      -- autenticado podía leer Y escribir en TODAS las tablas de cualquier
+      -- empresa. Es el mismo hueco que el resto del archivo vino a cerrar.
       EXECUTE format($f$
         CREATE POLICY %I ON public.%I FOR SELECT TO authenticated
         USING (public.mi_tenant() IS NULL OR tenant_id = public.mi_tenant())$f$, t||'_select', t);
       EXECUTE format($f$
         CREATE POLICY %I ON public.%I FOR INSERT TO authenticated
-        WITH CHECK (true)$f$, t||'_insert', t);
+        WITH CHECK (
+          public.soy_admin()
+          OR (public.mi_tenant() IS NULL OR tenant_id = public.mi_tenant())
+        )$f$, t||'_insert', t);
       EXECUTE format($f$
         CREATE POLICY %I ON public.%I FOR UPDATE TO authenticated
-        USING (true) WITH CHECK (true)$f$, t||'_update', t);
+        USING (
+          public.soy_admin()
+          OR (public.mi_tenant() IS NULL OR tenant_id = public.mi_tenant())
+        )
+        WITH CHECK (
+          public.soy_admin()
+          OR (public.mi_tenant() IS NULL OR tenant_id = public.mi_tenant())
+        )$f$, t||'_update', t);
     END IF;
   END LOOP;
 END $$;

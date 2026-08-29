@@ -1,11 +1,11 @@
-import { precioDesdeHistSku } from './precios'
+import { precioDesdeHistSku } from './precios.js'
 /**
  * Pedido en terreno → Supabase.pedidos + WhatsApp.
  * Precio dinámico: último / promedio del cliente (sku_detalle o ventas_lineas).
  */
 
-import { supabase } from './supabase'
-import { parseSkuDetalle, cantidadSugerida as cantidadSugeridaCoach } from './coach'
+import { supabase } from './supabase.js'
+import { parseSkuDetalle, cantidadSugerida as cantidadSugeridaCoach } from './coach.js'
 
 /** Quita pipes/basura de nombres de producto (sku_detalle crudo) */
 export function sanitizeNombreProducto(n) {

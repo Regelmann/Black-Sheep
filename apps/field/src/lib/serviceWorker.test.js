@@ -45,6 +45,7 @@ describe('service worker · no puede dejar la pantalla en blanco', () => {
   // 3 · El HTML NO puede servirse desde caché primero. Es el índice que
   //     apunta a los bundles con hash: si queda viejo tras un deploy,
   //     pide /assets/index-VIEJO.js, que ya no existe → pantalla en blanco.
+  //     El handler es ÚNICO (doble respondWith deja muerto al segundo).
   test('la navegación va a la red primero', () => {
     const sw = leer('public/sw.js')
 
@@ -53,11 +54,20 @@ describe('service worker · no puede dejar la pantalla en blanco', () => {
       'el SW debe distinguir las peticiones de navegación del resto'
     )
 
+    // Un solo addEventListener('fetch'): dos respondWith deja al segundo
+    // anulado y se pierde la estrategia de navegación. Se busca el handler
+    // real (self.addEventListener), no las menciones en comentarios.
+    const fetches = sw.match(/self\.addEventListener\('fetch'/g) || []
+    assert.equal(
+      fetches.length, 1,
+      'debe haber un ÚNICO handler de fetch — doble respondWith es un bug'
+    )
+
     // En el bloque de navegación, fetch() tiene que venir antes que
-    // caches.match(): la caché es el respaldo, no la fuente.
-    const bloque = sw.slice(sw.indexOf('esNavegacion'))
+    // caches.open: la caché es el respaldo, no la fuente.
+    const bloque = sw.slice(sw.indexOf("req.mode === 'navigate'"))
     const posFetch = bloque.indexOf('fetch(req)')
-    const posCache = bloque.indexOf('caches.match')
+    const posCache = bloque.indexOf('caches.open(HTML_CACHE)')
     assert.ok(posFetch !== -1, 'la navegación debe intentar la red')
     assert.ok(
       posFetch < posCache,
@@ -76,14 +86,17 @@ describe('service worker · no puede dejar la pantalla en blanco', () => {
   })
 
   // 5 · Al cambiar la estrategia hay que subir la versión, o el navegador
-  //     con el SW viejo instalado nunca recibe el arreglo.
+  //     con el SW viejo instalado nunca recibe el arreglo. Hay dos caches:
+  //     la de shell (inmutable) y la de HTML (navegación) — ambas versionadas.
   test('la caché está versionada', () => {
     const sw = leer('public/sw.js')
-    const m = sw.match(/const CACHE = '([\w-]+)'/)
-    assert.ok(m, 'debe existir una constante CACHE versionada')
-    assert.ok(
-      /v\d+$/.test(m[1]),
-      `CACHE = ${m[1]}: debe terminar en vN para poder invalidar la anterior`
-    )
+    for (const nombre of ['SHELL_CACHE', 'HTML_CACHE']) {
+      const m = sw.match(new RegExp(`const ${nombre}\\s*=\\s*'([\\w-]+)'`))
+      assert.ok(m, `debe existir la constante ${nombre} versionada`)
+      assert.ok(
+        /v\d+$/.test(m[1]),
+        `${nombre} = ${m[1]}: debe terminar en vN para poder invalidar la anterior`
+      )
+    }
   })
 })

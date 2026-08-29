@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { parseSkuDetalle } from '../lib/coach'
-import { precioUnitarioDesdeSku } from '../lib/pedido'
-import { resolverPrecio, resolverPrecioCliente, estiloOrigenPrecio, formatPrecioClp, precioDesdeLista } from '../lib/precios'
+import { supabase } from '../lib/supabase.js'
+import { safeSelect } from '../lib/query.js'
+import { parseSkuDetalle } from '../lib/coach.js'
+import { precioUnitarioDesdeSku } from '../lib/pedido.js'
+import { resolverPrecio, resolverPrecioCliente, estiloOrigenPrecio, formatPrecioClp, precioDesdeLista } from '../lib/precios.js'
 
 const money = n => {
   const v = Number(n)
@@ -60,26 +61,43 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
     let dead = false
     ;(async () => {
       setLoading(true)
-      const [{ data: s }, { data: o }] = await Promise.all([
-        supabase.from('stock').select('*').order('producto_nombre').limit(800),
-        supabase
-          .from('ofertas_cliente')
-          .select('*')
-          .eq('cliente_key', cliente?.cliente_key)
-          .eq('activo', true)
-          .maybeSingle(),
+      // safeSelect: si la consulta FALLA, `rows` es el fallback (vacío) pero
+      // `ok:false` lo dice — no se confunde "falló" con "no hay oferta".
+      const [rs, ro] = await Promise.all([
+        safeSelect(
+          supabase.from('stock').select('*').order('producto_nombre').limit(800),
+          { label: 'oferta_stock' }
+        ),
+        safeSelect(
+          supabase
+            .from('ofertas_cliente')
+            .select('*')
+            .eq('cliente_key', cliente?.cliente_key)
+            .eq('activo', true)
+            .maybeSingle(),
+          { label: 'oferta_cabecera' }
+        ),
       ])
       if (dead) return
-      setStock(s || [])
-      setOffer(o || null)
+      const s = rs.rows
+      const o = ro.rows[0] || null
+      setStock(s)
+      setOffer(o)
+      if (!rs.ok) console.error('[oferta] no se pudo leer el stock del catálogo', rs.error)
+      if (!ro.ok) console.error('[oferta] no se pudo leer la oferta del cliente', ro.error)
       if (o?.id) {
-        const { data: oi } = await supabase
-          .from('oferta_cliente_items')
-          .select('*')
-          .eq('oferta_id', o.id)
-          .order('prioridad')
-        const stockMap = new Map((s || []).map(x => [String(x.sku_canon), x]))
-        const enriched = (oi || []).map(it => {
+        const ri = await safeSelect(
+          supabase
+            .from('oferta_cliente_items')
+            .select('*')
+            .eq('oferta_id', o.id)
+            .order('prioridad'),
+          { label: 'oferta_items' }
+        )
+        const oi = ri.rows
+        if (!ri.ok) console.error('[oferta] no se pudieron leer los items de la oferta', ri.error)
+        const stockMap = new Map(s.map(x => [String(x.sku_canon), x]))
+        const enriched = oi.map(it => {
           const st = stockMap.get(String(it.sku_canon)) || {
             sku_canon: it.sku_canon,
             producto_nombre: it.producto_nombre,

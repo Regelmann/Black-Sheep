@@ -12,7 +12,7 @@ import {
   loadActionQueue,
   isProbablyOffline,
   clearActionQueue,
-} from '../offline'
+} from '../offline.js'
 
 /**
  * @typedef {Object} SyncHandlers
@@ -25,10 +25,18 @@ import {
 
 /**
  * @param {SyncHandlers} handlers
+ * @param {{ force?: boolean }} [opts]
  * @returns {Promise<{ status: 'offline'|'success'|'partial'|'empty'|'error', pending: number, flushed?: number }>}
  */
-export async function runSyncFlush(handlers = {}) {
-  if (isProbablyOffline()) {
+export async function runSyncFlush(handlers = {}, opts = {}) {
+  // El gate por navigator.onLine evita martillar una red muerta en los flush
+  // AUTOMÁTICOS (event 'online' / visibilitychange). Pero navigator.onLine
+  // miente en WebView y portales cautivos: un `false` falso deja la cola
+  // atascada sin que nadie pueda drenarla. El Reintentar manual pasa
+  // `force:true` y salta el gate: si la red está realmente muerta cada
+  // handler devuelve {ok:false} y el item entra en backoff — no se pierde,
+  // sólo no se confirma.
+  if (!opts.force && isProbablyOffline()) {
     return { status: 'offline', pending: loadActionQueue().length }
   }
 

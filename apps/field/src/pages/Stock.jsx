@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { productTitle } from '../lib/productDisplay'
-import { findBuyersForSku } from '../lib/stockIntel'
+import { productTitle } from '../lib/productDisplay.js'
+import { findBuyersForSku } from '../lib/stockIntel.js'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { pick, auditar, columnasReales, CARTERA } from '../lib/columns'
-import { safeAll, safeSelect } from '../lib/query'
+import { supabase } from '../lib/supabase.js'
+import { pick, auditar, columnasReales, CARTERA } from '../lib/columns.js'
+import { safeAll, safeSelect } from '../lib/query.js'
+import { traerTodo } from '../lib/traerTodo.js'
 import { DataError } from '../ui/DataState.jsx'
 import { PageShell } from '../shells/PageShell.jsx'
 import { DataAsOfBanner } from '../components.jsx'
@@ -57,13 +58,16 @@ export default function Stock() {
 
     for (let i = 0; i < tries.length; i++) {
       const cols = tries[i]
-      let q = supabase.from('cartera').select(cols).limit(3000)
+      // El techo real de PostgREST es 1.000: .limit(3000) no lo sube.
+      // Con 3.870 clientes en una zona se perdían dos tercios en
+      // silencio, y el cruce de compradores quedaba incompleto.
+      let q = supabase.from('cartera').select(cols)
       // El filtro por ejecutivo sólo se aplica mientras el select sea
       // específico. En el intento con '*' se filtra en JS, para que una
       // columna renombrada no tumbe también el filtro.
       if (eid && cols !== '*') q = q.eq('ejecutivo_id', eid)
 
-      const rCart = await safeSelect(q, { label: `cartera[${i}]` })
+      const rCart = await traerTodo((d, h) => q.range(d, h), { label: `cartera[${i}]` })
       if (rCart.ok) {
         carteraRows = rCart.rows || []
         cartErr = null
