@@ -2,10 +2,7 @@ import { supabase } from '../../lib/supabase.js'
 
 export async function createAction({ clienteId, tipo, prioridad = 'media', nota = '' }) {
   if (!clienteId || !tipo) throw new Error('clienteId y tipo son obligatorios')
-  const payload = { cliente_id: clienteId, tipo, prioridad, nota }
-  const { data, error } = await supabase.from('acciones_comerciales').insert(payload).select().single()
-  if (error) throw error
-  return data
+  throw new Error('acciones_comerciales aún no está confirmada en el esquema. No se ejecutó ninguna escritura.')
 }
 
 export async function assignExecutive({ clienteId, ejecutivoId }) {
