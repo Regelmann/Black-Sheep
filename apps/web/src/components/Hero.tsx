@@ -154,7 +154,7 @@ export default function Hero() {
             <Magnetic strength={0.3}>
               <a
                 href="#demo"
-                className="btn-shine group inline-flex items-center gap-2 rounded-xl bg-primary text-[#0c0a09] px-7 py-4 text-sm font-bold text-white shadow-xl shadow-primary/25 transition-all hover:bg-primary-soft hover:shadow-primary/45 active:scale-95"
+                className="btn-shine group inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-4 text-sm font-bold text-white shadow-xl shadow-primary/25 transition-all hover:bg-primary-soft hover:shadow-primary/45 active:scale-95"
               >
                 Agenda una demo
                 <ArrowRight

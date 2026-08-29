@@ -1,5 +1,6 @@
 import { Mail, MapPin } from "lucide-react";
 import Logo from "@/components/Logo";
+import Reveal from "@/components/Reveal";
 
 function LinkedinIcon(_props: { size?: number }) {
   return (
@@ -49,6 +50,7 @@ const COLUMNS = [
 
 export default function Footer() {
   return (
+    <Reveal variant="up" y={20} duration={0.6}>
     <footer className="relative w-full border-t border-line/50 bg-navy-deep">
       <div className="mx-auto w-full max-w-7xl px-6 py-16">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
@@ -112,5 +114,6 @@ export default function Footer() {
         </div>
       </div>
     </footer>
+    </Reveal>
   );
 }

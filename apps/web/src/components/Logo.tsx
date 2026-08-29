@@ -1,29 +1,32 @@
 import Image from "next/image";
 
 /**
- * Logo real de Black Sheep.
+ * Logo de Black Sheep — el archivo REAL.
  *
- * Antes había un cuadradito con las letras "BΣ" inventadas y un degradado.
- * El logo verdadero está en `public/logo-mark.svg` desde siempre: no hay
- * razón para dibujar uno falso.
+ * Historial de dos errores acá:
+ *  1. Un cuadradito con las letras "BΣ" y un degradado, inventado.
+ *  2. `logo-mark-transparent.svg`, que resultó ser un dibujo genérico de
+ *     oveja en verde #16a34a — tampoco es el logo.
  *
- * Sobre fondo oscuro se usa la versión transparente; el texto va en blanco
- * con "Field" en lima, que es la identidad de la plataforma (el naranja es
- * de KeyFoods, un tenant, y no corresponde acá).
+ * El logo verdadero es la oveja con circuitos en lima fluorescente sobre
+ * negro. Vive en `public/logo-mark-512.png`, derivado del master 1024.
+ *
+ * Se usa el PNG y no un SVG porque el logo tiene degradados y glow: un
+ * trazado vectorial no lo reproduce.
  */
 export default function Logo() {
   return (
     <a
       href="#top"
       className="group flex items-center gap-2.5"
-      aria-label="Black Sheep Field — inicio"
+      aria-label="Black Sheep — inicio"
     >
       <Image
-        src="/logo-mark-transparent.svg"
+        src="/logo-mark-512.png"
         alt=""
-        width={36}
-        height={36}
-        className="h-9 w-9 transition-transform duration-300 group-hover:scale-105"
+        width={40}
+        height={40}
+        className="h-10 w-10 rounded-xl transition-transform duration-300 group-hover:scale-105"
         priority
       />
       <span className="font-display text-lg font-bold tracking-tight text-white">

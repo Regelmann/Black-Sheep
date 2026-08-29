@@ -50,20 +50,19 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          {/* Ingreso a la app. Faltaba por completo: un vendedor que
-              entra a black-sheep.cl no tenía forma de llegar a su app,
-              y era la queja más concreta. Va ANTES del CTA de demo:
+          <Magnetic strength={0.26}>
+          {/* Ingreso a la app. Un vendedor que entra a black-sheep.cl
+              tiene que poder llegar a su app. Va ANTES del CTA de demo:
               quien ya es cliente no viene a agendar nada. */}
           <a
             href="https://app.black-sheep.cl/"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-primary/60 hover:text-primary"
+            className="inline-flex items-center rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-primary/60 hover:text-primary"
           >
             Ingresar
           </a>
-          <Magnetic strength={0.26}>
             <a
               href="#demo"
-              className="btn-shine group inline-flex items-center gap-2 rounded-xl bg-primary text-[#0c0a09] px-5 py-2.5 text-sm font-bold text-[#0c0a09] shadow-lg shadow-primary/25 transition-all hover:bg-primary-soft hover:shadow-primary/40 active:scale-95"
+              className="btn-shine group inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-soft hover:shadow-primary/40 active:scale-95"
             >
               Agenda una demo
               <ArrowRight
@@ -113,7 +112,7 @@ export default function Navbar() {
               <a
                 href="#demo"
                 onClick={() => setOpen(false)}
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-[#0c0a09] px-5 py-3 text-sm font-bold text-white"
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white"
               >
                 Agenda una demo <ArrowRight size={15} />
               </a>

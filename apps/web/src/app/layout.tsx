@@ -52,6 +52,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es-CL">
       <head>
+        {/* Favicon: el logo real. La web no tenía ninguno — el navegador
+            mostraba el ícono genérico de página en la pestaña. */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/logo-mark-32.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/logo-mark-192.png" />
+        <link rel="apple-touch-icon" href="/logo-mark-180.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

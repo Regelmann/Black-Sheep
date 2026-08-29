@@ -9,6 +9,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import Reveal from "@/components/Reveal";
+import Stagger from "@/components/Stagger";
 import Tilt from "@/components/Tilt";
 
 const CHIPS = [
@@ -182,18 +183,21 @@ export default function BentoFeatures() {
         </div>
 
         {/* Franja de capacidades técnicas */}
-        <Reveal delay={0.05}>
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 rounded-3xl border border-line/50 bg-navy-deep/70 px-6 py-5">
+        <Reveal delay={0.05} variant="fade">
+          <Stagger
+            className="flex flex-wrap items-center justify-center gap-3"
+            stagger={0.07}
+          >
             {CHIPS.map(({ icon: Icon, label }) => (
               <span
                 key={label}
-                className="flex items-center gap-2 text-xs font-semibold text-ink"
+                className="flex items-center gap-2 rounded-full border border-line/50 bg-card/40 px-3 py-1.5 text-xs font-semibold text-ink"
               >
                 <Icon size={14} className="text-primary-soft" />
                 {label}
               </span>
             ))}
-          </div>
+          </Stagger>
         </Reveal>
       </div>
     </section>

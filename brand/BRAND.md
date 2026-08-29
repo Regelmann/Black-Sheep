@@ -1,27 +1,49 @@
-# Black Sheep — Brand kit
+# Identidad Black Sheep
 
-## Logo
+## El logo
 
-Oveja frontal estilizada con circuitos neón y ojos glow. No distorsionar proporciones.
+**`logo-master-1024.png`** es la fuente. Todo lo demás se deriva de ahí.
 
-### Variantes
+La oveja con circuitos en lima fluorescente sobre negro. Nada de otro
+archivo es el logo.
 
-- **Mark** — solo ícono (app icon, favicon, avatar)
-- **Horizontal** — mark + “BLACK SHEEP” + “FIELD”
-- **Vertical** — mark arriba, wordmark abajo
-- **Master 1024** — máxima resolución
+### Historial de dos errores, para que no se repitan
 
-### Clear space
+1. `Logo.tsx` dibujaba un cuadradito con las letras **"BΣ"** y un degradado
+   naranja. Inventado.
+2. `logo-mark-transparent.svg` y sus hermanos eran un **dibujo genérico de
+   oveja** en verde `#16a34a`. Tampoco eran el logo. **Eliminados.**
 
-Dejá aire mínimo = ¼ del alto del mark alrededor.
+Si hace falta una versión vectorial, se vectoriza el master — no se dibuja
+una aproximación.
 
-### Fondos
+### Archivos derivados
 
-Preferente: negro / charcoal.  
-Neón `#39ff14` sobre oscuro. Evitar neón sobre blanco sin contorno.
+| Archivo | Uso |
+|---|---|
+| `logo-master-1024.png` | fuente, no se usa directo |
+| `logo-mark-512.png` | web, ícono PWA grande |
+| `logo-mark-192.png` | ícono PWA, favicon grande |
+| `logo-mark-180.png` | apple-touch-icon |
+| `logo-mark-64.png` · `logo-mark-32.png` | favicon |
+| `logo-mark-transparente.png` | sobre fondos que no son negros |
 
-### No hacer
+Todos regenerados desde el master. Para rehacerlos, redimensionar con
+LANCZOS desde `logo-master-1024.png`.
 
-- Recolorear a naranja KeyFoods u otros
-- Aplastar el mark
-- Usar el mark 32px estirado a tamaños grandes (usar 512/1024)
+## Los colores
+
+| | | |
+|---|---|---|
+| Negro | `#0c0a09` | fondo de la marca |
+| Lima | `#a3e635` | acento de la plataforma |
+
+**Regla de oro:** el lima da **13.1:1 sobre negro** y **1.51:1 sobre blanco**.
+Nunca lima sobre claro. Los botones lima llevan texto **negro**.
+
+### El naranja NO es de Black Sheep
+
+`#c2410c` es el color de **KeyFoods**, que es un tenant. Sólo aparece
+DENTRO de la app después del login, aplicado por `applyTenantBrand()`.
+
+En `black-sheep.cl` no va nunca.

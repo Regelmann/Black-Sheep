@@ -1,8 +1,9 @@
+import '../styles/catalogo-public.css'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
-import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios.js'
-import { productTitle } from '../lib/productDisplay.js'
+import { supabase } from '../lib/supabase'
+import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios'
+import { productTitle } from '../lib/productDisplay'
 
 const money = n => {
   const v = Number(n)
@@ -16,10 +17,15 @@ const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
-      <rect fill="#f5f0eb" width="800" height="800"/>
-      <rect x="200" y="220" width="400" height="280" rx="24" fill="#e7e0d8"/>
-      <text x="400" y="380" text-anchor="middle" fill="#c2410c" font-family="system-ui,sans-serif" font-size="28" font-weight="700">Black Sheep</text>
-      <text x="400" y="420" text-anchor="middle" fill="#78716c" font-family="system-ui,sans-serif" font-size="16">producto</text>
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#1c1917"/>
+          <stop offset="100%" stop-color="#292524"/>
+        </linearGradient>
+      </defs>
+      <rect fill="url(#g)" width="800" height="800"/>
+      <text x="400" y="390" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="28" font-weight="700">${PUBLIC_BRAND}</text>
+      <text x="400" y="430" text-anchor="middle" fill="#a8a29e" font-family="system-ui,sans-serif" font-size="16">producto</text>
     </svg>`
   )
 
@@ -45,7 +51,7 @@ export default function CatalogoCliente() {
   const [nota, setNota] = useState('')
   const [ficha, setFicha] = useState(null)
   const [pedidoId, setPedidoId] = useState(null)
-  const [view, setView] = useState('list') // list-first: más legible en móvil
+  const [view, setView] = useState('grid') // grid | list
 
   useEffect(() => {
     let dead = false
@@ -53,43 +59,15 @@ export default function CatalogoCliente() {
       setLoading(true)
       setErr('')
       try {
-        const { data: raw, error } = await supabase.rpc('get_public_catalogo', { p_token: token })
+        const { data, error } = await supabase.rpc('get_public_catalogo', { p_token: token })
         if (dead) return
-        // La RPC puede devolver objeto o array de una fila segun como se
-        // haya declarado (jsonb vs setof). Normalizar antes de leer campos.
-        const data = Array.isArray(raw) ? raw[0] : raw
         if (error) {
           setCatalogo(null)
-          // Distinguir "no existe" de "esta roto": el vendedor necesita
-          // saber si reenviar el link o llamar a soporte.
-          const m = String(error.message || '')
-          if (/does not exist|schema cache|42883/i.test(m)) {
-            setErr('Falta instalar el catálogo en Supabase (SQL 20_CATALOGO_CANONICO). Avisá a soporte.')
-          } else if (/permission|denied|42501|RLS/i.test(m)) {
-            setErr('Este catálogo no está publicado. Pedile al ejecutivo que lo vuelva a activar.')
-          } else {
-            setErr(m || 'No se pudo cargar el catálogo')
-          }
-          console.error('[catalogo] rpc error', error)
-        } else if (data && data.ok === false) {
+          setErr(error.message || 'No se pudo cargar el catálogo')
+        } else if (!data || !data.nombre_cliente) {
           setCatalogo(null)
-          setErr(
-            data.error === 'token_invalido'
-              ? 'Este link ya no está activo. Pedile uno nuevo a tu ejecutivo.'
-              : 'Catálogo no disponible.'
-          )
-        } else if (!data || (data.ok === false)) {
-          setCatalogo(null)
-          setErr((data && data.error === 'token_invalido')
-            ? 'Este link ya no está activo. Pedile uno nuevo a tu ejecutivo.'
-            : 'Link inválido o catálogo no disponible')
-        } else if (!data.nombre_cliente && !(data.items && data.items.length)) {
-          setCatalogo(null)
-          setErr('Catálogo vacío. Pedile al ejecutivo que vuelva a publicar la oferta.')
-          console.error('[catalogo] sin nombre ni items', raw)
+          setErr('Link inválido o catálogo no disponible')
         } else {
-          if (!data.nombre_cliente) data.nombre_cliente = 'Cliente'
-
           const itemsNorm = (data.items || []).map(it => {
             const r = precioPublicoItem(it)
             const origen = it.precio_origen || r.origen || 'consultar'
@@ -119,9 +97,8 @@ export default function CatalogoCliente() {
 
   const items = catalogo?.items || []
   const categories = useMemo(() => {
-    // El RPC devuelve `rubro`; se mantiene `subfamilia` como alias.
-    const set = new Set(items.map(i => i.rubro || i.subfamilia || 'General'))
-    return ['Todos', ...Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))]
+    const set = new Set(items.map(i => i.subfamilia || 'General'))
+    return ['Todos', ...Array.from(set).sort()]
   }, [items])
 
   const filtered = useMemo(() => {
@@ -138,23 +115,13 @@ export default function CatalogoCliente() {
     })
   }, [items, q, catFilter])
 
-  // RPC pública no trae stock_disponible: mostrar TODOS los items del catálogo
-  const available = filtered
-  /* El ORDEN y la agrupación los define el SQL (26_CATALOGO_ORDEN):
-       grupo 1 = lo que el cliente ya compra
-       grupo 2 = sugeridos de sus mismos rubros
-       grupo 3 = resto del catálogo
-     Antes el front reagrupaba por su cuenta con `es_habitual ||
-     recomendado || destacado` — campos distintos — y el conteo decía
-     15 pero la lista salía vacía. Y `ofertas = habituales` mostraba
-     la misma lista dos veces.
-     El front NO reordena: sólo separa por el grupo que ya viene. */
-  const grupoDe = (i) => Number(i.grupo) || (i.es_habitual ? 1 : 3)
-  const habituales  = available.filter(i => grupoDe(i) === 1)
-  const reposicion  = available.filter(i => grupoDe(i) === 2)
-  const rest        = available.filter(i => grupoDe(i) === 3)
-  const ofertas     = []
-  const liquidacion = []
+  const available = filtered.filter(i => i.stock_disponible !== false)
+  const habituales = available.filter(i => i.es_habitual)
+  const reposicion = available.filter(i => (i.es_reposicion || Number(i.cantidad_sugerida) > 0) && !i.es_habitual)
+  const ofertas = available.filter(i => i.es_oferta && !i.es_habitual && !(i.es_reposicion || Number(i.cantidad_sugerida) > 0))
+  const liquidacion = available.filter(i => i.es_liquidacion && !i.es_habitual && !i.es_oferta)
+  const used = new Set([...habituales, ...reposicion, ...ofertas, ...liquidacion].map(i => i.sku_canon))
+  const rest = available.filter(i => !used.has(i.sku_canon))
   const cartCount = cart.reduce((a, i) => a + Number(i.cantidad || 0), 0)
   const total = cart.reduce((a, i) => a + Number(i.precio || 0) * Number(i.cantidad || 0), 0)
 
@@ -218,12 +185,7 @@ export default function CatalogoCliente() {
         p_nota: nota || null,
       })
       if (error) throw error
-      // crear_pedido_publico devuelve un UUID ESCALAR, no un objeto.
-      // `data?.id` sobre un string es undefined → el cliente nunca veía
-      // su número de pedido.
-      setPedidoId(
-        typeof data === 'string' ? data : (data?.id || data?.pedido_id || null)
-      )
+      setPedidoId(data?.id || data?.pedido_id || null)
       setSent(true)
       setCart([])
     } catch (e) {
@@ -236,10 +198,20 @@ export default function CatalogoCliente() {
   if (loading) {
     return (
       <div className="bs-shop">
-        <div className="bs-shop-boot">
-          <div className="bs-shop-boot-mark">{PUBLIC_BRAND.slice(0, 1)}</div>
+        <div className="bs-shop-boot" role="status" aria-live="polite">
+          <div className="bs-shop-boot-mark" aria-hidden="true">{PUBLIC_BRAND.slice(0, 1)}</div>
+          <div className="bs-shop-boot-pulse" aria-hidden="true" />
           <div className="bs-shop-boot-bar"><span /></div>
           <p>Preparando tu catálogo…</p>
+          <div className="bs-shop-skel-grid" aria-hidden="true">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bs-shop-skel-card">
+                <div className="bs-shop-skel-img" />
+                <div className="bs-shop-skel-line" />
+                <div className="bs-shop-skel-line is-short" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -257,7 +229,7 @@ export default function CatalogoCliente() {
   }
 
   return (
-    <div className="bs-page bs-shop">
+    <div className="bs-shop">
       {/* Hero editorial */}
       <header className="bs-shop-hero">
         <div className="bs-shop-hero-inner">
@@ -312,7 +284,7 @@ export default function CatalogoCliente() {
           <ShopSection title="Tus habituales" subtitle="Lo que ya comprás — con tu precio" items={habituales} view={view} onAdd={add} onFicha={setFicha} featured />
         )}
         {reposicion.length > 0 && (
-          <ShopSection title="Para tu rubro" subtitle="Productos de las categorías que ya comprás" items={reposicion} view={view} onAdd={add} onFicha={setFicha} />
+          <ShopSection title="Para reponer" subtitle="Según tu ritmo de compra" items={reposicion} view={view} onAdd={add} onFicha={setFicha} />
         )}
         {ofertas.length > 0 && (
           <ShopSection title="Destacados" subtitle="Selección del mes" items={ofertas} view={view} onAdd={add} onFicha={setFicha} />
@@ -495,8 +467,6 @@ function ShopSection({ title, subtitle, items, view, onAdd, onFicha, featured })
         </div>
         <span>{items.length}</span>
       </div>
-      {/* Los items llegan ya ordenados desde el SQL. ShopSection sólo
-          los pinta: no reordena ni reagrupa. */}
       <div className={view === 'list' ? 'bs-shop-list' : 'bs-shop-grid'}>
         {items.map(i => (
           <ProductCard key={i.sku_canon} item={i} view={view} onAdd={onAdd} onFicha={onFicha} />
