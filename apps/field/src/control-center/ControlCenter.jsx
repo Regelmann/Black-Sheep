@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { ventasRepo, clientesRepo, ejecutivosRepo, stockRepo, catalogoRepo, pedidosRepo } from './data/repositories.js'
+import { assignExecutive } from './data/actions.js'
 import { summarizeCanales, summarizeClientes, summarizeVentas, buildCliente360, buildOpportunities } from './data/metrics.js'
 import { filterRows, uniqueValues } from './data/selectors.js'
 import { ControlModules } from './ControlModules.jsx'
@@ -17,15 +18,19 @@ export default function ControlCenter() {
   const [error, setError] = useState(null)
   const [cliente, setCliente] = useState(null)
   const [clienteKey, setClienteKey] = useState(null)
+  const [actionState, setActionState] = useState({ busy: false, message: null, error: null })
+
+  const loadData = useCallback(async () => {
+    const [ventas, clientes, ejecutivos, stock] = await Promise.all([ventasRepo.resumen(), clientesRepo.resumen(), ejecutivosRepo.listar(), stockRepo.listar()])
+    setData({ ventas, clientes, ejecutivos, stock })
+  }, [])
 
   useEffect(() => {
     let alive = true
-    Promise.all([ventasRepo.resumen(), clientesRepo.resumen(), ejecutivosRepo.listar(), stockRepo.listar()])
-      .then(([ventas, clientes, ejecutivos, stock]) => alive && setData({ ventas, clientes, ejecutivos, stock }))
-      .catch(e => alive && setError(e))
-      .finally(() => alive && setLoading(false))
+    setLoading(true)
+    loadData().catch(e => alive && setError(e)).finally(() => alive && setLoading(false))
     return () => { alive = false }
-  }, [])
+  }, [loadData])
 
   const filteredClientes = useMemo(() => filterRows(data.clientes, filters), [data.clientes, filters])
   const filteredVentas = useMemo(() => filterRows(data.ventas, filters), [data.ventas, filters])
@@ -42,6 +47,21 @@ export default function ControlCenter() {
     setClienteKey(c.id ?? row?.cliente_key ?? row?.cliente_id ?? null)
   }
 
+  const bulkAssign = async (clienteIds, ejecutivoId) => {
+    setActionState({ busy: true, message: null, error: null })
+    let ok = 0
+    try {
+      for (const clienteId of clienteIds) {
+        await assignExecutive({ clienteId, ejecutivoId })
+        ok += 1
+      }
+      await loadData()
+      setActionState({ busy: false, message: `${ok} cliente${ok === 1 ? '' : 's'} reasignado${ok === 1 ? '' : 's'} correctamente.`, error: null })
+    } catch (e) {
+      setActionState({ busy: false, message: ok ? `${ok} reasignado${ok === 1 ? '' : 's'} antes del error.` : null, error: e.message || 'No se pudo reasignar la cartera.' })
+    }
+  }
+
   if (loading) return <main className="cc"><div className="cc-loading">Cargando Control Center…</div></main>
   if (error) return <main className="cc"><div className="cc-error"><strong>No se pudo cargar el Control Center.</strong><span>{error.message || 'Error de datos'}</span></div></main>
 
@@ -52,12 +72,13 @@ export default function ControlCenter() {
     <div className="cc-workspace">
       <header className="cc-topbar"><div><div className="cc-eyebrow">AGOSTO 2026</div><h1>{nav.find(x => x[0] === section)?.[1] || 'Overview'}</h1></div><div className="cc-status"><span className="cc-dot" /> ONLINE</div></header>
       <div className="cc-filters"><select value={filters.zona} onChange={e => setFilters(f => ({ ...f, zona: e.target.value }))}><option value="all">Todas las zonas</option>{zonas.map(x => <option key={x}>{x}</option>)}</select><select value={filters.canal} onChange={e => setFilters(f => ({ ...f, canal: e.target.value }))}><option value="all">Todos los canales</option>{canalesDisponibles.map(x => <option key={x}>{x}</option>)}</select><select value={filters.ejecutivoId} onChange={e => setFilters(f => ({ ...f, ejecutivoId: e.target.value }))}><option value="all">Todos los ejecutivos</option>{data.ejecutivos.map(x => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select><button onClick={() => setFilters({ canal:'all', zona:'all', ejecutivoId:'all' })}>Limpiar</button></div>
+      {actionState.message && <div className="cc-toast">{actionState.message}</div>}{actionState.error && <div className="cc-toast cc-toast-error">{actionState.error}</div>}
       <section className="cc-kpis"><article><span>VENTA MTD</span><strong>{money(resumen.ventaMtd)}</strong></article><article><span>META MTD</span><strong>{resumen.meta ? money(resumen.meta) : '—'}</strong></article><article><span>CUMPLIMIENTO</span><strong>{pct(resumen.cumplimiento)}</strong></article><article><span>CLIENTES</span><strong>{clientes.total.toLocaleString('es-CL')}</strong></article></section>
       {section === 'overview' && <Overview canales={canales} clientes={clientes} stock={data.stock} opportunities={opportunities} onClient={openClient} />}
       {section === 'ventas' && <SimpleTable title="Ventas por canal" rows={canales} columns={['canal','venta','cumplimiento']} moneyKeys={['venta']} />}
       {section === 'clientes' && <ClientTable rows={filteredClientes} onClient={openClient} />}
       {section === 'oportunidades' && <OpportunityTable rows={opportunities} onClient={openClient} />}
-      {['ejecutivos','productos','stock','metas','focos','alertas'].includes(section) && <ControlModules section={section} ventas={filteredVentas} clientes={filteredClientes} ejecutivos={data.ejecutivos} stock={data.stock} opportunities={opportunities} onClient={openClient} />}
+      {['ejecutivos','productos','stock','metas','focos','alertas'].includes(section) && <ControlModules section={section} ventas={filteredVentas} clientes={filteredClientes} ejecutivos={data.ejecutivos} stock={data.stock} opportunities={opportunities} onClient={openClient} onBulkAssign={bulkAssign} />}
     </div>
     {cliente && <Client360 cliente={cliente} clienteKey={clienteKey} onClose={() => { setCliente(null); setClienteKey(null) }} />}
   </main>
@@ -85,7 +106,7 @@ function Client360({ cliente, clienteKey, onClose }) {
     return () => { alive = false }
   }, [clienteKey])
   const productTotals = useMemo(() => { const m = new Map(); for (const r of mix) { const key = r.sku_canon || r.producto_nombre || 'Producto'; const x = m.get(key) || { nombre: r.producto_nombre || key, cantidad: 0, venta: 0 }; x.cantidad += Number(r.cantidad || 0); x.venta += Number(r.venta_neta_clp || 0); m.set(key, x) } return [...m.values()].sort((a,b)=>b.venta-a.venta).slice(0,20) }, [mix])
-  return <div className="cc-modal" role="dialog" aria-modal="true"><div className="cc-modal-card"><button className="cc-close" onClick={onClose}>×</button><div className="cc-subtitle">CLIENTE 360</div><h2>{cliente.nombre}</h2><div className="cc-detail-grid"><div><span>VENTA MTD</span><b>{money(cliente.ventaMtd)}</b></div><div><span>PROMEDIO</span><b>{money(cliente.promedioMensual)}</b></div><div><span>VARIACIÓN</span><b>{pct(cliente.variacion)}</b></div><div><span>RIESGO</span><b>{label(cliente.riesgo)}</b></div><div><span>SIN COMPRA</span><b>{cliente.diasSinComprar ? `${cliente.diasSinComprar} días` : '—'}</b></div><div><span>CANAL</span><b>{label(cliente.canal)}</b></div><div><span>EJECUTIVO</span><b>{label(cliente.ejecutivo)}</b></div><div><span>ZONA</span><b>{label(cliente.zona)}</b></div></div><div className="cc-tabs">{[['resumen','Resumen'],['mix','Mix'],['historial','Historial'],['catalogo','Catálogo B2B'],['pedidos','Pedidos']].map(([id,name])=><button className={tab===id?'active':''} key={id} onClick={()=>setTab(id)}>{name}</button>)}</div>{loading ? <p className="cc-empty">Cargando información del cliente…</p> : error && <p className="cc-empty">{error}</p>}{tab==='resumen' && <div className="cc-detail-section"><h3>Oportunidad comercial</h3><p>Usa el riesgo, frecuencia y mix para priorizar la siguiente acción comercial.</p><div className="cc-actions"><button>Ver catálogo</button><button>Ver pedidos</button><button>Asignar ejecutivo</button><button>Crear acción</button></div></div>}{tab==='mix' && <Table heads={['Producto','Cantidad','Venta','SKU']} rows={productTotals.map((r,i)=><div className="cc-row" key={i}><span>{r.nombre}</span><span>{r.cantidad.toLocaleString('es-CL')}</span><span>{money(r.venta)}</span><span>—</span></div>)} />}{tab==='historial' && <Table heads={['Fecha','Producto','Cantidad','Venta']} rows={historial.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.fecha)}</span><span>{label(r.producto_nombre || r.sku_canon)}</span><span>{label(r.cantidad)}</span><span>{money(r.venta_neta_clp)}</span></div>)} />}{tab==='catalogo' && <Table heads={['Producto','Precio','Stock','Estado']} rows={catalogo.slice(0,100).map((r,i)=><div className="cc-row" key={i}><span>{label(r.producto_nombre || r.nombre || r.sku)}</span><span>{money(r.precio_cliente ?? r.precio)}</span><span>{label(r.stock ?? r.stock_disponible)}</span><span>{label(r.estado)}</span></div>)} />}{tab==='pedidos' && <Table heads={['Pedido','Fecha','Estado','Total']} rows={pedidos.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.numero_pedido || r.id || r.codigo)}</span><span>{label(r.created_at || r.fecha)}</span><span>{label(r.estado || r.status)}</span><span>{money(r.total || r.total_clp)}</span></div>)} />}</div></div>
+  return <div className="cc-modal" role="dialog" aria-modal="true"><div className="cc-modal-card"><button className="cc-close" onClick={onClose}>×</button><div className="cc-subtitle">CLIENTE 360</div><h2>{cliente.nombre}</h2><div className="cc-detail-grid"><div><span>VENTA MTD</span><b>{money(cliente.ventaMtd)}</b></div><div><span>PROMEDIO</span><b>{money(cliente.promedioMensual)}</b></div><div><span>VARIACIÓN</span><b>{pct(cliente.variacion)}</b></div><div><span>RIESGO</span><b>{label(cliente.riesgo)}</b></div><div><span>SIN COMPRA</span><b>{cliente.diasSinComprar ? `${cliente.diasSinComprar} días` : '—'}</b></div><div><span>CANAL</span><b>{label(cliente.canal)}</b></div><div><span>EJECUTIVO</span><b>{label(cliente.ejecutivo)}</b></div><div><span>ZONA</span><b>{label(cliente.zona)}</b></div></div><div className="cc-tabs">{[['resumen','Resumen'],['mix','Mix'],['historial','Historial'],['catalogo','Catálogo B2B'],['pedidos','Pedidos']].map(([id,name])=><button className={tab===id?'active':''} key={id} onClick={()=>setTab(id)}>{name}</button>)}</div>{loading ? <p className="cc-empty">Cargando información del cliente…</p> : error && <p className="cc-empty">{error}</p>}{tab==='resumen' && <div className="cc-detail-section"><h3>Oportunidad comercial</h3><p>Usa el riesgo, frecuencia y mix para priorizar la siguiente acción comercial.</p><div className="cc-actions"><button>Ver catálogo</button><button>Ver pedidos</button><button>Asignar ejecutivo</button><button>Crear acción</button></div></div>}{tab==='mix' && <Table heads={['Producto','Cantidad','Venta','SKU']} rows={productTotals.map((r,i)=><div className="cc-row" key={i}><span>{r.nombre}</span><span>{r.cantidad.toLocaleString('es-CL')}</span><span>{money(r.venta)}</span><span>—</span></div>)} />}{tab==='historial' && <Table heads={['Fecha','Producto','Cantidad','Venta']} rows={historial.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.fecha)}</span><span>{label(r.producto_nombre || r.sku_canon)}</span><span>{label(r.cantidad)}</span><span>{money(r.venta_neta_clp)}</span></div>)} />}{tab==='catalogo' && <Table heads={['Producto','Precio','Stock','Estado']} rows={catalogo.slice(0,100).map((r,i)=><div className="cc-row" key={i}><span>{label(r.producto_nombre || r.nombre || r.sku)}</span><span>{money(r.precio_cliente ?? r.precio)}</span><span>{label(r.stock ?? r.stock_disponible)}</span><span>{label(r.estado)}</span></div>)} />}{tab==='pedidos' && <Table heads={['Pedido','Fecha','Estado','Total']} rows={pedidos.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.numero_pedido || r.id || r.codigo)}</span><span>{label(r.created_at || r.fecha)}</span><span>{label(r.estado || r.status)}</span><span>{money(r.total || r.total_clp)}</span></div>)} /></div></div>
 }
 
 function Table({ heads, rows }) { return <div className="cc-table"><div className="cc-row cc-head">{heads.map(h=><span key={h}>{h}</span>)}</div>{rows.length ? rows : <div className="cc-empty">Sin datos disponibles.</div>}</div> }
