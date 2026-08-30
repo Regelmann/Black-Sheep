@@ -1,0 +1,115 @@
+/* ═══════════════════════════════════════════════════════════════
+   BLACK SHEEP FIELD — Design Tokens v9.8 PREMIUM
+   Única fuente de verdad. Nunca hex sueltos en JSX.
+   Inspiración: Linear (acento), Attio (cards), field thumb-zone.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Brand ── */
+  --brand:      #c2410c;
+  --brand-dk:   #9a3412;
+  --brand-dk2:  #7c2d12;
+  --brand-mid:  #ea580c;
+  --brand-soft: #fb923c;
+  --brand-lt:   #fff4eb;
+  --brand-lt2:  #fff7ed;
+  --brand-lt3:  #ffedd5;
+  --brand-ring: rgba(194, 65, 12, 0.18);
+
+  /* ── Neutral ink ── */
+  --ink:        #1c1917;
+  --ink-2:      #44403c;
+  --ink-3:      #78716c;
+  --ink-4:      #57534e;
+  --muted:      #a8a29e;
+  --muted-2:    #c4bdb5;
+
+  /* ── Surfaces ── */
+  --bg:         #f4f0ea;
+  --bg-raised:  #faf7f2;
+  --bg-soft:    #faf8f5;
+  --surface:    #ffffff;
+  --surface-2:  #f8f5f0;
+  --surface-3:  #f5f0e8;
+
+  /* ── Lines ── */
+  --line:       #ebe5dc;
+  --line-2:     #d6cfc4;
+  --line-3:     #e7e5e4;
+  --line-soft:  #e7e0d8;
+  --line-faint: #f0ece6;
+
+  /* ── Semantic ── */
+  --ok:         #15803d;
+  --ok-dk:      #166534;
+  --ok-lt:      #ecfdf5;
+  --ok-lt2:     #f0fdf4;
+  --warn:       #d97706;
+  --warn-dk:    #92400e;
+  --warn-lt:    #fffbeb;
+  --warn-lt2:   #fff7ed;
+  --danger:     #dc2626;
+  --danger-dk:  #b91c1c;
+  --danger-lt:  #fef2f2;
+  --danger-lt2: #fee2e2;
+  --info:       #2563eb;
+  --info-dk:    #1d4ed8;
+  --info-lt:    #eff6ff;
+
+  /* ── Zone (override via applyZoneCssVars) ── */
+  --zone-active:      var(--brand);
+  --zone-active-soft: var(--brand-lt2);
+
+  /* ── Type ── */
+  --font: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* En rem, no px: fijar la escala en px ignora el tamaño de letra que
+     el usuario configuró en el sistema. Base 16px → 1rem. */
+  --text-xs:  0.6875rem;  /* 11px */
+  --text-sm:  0.75rem;    /* 12px */
+  --text-md:  0.875rem;   /* 14px */
+  --text-lg:  1rem;       /* 16px */
+  --text-xl:  1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.75rem;    /* 28px */
+  --leading-tight: 1.2;
+  --leading: 1.4;
+  --weight-med: 600;
+  --weight-bold: 700;
+  --weight-black: 800;
+
+  /* ── Space (4px base) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ── Radius ── */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  /* ── Shadow (Attio soft) ── */
+  --shadow-xs: 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-sm: 0 1px 3px rgba(28, 25, 23, 0.06), 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-md: 0 4px 12px rgba(28, 25, 23, 0.08);
+  --shadow-lg: 0 8px 24px rgba(28, 25, 23, 0.12);
+
+  /* ── Touch / layout ── */
+  --touch: 44px;
+  --touch-lg: 48px;
+  --max-w: 480px;
+  --nav-h: 64px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+
+  /* ── Motion ── */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+}
