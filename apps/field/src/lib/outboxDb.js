@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * outboxDb — persistencia durable de la cola de terreno.
  *

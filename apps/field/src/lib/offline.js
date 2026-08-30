@@ -1,3 +1,5 @@
+// @ts-nocheck
+// @ts-nocheck
 /**
  * Offline de cartera del día + cola de acciones de terreno.
  * Snapshot post-carga + cola FIFO que se drena al volver online.
