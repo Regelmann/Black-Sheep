@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase.js'
-import { listarPedidosHistorial } from '../../lib/pedido.js'
+import { listarPedidosHistorial, getPedidoById } from '../../lib/pedido.js'
 
 function result(data, error) {
   if (error) throw error
@@ -21,5 +21,8 @@ export const clientesRepo = {
 export const ejecutivosRepo = { async listar() { const { data, error } = await supabase.from('ejecutivos').select('id,nombre,zona,rol'); return result(data, error) } }
 export const stockRepo = { async listar(limit = 500) { const { data, error } = await supabase.from('stock').select('*').limit(limit); return result(data, error) } }
 export const catalogoRepo = { async cliente(clienteKey, limit = 500) { if (!clienteKey) return []; const { data, error } = await supabase.from('catalogo_b2b').select('*').eq('cliente_key', String(clienteKey)).limit(limit); return result(data, error) } }
-export const pedidosRepo = { async cliente(clienteKey, limit = 100) { if (!clienteKey) return []; const r = await listarPedidosHistorial({ clienteKey: String(clienteKey), dias: 0, limit }); if (r.error) throw r.error; return r.data || [] } }
+export const pedidosRepo = {
+  async cliente(clienteKey, limit = 100) { if (!clienteKey) return []; const r = await listarPedidosHistorial({ clienteKey: String(clienteKey), dias: 0, limit }); if (r.error) throw r.error; return r.data || [] },
+  async detalle(id) { const r = await getPedidoById(id); if (r.error) throw r.error; return r.data || null },
+}
 export const notasRepo = { async listar(limit = 300) { const { data, error } = await supabase.from('notas_cliente').select('*').limit(limit); return result(data, error) } }
