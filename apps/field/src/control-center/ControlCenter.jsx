@@ -47,18 +47,31 @@ export default function ControlCenter() {
     setClienteKey(c.id ?? row?.cliente_key ?? row?.cliente_id ?? null)
   }
 
-  const bulkAssign = async (clienteIds, ejecutivoId) => {
+  const bulkAssign = async (clienteKeys, ejecutivoId) => {
     setActionState({ busy: true, message: null, error: null })
     let ok = 0
     try {
-      for (const clienteId of clienteIds) {
-        await assignExecutive({ clienteId, ejecutivoId })
+      for (const key of clienteKeys) {
+        await assignExecutive({ clienteKey: key, ejecutivoId })
         ok += 1
       }
       await loadData()
       setActionState({ busy: false, message: `${ok} cliente${ok === 1 ? '' : 's'} reasignado${ok === 1 ? '' : 's'} correctamente.`, error: null })
     } catch (e) {
       setActionState({ busy: false, message: ok ? `${ok} reasignado${ok === 1 ? '' : 's'} antes del error.` : null, error: e.message || 'No se pudo reasignar la cartera.' })
+    }
+  }
+
+  const assignFrom360 = async (key, ejecutivoId) => {
+    if (!key || !ejecutivoId) return
+    setActionState({ busy: true, message: null, error: null })
+    try {
+      await assignExecutive({ clienteKey: key, ejecutivoId })
+      await loadData()
+      setActionState({ busy: false, message: 'Ejecutivo reasignado correctamente.', error: null })
+      setCliente(prev => prev ? { ...prev, ejecutivo: data.ejecutivos.find(e => String(e.id) === String(ejecutivoId))?.nombre || prev.ejecutivo } : prev)
+    } catch (e) {
+      setActionState({ busy: false, message: null, error: e.message || 'No se pudo reasignar el ejecutivo.' })
     }
   }
 
@@ -80,7 +93,7 @@ export default function ControlCenter() {
       {section === 'oportunidades' && <OpportunityTable rows={opportunities} onClient={openClient} />}
       {['ejecutivos','productos','stock','metas','focos','alertas'].includes(section) && <ControlModules section={section} ventas={filteredVentas} clientes={filteredClientes} ejecutivos={data.ejecutivos} stock={data.stock} opportunities={opportunities} onClient={openClient} onBulkAssign={bulkAssign} />}
     </div>
-    {cliente && <Client360 cliente={cliente} clienteKey={clienteKey} onClose={() => { setCliente(null); setClienteKey(null) }} />}
+    {cliente && <Client360 cliente={cliente} clienteKey={clienteKey} ejecutivos={data.ejecutivos} busy={actionState.busy} onAssign={assignFrom360} onClose={() => { setCliente(null); setClienteKey(null) }} />}
   </main>
 }
 
@@ -89,7 +102,7 @@ function SimpleTable({ title, rows, columns, moneyKeys=[] }) { return <article c
 function ClientTable({ rows, onClient }) { return <article className="cc-panel cc-full"><div className="cc-panel-head"><h2>Clientes</h2><span>{rows.length}</span></div><div className="cc-table"><div className="cc-row cc-head"><span>Cliente</span><span>Venta MTD</span><span>Riesgo</span><span>Zona</span></div>{rows.slice(0,100).map(c => <button className="cc-row cc-click" key={c.cliente_key ?? c.id} onClick={() => onClient(c)}><span>{label(c.nombre_cliente ?? c.nombre ?? c.cliente_key)}</span><span>{money(c.venta_mtd)}</span><span>{label(c.estado_fuga ?? c.riesgo)}</span><span>{label(c.zona)}</span></button>)}</div></article> }
 function OpportunityTable({ rows, onClient }) { return <div className="cc-table"><div className="cc-row cc-head"><span>Cliente</span><span>Oportunidad</span><span>Riesgo</span><span>Sin compra</span></div>{rows.map((c,i) => <button className="cc-row cc-click" key={c.id ?? i} onClick={() => onClient(c)}><span>{c.nombre}</span><span>{money(c.oportunidad)}</span><span>{label(c.prioridad)}</span><span>{c.diasSinComprar ? `${c.diasSinComprar} días` : '—'}</span></button>)}</div> }
 
-function Client360({ cliente, clienteKey, onClose }) {
+function Client360({ cliente, clienteKey, ejecutivos, busy, onAssign, onClose }) {
   const [tab, setTab] = useState('resumen')
   const [mix, setMix] = useState([])
   const [historial, setHistorial] = useState([])
@@ -97,16 +110,28 @@ function Client360({ cliente, clienteKey, onClose }) {
   const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedExecutive, setSelectedExecutive] = useState('')
+  const [showAssign, setShowAssign] = useState(false)
+
   useEffect(() => {
     if (!clienteKey) { setLoading(false); return }
     let alive = true
+    setLoading(true)
     Promise.allSettled([clientesRepo.mix(clienteKey), clientesRepo.historial(clienteKey), catalogoRepo.cliente(clienteKey), pedidosRepo.cliente(clienteKey)])
       .then(results => { if (!alive) return; const values = results.map(r => r.status === 'fulfilled' ? r.value : []); setMix(values[0]); setHistorial(values[1]); setCatalogo(values[2]); setPedidos(values[3]); if (results.some(r => r.status === 'rejected')) setError('Algunos módulos del cliente no están disponibles.') })
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [clienteKey])
+
   const productTotals = useMemo(() => { const m = new Map(); for (const r of mix) { const key = r.sku_canon || r.producto_nombre || 'Producto'; const x = m.get(key) || { nombre: r.producto_nombre || key, cantidad: 0, venta: 0 }; x.cantidad += Number(r.cantidad || 0); x.venta += Number(r.venta_neta_clp || 0); m.set(key, x) } return [...m.values()].sort((a,b)=>b.venta-a.venta).slice(0,20) }, [mix])
-  return <div className="cc-modal" role="dialog" aria-modal="true"><div className="cc-modal-card"><button className="cc-close" onClick={onClose}>×</button><div className="cc-subtitle">CLIENTE 360</div><h2>{cliente.nombre}</h2><div className="cc-detail-grid"><div><span>VENTA MTD</span><b>{money(cliente.ventaMtd)}</b></div><div><span>PROMEDIO</span><b>{money(cliente.promedioMensual)}</b></div><div><span>VARIACIÓN</span><b>{pct(cliente.variacion)}</b></div><div><span>RIESGO</span><b>{label(cliente.riesgo)}</b></div><div><span>SIN COMPRA</span><b>{cliente.diasSinComprar ? `${cliente.diasSinComprar} días` : '—'}</b></div><div><span>CANAL</span><b>{label(cliente.canal)}</b></div><div><span>EJECUTIVO</span><b>{label(cliente.ejecutivo)}</b></div><div><span>ZONA</span><b>{label(cliente.zona)}</b></div></div><div className="cc-tabs">{[['resumen','Resumen'],['mix','Mix'],['historial','Historial'],['catalogo','Catálogo B2B'],['pedidos','Pedidos']].map(([id,name])=><button className={tab===id?'active':''} key={id} onClick={()=>setTab(id)}>{name}</button>)}</div>{loading ? <p className="cc-empty">Cargando información del cliente…</p> : error && <p className="cc-empty">{error}</p>}{tab==='resumen' && <div className="cc-detail-section"><h3>Oportunidad comercial</h3><p>Usa el riesgo, frecuencia y mix para priorizar la siguiente acción comercial.</p><div className="cc-actions"><button>Ver catálogo</button><button>Ver pedidos</button><button>Asignar ejecutivo</button><button>Crear acción</button></div></div>}{tab==='mix' && <Table heads={['Producto','Cantidad','Venta','SKU']} rows={productTotals.map((r,i)=><div className="cc-row" key={i}><span>{r.nombre}</span><span>{r.cantidad.toLocaleString('es-CL')}</span><span>{money(r.venta)}</span><span>—</span></div>)} />}{tab==='historial' && <Table heads={['Fecha','Producto','Cantidad','Venta']} rows={historial.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.fecha)}</span><span>{label(r.producto_nombre || r.sku_canon)}</span><span>{label(r.cantidad)}</span><span>{money(r.venta_neta_clp)}</span></div>)} />}{tab==='catalogo' && <Table heads={['Producto','Precio','Stock','Estado']} rows={catalogo.slice(0,100).map((r,i)=><div className="cc-row" key={i}><span>{label(r.producto_nombre || r.nombre || r.sku)}</span><span>{money(r.precio_cliente ?? r.precio)}</span><span>{label(r.stock ?? r.stock_disponible)}</span><span>{label(r.estado)}</span></div>)} />}{tab==='pedidos' && <Table heads={['Pedido','Fecha','Estado','Total']} rows={pedidos.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.numero_pedido || r.id || r.codigo)}</span><span>{label(r.created_at || r.fecha)}</span><span>{label(r.estado || r.status)}</span><span>{money(r.total || r.total_clp)}</span></div>)} /></div></div>
+
+  const confirmAssign = async () => {
+    if (!selectedExecutive || !clienteKey) return
+    await onAssign(clienteKey, selectedExecutive)
+    setShowAssign(false)
+  }
+
+  return <div className="cc-modal" role="dialog" aria-modal="true"><div className="cc-modal-card"><button className="cc-close" onClick={onClose}>×</button><div className="cc-subtitle">CLIENTE 360</div><h2>{cliente.nombre}</h2><div className="cc-detail-grid"><div><span>VENTA MTD</span><b>{money(cliente.ventaMtd)}</b></div><div><span>PROMEDIO</span><b>{money(cliente.promedioMensual)}</b></div><div><span>VARIACIÓN</span><b>{pct(cliente.variacion)}</b></div><div><span>RIESGO</span><b>{label(cliente.riesgo)}</b></div><div><span>SIN COMPRA</span><b>{cliente.diasSinComprar ? `${cliente.diasSinComprar} días` : '—'}</b></div><div><span>CANAL</span><b>{label(cliente.canal)}</b></div><div><span>EJECUTIVO</span><b>{label(cliente.ejecutivo)}</b></div><div><span>ZONA</span><b>{label(cliente.zona)}</b></div></div><div className="cc-tabs">{[['resumen','Resumen'],['mix','Mix'],['historial','Historial'],['catalogo','Catálogo B2B'],['pedidos','Pedidos']].map(([id,name])=><button className={tab===id?'active':''} key={id} onClick={()=>setTab(id)}>{name}</button>)}</div>{loading ? <p className="cc-empty">Cargando información del cliente…</p> : error && <p className="cc-empty">{error}</p>}{tab==='resumen' && <div className="cc-detail-section"><h3>Oportunidad comercial</h3><p>Usa el riesgo, frecuencia y mix para priorizar la siguiente acción comercial.</p><div className="cc-actions"><button onClick={() => setTab('catalogo')}>Ver catálogo</button><button onClick={() => setTab('pedidos')}>Ver pedidos</button><button onClick={() => setShowAssign(true)}>Asignar ejecutivo</button><button disabled>Crear acción</button></div>{showAssign && <div className="cc-inline-action"><span>Nuevo ejecutivo</span><select value={selectedExecutive} onChange={e => setSelectedExecutive(e.target.value)} disabled={busy}><option value="">Seleccionar…</option>{ejecutivos.map(e => <option key={e.id} value={e.id}>{e.nombre} · {label(e.zona)}</option>)}</select><button onClick={confirmAssign} disabled={busy || !selectedExecutive}>{busy ? 'Guardando…' : 'Confirmar reasignación'}</button><button onClick={() => setShowAssign(false)} disabled={busy}>Cancelar</button></div>}</div>}{tab==='mix' && <Table heads={['Producto','Cantidad','Venta','SKU']} rows={productTotals.map((r,i)=><div className="cc-row" key={i}><span>{r.nombre}</span><span>{r.cantidad.toLocaleString('es-CL')}</span><span>{money(r.venta)}</span><span>—</span></div>)} />}{tab==='historial' && <Table heads={['Fecha','Producto','Cantidad','Venta']} rows={historial.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.fecha)}</span><span>{label(r.producto_nombre || r.sku_canon)}</span><span>{label(r.cantidad)}</span><span>{money(r.venta_neta_clp)}</span></div>)} />}{tab==='catalogo' && <Table heads={['Producto','Precio','Stock','Estado']} rows={catalogo.slice(0,100).map((r,i)=><div className="cc-row" key={i}><span>{label(r.producto_nombre || r.nombre || r.sku)}</span><span>{money(r.precio_cliente ?? r.precio)}</span><span>{label(r.stock ?? r.stock_disponible)}</span><span>{label(r.estado)}</span></div>)} />}{tab==='pedidos' && <Table heads={['Pedido','Fecha','Estado','Total']} rows={pedidos.slice(0,80).map((r,i)=><div className="cc-row" key={i}><span>{label(r.numero_pedido || r.id || r.codigo)}</span><span>{label(r.created_at || r.fecha)}</span><span>{label(r.estado || r.status)}</span><span>{money(r.total || r.total_clp)}</span></div>)} /></div></div>
 }
 
 function Table({ heads, rows }) { return <div className="cc-table"><div className="cc-row cc-head">{heads.map(h=><span key={h}>{h}</span>)}</div>{rows.length ? rows : <div className="cc-empty">Sin datos disponibles.</div>}</div> }
