@@ -28,3 +28,25 @@
 .bs-order-qty { min-width: 52px; min-height: 46px; }
 .bs-order-total { font-variant-numeric: tabular-nums; }
 @media (max-width: 560px) { .bs-order-sticky button { min-height: 52px; } }
+
+/* Order Inbox — pedido como entidad viva, no como fila administrativa. */
+.oi-card { overflow: hidden; border: 1px solid rgba(120,113,108,.16); box-shadow: 0 14px 40px rgba(28,25,23,.07); }
+.oi-head { min-height: 44px; }
+.oi-card button:focus-visible { outline: 2px solid var(--bs-accent-2, #fb923c); outline-offset: 3px; }
+.oi-pipeline { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(120,113,108,.055); }
+.oi-step { font-size: 10px; font-weight: 700; color: var(--ink-4); white-space: nowrap; }
+.oi-step.is-done { color: var(--ink-2); }
+.oi-step.is-active { color: var(--brand); }
+.oi-step-sep { margin-left: 5px; color: var(--ink-5); font-style: normal; }
+.oi-card .btn-secondary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(28,25,23,.08); }
+.oi-card .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(28,25,23,.16); }
+@media (max-width: 560px) {
+  .oi-card { border-radius: 18px; }
+  .oi-pipeline { gap: 4px; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .oi-pipeline::-webkit-scrollbar { display: none; }
+  .oi-step { font-size: 9px; }
+  .oi-card button { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oi-card *, .oi-card *::before, .oi-card *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+}
