@@ -1,0 +1,21 @@
+/* Black Sheep V14 — checkout experience layer. Loaded by commerce surfaces. */
+.bs-shop-drawer-bg{position:fixed;inset:0;z-index:120;background:rgba(9,9,11,.58);backdrop-filter:blur(14px);display:flex;justify-content:flex-end;animation:bs-fade-in .18s ease-out}
+.bs-shop-drawer{width:min(100%,540px);height:100%;background:var(--surface,#fff);color:var(--ink,#171717);box-shadow:-24px 0 70px rgba(0,0,0,.22);display:flex;flex-direction:column;animation:bs-drawer-in .28s cubic-bezier(.2,.8,.2,1)}
+.bs-shop-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:22px 22px 18px;border-bottom:1px solid rgba(0,0,0,.08);position:sticky;top:0;background:inherit;z-index:2}
+.bs-shop-drawer-head h2{font-size:1.35rem;letter-spacing:-.03em}
+.bs-shop-x{width:42px;height:42px;border:0;border-radius:14px;background:rgba(0,0,0,.05);font-size:24px;line-height:1;color:inherit}
+.bs-shop-drawer-lines{padding:14px 18px;overflow:auto;flex:1}
+.bs-shop-line{display:grid;grid-template-columns:64px minmax(0,1fr);gap:13px;padding:14px 0;border-bottom:1px solid rgba(0,0,0,.07)}
+.bs-shop-line-img{width:64px;height:64px;border-radius:14px;overflow:hidden;background:#f4f4f5}.bs-shop-line-img img{width:100%;height:100%;object-fit:cover}
+.bs-shop-line-body{min-width:0;display:grid;gap:5px}.bs-shop-line-body strong{font-size:.92rem;line-height:1.25}.bs-shop-line-body>span{font-size:.78rem;opacity:.58}
+.bs-shop-qty{display:flex;align-items:center;gap:6px;margin-top:3px}.bs-shop-qty button{width:34px;height:34px;border:1px solid rgba(0,0,0,.1);border-radius:10px;background:transparent;font-size:18px}.bs-shop-qty input{width:48px;height:34px;border:1px solid rgba(0,0,0,.1);border-radius:10px;text-align:center;background:transparent;font-weight:700}
+.bs-shop-drawer-foot{padding:18px 20px calc(18px + env(safe-area-inset-bottom));border-top:1px solid rgba(0,0,0,.08);background:inherit;display:grid;gap:12px}
+.bs-shop-total-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}.bs-shop-total-row strong{font-size:1.35rem;letter-spacing:-.03em}.bs-shop-total-note{font-size:.75rem;opacity:.55;line-height:1.4}
+.bs-shop-note{width:100%;min-height:76px;resize:vertical;border:1px solid rgba(0,0,0,.11);border-radius:14px;padding:11px 13px;background:rgba(0,0,0,.025);color:inherit;font:inherit}
+.bs-shop-btn-primary{min-height:50px;border:0;border-radius:15px;background:#111;color:#fff;padding:0 18px;font-weight:750;font-size:.92rem;transition:transform .18s,opacity .18s}.bs-shop-btn-primary:hover{transform:translateY(-1px)}.bs-shop-btn-primary:disabled{opacity:.45;cursor:not-allowed}
+.bs-shop-success{padding:44px 28px;text-align:center;display:grid;place-items:center;gap:12px;flex:1}.bs-shop-success-icon{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#111;color:#fff;font-size:28px;font-weight:800}.bs-shop-success h3{font-size:1.55rem;letter-spacing:-.04em}.bs-shop-success p{max-width:340px;opacity:.62;line-height:1.5}
+.bs-shop-fab{position:fixed;z-index:80;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);min-height:54px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:#111;color:#fff;padding:0 18px;display:flex;align-items:center;gap:10px;box-shadow:0 18px 50px rgba(0,0,0,.25);font-weight:700}.bs-shop-fab-count{min-width:26px;height:26px;padding:0 7px;border-radius:999px;background:#fff;color:#111;display:grid;place-items:center;font-size:.76rem}.bs-shop-fab strong{font-size:.85rem}
+@keyframes bs-fade-in{from{opacity:0}to{opacity:1}}@keyframes bs-drawer-in{from{transform:translateX(28px);opacity:.7}to{transform:none;opacity:1}}
+@media(max-width:640px){.bs-shop-drawer{width:100%;border-radius:22px 22px 0 0;height:92dvh;margin-top:auto;animation:bs-sheet-in .28s cubic-bezier(.2,.8,.2,1)}.bs-shop-drawer-bg{align-items:flex-end}.bs-shop-drawer-lines{padding:10px 16px}.bs-shop-drawer-head{padding:18px 18px 14px}.bs-shop-fab{width:calc(100% - 28px);justify-content:center}}
+@keyframes bs-sheet-in{from{transform:translateY(35px);opacity:.7}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.bs-shop-drawer-bg,.bs-shop-drawer,.bs-shop-fab{animation:none;transition:none}}
