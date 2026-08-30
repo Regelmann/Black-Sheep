@@ -18,3 +18,9 @@ export function buildCatalogUrl(tokenValue, origin = window.location.origin) {
   if (!tokenValue) return null
   return `${origin}/catalogo/${encodeURIComponent(String(tokenValue))}`
 }
+
+export async function getCatalogAccess(clienteKey) {
+  const oferta = await getActiveCatalog(clienteKey)
+  if (!oferta) return { active: false, url: null, updatedAt: null }
+  return { active: true, url: buildCatalogUrl(oferta.token), updatedAt: oferta.actualizado_en || null }
+}
