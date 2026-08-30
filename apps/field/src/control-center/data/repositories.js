@@ -20,9 +20,26 @@ export const clientesRepo = {
 
 export const ejecutivosRepo = { async listar() { const { data, error } = await supabase.from('ejecutivos').select('id,nombre,zona,rol'); return result(data, error) } }
 export const stockRepo = { async listar(limit = 500) { const { data, error } = await supabase.from('stock').select('*').limit(limit); return result(data, error) } }
-export const catalogoRepo = { async cliente(clienteKey, limit = 500) { if (!clienteKey) return []; const { data, error } = await supabase.from('catalogo_b2b').select('*').eq('cliente_key', String(clienteKey)).limit(limit); return result(data, error) } }
+export const catalogoRepo = { async cliente(clienteKey, limit = 500) { if (!clienteKey) return []; const { data, error } = await supabase.from('oferta_cliente_items').select('*').eq('cliente_key', String(clienteKey)).limit(limit); return result(data, error) } }
 export const pedidosRepo = {
   async cliente(clienteKey, limit = 100) { if (!clienteKey) return []; const r = await listarPedidosHistorial({ clienteKey: String(clienteKey), dias: 0, limit }); if (r.error) throw r.error; return r.data || [] },
   async detalle(id) { const r = await getPedidoById(id); if (r.error) throw r.error; return r.data || null },
 }
+
+export const catalogPerformanceRepo = {
+  async resumen() {
+    const [{ data: ofertas, error: ofertasError }, { data: pedidos, error: pedidosError }] = await Promise.all([
+      supabase.from('ofertas_cliente').select('id,cliente_key,activo,actualizado_en'),
+      supabase.from('pedidos').select('id,cliente_key,estado,fuente,total_estimado,creado_en,lineas').order('creado_en', { ascending: false }).limit(5000),
+    ])
+    if (ofertasError) throw ofertasError
+    if (pedidosError) throw pedidosError
+    const activeKeys = new Set((ofertas || []).filter(o => o.activo).map(o => String(o.cliente_key)))
+    const b2bOrders = (pedidos || []).filter(p => p.cliente_key && activeKeys.has(String(p.cliente_key)))
+    const totals = b2bOrders.reduce((a, p) => a + Number(p.total_estimado || 0), 0)
+    const clients = new Set(b2bOrders.map(p => String(p.cliente_key)))
+    return { activeCatalogs: activeKeys.size, orders: b2bOrders.length, orderingClients: clients.size, sales: totals, avgTicket: b2bOrders.length ? totals / b2bOrders.length : 0 }
+  },
+}
+
 export const notasRepo = { async listar(limit = 300) { const { data, error } = await supabase.from('notas_cliente').select('*').limit(limit); return result(data, error) } }
