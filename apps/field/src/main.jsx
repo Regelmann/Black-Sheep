@@ -20,6 +20,7 @@ import './styles/arreglos-ux.css'
 import './styles/ai-native-ux.css'
 import './styles/ux-2060.css'
 import './styles/bs-experience-system.css'
+import './styles/commerce-2060.css'
 
 import { initOutbox } from './lib/outboxDb.js'
 initOutbox().then(r => console.info(`[outbox] ${r.durable ? 'IndexedDB' : 'localStorage (degradado)'} · ${r.items} pendiente(s)${r.migrados ? ` · ${r.migrados} migrado(s)` : ''}`)).catch(e => console.error('[outbox] no se pudo inicializar', e))
