@@ -1,0 +1,94 @@
+/**
+ * Hoy no puede seguir proponiendo clientes que YA se visitaron hoy.
+ *
+ * EL BUG
+ * Visita.jsx registra el resultado de cada gestión con markHoyResultado()
+ * en cuatro puntos: check-in, cierre con resultado, no-venta y pedido. Eso
+ * se guarda en localStorage, sobrevive offline y aguanta el cierre de la
+ * app.
+ *
+ * Nadie lo lee. getHoyResultado() no se llama en ninguna parte del código,
+ * y buildDecisionFeed() nunca recibió esa información. Hoy.jsx incluso
+ * mantiene un estado `hoyRes` que recarga los resultados al volver a la
+ * pantalla... y no lo usa para nada.
+ *
+ * Consecuencia en terreno: el vendedor cierra una visita, vuelve a Hoy, y
+ * el mismo cliente sigue primero en "Siguiente mejor acción" como si no
+ * hubiera pasado nada. Con 8 clientes en el día y sin señal para que el
+ * backend confirme, la lista no refleja el trabajo hecho: se vuelve a
+ * visitar o se pierde tiempo verificando.
+ *
+ * El síntoma visible era un aviso de lint por una variable sin leer. Otra
+ * vez: no era basura, era la mitad de una función que quedó sin conectar.
+ */
+import { test, describe } from 'node:test'
+import assert from 'node:assert/strict'
+import { buildDecisionFeed } from './decisionEngine.js'
+
+/* Clientes con riesgo alto: sin filtro, los tres aparecen en el feed. */
+const CARTERA = [
+  { cliente_key: 'cli-1', nombre_cliente: 'Don Pepe', dias_sin_comprar: 45, venta_mensual: 900000, estado_fuga: 'RIESGO' },
+  { cliente_key: 'cli-2', nombre_cliente: 'La Esquina', dias_sin_comprar: 60, venta_mensual: 700000, estado_fuga: 'RIESGO' },
+  { cliente_key: 'cli-3', nombre_cliente: 'El Trigal', dias_sin_comprar: 90, venta_mensual: 500000, estado_fuga: 'DORMIDO' },
+]
+
+const idsDe = (feed) => feed.map(d => d.clientId).filter(Boolean)
+
+describe('feed de decisiones · lo ya hecho hoy no se vuelve a proponer', () => {
+  test('sin resultados del día, el feed propone a todos', () => {
+    const feed = buildDecisionFeed({ cartera: CARTERA })
+    const ids = idsDe(feed)
+    assert.ok(ids.includes('cli-1'), 'cli-1 debería estar sin gestionar')
+    assert.ok(ids.includes('cli-2'))
+  })
+
+  // El corazón del bug.
+  test('un cliente con pedido hoy sale del feed', () => {
+    const feed = buildDecisionFeed({
+      cartera: CARTERA,
+      hoyResultados: { 'cli-1': { resultado: 'pedido', at: new Date().toISOString() } },
+    })
+    assert.ok(
+      !idsDe(feed).includes('cli-1'),
+      'ya se le tomó el pedido: proponerlo de nuevo hace repetir la visita',
+    )
+    assert.ok(idsDe(feed).includes('cli-2'), 'los demás siguen pendientes')
+  })
+
+  test('una visita cerrada sin venta también cuenta como hecha', () => {
+    const feed = buildDecisionFeed({
+      cartera: CARTERA,
+      hoyResultados: { 'cli-2': { resultado: 'no_venta' } },
+    })
+    assert.ok(
+      !idsDe(feed).includes('cli-2'),
+      'no_venta es un cierre: el vendedor ya fue y decidió',
+    )
+  })
+
+  // Un check-in es "estoy acá", no "terminé". Sacarlo del feed escondería
+  // la visita a medio hacer justo cuando hay que completarla.
+  test('un check-in NO saca al cliente del feed', () => {
+    const feed = buildDecisionFeed({
+      cartera: CARTERA,
+      hoyResultados: { 'cli-3': { resultado: 'checkin' } },
+    })
+    assert.ok(
+      idsDe(feed).includes('cli-3'),
+      'llegar al local no es haber gestionado: la visita sigue abierta',
+    )
+  })
+
+  test('sin el dato, el comportamiento es el de antes', () => {
+    const conVacio = idsDe(buildDecisionFeed({ cartera: CARTERA, hoyResultados: {} }))
+    const sinNada = idsDe(buildDecisionFeed({ cartera: CARTERA }))
+    assert.deepEqual(conVacio, sinNada)
+  })
+
+  test('datos corruptos en localStorage no rompen el feed', () => {
+    for (const basura of [null, undefined, 'texto', 42, [], { 'cli-1': null }]) {
+      const feed = buildDecisionFeed({ cartera: CARTERA, hoyResultados: basura })
+      assert.ok(Array.isArray(feed), `rompió con ${JSON.stringify(basura)}`)
+    }
+  })
+})

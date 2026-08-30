@@ -1,0 +1,11 @@
+{
+  "name": "blacksheep-platform",
+  "version": "2.9.0",
+  "private": true,
+  "description": "Black Sheep Field + Web \u2014 V2.9 Integrado",
+  "scripts": {
+    "dev:field": "npm --prefix apps/field run dev",
+    "build:field": "npm --prefix apps/field run build",
+    "dev:web": "echo 'Static web \u2014 open apps/web/index.html or vercel apps/web'"
+  }
+}

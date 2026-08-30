@@ -1,0 +1,113 @@
+/**
+ * CSS que no le pinta nada a nadie.
+ *
+ * Siete hojas acumuladas por versiones sucesivas dejaron reglas de
+ * componentes que ya no existen: `.bs-topbar`, `.bs-greet`, `.cli-card`,
+ * `.bs-page-hero`… Ninguna aparece en un .jsx.
+ *
+ * No es sólo peso muerto: cuando alguien busca por qué algo se ve raro,
+ * encuentra tres definiciones de `.bs-page-hero` en tres hojas y no sabe
+ * cuál manda. Esa confusión es la que produjo la barra descuadrada y el
+ * recuadro punteado de VISITAS. Menos reglas = menos formas de que dos
+ * hojas peleen.
+ *
+ * Este test es un trinquete: fija el número de reglas muertas y no deja
+ * que suba. Bajarlo está bien; subirlo hay que justificarlo.
+ */
+import { test, describe } from 'node:test'
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
+
+const RAIZ = path.resolve(import.meta.dirname, '..', '..')
+
+const HOJAS = [
+  'src/index.css',
+  'src/styles/v90-fixes.css',
+  'src/styles/ds-2026.css',
+  'src/styles/system.css',
+  'src/styles/v99-ux.css',
+  'src/styles/shell.css',
+  'src/styles/identidad.css',
+]
+
+/** Todo el código que puede nombrar una clase. */
+function fuentes() {
+  const out = []
+  const rec = (dir) => {
+    for (const e of fs.readdirSync(path.join(RAIZ, dir), { withFileTypes: true })) {
+      const rel = path.join(dir, e.name)
+      if (e.isDirectory()) rec(rel)
+      else if (/\.(jsx|js|html)$/.test(e.name)) out.push(rel)
+    }
+  }
+  rec('src')
+  out.push('index.html')
+  return out.map((f) => fs.readFileSync(path.join(RAIZ, f), 'utf8')).join('\n')
+}
+
+/**
+ * Una clase está viva si aparece literal en el código, o si es el
+ * resultado posible de una plantilla como `bs-shop-group--${g}`.
+ *
+ * El prefijo puede llevar guiones: capturarlo con [a-zA-Z0-9_]* daba
+ * "group--" en vez de "bs-shop-group--" y marcaba como muertas dos
+ * reglas que sí se usan.
+ */
+function claseViva(src) {
+  const tokens = new Set()
+  for (const m of src.matchAll(/[a-zA-Z][a-zA-Z0-9_-]*/g)) tokens.add(m[0])
+  const prefijos = [
+    ...new Set([...src.matchAll(/([a-zA-Z][a-zA-Z0-9_-]*?-{1,2})\$\{/g)].map((m) => m[1])),
+  ]
+  return (c) => tokens.has(c) || prefijos.some((p) => c.startsWith(p))
+}
+
+function reglasMuertas() {
+  const viva = claseViva(fuentes())
+  const out = []
+  for (const hoja of HOJAS) {
+    const css = fs
+      .readFileSync(path.join(RAIZ, hoja), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const sel = m[1].trim()
+      if (sel.startsWith('@') || sel.includes('%')) continue
+      const partes = sel.split(',').map((s) => s.trim())
+      const muerto = partes.every((s) => {
+        const clases = [...s.matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]*)/g)].map((x) => x[1])
+        return clases.length > 0 && !clases.every(viva)
+      })
+      if (muerto) out.push(`${hoja} → ${sel.replace(/\s+/g, ' ')}`)
+    }
+  }
+  return out
+}
+
+describe('CSS · no se acumulan reglas que no pintan nada', () => {
+  /** Techo actual. Se bajó de 42 a 0 al limpiar las siete hojas. */
+  const TECHO = 0
+
+  test('no aparecen reglas muertas nuevas', () => {
+    const muertas = reglasMuertas()
+    assert.ok(
+      muertas.length <= TECHO,
+      `${muertas.length} reglas muertas (techo ${TECHO}):\n  ` +
+        muertas.slice(0, 15).join('\n  '),
+    )
+  })
+
+  // Estas clases dieron falso positivo alguna vez: se construyen en
+  // runtime y el detector tiene que seguir viéndolas como vivas.
+  test('las clases armadas por plantilla no se dan por muertas', () => {
+    const viva = claseViva(fuentes())
+    for (const c of [
+      'bs-shop-group--1',
+      'bs-shop-group--2',
+      'is-active',
+      'att-now',
+    ]) {
+      assert.ok(viva(c), `${c} se construye en runtime y NO está muerta`)
+    }
+  })
+})
