@@ -6,6 +6,9 @@ function result(data, error) {
   return data || []
 }
 
+const isCatalogOrder = p => p && p.cliente_key && String(p.fuente || '').toLowerCase() === 'catalogo_publico'
+const isClosedOrder = p => !['borrador', 'cancelado'].includes(String(p?.estado || '').toLowerCase())
+
 export const ventasRepo = {
   async resumen() { const { data, error } = await supabase.from('gerencia').select('*'); return result(data, error) },
   async tendencia() { const { data, error } = await supabase.from('tendencia').select('*'); return result(data, error) },
@@ -36,12 +39,21 @@ export const catalogPerformanceRepo = {
     if (pedidosError) throw pedidosError
 
     const activeKeys = new Set((ofertas || []).filter(o => o.activo).map(o => String(o.cliente_key)))
-    const catalogOrders = (pedidos || []).filter(p => p.cliente_key && p.fuente === 'catalogo_publico' && activeKeys.has(String(p.cliente_key)))
-    const totals = catalogOrders.reduce((a, p) => a + Number(p.total_estimado || 0), 0)
-    const clients = new Set(catalogOrders.map(p => String(p.cliente_key)))
-    const completed = catalogOrders.filter(p => !['borrador', 'cancelado'].includes(String(p.estado || '').toLowerCase()))
+    const catalogOrders = (pedidos || []).filter(p => activeKeys.has(String(p.cliente_key)) && isCatalogOrder(p))
+    const completed = catalogOrders.filter(isClosedOrder)
     const completedSales = completed.reduce((a, p) => a + Number(p.total_estimado || 0), 0)
-
+    const clients = new Map()
+    for (const p of completed) {
+      const key = String(p.cliente_key)
+      const x = clients.get(key) || { orders: 0, sales: 0, first: null, last: null }
+      x.orders += 1
+      x.sales += Number(p.total_estimado || 0)
+      const date = p.creado_en ? new Date(p.creado_en) : null
+      if (date && !Number.isNaN(date.getTime())) { if (!x.first || date < x.first) x.first = date; if (!x.last || date > x.last) x.last = date }
+      clients.set(key, x)
+    }
+    const repeatClients = [...clients.values()].filter(x => x.orders >= 2).length
+    const recoveredClients = [...clients.values()].filter(x => x.orders >= 1 && x.first && x.last && x.first.getTime() !== x.last.getTime()).length
     return {
       activeCatalogs: activeKeys.size,
       orders: catalogOrders.length,
@@ -50,6 +62,9 @@ export const catalogPerformanceRepo = {
       avgTicket: completed.length ? completedSales / completed.length : 0,
       pendingOrders: catalogOrders.filter(p => ['borrador', 'recibido'].includes(String(p.estado || '').toLowerCase())).length,
       completedOrders: completed.length,
+      repeatClients,
+      repurchaseRate: clients.size ? repeatClients / clients.size : 0,
+      recoveredClients,
       source: 'catalogo_publico',
     }
   },
