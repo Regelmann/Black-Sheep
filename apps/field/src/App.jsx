@@ -14,11 +14,7 @@ const Stock = lazy(() => import('./pages/Stock.jsx'))
 const Gerencia = lazy(() => import('./pages/Gerencia.jsx'))
 const Admin = lazy(() => import('./pages/Admin.jsx'))
 const ControlCenter = lazy(() => import('./control-center/ControlCenter.jsx'))
-const Stock           = lazy(() => import('./pages/Stock.jsx'))
-const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
 const DashboardGerencia = lazy(() => import('./pages/DashboardGerencia.jsx'))
-const Admin           = lazy(() => import('./pages/Admin.jsx'))
-e3a7697 (V12.5: gerencia opera desde el dashboard)
 
 function CargandoPagina() {
   return <div className="bs-page-loading" role="status" aria-live="polite"><div className="bs-skel" style={{ height: 92 }} /><div className="bs-skel" style={{ height: 58 }} /><span className="bs-sr">Cargando…</span></div>
@@ -111,19 +107,8 @@ export default function App() {
               <Route path="/metas" element={<Navigate to="/" replace />} />
               <Route path="/stock" element={<Stock session={session} />} />
               <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
-<<<<<<< HEAD
-              <Route path="/dashboard" element={<Navigate to="/control-center" replace />} />
-              <Route path="/control-center" element={esGerente ? <ControlCenter /> : <Navigate to="/" replace />} />
-=======
-              {/* /dashboard es el nombre que usa la web y el que la gente
-                  escribe. El dashboard SIEMPRE existió: es /gerencia. No
-                  había que construirlo, había que hacerlo alcanzable. */}
-              {/* Dashboard de GERENCIA para pantalla grande: todo el
-                  negocio por canal (KAM, Televenta, Corporativo y las 3
-                  zonas). NO es /gerencia, que es la vista móvil de
-                  terreno — se confundieron desde el principio. */}
               <Route path="/dashboard" element={esGerente ? <DashboardGerencia /> : <Navigate to="/" replace />} />
->>>>>>> e3a7697 (V12.5: gerencia opera desde el dashboard)
+              <Route path="/control-center" element={esGerente ? <ControlCenter /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

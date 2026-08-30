@@ -44,8 +44,4 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
 } else if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {})
-  navigator.serviceWorker.getRegistrations()
-    .then(rs => rs.forEach(r => r.unregister()))
-    .catch(() => {})
-e3a7697 (V12.5: gerencia opera desde el dashboard)
 }

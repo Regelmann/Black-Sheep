@@ -319,7 +319,7 @@
 }
 .navbar-inner,
 .navbar-inner-4 {
-  display: grid !important;
+  display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;         /* todos los destinos, mismo ancho */
   justify-content: stretch;
@@ -415,27 +415,6 @@
    suelto bajo "Tus habituales".
    ============================================================ */
 .bs-shop-section { margin-bottom: 22px; }
-
-.bs-shop-section-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 16px;
-  margin-bottom: 12px;
-}
-.bs-shop-section-head > div { min-width: 0; }
-.bs-shop-section-head h2 {
-  margin: 0;
-  font-size: 17px; font-weight: 800;
-  letter-spacing: -.02em; line-height: 1.2;
-  color: var(--ink, #1c1917);
-}
-.bs-shop-section-head p {
-  margin: 3px 0 0;
-  font-size: 12.5px; font-weight: 500; line-height: 1.35;
-  color: var(--ink-3, #78716c);
-}
 /* El contador: pastilla a la derecha, no un número suelto abajo */
 .bs-shop-section-head > span {
   flex: 0 0 auto;
@@ -484,12 +463,6 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-.bs-shop-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  padding: 0 16px;
 }
 
 /* ============================================================
@@ -1203,4 +1176,107 @@ html, body {
 }
 .bs-adm-vacio, .bs-admin-loading {
   padding: 30px 16px; text-align: center; font-size: 13.5px; color: var(--ink-3,#78716c);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   .bs-chip · CONSOLIDADO
+   Estaba definido en CINCO hojas (identidad, v90-fixes, ds-2026,
+   system, shell). Nadie podía saber cuál regla ganaba sin abrir el
+   inspector — y por eso cada arreglo del chip necesitaba tres
+   intentos.
+   Acá está todo junto, en la hoja que gana la cascada.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ← identidad.css */
+/* ══ Píldoras ════════════════════════════════════════════════════════ */
+.bs-chip,
+.badge {
+  border-radius: var(--r-pill);
+  font-weight: var(--weight-bold);
+}
+
+/* ← v90-fixes.css */
+/* Chip compacto: entran ~40% más que antes en la misma pantalla */
+.bs-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;   /* táctil: 34px no se toca caminando */
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2, #d6cfc4);
+  background: #fff;
+  color: var(--ink-4, #57534e);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+/* ← v90-fixes.css */
+/* Área de toque de 44px sin agrandar el chip visualmente */
+.bs-chip::before {
+  content: '';
+  position: absolute;
+  inset: -5px 0;
+}
+
+/* ← v90-fixes.css */
+.bs-chip:active { transform: scale(0.97); }
+
+/* ← v90-fixes.css */
+.bs-chip.is-active {
+  background: var(--ink, #1c1917);
+  border-color: var(--ink, #1c1917);
+  color: #fff;
+}
+
+/* ← v90-fixes.css */
+.bs-chip.is-danger        { border-color: var(--danger-lt3, #fecaca); color: var(--danger-dk, #b91c1c); }
+
+/* ← v90-fixes.css */
+.bs-chip.is-danger.is-active  { background: var(--danger-dk, #b91c1c); border-color: var(--danger-dk, #b91c1c); color: #fff; }
+
+/* ← v90-fixes.css */
+.bs-chip.is-warn          { border-color: var(--warn-lt5, #fdba74); color: var(--brand, #c2410c); }
+
+/* ← v90-fixes.css */
+.bs-chip.is-warn.is-active    { background: var(--brand, #c2410c); border-color: var(--brand, #c2410c); color: #fff; }
+
+/* ← v90-fixes.css */
+.bs-chip.is-ok            { border-color: var(--ok-lt4, #a7f3d0); color: var(--ok-dk, #166534); }
+
+/* ← v90-fixes.css */
+.bs-chip.is-ok.is-active      { background: var(--ok-dk, #166534); border-color: var(--ok-dk, #166534); color: #fff; }
+
+/* ← v90-fixes.css */
+.bs-chip-count {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+}
+
+/* ← v90-fixes.css */
+.bs-chip.is-active .bs-chip-count { background: rgba(255, 255, 255, 0.22); }
+
+/* ← ds-2026.css */
+.bs-chip.is-on,
+.bs-chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+/* ← system.css */
+.bs-chip.is-on, .bs-chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
 }

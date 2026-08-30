@@ -7,8 +7,4 @@
  * que App.jsx importa —ErrorBoundary entre ellos—. Importarlo desde App.jsx
  * crearía un ciclo App → ErrorBoundary → App.
  */
-<<<<<<< HEAD
-export const BUILD_STAMP = 'v-BS-PLATFORM-V14.0'
-=======
-export const BUILD_STAMP = 'v-BS-PLATFORM-V12.4'
->>>>>>> e3a7697 (V12.5: gerencia opera desde el dashboard)
+export const BUILD_STAMP = 'v-BS-PLATFORM-V12.7'

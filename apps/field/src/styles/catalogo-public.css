@@ -873,7 +873,7 @@
   .bs-shop-drawer,
   .bs-shop-modal,
   .bs-shop-fab {
-    animation: none !important;
+    animation: none;
   }
   .bs-shop-card:hover,
   .bs-shop-card:hover .bs-shop-card-media img {
@@ -937,7 +937,7 @@
   .bs-shop-skel-img,
   .bs-shop-skel-line,
   .bs-shop-boot-bar span {
-    animation: none !important;
+    animation: none;
   }
 }
 

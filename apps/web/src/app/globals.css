@@ -17,15 +17,21 @@
   --color-panel: #292524;
   --color-line: #3f3a36;
   /* ══════════════════════════════════════════════════════════════
-     IDENTIDAD BLACK SHEEP — negro + lima fluorescente.
-     El naranja #a3e635 que había acá es el color de KeyFoods, que es
-     un TENANT. La marca de la plataforma es otra: negro y lima.
-     Regla: el naranja sólo aparece DENTRO de la app después del login,
-     aplicado por applyTenantBrand(). Nunca en black-sheep.cl.
+     IDENTIDAD BLACK SHEEP — negro + lima eléctrico.
+
+     El naranja #c2410c que había acá es el color de KeyFoods, que es
+     un TENANT. Sólo va DENTRO de la app después del login, aplicado
+     por applyTenantBrand(). Nunca en black-sheep.cl.
+
+     CONTRASTE, que decide todo lo demás:
+       lima sobre negro   16.81:1   ✅ el doble de lo que WCAG pide
+       lima sobre blanco   1.40:1   ❌ ilegible
+
+     Por eso TODO botón lima lleva texto NEGRO, nunca blanco.
      ══════════════════════════════════════════════════════════════ */
-  --color-primary: #a3e635;        /* lima Black Sheep */
-  --color-primary-soft: #bef264;
-  --color-primary-deep: #65a30d;   /* para texto sobre fondo claro */
+  --color-primary: #ccff00;        /* lima Black Sheep */
+  --color-primary-soft: #d9ff4d;
+  --color-primary-deep: #8fb800;   /* para texto sobre fondo claro */
   --color-mint: #34d399;
   --color-rose: #f87171;
   --color-amber: #fbbf24;
@@ -107,7 +113,7 @@ body::after {
 
 .text-gradient {
   /* Identidad Black Sheep: blanco → lima. */
-  background: linear-gradient(135deg, #ffffff 0%, #d9f99d 45%, #a3e635 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #e8ffa3 45%, #ccff00 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -116,7 +122,7 @@ body::after {
 .btn-primary {
   /* Texto NEGRO sobre lima: 13.1:1.
      Al revés (lima sobre blanco) da 1.51:1 — ilegible. */
-  background: linear-gradient(180deg, #bef264, #a3e635);
+  background: linear-gradient(180deg, #d9ff4d, #ccff00);
   color: #0c0a09;
   box-shadow: 0 10px 32px rgba(163, 230, 53, 0.30);
 }
