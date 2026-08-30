@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 /**
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-navy text-mist antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
