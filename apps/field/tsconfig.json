@@ -1,0 +1,69 @@
+{
+  // ───────────────────────────────────────────────────────────────────────
+  // Chequeo de tipos INCREMENTAL. No compila nada: Vite sigue haciendo el
+  // build. Esto sólo verifica.
+  //
+  // POR QUÉ
+  // Los contratos del proyecto están en comentarios en español, no en tipos.
+  // `flushActionQueue` acepta `boolean` o `{ok, error}` porque ya hubo un
+  // incidente con eso; el propio JSDoc de SyncHandlers lo documenta pero
+  // nada lo verifica. Un handler nuevo sigue siendo una apuesta.
+  //
+  // ESTRATEGIA: lista blanca creciente.
+  // `include` empieza por lib/ —lógica pura, sin JSX, máximo retorno— y se
+  // amplía por fases. Un big bang sobre 27.000 líneas fallaría; esto da
+  // valor desde el primer archivo y nunca deja el árbol roto.
+  //
+  // Uso:  npm run typecheck   (integrado en `verify`)
+  // ───────────────────────────────────────────────────────────────────────
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    // No se emite nada: el bundle lo hace Vite.
+    "noEmit": true,
+
+    // El corazón del enfoque: JS con tipos inferidos y JSDoc verificado.
+    "allowJs": true,
+    "checkJs": true,
+
+    // Estricto desde el arranque. Es fácil sostenerlo con lista blanca;
+    // relajarlo después es imposible.
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+
+    // Ruido sin valor en esta etapa: ESLint ya cubre variables sin usar.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["vite/client"]
+  },
+
+  // ── Lista blanca · FASE 2.1 ────────────────────────────────────────────
+  // Núcleo del outbox: el código que decide si el trabajo de un día llega
+  // al servidor. Es donde un error de tipos cuesta más caro.
+  // Se agrega un archivo cuando queda en CERO errores. Nunca se saca uno.
+  // Ese es el trinquete: el chequeo pasa siempre, y crece por fases.
+  //
+  // `files` (no `include`): los imports arrastran dependencias al programa,
+  // pero `checkJs` sólo reporta los archivos listados acá. Así se puede
+  // avanzar módulo por módulo sin que un archivo aún sin tipar rompa todo.
+  // REGLA: un archivo entra acá SÓLO cuando está en cero errores.
+  // La lista llegó incluyendo archivos que todavía no lo estaban
+  // (outboxDb 33, syncHandlers 19, tenants 12, supabase 12): eso
+  // convierte el typecheck en ruido permanente, que es justo lo que
+  // el propio plan advierte sobre los avisos.
+  // Se incorporan de a uno, cada vez que uno llegue a cero.
+  "files": [
+    "src/lib/offline.js",
+    "src/lib/sync/engine.js",
+    "src/lib/buildStamp.js"
+  ]
+}

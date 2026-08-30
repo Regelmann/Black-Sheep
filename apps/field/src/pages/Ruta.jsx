@@ -1,0 +1,1901 @@
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase.js'
+import { safeSelect } from '../lib/query.js'
+import { traerTodo } from '../lib/traerTodo.js'
+import { useEjecutivo } from '../App.jsx'
+import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo.js'
+import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach.js'
+import { dondeIr, tituloDondeIr } from '../lib/dondeIr.js'
+import { Oportunidad } from '../domain/Oportunidad.jsx'
+import { formatDist, formatEta } from '../lib/geo.js'
+import { money } from '../components.jsx'
+import PedidoSheet from '../domain/PedidoSheet.jsx'
+
+/** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
+/** Alineado a ZONAS_COMUNAS.csv de producción (fuente de verdad). */
+const ZONAS_COMUNAS = {
+  // Fuente de verdad operativa KeyFoods — comunas de terreno por zona
+  'NOR-ORIENTE': [
+    'LAS CONDES', 'VITACURA', 'LO BARNECHEA', 'LA REINA',
+    'PENALOLEN', 'PEÑALOLEN', 'MACUL',
+  ],
+  'NOR-PONIENTE': [
+    'NUNOA', 'ÑUÑOA', 'PROVIDENCIA', 'RECOLETA', 'INDEPENDENCIA', 'HUECHURABA',
+    'QUILICURA', 'RENCA', 'CONCHALI', 'COLINA', 'LAMPA', 'CERRO NAVIA',
+    'QUINTA NORMAL', 'SANTIAGO', 'ESTACION CENTRAL', 'ESTACIÓN CENTRAL',
+  ],
+  'ZONA SUR': [
+    'LA FLORIDA', 'MAIPU', 'MAIPÚ', 'SAN MIGUEL', 'SAN JOAQUIN', 'SAN JOAQUÍN',
+    'EL BOSQUE', 'LA CISTERNA', 'PAINE', 'PIRQUE', 'SAN BERNARDO', 'PUENTE ALTO',
+    'LA PINTANA', 'SAN RAMON', 'SAN RAMÓN', 'PEDRO AGUIRRE CERDA',
+  ],
+}
+function normComuna(s) {
+  return String(s || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+import MisPedidosHoy from '../domain/MisPedidosHoy.jsx'
+
+function saludoHora() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Buenos días'
+  if (h < 19) return 'Buenas tardes'
+  return 'Buenas noches'
+}
+
+
+const KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+let mapsPromise = null
+function loadMaps() {
+  if (window.google?.maps) return Promise.resolve(window.google.maps)
+  if (mapsPromise) return mapsPromise
+  if (!KEY) return Promise.reject(new Error('NO_KEY'))
+  mapsPromise = new Promise((resolve, reject) => {
+    if (document.querySelector('script[data-gmaps="1"]')) {
+      const t = setInterval(() => {
+        if (window.google?.maps) {
+          clearInterval(t)
+          resolve(window.google.maps)
+        }
+      }, 50)
+      return
+    }
+    const s = document.createElement('script')
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${KEY}&v=weekly`
+    s.async = true
+    s.dataset.gmaps = '1'
+    s.onload = () => resolve(window.google.maps)
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+  return mapsPromise
+}
+
+const limpiaEstado = e => String(e || '').replace(/^\d+_?/, '').replace(/_/g, ' ')
+const limpiaOferta = t => String(t || '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
+
+// RM ampliada: incluye Maipú, San Bernardo, Puente Alto, Colina
+/**
+ * Recuadro de la Región Metropolitana COMPLETA.
+ *
+ * 🔴 EL BUG QUE CORRIGE
+ * Era { -33.85..-33.10, -71.05..-70.30 } — el Gran Santiago urbano.
+ * Dejaba fuera Melipilla, Tiltil, Lampa, Buin, Talagante, San Pedro
+ * y Alhué: siete comunas de la misma región.
+ *
+ * Un prospecto en Melipilla se descartaba del mapa y el único rastro
+ * era `console.log('skip geo')`, que nadie mira. El vendedor no veía
+ * el punto ni sabía que existía.
+ *
+ * Contradice la regla del proyecto: si algo no se puede ubicar bien,
+ * se MUESTRA MARCADO, no se oculta en silencio.
+ *
+ * Límites reales de la RM: lat -34.30..-32.90 · lng -71.75..-69.75
+ */
+const BOUNDS = { latMin: -34.30, latMax: -32.90, lngMin: -71.75, lngMax: -69.75 }
+function inSantiago(lat, lng) {
+  const la = Number(lat),
+    lo = Number(lng)
+  return !isNaN(la) && !isNaN(lo) && la >= BOUNDS.latMin && la <= BOUNDS.latMax && lo >= BOUNDS.lngMin && lo <= BOUNDS.lngMax
+}
+
+function ymd(d) {
+  const x = d instanceof Date ? d : new Date(d)
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+}
+function addDays(s, n) {
+  const [y, m, d] = s.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + n)
+  return ymd(dt)
+}
+function labelFecha(s) {
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-CL', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
+const HOY = ymd(new Date())
+const CENTER = { lat: -33.39, lng: -70.57 }
+
+/** Opciones de fecha: -7 … +14 */
+function buildFechas() {
+  const out = []
+  for (let i = -7; i <= 14; i++) {
+    const f = addDays(HOY, i)
+    let tag = labelFecha(f)
+    if (f === HOY) tag = `Hoy · ${tag}`
+    else if (i === 1) tag = `Mañana · ${tag}`
+    else if (i === -1) tag = `Ayer · ${tag}`
+    out.push({ value: f, label: tag })
+  }
+  return out
+}
+const FECHAS = buildFechas()
+
+function pinColor(item) {
+  if (item._tipo === 'ruta') return 'var(--info-dk2)'
+  if (item._tipo === 'prospecto') return 'var(--ok-mid)'
+  if (item.es_bloqueado) return 'var(--info-mid4)'
+  const e = (item.estado_fuga || '').toUpperCase()
+  if (e.includes('ACTIV')) return 'var(--info)'
+  if (e.includes('ENFRIANDO') || e.includes('RIESGO')) return 'var(--warn)'
+  if (e.includes('DORMIDO') || e.includes('FUGADO') || e.includes('NUNCA')) return 'var(--danger)'
+  return 'var(--info-mid3)'
+}
+
+function pinSvg(color, label) {
+  const esc = label != null && label !== '' ? String(label).substring(0, 2) : ''
+  const text = esc
+    ? `<text x="12" y="14" text-anchor="middle" fill="#fff" font-size="9" font-weight="800">${esc}</text>`
+    : `<circle cx="12" cy="11" r="3.5" fill="#fff"/>`
+  return `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32"><path d="M12 0C6 0 1 5 1 11c0 8 11 21 11 21s11-13 11-21C23 5 18 0 12 0z" fill="${color}"/>${text}</svg>`
+  )}`
+}
+
+const FILTROS = [
+  { id: 'ruta', label: 'Ruta', color: 'var(--info-dk2)' },
+  { id: 'riesgo', label: 'En riesgo', color: 'var(--warn)' },
+  { id: 'activo', label: 'Activos', color: 'var(--brand)' },
+  { id: 'recuperar', label: 'Recuperar', color: 'var(--danger)' },
+  { id: 'prospecto', label: 'Prospectos', color: 'var(--ok-mid)' },
+]
+
+export default function Ruta({ session }) {
+  const nav = useNavigate()
+  const eje = useEjecutivo()
+  const uid = eje?.eidVista || session.user.id
+
+  const [fecha, setFecha] = useState(HOY)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [ruta, setRuta] = useState(null)
+  const [visitas, setVisitas] = useState([])
+  const [territorio, setTerritorio] = useState([])
+  const [pedidoCliente, setPedidoCliente] = useState(null)
+  const [activos, setActivos] = useState(() => new Set(['ruta', 'riesgo', 'activo', 'recuperar', 'prospecto']))
+  const [selected, setSelected] = useState(null)
+  const [mapQ, setMapQ] = useState('')
+  const [pedidoFromMap, setPedidoFromMap] = useState(null)
+  const [notaFromMap, setNotaFromMap] = useState(null)
+  const [toast, setToast] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [mapReady, setMapReady] = useState(false)
+  const [listaOpen, setListaOpen] = useState(true)
+  const [myPos, setMyPos] = useState(null) // {lat,lng,accuracy}
+  // DÓNDE IR AHORA — el orden ES la recomendación.
+  //
+  // Un mapa con 300 pines no decide nada: le pasa el problema al
+  // vendedor. Y ordenar sólo por cercanía premia al almacén de la
+  // esquina que compra $30.000 sobre el cliente de $800.000 que está
+  // a seis cuadras: es ordenar por lo más fácil, no por lo que rinde.
+  //
+  //   puntaje = valor × urgencia ÷ costo de llegar
+  const [gpsBusy, setGpsBusy] = useState(false)
+  const [radioKm, setRadioKm] = useState(1) // 1 | 3 | 5 cerca de mí
+
+  const mapRef = useRef(null)
+  const mapInstance = useRef(null)
+  const markersRef = useRef([])
+  const polyRef = useRef(null)
+  const meMarkerRef = useRef(null)
+  const meAccRef = useRef(null)
+  const fittedFecha = useRef(null) // fecha para la que ya hicimos fitBounds
+  const userCentered = useRef(false) // ya centramos en GPS del vendedor
+  const autoGpsOnce = useRef(false)
+
+
+  // Las 5 mejores oportunidades de AHORA, sobre el territorio cargado.
+  const recomendadas = useMemo(() => {
+    const distancia = (a, b) =>
+      haversineM(a?.lat, a?.lng, Number(b?.lat), Number(b?.lng))
+    return dondeIr({
+      items: territorio,
+      myPos,
+      distancia,
+      limite: 5,
+    })
+  }, [territorio, myPos])
+
+  const cercanos = (() => {
+    if (!myPos?.lat || !myPos?.lng) return []
+    const maxM = radioKm * 1000
+    const out = []
+    for (const item of territorio) {
+      const lat = Number(item.lat)
+      const lng = Number(item.lng)
+      if (isNaN(lat) || isNaN(lng)) continue
+      const d = haversineM(myPos.lat, myPos.lng, lat, lng)
+      if (d <= maxM) out.push({ ...item, _distM: d })
+    }
+    out.sort((a, b) => a._distM - b._distM)
+    return out.slice(0, 40)
+  })()
+
+  function tip(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2200)
+  }
+
+  async function forzarGps() {
+    if (gpsBusy) return
+    setGpsBusy(true)
+    tip('Buscando ubicación… aceptá el permiso si el celular lo pide')
+    try {
+      const pos = await getPositionPrecise({ targetAccM: 80, maxWaitMs: 28000 })
+      if (pos?.lat != null && pos?.lng != null) {
+        setMyPos({ ...pos, pending: false })
+        const acc = pos.accuracy != null ? Math.round(pos.accuracy) : null
+        tip(acc != null && acc > 150
+          ? `Ubicación ±${acc} m (aproximada). Mejor al aire libre`
+          : `GPS OK${acc != null ? ` ±${acc} m` : ''}`)
+        // Forzar centrado local aunque ya se haya hecho fitBounds
+        try {
+          if (mapInstance.current && window.google?.maps) {
+            userCentered.current = true
+            mapInstance.current.panTo({ lat: Number(pos.lat), lng: Number(pos.lng) })
+            mapInstance.current.setZoom(16)
+          }
+        } catch (_) { void _ }
+      } else {
+        tip(geoErrorMessage(pos?.error || 'unavailable'))
+      }
+    } finally {
+      setGpsBusy(false)
+    }
+  }
+
+  const cargar = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+    setSelected(null)
+    try {
+      let { data: rutas, error: er } = await supabase
+        .from('rutas')
+        .select('*')
+        .eq('ejecutivo_id', uid)
+        .eq('fecha', fecha)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (er) console.warn('rutas', er.message)
+      let r = rutas?.[0] || null
+      if (!r) {
+        const rr = await safeSelect(
+          supabase.from('rutas').select('*').eq('fecha', fecha).limit(5),
+          { label: 'rutas_fecha' }
+        )
+        r = rr.rows.find(x => !x.ejecutivo_id || x.ejecutivo_id === uid) || null
+      }
+      setRuta(r)
+
+      let vis = []
+      if (r?.id) {
+        const { data: v, error: ev } = await supabase
+          .from('visitas')
+          .select('*')
+          .eq('ruta_id', r.id)
+          .order('orden')
+        if (ev) console.warn('visitas', ev.message)
+        vis = v || []
+      }
+      setVisitas(vis)
+
+      const enRutaKeys = new Set(
+        vis.map(v => String(v.punto_id_bq || v.cliente_key || '')).filter(Boolean)
+      )
+      const items = []
+
+      vis.forEach(v => {
+        if (v.lat != null && v.lng != null && inSantiago(v.lat, v.lng)) {
+          items.push({
+            ...v,
+            _tipo: 'ruta',
+            _id: 'r_' + v.id,
+            _label: String(v.orden),
+            nombre_cliente: v.nombre_local || v.nombre_cliente,
+            _enRuta: true,
+          })
+        }
+      })
+
+      // Solo columnas necesarias (más rápido + menos payload)
+      const { data: cart, error: ec } = await supabase
+        .from('cartera')
+        .select(
+          'cliente_key,nombre_cliente,comuna,direccion,lat,lng,estado_fuga,estado_texto,oferta_real,productos_top,telefono,link_whatsapp,venta_mensual,venta_mtd,dias_sin_comprar,sku_detalle,fecha_snapshot'
+        )
+        .eq('ejecutivo_id', uid)
+      if (ec) {
+        console.warn('cartera', ec.message)
+        setLoadError('Cartera: ' + ec.message)
+      }
+      let nGeo = 0
+      ;(cart || []).forEach(c => {
+        if (c.lat == null || c.lng == null || !inSantiago(c.lat, c.lng)) return
+        nGeo++
+        const key = String(c.cliente_key || '')
+        if (enRutaKeys.has(key)) return
+        items.push({
+          ...c,
+          _tipo: 'cliente',
+          _id: 'c_' + key,
+          _enRuta: false,
+        })
+      })
+
+      const zonaNom = String(eje?.zonaVista || eje?.zona || '').toUpperCase().trim()
+      let pros = []
+      let ep = null
+      const comunaSet = new Set((ZONAS_COMUNAS[zonaNom] || []).map(normComuna))
+      // 1) por zona exacta
+      if (zonaNom) {
+        // 🔴 .limit() NO sube el techo de 1.000 filas de PostgREST:
+        // sólo puede BAJARLO. Se paginaba de hecho sin saberlo, y la
+        // app mostraba 1.000 prospectos de 3.627 sin ningún aviso.
+        const r2 = await traerTodo((d, h) => supabase
+          .from('prospectos')
+          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
+          .eq('zona', zonaNom)
+          // 🔴 SIN ORDER, el limit corta por el orden interno de la
+          // tabla: si hay más de 5.000 se pierden prospectos al azar,
+          // no los peores.
+          //
+          // Se ordena por `score` —no por `potencial`— porque es el
+          // mismo campo con el que planDia.js rankea después. Cortar
+          // por un criterio y priorizar por otro pierde justo a los
+          // que iban a quedar arriba.
+          //
+          // nullsFirst:false: los que no tienen score cargado quedan
+          // al final y no se comen el cupo.
+          .order('score', { ascending: false, nullsFirst: false })
+          .range(d, h), { label: 'prospectos_zona' })
+        if (r2.ok && r2.rows.length) {
+          pros = r2.rows
+          console.log('prospectos por zona', zonaNom, pros.length)
+        } else if (r2.error) {
+          console.warn('prospectos zona', r2.error.message)
+          ep = r2.error
+        }
+      }
+      // 2) por ejecutivo_id
+      if (uid) {
+        const r1 = await traerTodo((d, h) => supabase
+          .from('prospectos')
+          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
+          .eq('ejecutivo_id', uid)
+          .order('score', { ascending: false, nullsFirst: false })
+          .range(d, h), { label: 'prospectos_ejecutivo' })
+        if (r1.ok && r1.rows.length) {
+          const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
+          for (const p of r1.rows) {
+            const k = p.cliente_key || p.nombre_cliente
+            if (k && !seen.has(k)) { seen.add(k); pros.push(p) }
+          }
+        } else if (r1.error) ep = r1.error
+      }
+      // 3) sin zona en DB: traer lote amplio y filtrar por comuna de la zona (cubre Providencia en Nor-Poniente)
+      if (comunaSet.size && pros.length < 200) {
+        const r3 = await traerTodo((d, h) => supabase
+          .from('prospectos')
+          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
+          .not('lat', 'is', null)
+          // 🔴 HAY 9.886 PROSPECTOS EN LA BASE. Con limit 8.000 quedan
+          // 1.886 fuera SIEMPRE — no es un riesgo teórico, pasa hoy.
+          //
+          // Sin `order` el corte lo decidía el orden interno de Postgres:
+          // se perdían 1.886 al azar. Ordenando por potencial, lo que
+          // queda fuera es lo de menos valor.
+          //
+          // El arreglo de fondo es paginar o filtrar por zona en la
+          // consulta. Mientras tanto, al menos se pierde lo correcto.
+          .order('score', { ascending: false, nullsFirst: false })
+          .range(d, h), { label: 'prospectos_barrido' })
+        if (r3.ok && r3.rows.length) {
+          const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
+          let added = 0
+          for (const p of r3.rows) {
+            const k = p.cliente_key || p.nombre_cliente
+            if (!k || seen.has(k)) continue
+            const cz = normComuna(p.comuna)
+            const pz = String(p.zona || '').toUpperCase().trim()
+            if (pz === zonaNom || (cz && comunaSet.has(cz))) {
+              seen.add(k)
+              pros.push(p)
+              added++
+            }
+          }
+          console.log('prospectos por comuna zona', zonaNom, 'added', added, 'total', pros.length)
+        }
+      }
+      if (ep) console.warn('prospectos', ep.message)
+      // FILTER_BY_COMUNA_ZONE: la zona que asigna Places a veces es
+      // incorrecta, así que manda la comuna.
+      //
+      // 🔴 EL HUECO QUE ESTO CIERRA
+      // Se traía con .eq('zona', zonaNom) y se descartaba por comuna.
+      // Cuando los dos campos se contradicen, el prospecto DESAPARECE
+      // PARA TODOS:
+      //
+      //   fila: zona='NOR-ORIENTE', comuna='MAIPU' (→ ZONA SUR)
+      //   · el de Nor-Oriente:  la consulta lo trae, el filtro lo tira
+      //   · el de Zona Sur:     el filtro lo aceptaría, la consulta
+      //                         nunca lo trae
+      //
+      // Nadie lo ve, y el único rastro era un console.log.
+      // Se conserva el criterio de comuna, pero lo descartado se
+      // REPORTA con nombre, para poder corregir el dato de origen.
+      if (comunaSet.size) {
+        const before = pros.length
+        const contradictorios = []
+        pros = pros.filter(p => {
+          const cz = normComuna(p.comuna)
+          const pz = String(p.zona || '').toUpperCase().trim()
+          if (cz) {
+            const ok = comunaSet.has(cz)
+            // Trajo por zona pero su comuna es de otra: dato inconsistente.
+            if (!ok && pz === zonaNom) {
+              contradictorios.push(`${p.nombre_cliente || p.cliente_key} (${p.comuna})`)
+            }
+            return ok
+          }
+          return pz === zonaNom
+        })
+        if (contradictorios.length) {
+          console.warn(
+            `[ruta] ${contradictorios.length} prospecto(s) con zona y comuna ` +
+            `contradictorias: NO los ve ningún vendedor. Corregir en la maestra.`,
+            contradictorios.slice(0, 10)
+          )
+        }
+        console.log('prospectos filtrados por comuna zona', zonaNom, before, '→', pros.length)
+      }
+      let nPros = 0, nSkipGeo = 0
+      ;(pros || []).forEach(p => {
+        if (p.lat == null || p.lng == null) { nSkipGeo++; return }
+        if (!inSantiago(p.lat, p.lng)) { nSkipGeo++; return }
+        const key = String(p.cliente_key || p.nombre_cliente || '')
+        if (!key || enRutaKeys.has(key)) return
+        nPros++
+        items.push({
+          ...p,
+          _tipo: 'prospecto',
+          _id: 'p_' + key,
+          nombre_cliente: p.nombre_cliente || key,
+          oferta_real: p.oferta || null,
+          score_prioridad: p.score,
+          _enRuta: false,
+        })
+      })
+      if (nSkipGeo > 0) {
+        // Antes era un console.log entre otros. Si se descartan puntos
+        // del mapa, tiene que doler al verlo.
+        console.warn(
+          `[ruta] ${nSkipGeo} prospecto(s) fuera del recuadro y NO se dibujan. ` +
+          `Revisar sus coordenadas o ampliar BOUNDS.`
+        )
+      }
+      console.log('prospectos cargados', nPros, 'skip geo', nSkipGeo, 'uid', uid, 'zona', zonaNom)
+
+      setTerritorio(items)
+      if ((cart || []).length > 0 && nGeo === 0) {
+        setLoadError(
+          `Tu cartera tiene ${(cart || []).length} clientes pero ninguno con coordenadas en RM. Corré KEYFOODS_FIELD_BAJADA_v8.4 o KEYFOODS_GEO_CARTERA_3ZONAS en Colab.`
+        )
+      }
+    } catch (e) {
+      console.error(e)
+      setLoadError(String(e.message || e))
+      setTerritorio([])
+      setVisitas([])
+    } finally {
+      fittedFecha.current = null; userCentered.current = false
+      userCentered.current = false
+      setLoading(false)
+    }
+  }, [uid, fecha])
+
+  useEffect(() => {
+    cargar()
+  }, [cargar])
+
+  const visible = useMemo(() => {
+    return territorio.filter(item => {
+      if (item._tipo === 'ruta' && activos.has('ruta')) return true
+      if (item._tipo === 'prospecto' && activos.has('prospecto')) return true
+      if (item._tipo === 'cliente') {
+        const e = (item.estado_fuga || '').toUpperCase()
+        if (activos.has('activo') && e.includes('ACTIV')) return true
+        if (activos.has('riesgo') && (e.includes('ENFRIANDO') || e.includes('RIESGO'))) return true
+        if (
+          activos.has('recuperar') &&
+          (e.includes('DORMIDO') || e.includes('FUGADO') || e.includes('NUNCA'))
+        )
+          return true
+      }
+      return false
+    })
+  }, [territorio, activos])
+
+  const counts = useMemo(() => {
+    const c = { ruta: 0, activo: 0, riesgo: 0, recuperar: 0, prospecto: 0 }
+    territorio.forEach(item => {
+      if (item._tipo === 'ruta') c.ruta++
+      else if (item._tipo === 'prospecto') c.prospecto++
+      else {
+        const e = (item.estado_fuga || '').toUpperCase()
+        if (e.includes('ACTIV')) c.activo++
+        else if (e.includes('ENFRIANDO') || e.includes('RIESGO')) c.riesgo++
+        else if (e.includes('DORMIDO') || e.includes('FUGADO') || e.includes('NUNCA')) c.recuperar++
+      }
+    })
+    return c
+  }, [territorio])
+
+
+  const [rutaStats, setRutaStats] = useState(null) // { km, etaMin, stops }
+
+  async function optimizarOrdenRuta() {
+    if (!visitas.length || busy) return
+    setBusy(true)
+    try {
+      const origin = myPos?.lat != null ? myPos : null
+      // Distancia + prioridad comercial (reponer / riesgo / $)
+      const { ordered, totalM } = ordenarRutaOptima(visitas, origin, { priorityWeight: 40 })
+      for (let i = 0; i < ordered.length; i++) {
+        const v = ordered[i]
+        if (!v.id) continue
+        const nuevo = i + 1
+        if (Number(v.orden) === nuevo) continue
+        await supabase.from('visitas').update({ orden: nuevo }).eq('id', v.id)
+      }
+      const stats = metricasRuta(ordered, origin)
+      setRutaStats(stats)
+      const kmTxt = stats.km > 0 ? ` · ${stats.km} km · ~${stats.etaMin} min` : ''
+      tip(`Ruta optimizada (distancia + prioridad)${kmTxt}`)
+      if (ruta?.id) await recargarVisitas(ruta.id)
+      else await cargar()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /**
+   * Armar ruta del día desde prioridades de cartera (reponer/riesgo/$ cerca).
+   * Proceso: candidatos score > 0 → top 8 en radio → optimiza orden → inserta visitas.
+   */
+  async function armarRutaDelDia() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const origin = myPos?.lat != null ? myPos : null
+      if (!origin) {
+        tip('Activá GPS para armar la ruta por cercanía')
+        return
+      }
+      const cands = candidatosRutaDia(territorio, origin, { maxStops: 10, radioKm: 15, maxProspect: 3 })
+      if (!cands.length) {
+        tip('No hay candidatos con geo en 15 km. Verificá GPS o coordenadas de cartera.')
+        return
+      }
+      const rid = await ensureRuta()
+      if (!rid) return
+
+      // Evitar duplicar paradas ya en itinerario
+      const ya = new Set(visitas.map(v => String(v.punto_id_bq || v.cliente_key || '')))
+      const nuevos = cands.filter(c => !ya.has(String(c.cliente_key || c.id)))
+      if (!nuevos.length) {
+        tip('Las prioridades ya están en el itinerario — tocá Optimizar orden')
+        setListaOpen(true)
+        return
+      }
+
+      const { ordered } = ordenarRutaOptima(nuevos, origin, { priorityWeight: 40 })
+      const baseOrden = visitas.reduce((m, v) => Math.max(m, Number(v.orden) || 0), 0)
+      for (let i = 0; i < ordered.length; i++) {
+        const item = ordered[i]
+        const esProspecto = item._tipo === 'prospecto'
+        await supabase.from('visitas').insert({
+          ruta_id: rid,
+          orden: baseOrden + i + 1,
+          punto_id_bq: item.cliente_key || String(item.id),
+          nombre_local: item.nombre_cliente || item.nombre_local || 'Parada',
+          direccion: item.direccion || item.comuna,
+          comuna: item.comuna,
+          lat: item.lat,
+          lng: item.lng,
+          segmento: esProspecto ? 'PROSPECTO' : limpiaEstado(item.estado_fuga),
+          oferta: limpiaOferta(item.oferta_real || item.oferta || item.productos_top),
+          potencial: Number(item.venta_mensual || item.potencial) || 0,
+          estado: 'pendiente',
+        })
+      }
+      // Re-optimizar todo el itinerario junto
+      // Esta lectura alimenta una ESCRITURA (reordenar). Si falla en
+      // silencio, el vendedor toca "optimizar" y no pasa nada sin aviso.
+      const rTodas = await safeSelect(
+        supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
+        { label: 'visitas_reorden' }
+      )
+      if (!rTodas.ok) {
+        setToast('No se pudo leer la ruta para reordenar. Reintentá.')
+        return
+      }
+      const { ordered: finalOrd } = ordenarRutaOptima(rTodas.rows, origin, { priorityWeight: 40 })
+      for (let i = 0; i < finalOrd.length; i++) {
+        if (finalOrd[i].id) {
+          await supabase.from('visitas').update({ orden: i + 1 }).eq('id', finalOrd[i].id)
+        }
+      }
+      const stats = metricasRuta(finalOrd, origin)
+      setRutaStats(stats)
+      setListaOpen(true)
+      tip(`Ruta del día: ${ordered.length} paradas · ${stats.km} km · ~${stats.etaMin} min`)
+      await recargarVisitas(rid)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+
+  // Init mapa: recrear si el div se desmontó (cambio de zona / loading)
+  useEffect(() => {
+    if (loading) return
+    let cancelled = false
+    ;(async () => {
+      if (!mapRef.current) return
+      try {
+        const maps = await loadMaps()
+        if (cancelled || !mapRef.current) return
+        // Si el div es nuevo (cambio zona), hay que crear otro Map
+        const needNew =
+          !mapInstance.current ||
+          mapInstance.current.getDiv?.() !== mapRef.current
+        if (needNew) {
+          mapInstance.current = new maps.Map(mapRef.current, {
+            zoom: 14,
+            center: CENTER,
+            disableDefaultUI: true,
+            zoomControl: true,
+            gestureHandling: 'greedy',
+            clickableIcons: false,
+            styles: [
+              { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+              { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+            ],
+          })
+          fittedFecha.current = null; userCentered.current = false
+        } else {
+          try {
+            maps.event.trigger(mapInstance.current, 'resize')
+          } catch (_) { void _ }
+        }
+        setMapReady(true)
+      } catch {
+        setMapReady(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loading, uid])
+
+  // GPS en vivo: punto azul que sigue al ejecutivo
+  useEffect(() => {
+    const stop = watchPosition(pos => {
+      // Solo fijar punto si hay coords reales (no lecturas coarse pendientes)
+      if (pos?.lat != null && pos?.lng != null && !pos.pending) {
+        setMyPos(pos)
+      } else if (pos?.pending || pos?.error === 'coarse') {
+        // Mantener null coords pero guardar accuracy para el chip
+        setMyPos(prev => prev?.lat != null ? prev : { lat: null, lng: null, accuracy: pos.accuracy, pending: true })
+      }
+    }, { enableHighAccuracy: true, acceptAccM: 250, hardRejectM: 2500, minMoveM: 8 })
+    return () => { try { stop() } catch { /* ignorado a propósito */ void 0 } }
+  }, [])
+
+  // Actualizar marcador "yo" sin tocar fitBounds de la ruta
+  useEffect(() => {
+    if (!mapReady || !mapInstance.current || !window.google?.maps || !myPos?.lat) return
+    const maps = window.google.maps
+    const pos = { lat: Number(myPos.lat), lng: Number(myPos.lng) }
+    if (isNaN(pos.lat) || isNaN(pos.lng)) return
+    // Dibujar siempre si hay coords (aunque accuracy sea media); el círculo refleja la precisión
+    if (!meMarkerRef.current) {
+      meMarkerRef.current = new maps.Marker({
+        position: pos,
+        map: mapInstance.current,
+        zIndex: 9999,
+        title: 'Tu ubicación',
+        icon: {
+          path: maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: 'var(--info)',
+          fillOpacity: 1,
+          strokeColor: 'var(--white)',
+          strokeWeight: 4,
+        },
+      })
+      meAccRef.current = new maps.Circle({
+        map: mapInstance.current,
+        center: pos,
+        radius: Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200),
+        fillColor: 'var(--info-mid)',
+        fillOpacity: 0.18,
+        strokeColor: 'var(--info)',
+        strokeOpacity: 0.5,
+        strokeWeight: 2,
+        zIndex: 9998,
+      })
+    } else {
+      meMarkerRef.current.setPosition(pos)
+      meMarkerRef.current.setMap(mapInstance.current)
+      if (meAccRef.current) {
+        meAccRef.current.setCenter(pos)
+        meAccRef.current.setMap(mapInstance.current)
+        meAccRef.current.setRadius(Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200))
+      }
+    }
+    // Prioridad: centrar en el vendedor (zoom local para ver clientes/prospectos cerca)
+    // Siempre gana el GPS la primera vez que llega con coords reales
+    if (mapInstance.current && !userCentered.current) {
+      userCentered.current = true
+      try {
+        mapInstance.current.panTo(pos)
+        mapInstance.current.setZoom(16)
+      } catch (_) { void _ }
+    }
+  }, [mapReady, myPos])
+
+  // Auto-GPS al abrir mapa: no esperar a que el usuario toque el FAB
+  useEffect(() => {
+    if (!mapReady || autoGpsOnce.current) return
+    autoGpsOnce.current = true
+    ;(async () => {
+      try {
+        const pos = await getPositionPrecise({ targetAccM: 120, maxWaitMs: 12000 })
+        if (pos?.lat != null && pos?.lng != null) {
+          setMyPos({ ...pos, pending: false })
+          if (mapInstance.current) {
+            userCentered.current = true
+            mapInstance.current.panTo({ lat: Number(pos.lat), lng: Number(pos.lng) })
+            mapInstance.current.setZoom(16)
+          }
+        }
+      } catch (_) { void _ }
+    })()
+  }, [mapReady])
+
+  // Markers: siempre redibuja cuando hay mapa + visible
+  useEffect(() => {
+    if (!mapReady || !mapInstance.current || !window.google?.maps) return
+    const maps = window.google.maps
+
+    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current = []
+
+    if (!visible.length) return
+
+    const bounds = new maps.LatLngBounds()
+    visible.forEach(item => {
+      const pos = { lat: Number(item.lat), lng: Number(item.lng) }
+      bounds.extend(pos)
+      const isRuta = item._tipo === 'ruta'
+      const marker = new maps.Marker({
+        position: pos,
+        map: mapInstance.current,
+        icon: {
+          url: pinSvg(pinColor(item), isRuta ? item._label : null),
+          scaledSize: new maps.Size(isRuta ? 28 : 20, isRuta ? 36 : 26),
+          anchor: new maps.Point(isRuta ? 14 : 10, isRuta ? 36 : 26),
+        },
+        zIndex: isRuta ? 120 : item._tipo === 'cliente' ? 50 : 20,
+        title: item.nombre_cliente || '',
+        optimized: false,
+      })
+      marker.addListener('click', () => {
+        try {
+          setSelected({
+            ...item,
+            lat: Number(item.lat),
+            lng: Number(item.lng),
+            nombre_cliente: item.nombre_cliente || item.nombre_local || item.nombre || 'Sin nombre',
+            oferta_real: item.oferta_real || item.oferta || null,
+            productos_top: item.productos_top || null,
+          })
+        } catch (err) {
+          console.error('pin click', err)
+          tip('No se pudo abrir este pin')
+        }
+      })
+      markersRef.current.push(marker)
+    })
+
+    // Polyline del itinerario (paradas de ruta ordenadas)
+    if (polyRef.current) {
+      try { polyRef.current.setMap(null) } catch (_) { void _ }
+      polyRef.current = null
+    }
+    const rutaPts = (visitas || [])
+      .filter(v => v.lat != null && v.lng != null)
+      .slice()
+      .sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0))
+      .map(v => ({ lat: Number(v.lat), lng: Number(v.lng) }))
+    if (rutaPts.length >= 2) {
+      const path = myPos?.lat != null
+        ? [{ lat: Number(myPos.lat), lng: Number(myPos.lng) }, ...rutaPts]
+        : rutaPts
+      polyRef.current = new maps.Polyline({
+        path,
+        geodesic: true,
+        strokeColor: 'var(--brand)',
+        strokeOpacity: 0.85,
+        strokeWeight: 3,
+        map: mapInstance.current,
+        zIndex: 40,
+      })
+    }
+
+    // fitBounds SOLO si todavía no hay GPS del vendedor (evita mapa "lejos")
+    // Si ya hay GPS, el centro queda en el vendedor (zoom 15) y no se abre al bounds total
+    const fitKey = fecha + '|' + uid
+    if (!userCentered.current && fittedFecha.current !== fitKey && visible.length) {
+      fittedFecha.current = fitKey
+      try {
+        maps.event.trigger(mapInstance.current, 'resize')
+        mapInstance.current.fitBounds(bounds, {
+          top: 48, right: 40, bottom: 80, left: 40,
+        })
+        const z = mapInstance.current.getZoom()
+        if (typeof z === 'number') {
+          if (z > 14) mapInstance.current.setZoom(14)
+          if (z < 12) mapInstance.current.setZoom(12)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [mapReady, visible, fecha, uid, visitas, myPos?.lat, myPos?.lng])
+
+  /** Recarga SOLO visitas + actualiza los pines de ruta en territorio (1 query liviana) */
+  const recargarVisitas = useCallback(async (rutaId) => {
+    const rid = rutaId || ruta?.id
+    if (!rid) return
+    const rV = await safeSelect(
+      supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
+      { label: 'visitas_ruta' }
+    )
+    const vis = rV.rows
+    setVisitas(vis)
+
+    // Actualizar solo los items tipo "ruta" en territorio sin tocar clientes/prospectos
+    const enRutaKeys = new Set(vis.map(x => String(x.punto_id_bq || x.cliente_key || '')).filter(Boolean))
+    setTerritorio(prev => {
+      // Quitar ruta items viejos, agregar los nuevos
+      const sinRuta = prev.filter(t => t._tipo !== 'ruta')
+      const nuevosRuta = vis
+        .filter(x => x.lat != null && x.lng != null && inSantiago(x.lat, x.lng))
+        .map(x => ({
+          ...x,
+          _tipo: 'ruta',
+          _id: 'r_' + x.id,
+          _label: String(x.orden),
+          nombre_cliente: x.nombre_local || x.nombre_cliente,
+          _enRuta: true,
+        }))
+      // Marcar clientes que ya están en ruta para no duplicar pines
+      const filtrado = sinRuta.filter(t => {
+        const key = String(t.cliente_key || '')
+        return !key || !enRutaKeys.has(key)
+      })
+      return [...nuevosRuta, ...filtrado]
+    })
+  }, [ruta?.id])
+
+  async function ensureRuta() {
+    if (ruta?.id) return ruta.id
+    // 1) Intentar con el ejecutivo de la zona vista (eidVista)
+    let { data: nr, error } = await supabase
+      .from('rutas')
+      .insert({ ejecutivo_id: uid, fecha, estado: 'pendiente' })
+      .select()
+      .maybeSingle()
+
+    // 2) Si RLS bloquea (superadmin viendo otra zona), crear bajo el usuario logueado
+    if ((error || !nr) && session?.user?.id && session.user.id !== uid) {
+      const r2 = await supabase
+        .from('rutas')
+        .insert({ ejecutivo_id: session.user.id, fecha, estado: 'pendiente' })
+        .select()
+        .maybeSingle()
+      if (!r2.error && r2.data) {
+        nr = r2.data
+        error = null
+        tip('Ruta bajo tu usuario (la zona no permite crear por RLS)')
+      } else {
+        error = r2.error || error
+      }
+    }
+
+    if (error || !nr) {
+      const detail = error?.message || error?.code || 'sin detalle'
+      console.warn('ensureRuta', error)
+      tip('No se pudo crear la ruta: ' + String(detail).slice(0, 80))
+      return null
+    }
+    setRuta(nr)
+    return nr.id
+  }
+
+  async function agregarARuta(item) {
+    if (busy) return
+    setBusy(true)
+    try {
+      const rid = await ensureRuta()
+      if (!rid) return
+      const maxOrden = visitas.reduce((m, v) => Math.max(m, Number(v.orden) || 0), 0)
+      const { error } = await supabase.from('visitas').insert({
+        ruta_id: rid,
+        orden: maxOrden + 1,
+        punto_id_bq: item.cliente_key || String(item.id),
+        nombre_local: item.nombre_cliente || item.nombre_local || 'Parada',
+        direccion: item.direccion || item.comuna,
+        comuna: item.comuna,
+        lat: item.lat,
+        lng: item.lng,
+        segmento: item._tipo === 'prospecto' ? 'PROSPECTO' : limpiaEstado(item.estado_fuga),
+        oferta: limpiaOferta(item.oferta_real || item.oferta || item.productos_top),
+        potencial: Number(item.venta_mensual || item.potencial) || 0,
+        estado: 'pendiente',
+      })
+      if (error) {
+        console.warn('agregar visita', error)
+        tip('Error al agregar: ' + String(error.message || error.code || '').slice(0, 70))
+        return
+      }
+      tip('Sumado a la ruta')
+      setSelected(null)
+      setListaOpen(true)
+      await recargarVisitas(rid)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function quitarDeRuta(visitaId) {
+    if (busy) return
+    setBusy(true)
+    try {
+      await supabase.from('visitas').delete().eq('id', visitaId)
+      tip('Quitado de la ruta')
+      setSelected(null)
+      await recargarVisitas()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+
+  const searchHits = useMemo(() => {
+    const q = mapQ.trim().toLowerCase()
+    if (!q || q.length < 2) return []
+    return territorio
+      .filter(item => {
+        const nom = String(item.nombre_cliente || item.nombre_local || '').toLowerCase()
+        const com = String(item.comuna || '').toLowerCase()
+        const dir = String(item.direccion || '').toLowerCase()
+        const key = String(item.cliente_key || item.punto_id_bq || '').toLowerCase()
+        return nom.includes(q) || com.includes(q) || dir.includes(q) || key.includes(q)
+      })
+      .slice(0, 15)
+  }, [mapQ, territorio])
+
+  function irABusqueda(item) {
+    setMapQ('')
+    setSelected(item)
+    if (mapInstance.current && item.lat != null && item.lng != null && window.google?.maps) {
+      mapInstance.current.panTo({ lat: Number(item.lat), lng: Number(item.lng) })
+      mapInstance.current.setZoom(16)
+    }
+  }
+
+    function toggleFiltro(id) {
+    setActivos(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  }
+
+  const linkNavegar =
+    visitas.filter(v => v.lat != null && v.lng != null).length >= 1
+      ? 'https://www.google.com/maps/dir/' +
+        visitas
+          .filter(v => v.lat != null)
+          .map(v => `${v.lat},${v.lng}`)
+          .join('/')
+      : null
+
+  return (
+    <div className="bs-page" style={{ paddingBottom: 72 }}>
+      {loadError && (
+        <div
+          style={{
+            margin: '12px 16px',
+            padding: 12,
+            background: 'var(--warn-lt3)',
+            border: '1px solid #fcd34d',
+            borderRadius: 12,
+            fontSize: 13,
+            color: 'var(--warn-dk)',
+          }}
+        >
+          {loadError}
+        </div>
+      )}
+      <div
+        style={{
+          background: 'linear-gradient(145deg, #1c1917 0%, #292524 70%, #44403c 100%)',
+          color: '#fff',
+          padding: '24px 18px 26px',
+          borderRadius: '0 0 22px 22px',
+          boxShadow: '0 8px 24px rgba(28,25,23,0.25)',
+          borderBottom: '3px solid #c2410c',
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--warn-lt5)',
+            marginBottom: 6,
+          }}
+        >
+          {saludoHora()}
+        </div>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.3px' }}>
+          Tu ruta de hoy
+        </h1>
+        <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+          {loading
+            ? 'Cargando territorio…'
+            : `${visitas.length} paradas · ${territorio.filter(x => x._tipo === 'cliente').length} clientes · ${territorio.filter(x => x._tipo === 'prospecto').length} prospectos`}
+        </p>
+      </div>
+      {!loading && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: 10,
+            padding: '14px 16px 0',
+          }}
+        >
+          {[
+            { val: visitas.length, lbl: 'Paradas' },
+            { val: territorio.filter(x => x._tipo === 'cliente').length, lbl: 'Clientes' },
+            { val: territorio.filter(x => x._tipo === 'prospecto').length, lbl: 'Prospectos' },
+          ].map(m => (
+            <div
+              key={m.lbl}
+              style={{
+                background: '#fff',
+                borderRadius: 16,
+                padding: '14px 8px',
+                textAlign: 'center',
+                boxShadow: '0 2px 10px rgba(15,23,42,0.06)',
+              }}
+            >
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)', lineHeight: 1.1 }}>
+                {m.val}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: 'var(--info-mid4)',
+                  marginTop: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                }}
+              >
+                {m.lbl}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && (
+        <div style={{ padding: '14px 16px 0' }}>
+          <MisPedidosHoy ejecutivoId={uid} onOpenPedido={(p) => setPedidoCliente({ cliente_key: p.cliente_key, nombre_cliente: p.nombre_cliente, _pedido: p })} />
+        </div>
+      )}
+
+      {/* Cerca de mí — estilo Spotio / oportunidades por distancia */}
+      {!loading && (
+        <div style={{ padding: '14px 16px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--navy)' }}>Cerca de mí</div>
+              <div style={{ fontSize: 12, color: 'var(--info-mid3)' }}>
+                {myPos?.lat
+                  ? `Cerca de ti · ≤${radioKm} km · ${cercanos.length} puntos`
+                  : 'Activá GPS para ordenar por cercanía'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={forzarGps}
+              disabled={gpsBusy}
+              style={{
+                border: '1.5px solid #e2e8f0', borderRadius: 999, padding: '8px 12px',
+                background: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {gpsBusy ? '…' : '📍 GPS'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            {[1, 3, 5].map(k => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setRadioKm(k)}
+                style={{
+                  borderRadius: 999, padding: '8px 14px', fontWeight: 800, fontSize: 13,
+                  border: radioKm === k ? 'none' : '1.5px solid #e2e8f0',
+                  background: radioKm === k ? 'var(--brand)' : '#fff',
+                  color: radioKm === k ? '#fff' : 'var(--info-mid2)',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {k} km
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflow: 'auto' }}>
+            {myPos?.lat && cercanos.length === 0 && (
+              <div style={{ padding: 14, background: 'var(--info-mid8)', borderRadius: 14, fontSize: 13, color: 'var(--info-mid3)' }}>
+                No hay clientes/prospectos con geo en este radio. Subí el radio o revisá coordenadas.
+              </div>
+            )}
+            {cercanos.map((item, i) => {
+              const dist =
+                item._distM < 1000
+                  ? `${Math.round(item._distM)} m`
+                  : `${(item._distM / 1000).toFixed(1)} km`
+              const esPros = item._tipo === 'prospecto'
+              return (
+                <button
+                  key={(item.cliente_key || item.place_id || item.id || i) + dist}
+                  type="button"
+                  onClick={() => setSelected(item)}
+                  style={{
+                    textAlign: 'left', border: '1px solid #e2e8f0', borderRadius: 14,
+                    padding: '12px 14px', background: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--navy)' }}>
+                      {item.nombre_cliente || item.nombre || '—'}
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--brand)', whiteSpace: 'nowrap' }}>
+                      {dist}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--info-mid3)', marginTop: 4 }}>
+                    {esPros ? 'Prospecto' : (item.comuna || 'Cliente')}
+                    {item.oferta_real || item.oferta ? ` · ${String(item.oferta_real || item.oferta).slice(0, 60)}` : ''}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Selector de día — desplegable */}
+      <div style={{ padding: '12px 16px 0' }}>
+        <label
+          style={{
+            display: 'block',
+            fontSize: 10,
+            fontWeight: 700,
+            color: 'var(--info-mid3)',
+            letterSpacing: '.04em',
+            marginBottom: 4,
+          }}
+        >
+          DÍA DE LA RUTA
+        </label>
+        <select
+          value={fecha}
+          onChange={e => setFecha(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '12px 14px',
+            borderRadius: 12,
+            border: '1.5px solid #e2e8f0',
+            fontFamily: 'var(--font)',
+            fontSize: 15,
+            fontWeight: 700,
+            background: '#fff',
+            color: 'var(--navy)',
+            appearance: 'auto',
+          }}
+        >
+          {FECHAS.map(f => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+
+
+      {/* Chips */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          padding: '12px 16px',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {FILTROS.map(f => {
+          const on = activos.has(f.id)
+          const n = counts[f.id] || 0
+          return (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => toggleFiltro(f.id)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 999,
+                border: on ? `2px solid ${f.color}` : '1.5px solid #e2e8f0',
+                background: on ? f.color : '#fff',
+                color: on ? '#fff' : 'var(--info-mid3)',
+                fontFamily: 'var(--font)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                boxShadow: on ? `0 2px 8px ${f.color}40` : 'none',
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: on ? '#fff' : f.color,
+                }}
+              />
+              {f.label}
+              <span
+                style={{
+                  background: on ? 'rgba(255,255,255,.22)' : 'var(--info-mid7)',
+                  borderRadius: 999,
+                  padding: '1px 7px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                {n}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Buscador mapa */}
+      <div style={{ padding: '8px 16px 10px', position: 'relative', zIndex: 20 }}>
+        <input
+          value={mapQ}
+          onChange={e => setMapQ(e.target.value)}
+          placeholder="Buscar cliente, comuna o dirección…"
+          className="search"
+          style={{ marginBottom: 0 }}
+        />
+        {searchHits.length > 0 && (
+          <div style={{
+            position: 'absolute', left: 16, right: 16, top: '100%', marginTop: 4, zIndex: 50,
+            background: '#fff', borderRadius: 14, border: '1px solid #e7e5e4',
+            boxShadow: '0 12px 32px rgba(0,0,0,.12)', maxHeight: 240, overflow: 'auto',
+          }}>
+            {searchHits.map(item => (
+              <button
+                key={String(item._id || item.cliente_key || item.id)}
+                type="button"
+                onClick={() => irABusqueda(item)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '12px 14px',
+                  border: 'none', borderBottom: '1px solid #f5f5f4',
+                  background: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  {item.nombre_cliente || item.nombre_local || '—'}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                  {item._tipo === 'prospecto' ? 'Prospecto' : item._tipo === 'ruta' ? 'En ruta' : 'Cliente'}
+                  {item.comuna ? ` · ${item.comuna}` : ''}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Mapa — altura generosa + FAB centrar en mí (estilo Spotio / Badger) */}
+      <div style={{ padding: '0 16px', position: 'relative' }}>
+        <div
+          ref={mapRef}
+          className="map-box"
+          style={{ height: 360, marginBottom: 0, background: 'var(--info-mid6)', borderRadius: 16 }}
+        />
+        <button
+          type="button"
+          onClick={forzarGps}
+          disabled={gpsBusy}
+          title="Centrar en mi ubicación"
+          style={{
+            position: 'absolute',
+            right: 28,
+            bottom: 16,
+            zIndex: 5,
+            width: 48,
+            height: 48,
+            borderRadius: 14,
+            border: 'none',
+            background: myPos?.lat ? 'var(--info)' : 'var(--brand)',
+            color: '#fff',
+            fontSize: 20,
+            fontWeight: 800,
+            boxShadow: '0 8px 24px rgba(15,23,42,.25)',
+            cursor: gpsBusy ? 'wait' : 'pointer',
+            display: 'grid',
+            placeItems: 'center',
+          }}
+        >
+          {gpsBusy ? '…' : '📍'}
+        </button>
+      </div>
+
+      {/* Listado de la ruta del día — siempre visible */}
+      <div style={{ padding: '12px 16px 24px' }}>
+        {/* DÓNDE IR AHORA · antes del itinerario.
+            El itinerario es lo que YA se decidió; esto es lo que
+            conviene decidir. Va primero porque es la pregunta que el
+            vendedor tiene a las 8 de la mañana. */}
+        {recomendadas.length > 0 && (
+          <section className="bs-donde-ir">
+            <h3 className="bs-donde-ir-title">
+              {tituloDondeIr({}, !myPos?.lat)}
+            </h3>
+            <div className="bs-donde-ir-lista">
+              {recomendadas.map((op) => (
+                <Oportunidad
+                  key={op.cliente_key || op.id || op.nombre_cliente}
+                  item={op}
+                  onAccion={() => nav(`/visita/${encodeURIComponent(op.cliente_key || op.id)}`)}
+                  onVerCliente={() => nav(`/visita/${encodeURIComponent(op.cliente_key || op.id)}`)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setListaOpen(o => !o)}
+          style={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 14px',
+            borderRadius: 12,
+            border: '1.5px solid #e2e8f0',
+            background: '#fff',
+            fontFamily: 'var(--font)',
+            fontWeight: 800,
+            fontSize: 14,
+            cursor: 'pointer',
+            marginBottom: listaOpen ? 8 : 0,
+          }}
+        >
+          <span>Itinerario del día ({visitas.length})</span>
+          <span style={{ color: 'var(--info-mid3)' }}>{listaOpen ? '▾' : '▸'}</span>
+        </button>
+        {listaOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={armarRutaDelDia}
+              disabled={busy}
+              style={{
+                width: '100%', padding: '12px 14px',
+                borderRadius: 12, border: 'none',
+                background: 'linear-gradient(135deg, #c2410c 0%, #9a3412 100%)',
+                color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
+                cursor: busy ? 'wait' : 'pointer',
+                boxShadow: '0 2px 8px rgba(194,65,12,0.25)',
+              }}
+            >
+              {busy ? 'Armando…' : '🎯 Armar ruta del día (prioridades + cerca)'}
+            </button>
+            {visitas.length >= 2 && (
+              <button
+                type="button"
+                onClick={optimizarOrdenRuta}
+                disabled={busy}
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  borderRadius: 10, border: '1.5px solid #c2410c', background: 'var(--brand-lt2)',
+                  color: 'var(--brand-dk)', fontWeight: 800, fontSize: 13, fontFamily: 'inherit',
+                  cursor: busy ? 'wait' : 'pointer',
+                }}
+              >
+                ⚡ Optimizar orden (distancia + reponer/riesgo)
+              </button>
+            )}
+            {rutaStats && visitas.length > 0 && (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', gap: 8,
+                background: 'var(--bg-raised)', borderRadius: 10, padding: '10px 12px',
+                border: '1px solid #e7e5e4', fontSize: 12, fontWeight: 700,
+              }}>
+                <span>{rutaStats.stops} paradas</span>
+                <span style={{ color: 'var(--brand)' }}>{rutaStats.km} km</span>
+                <span style={{ color: 'var(--teal)' }}>~{rutaStats.etaMin} min</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {listaOpen && (
+          <div>
+            {!visitas.length && (
+              <div style={{ padding: '14px 16px', background: 'var(--bg-raised)', borderRadius: 12, margin: '8px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>Sin paradas en el itinerario</div>
+                <div style={{ fontSize: 12, color: 'var(--muted-2)', marginTop: 4 }}>
+                  Tocá <b style={{ color: 'var(--brand)' }}>Armar ruta del día</b> o añadí un pin desde el mapa.
+                </div>
+              </div>
+            )}
+            {visitas.map(v => (
+              <div
+                key={v.id}
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'center',
+                  background: '#fff',
+                  border: '1px solid #e7e0d8',
+                  borderRadius: 14,
+                  padding: '12px 12px',
+                  marginBottom: 8,
+                  boxShadow: '0 1px 3px rgba(28,25,23,0.05)',
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    background: 'var(--ink)',
+                    color: '#fff',
+                    fontWeight: 800,
+                    fontSize: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {v.orden}
+                </div>
+                <div
+                  style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                  onClick={() => nav(`/visita/${v.id}`)}
+                >
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: 'var(--ink)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {v.nombre_local}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
+                    {v.comuna || v.direccion || '—'}
+                  </div>
+                  {v.oferta && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--brand-dk)',
+                        marginTop: 4,
+                        background: 'var(--brand-lt2)',
+                        borderRadius: 8,
+                        padding: '4px 8px',
+                        display: 'inline-block',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Ofrecé: {limpiaOferta(v.oferta).slice(0, 42)}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => quitarDeRuta(v.id)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    border: '1.5px solid #fecaca',
+                    background: 'var(--danger-lt)',
+                    color: 'var(--danger)',
+                    fontWeight: 800,
+                    fontSize: 18,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                  aria-label="Quitar"
+                >
+                  −
+                </button>
+              </div>
+            ))}
+            {linkNavegar && visitas.length >= 1 && (
+              <a href={linkNavegar} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                <button type="button" className="btn btn-primary" style={{ marginTop: 8 }}>
+                  Navegar recorrido
+                </button>
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Popup pin centrado */}
+      {selected && (
+        <div
+          onClick={() => setSelected(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.55)',
+            zIndex: 300,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 400,
+              background: '#fff',
+              borderRadius: 20,
+              padding: 18,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--ink)', lineHeight: 1.25 }}>
+                  {selected.nombre_cliente || selected.nombre_local || 'Sin nombre'}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>
+                  {selected._tipo === 'ruta'
+                    ? `Parada #${selected.orden}`
+                    : selected._tipo === 'prospecto'
+                      ? 'Prospecto'
+                      : limpiaEstado(selected.estado_fuga)}
+                  {selected.comuna ? ` · ${selected.comuna}` : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                style={{
+                  width: 36, height: 36, borderRadius: 10, border: 'none',
+                  background: 'var(--line)', color: 'var(--ink-4)', fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {(Number(selected.venta_mtd) > 0 || Number(selected.venta_mensual) > 0) && (
+              <div style={{ marginTop: 12, fontSize: 14, fontWeight: 700, color: 'var(--brand)' }}>
+                {Number(selected.venta_mtd) > 0
+                  ? `${money(selected.venta_mtd)} este mes`
+                  : `${money(selected.venta_mensual)} /mes prom.`}
+              </div>
+            )}
+
+            {(selected.telefono || selected.link_whatsapp) && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                {selected.telefono && (
+                  <a href={`tel:${selected.telefono}`} style={{
+                    flex: 1, textAlign: 'center', padding: '10px', borderRadius: 12,
+                    background: 'var(--ink)', color: '#fff', fontWeight: 700, fontSize: 13, textDecoration: 'none',
+                  }}>Llamar</a>
+                )}
+                {selected.link_whatsapp && (
+                  <a href={selected.link_whatsapp} target="_blank" rel="noreferrer" style={{
+                    flex: 1, textAlign: 'center', padding: '10px', borderRadius: 12,
+                    background: 'var(--ok-lt3)', color: 'var(--ok-dk)', fontWeight: 700, fontSize: 13, textDecoration: 'none',
+                  }}>WhatsApp</a>
+                )}
+              </div>
+            )}
+
+            {selected.oferta_real && (
+              <div style={{
+                marginTop: 12, padding: '10px 12px', borderRadius: 12,
+                background: 'var(--brand-lt2)', borderLeft: '3px solid #c2410c', fontSize: 13, color: 'var(--brand-dk)',
+              }}>
+                <b>Ofrecé:</b> {limpiaOferta(selected.oferta_real)}
+              </div>
+            )}
+            {selected.productos_top && (
+              <div style={{
+                marginTop: 8, padding: '10px 12px', borderRadius: 12,
+                background: 'var(--info-mid8)', borderLeft: '3px solid #64748b', fontSize: 13, color: 'var(--info-mid2)',
+              }}>
+                <b>Compraba:</b> {limpiaOferta(selected.productos_top)}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button type="button" onClick={() => setNotaFromMap(selected)} style={{
+                flex: 1, padding: '11px', borderRadius: 12, border: '1.5px solid #e7e5e4',
+                background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+              }}>Nota</button>
+              {selected._tipo !== 'prospecto' && (
+                <button type="button" onClick={() => setPedidoFromMap(selected)} style={{
+                  flex: 1, padding: '11px', borderRadius: 12, border: 'none',
+                  background: 'var(--brand)', color: '#fff', fontWeight: 800, fontSize: 13,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>Pedido</button>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <a
+                href={selected.lat != null && selected.lng != null && !isNaN(Number(selected.lat))
+                  ? `https://www.google.com/maps/dir/?api=1&destination=${Number(selected.lat)},${Number(selected.lng)}`
+                  : '#'}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  flex: 1, textAlign: 'center', padding: '12px', borderRadius: 12,
+                  background: 'var(--line)', color: 'var(--ink)', fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                }}
+              >
+                Navegar
+              </a>
+              {selected._tipo === 'ruta' ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => quitarDeRuta(selected.id)}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #fecaca',
+                    background: 'var(--danger-lt)', color: 'var(--danger)', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                  }}
+                >
+                  − Quitar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => agregarARuta(selected)}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12, border: 'none',
+                    background: 'var(--brand)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                  }}
+                >
+                  + A la ruta
+                </button>
+              )}
+            </div>
+            {(selected._tipo === 'ruta' || selected._tipo === 'cliente' || selected._tipo === 'prospecto') && (
+              <button
+                type="button"
+                onClick={() => {
+                  const key =
+                    selected._tipo === 'ruta'
+                      ? selected.id
+                      : selected.cliente_key || selected._id || selected.id
+                  if (!key) return
+                  const clean = String(key).replace(/^c_|^p_/, '')
+                  nav(`/visita/${encodeURIComponent(clean)}`, {
+                    state: {
+                      fromHoy: true,
+                      cliente_key: selected.cliente_key || clean,
+                      nombre_cliente: selected.nombre_cliente || selected.nombre_local || selected.title,
+                      comuna: selected.comuna,
+                      telefono: selected.telefono,
+                      link_whatsapp: selected.link_whatsapp,
+                      oferta_real: selected.oferta_real || selected.oferta,
+                      direccion: selected.direccion,
+                      lat: selected.lat,
+                      lng: selected.lng,
+                      venta_mtd: selected.venta_mtd,
+                      venta_mensual: selected.venta_mensual,
+                      estado_fuga: selected.estado_fuga,
+                    },
+                  })
+                }}
+                style={{
+                  width: '100%', marginTop: 10, padding: '12px', borderRadius: 12,
+                  border: 'none', background: 'var(--ink)', color: '#fff',
+                  fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                }}
+              >
+                Abrir visita →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+{(pedidoFromMap || pedidoCliente) && (
+        <PedidoSheet
+          initialPedido={pedidoCliente?._pedido || null}
+          cliente={pedidoCliente || pedidoFromMap}
+          aReponer={[]}
+          ejecutivoId={uid}
+          ejecutivoNombre={eje?.nombre || eje?.zonaVista}
+          onClose={() => { setPedidoFromMap(null); setPedidoCliente(null) }}
+        />
+      )}
+      {notaFromMap && (
+        <NotaRapidaMap cliente={notaFromMap} session={session} onClose={() => setNotaFromMap(null)} />
+      )}
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 80,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--navy)',
+            color: '#fff',
+            padding: '10px 16px',
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 600,
+            zIndex: 200,
+          }}
+        >
+          {toast}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NotaRapidaMap({ cliente, session, onClose }) {
+  const [texto, setTexto] = useState('')
+  const [tipo, setTipo] = useState('otro')
+  const [busy, setBusy] = useState(false)
+  const [ok, setOk] = useState(false)
+  const tipos = [
+    { v: 'sin_stock', l: 'Sin stock' },
+    { v: 'volver', l: 'Volver' },
+    { v: 'no_interesado', l: 'No interesa' },
+    { v: 'pidio', l: 'Pidió' },
+    { v: 'otro', l: 'Otro' },
+  ]
+  async function guardar() {
+    setBusy(true)
+    await supabase.from('notas_cliente').insert({
+      ejecutivo_id: session.user.id,
+      cliente_key: cliente.cliente_key || cliente.punto_id_bq,
+      nombre_local: cliente.nombre_cliente || cliente.nombre_local,
+      tipo,
+      texto,
+    })
+    setBusy(false)
+    setOk(true)
+    setTimeout(onClose, 700)
+  }
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(26,22,20,0.5)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 480, background: '#fff', borderRadius: '20px 20px 0 0',
+        padding: '16px 16px 28px',
+      }}>
+        <div style={{ width: 40, height: 4, background: 'var(--line-3)', borderRadius: 4, margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--brand)' }}>NOTA</div>
+        <div style={{ fontWeight: 800, fontSize: 17, margin: '4px 0 12px' }}>
+          {cliente.nombre_cliente || cliente.nombre_local}
+        </div>
+        {ok ? <div style={{ color: 'var(--ok)', fontWeight: 700 }}>Guardada</div> : (
+          <>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+              {tipos.map(x => (
+                <button key={x.v} type="button" onClick={() => setTipo(x.v)} style={{
+                  padding: '7px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                  border: tipo === x.v ? 'none' : '1.5px solid #e7e5e4',
+                  background: tipo === x.v ? 'var(--ink)' : '#fff',
+                  color: tipo === x.v ? '#fff' : '#444', fontFamily: 'inherit',
+                }}>{x.l}</button>
+              ))}
+            </div>
+            <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={3}
+              placeholder="Escribe la nota…"
+              style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #e7e5e4', fontFamily: 'inherit', fontSize: 14, resize: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button type="button" onClick={onClose} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1.5px solid #e7e5e4', background: '#fff', fontWeight: 700, fontFamily: 'inherit' }}>Cancelar</button>
+              <button type="button" disabled={busy || !texto} onClick={guardar} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: texto ? 'var(--brand)' : 'var(--line-2)', color: '#fff', fontWeight: 800, fontFamily: 'inherit' }}>{busy ? '…' : 'Guardar'}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
