@@ -7,7 +7,8 @@ export async function createAction({ clienteId, tipo, prioridad = 'media', nota 
 
 export async function assignExecutive({ clienteId, ejecutivoId }) {
   if (!clienteId || !ejecutivoId) throw new Error('clienteId y ejecutivoId son obligatorios')
-  const { data, error } = await supabase.from('cartera').update({ ejecutivo_id: ejecutivoId }).eq('cliente_id', clienteId).select().single()
+  // cartera uses cliente_key as the stable customer identifier in the admin flow.
+  const { data, error } = await supabase.from('cartera').update({ ejecutivo_id: ejecutivoId }).eq('cliente_key', String(clienteId)).select().single()
   if (error) throw error
   return data
 }
