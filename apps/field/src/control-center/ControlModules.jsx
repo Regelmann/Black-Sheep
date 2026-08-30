@@ -1,13 +1,16 @@
+import { useMemo, useState } from 'react'
+
 const n = v => Number(v || 0)
 const money = v => n(v).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 const pick = (r, keys) => keys.map(k => r?.[k]).find(v => v != null)
 const text = v => v == null || v === '' ? '—' : String(v)
+const clientId = r => pick(r, ['cliente_id','cliente_key','id'])
 
-export function ControlModules({ section, ventas = [], clientes = [], ejecutivos = [], stock = [], opportunities = [], onClient }) {
+export function ControlModules({ section, ventas = [], clientes = [], ejecutivos = [], stock = [], opportunities = [], onClient, onBulkAssign }) {
   if (section === 'stock') return <StockModule rows={stock} />
   if (section === 'metas') return <GoalsModule rows={ventas} ejecutivos={ejecutivos} />
   if (section === 'alertas') return <AlertsModule clientes={clientes} onClient={onClient} />
-  if (section === 'focos') return <FocusModule opportunities={opportunities} onClient={onClient} />
+  if (section === 'focos') return <FocusModule opportunities={opportunities} onClient={onClient} onBulkAssign={onBulkAssign} ejecutivos={ejecutivos} />
   if (section === 'productos') return <ProductsModule rows={ventas} />
   if (section === 'ejecutivos') return <ChannelPeopleModule ejecutivos={ejecutivos} />
   return <ChannelPeopleModule ejecutivos={ejecutivos} />
@@ -44,9 +47,15 @@ function AlertsModule({ clientes, onClient }) {
   return <Panel title="Alertas accionables" meta={`${rows.length} detectadas`}><Table heads={['Cliente','Riesgo','Sin compra','Oportunidad']} rows={out} /></Panel>
 }
 
-function FocusModule({ opportunities, onClient }) {
-  const out = opportunities.map((r,i) => <button className="cc-row cc-click" key={r.id ?? i} onClick={() => onClient(r)}><span>{text(r.nombre)}</span><span>{money(r.oportunidad)}</span><span>{text(r.prioridad)}</span><span>{text(r.ejecutivo)}</span></button>)
-  return <Panel title="Focos comerciales" meta="priorizados por oportunidad"><Table heads={['Cliente','Oportunidad','Prioridad','Ejecutivo']} rows={out} /></Panel>
+function FocusModule({ opportunities, onClient, onBulkAssign, ejecutivos }) {
+  const [selected, setSelected] = useState(() => new Set())
+  const [assignee, setAssignee] = useState('')
+  const ids = useMemo(() => opportunities.map(clientId).filter(Boolean), [opportunities])
+  const toggle = id => setSelected(prev => { const next = new Set(prev); next.has(String(id)) ? next.delete(String(id)) : next.add(String(id)); return next })
+  const toggleAll = () => setSelected(prev => prev.size === ids.length ? new Set() : new Set(ids.map(String)))
+  const assign = async () => { if (!assignee || !selected.size || !onBulkAssign) return; await onBulkAssign([...selected], assignee); setSelected(new Set()) }
+  const out = opportunities.map((r,i) => { const id = clientId(r); return <div className="cc-row" key={id ?? i}><input type="checkbox" checked={id ? selected.has(String(id)) : false} disabled={!id} onChange={() => toggle(id)} aria-label={`Seleccionar ${text(r.nombre)}`} /><button className="cc-row cc-click" onClick={() => onClient(r)}><span>{text(r.nombre)}</span><span>{money(r.oportunidad)}</span><span>{text(r.prioridad)}</span><span>{text(r.ejecutivo)}</span></button></div> })
+  return <Panel title="Focos comerciales" meta={`${selected.size} seleccionados`}><div className="cc-bulkbar"><label><input type="checkbox" checked={ids.length > 0 && selected.size === ids.length} onChange={toggleAll} /> Seleccionar todos</label><select value={assignee} onChange={e => setAssignee(e.target.value)}><option value="">Asignar ejecutivo…</option>{ejecutivos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}</select><button disabled={!selected.size || !assignee} onClick={assign}>Reasignar seleccionados</button></div><div className="cc-table"><div className="cc-row cc-head"><span></span><span>Cliente</span><span>Oportunidad</span><span>Prioridad</span><span>Ejecutivo</span></div>{out.length ? out : <div className="cc-empty">Sin oportunidades.</div>}</div></Panel>
 }
 
 function ProductsModule({ rows }) {
