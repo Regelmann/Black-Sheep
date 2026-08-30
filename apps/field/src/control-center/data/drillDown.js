@@ -59,7 +59,6 @@ export const drillDownRepo = {
     return (data || []).filter(closedCatalogOrder)
   },
 
-  // UI aliases: keep the Control Center API explicit while reusing the canonical methods above.
   async ejecutivosPorTerritorio(canal, zona) {
     return this.hierarchy({ canal, zona })
   },
@@ -70,5 +69,12 @@ export const drillDownRepo = {
 
   async pedidosB2BCliente(clienteKey, limit = 100) {
     return this.catalogOrders({ clienteKey, limit })
+  },
+
+  async pedidosB2BExecutive(ejecutivoId, limit = 100) {
+    if (!ejecutivoId) return []
+    const clients = await this.clients({ ejecutivoId, limit: 3000 })
+    const orders = await Promise.all(clients.map(c => this.catalogOrders({ clienteKey: c.cliente_key, limit })))
+    return orders.flat().sort((a, b) => String(b.creado_en || '').localeCompare(String(a.creado_en || ''))).slice(0, limit)
   }
 }
