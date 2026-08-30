@@ -56,7 +56,7 @@ export async function handleNota(item) {
   return error ? { ok: false, error: error.message } : { ok: true }
 }
 
-export async function handlePedido(item) {
+async function handlePedidoWithClient(client, item) {
   const p = item.payload || {}
   if (!p || !Object.keys(p).length) {
     console.error('[sync:pedido] payload vacío — item corrupto, se descarta')
@@ -68,7 +68,7 @@ export async function handlePedido(item) {
   if (p.table && p.row) {
     const row = { ...p.row }
     if (opId && row.client_op_id == null) row.client_op_id = opId
-    const { data, error } = await supabase.from(p.table).insert(row).select('id')
+    const { data, error } = await client.from(p.table).insert(row).select('id')
     if (error && (error.code === '23505' || /duplicate key|already exists/i.test(String(error.message)))) {
       return { ok: true, yaExistia: true }
     }
@@ -93,7 +93,7 @@ export async function handlePedido(item) {
     0
   )
 
-  const { data, error } = await supabase.from('pedidos').insert(row).select('id')
+  const { data, error } = await client.from('pedidos').insert(row).select('id')
   if (error && (error.code === '23505' || /duplicate key|already exists/i.test(String(error.message)))) {
     return { ok: true, yaExistia: true }
   }
@@ -109,13 +109,23 @@ export async function handlePedido(item) {
       estado: row.estado,
       fuente: row.fuente,
     }
-    const r2 = await supabase.from('pedidos').insert(minimal).select('id')
+    const r2 = await client.from('pedidos').insert(minimal).select('id')
     if (r2.error) return { ok: false, error: r2.error.message }
     if (!r2.data || !r2.data.length) return { ok: false, error: 'fallback sin fila — sin confirmar' }
     return { ok: true, id: r2.data[0].id, degraded: true }
   }
   if (!data || !data.length) return { ok: false, error: 'el insert no devolvió fila — sin confirmar' }
   return { ok: true, id: data[0].id }
+}
+
+export function createSyncHandlers(client = supabase) {
+  return {
+    handlePedido: (item) => handlePedidoWithClient(client, item),
+  }
+}
+
+export async function handlePedido(item) {
+  return handlePedidoWithClient(supabase, item)
 }
 
 export async function handleNoVenta(item) {
