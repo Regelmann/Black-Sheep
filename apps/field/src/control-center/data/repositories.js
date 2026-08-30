@@ -68,6 +68,22 @@ export const catalogPerformanceRepo = {
       source: 'catalogo_publico',
     }
   },
+
+  async riskQueue(limit = 100) {
+    const { data, error } = await supabase.from('gerencia_clientes').select('*').order('dias_sin_comprar', { ascending: false }).limit(Math.max(limit * 4, 400))
+    if (error) throw error
+    return (data || []).filter(c => {
+      const risk = String(c.riesgo || '').toLowerCase()
+      const days = Number(c.dias_sin_comprar ?? c.diasSinComprar ?? 0)
+      const variation = Number(c.variacion ?? c.variacion_mtd ?? 0)
+      return risk === 'alto' || risk === 'crítico' || risk === 'critico' || days >= 30 || variation <= -0.2
+    }).sort((a, b) => {
+      const rank = x => ['crítico','critico','alto','medio','bajo'].indexOf(String(x.riesgo || '').toLowerCase())
+      const rr = rank(a) - rank(b)
+      if (rr) return rr
+      return Number(b.dias_sin_comprar ?? b.diasSinComprar ?? 0) - Number(a.dias_sin_comprar ?? a.diasSinComprar ?? 0)
+    }).slice(0, limit)
+  },
 }
 
 export const notasRepo = { async listar(limit = 300) { const { data, error } = await supabase.from('notas_cliente').select('*').limit(limit); return result(data, error) } }
