@@ -34,11 +34,24 @@ export const catalogPerformanceRepo = {
     ])
     if (ofertasError) throw ofertasError
     if (pedidosError) throw pedidosError
+
     const activeKeys = new Set((ofertas || []).filter(o => o.activo).map(o => String(o.cliente_key)))
-    const b2bOrders = (pedidos || []).filter(p => p.cliente_key && activeKeys.has(String(p.cliente_key)))
-    const totals = b2bOrders.reduce((a, p) => a + Number(p.total_estimado || 0), 0)
-    const clients = new Set(b2bOrders.map(p => String(p.cliente_key)))
-    return { activeCatalogs: activeKeys.size, orders: b2bOrders.length, orderingClients: clients.size, sales: totals, avgTicket: b2bOrders.length ? totals / b2bOrders.length : 0 }
+    const catalogOrders = (pedidos || []).filter(p => p.cliente_key && p.fuente === 'catalogo_publico' && activeKeys.has(String(p.cliente_key)))
+    const totals = catalogOrders.reduce((a, p) => a + Number(p.total_estimado || 0), 0)
+    const clients = new Set(catalogOrders.map(p => String(p.cliente_key)))
+    const completed = catalogOrders.filter(p => !['borrador', 'cancelado'].includes(String(p.estado || '').toLowerCase()))
+    const completedSales = completed.reduce((a, p) => a + Number(p.total_estimado || 0), 0)
+
+    return {
+      activeCatalogs: activeKeys.size,
+      orders: catalogOrders.length,
+      orderingClients: clients.size,
+      sales: completedSales,
+      avgTicket: completed.length ? completedSales / completed.length : 0,
+      pendingOrders: catalogOrders.filter(p => ['borrador', 'recibido'].includes(String(p.estado || '').toLowerCase())).length,
+      completedOrders: completed.length,
+      source: 'catalogo_publico',
+    }
   },
 }
 
