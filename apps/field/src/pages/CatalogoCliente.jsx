@@ -115,7 +115,16 @@ export default function CatalogoCliente() {
     })
   }, [items, q, catFilter])
 
-  const available = filtered.filter(i => i.stock_disponible !== false)
+  // Los productos sin stock SE MUESTRAN, marcados. `add()` ya impide
+  // agregarlos al carrito, así que filtrarlos acá sólo escondía
+  // información: el cliente no entendía por qué un producto que compra
+  // siempre había desaparecido del catálogo.
+  //
+  // Se ordenan al final de su sección para no estorbar.
+  const available = [
+    ...filtered.filter(i => i.stock_disponible !== false),
+    ...filtered.filter(i => i.stock_disponible === false),
+  ]
   const habituales = available.filter(i => i.es_habitual)
   const reposicion = available.filter(i => (i.es_reposicion || Number(i.cantidad_sugerida) > 0) && !i.es_habitual)
   const ofertas = available.filter(i => i.es_oferta && !i.es_habitual && !(i.es_reposicion || Number(i.cantidad_sugerida) > 0))

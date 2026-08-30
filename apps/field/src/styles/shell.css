@@ -1151,3 +1151,56 @@ html, body {
       var(--surface-2, #f0ece6);
   }
 }
+
+/* --- Admin · Prospectos ---------------------------------------- */
+.bs-adm-pros-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+.bs-adm-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 11px 8px; min-height: 62px;
+  border: 1.5px solid var(--line, #ebe5dc); border-radius: 13px;
+  background: #fff; font-family: inherit; cursor: pointer;
+}
+.bs-adm-stat strong { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bs-adm-stat span { font-size: 11px; color: var(--ink-3,#78716c); text-align: center; }
+.bs-adm-stat.is-on { border-color: var(--ink,#1c1917); background: var(--ink,#1c1917); }
+.bs-adm-stat.is-on strong, .bs-adm-stat.is-on span { color: #fff; }
+.bs-adm-stat.is-alert:not(.is-on) strong { color: var(--danger,#ef4444); }
+
+.bs-adm-aviso {
+  margin: 0 0 12px; padding: 11px 13px; border-radius: 12px;
+  background: var(--warn-lt6,#fff7ed); border: 1px solid var(--warn-lt5,#fdba74);
+  color: var(--warn-dk2,#b45309); font-size: 12.5px; line-height: 1.45;
+}
+.bs-adm-buscar {
+  width: 100%; min-height: 46px; padding: 0 14px; margin-bottom: 12px;
+  border: 1.5px solid var(--line-2,#d6cfc4); border-radius: 12px;
+  font-family: inherit; font-size: 16px; box-sizing: border-box;
+}
+.bs-adm-pros-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.bs-adm-pros-row {
+  padding: 12px; border: 1px solid var(--line,#ebe5dc); border-radius: 13px; background: #fff;
+}
+.bs-adm-pros-row.is-alert { border-color: var(--danger-lt3,#fecaca); background: var(--danger-lt,#fef2f2); }
+.bs-adm-pros-info { min-width: 0; margin-bottom: 9px; }
+.bs-adm-pros-info strong { display: block; font-size: 14px; font-weight: 700; }
+.bs-adm-pros-meta { display: block; font-size: 12px; color: var(--ink-3,#78716c); margin-top: 1px; }
+.bs-adm-pros-conflicto {
+  display: block; margin-top: 5px; font-size: 11.5px;
+  color: var(--danger-dk,#b91c1c); line-height: 1.4;
+}
+.bs-adm-pros-acciones { display: flex; gap: 8px; align-items: center; }
+.bs-adm-select {
+  flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 10px;
+  border: 1.5px solid var(--line-2,#d6cfc4); border-radius: 11px;
+  background: #fff; font-family: inherit; font-size: 13.5px;
+}
+.bs-adm-fix {
+  flex: 0 0 auto; min-height: 44px; padding: 0 13px;
+  border: 0; border-radius: 11px;
+  background: var(--brand,#c2410c); color: #fff;
+  font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
+  white-space: nowrap;
+}
+.bs-adm-vacio, .bs-admin-loading {
+  padding: 30px 16px; text-align: center; font-size: 13.5px; color: var(--ink-3,#78716c);
+}

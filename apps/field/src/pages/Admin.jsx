@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { PageShell } from '../shells/PageShell.jsx'
+import { TabProspectos } from '../domain/TabProspectos.jsx'
 import { FilterBar } from '../domain/FilterBar.jsx'
 import { ZONAS_COMUNAS, normComuna, zonaFromComuna } from '../lib/zonas.js'
 
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'media', label: 'Fotos / fichas' },
   { id: 'metas', label: 'Metas' },
   { id: 'focos', label: 'Focos SKU' },
+  { id: 'prospectos', label: 'Prospectos' },
   { id: 'usuarios', label: 'Usuarios' },
 ]
 
@@ -65,6 +67,7 @@ export default function Admin() {
       {tab === 'media' && <TabMedia onFlash={flash} />}
       {tab === 'metas' && <TabMetas onFlash={flash} />}
       {tab === 'focos' && <TabFocos onFlash={flash} />}
+      {tab === 'prospectos' && <TabProspectos onFlash={flash} />}
       {tab === 'usuarios' && <TabUsuarios onFlash={flash} />}
     </PageShell>
   )

@@ -77,8 +77,8 @@ BEGIN
 
   base AS (
     SELECT
-      i.sku_canon,
-      COALESCE(NULLIF(TRIM(i.producto_nombre), ''), st.producto_nombre, i.sku_canon) AS nombre,
+      st.sku_canon,
+      COALESCE(NULLIF(TRIM(i.producto_nombre), ''), st.producto_nombre, st.sku_canon) AS nombre,
       COALESCE(NULLIF(TRIM(st.subfamilia), ''), 'SIN RUBRO')                          AS rubro,
       -- Si la oferta no guardó precio_lista, se cae al de stock.
       -- Sin este fallback el producto salía en $0 y el cliente veía
@@ -92,23 +92,68 @@ BEGIN
       h.unidades_hist,
       h.veces,
       (h.sku_canon IS NOT NULL)                                                       AS ya_compra,
+      -- 2 · ¿HAY? Se informa, no se oculta. Un producto sin existencia
+      -- se muestra marcado para que el cliente sepa por qué no puede
+      -- pedirlo, en vez de desaparecer sin explicación.
+      (COALESCE(st.estado_stock, 'OK') <> 'SIN STOCK'
+       AND COALESCE(st.cobertura_dias, 1) > 0)                                        AS hay_stock,
+      -- 3 · ¿Es una OFERTA del vendedor? Lo destacado se identifica.
+      COALESCE(i.destacado, false)                                                    AS es_oferta_vendedor,
       (h.sku_canon IS NULL
         AND COALESCE(NULLIF(TRIM(st.subfamilia), ''), 'SIN RUBRO')
             IN (SELECT rubro FROM rubros_cliente))                                    AS es_sugerencia
-    FROM public.oferta_cliente_items i
-    LEFT JOIN public.stock   st ON st.sku_canon = i.sku_canon
-    LEFT JOIN historial      h  ON h.sku_canon  = i.sku_canon
-    WHERE i.oferta_id = v_offer.id
-      AND COALESCE(i.visible, true) = true
+    -- ═══════════════════════════════════════════════════════════════
+    -- LA LÓGICA DEL CATÁLOGO, en el orden correcto
+    --
+    -- 1 · LA LISTA DE PRECIOS es la base. Un producto se vende si TIENE
+    --     PRECIO. No al revés: no se parte del stock (eso dice si hay,
+    --     no qué se vende) ni de la oferta (eso es la curaduría del
+    --     vendedor, que llegaba a esconder el catálogo entero: si había
+    --     cargado 2 items, el cliente veía 2 de cientos).
+    --
+    -- 2 · SE CRUZA CON STOCK para saber si hay. Sin existencia el
+    --     producto no desaparece: se marca `stock_disponible = false`
+    --     para que el vendedor lo vea y el cliente sepa por qué no
+    --     puede pedirlo. Ocultar en silencio es lo que ya nos costó
+    --     caro con los prospectos.
+    --
+    -- 3 · LA OFERTA DEL VENDEDOR enriquece:
+    --       · precio_cliente  → precio negociado
+    --       · destacado       → lo marca como OFERTA y lo sube
+    --       · visible = false → único caso en que se oculta, explícito
+    --
+    -- 4 · EL ORDEN es lo que el cliente necesita ver:
+    --       lo que ya compra → ofertas → su rubro → resto
+    -- ═══════════════════════════════════════════════════════════════
+    FROM public.stock st
+    LEFT JOIN public.oferta_cliente_items i
+           ON i.sku_canon = st.sku_canon
+          AND i.oferta_id = v_offer.id
+    LEFT JOIN historial h ON h.sku_canon = st.sku_canon
+    WHERE COALESCE(i.visible, true) = true
+      -- 1 · ESTÁ EN LA LISTA DE PRECIOS = se vende.
+      --
+      -- El ciclo ETL (CICLO_UNICO.py, build_stock_rows) ya construye
+      -- `stock` con la LISTA DE PRECIOS como base, y marca con
+      -- decision_comercial = 'SIN_PRECIO_LISTA' los SKU que sólo
+      -- existen en el inventario y no están a la venta.
+      --
+      -- Se respeta ese criterio en vez de inventar otro acá: la lista
+      -- de precios define el catálogo, y esa decisión ya está tomada
+      -- aguas arriba.
+      AND COALESCE(st.decision_comercial, '') <> 'SIN_PRECIO_LISTA'
+      AND COALESCE(NULLIF(i.precio_cliente, 0), NULLIF(i.precio_lista, 0),
+                   NULLIF(st.precio_unidad, 0), NULLIF(st.precio_caja, 0), 0) > 0
   ),
 
   ordenado AS (
     SELECT
       b.*,
       CASE
-        WHEN b.ya_compra      THEN 1   -- 1 · lo que ya compra
-        WHEN b.es_sugerencia  THEN 2   -- 2 · sugerido por su rubro
-        ELSE                       3   -- 3 · resto del catálogo
+        WHEN b.ya_compra           THEN 1   -- lo que YA COMPRA
+        WHEN b.es_oferta_vendedor  THEN 2   -- OFERTAS del vendedor
+        WHEN b.es_sugerencia       THEN 3   -- su RUBRO / tipo de negocio
+        ELSE                            4   -- resto del catálogo
       END AS grupo
     FROM base b
   )
@@ -120,8 +165,9 @@ BEGIN
              'rubro',            o.rubro,
              'grupo',            o.grupo,
              'grupo_nombre',     CASE o.grupo
-                                   WHEN 1 THEN 'Lo que compras'
-                                   WHEN 2 THEN 'Para tu rubro'
+                                   WHEN 1 THEN 'Lo que comprás'
+                                   WHEN 2 THEN 'Ofertas para vos'
+                                   WHEN 3 THEN 'Para tu rubro'
                                    ELSE        'Más productos'
                                  END,
              'ya_compra',        o.ya_compra,
@@ -139,7 +185,14 @@ BEGIN
              'destacado',        o.destacado,
              'prioridad',        o.prioridad,
              'visible',          true,
-             'stock_disponible', true
+             -- Estaba FIJO en true: el catálogo nunca reflejó si había
+             -- existencia. Ahora sale de stock, y el front puede marcar
+             -- "sin stock" en vez de dejar que el cliente pida algo que
+             -- no se le puede despachar.
+             'stock_disponible', o.hay_stock,
+             -- Identifica lo que el vendedor puso como oferta, para que
+             -- el front lo muestre distinto.
+             'es_oferta',        o.es_oferta_vendedor
            )
            ORDER BY
              o.grupo,                                   -- 1) compra > sugerido > resto
@@ -162,8 +215,9 @@ BEGIN
     -- Conteos por grupo: el front arma los encabezados sin recorrer todo.
     'resumen',        jsonb_build_object(
                         'compra',    (SELECT COUNT(*) FROM ordenado WHERE grupo = 1),
-                        'sugerido',  (SELECT COUNT(*) FROM ordenado WHERE grupo = 2),
-                        'resto',     (SELECT COUNT(*) FROM ordenado WHERE grupo = 3)
+                        'destacado', (SELECT COUNT(*) FROM ordenado WHERE grupo = 2),
+                        'sugerido',  (SELECT COUNT(*) FROM ordenado WHERE grupo = 3),
+                        'resto',     (SELECT COUNT(*) FROM ordenado WHERE grupo = 4)
                       )
   );
 

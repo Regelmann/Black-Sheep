@@ -940,3 +940,25 @@
     animation: none !important;
   }
 }
+
+/* --- Sin stock: se muestra, no se esconde -----------------------
+   Antes se filtraba del catálogo. El cliente no entendía por qué un
+   producto que compra siempre había desaparecido. Ahora se ve, con
+   la razón visible, y el botón de agregar deshabilitado. */
+.bs-shop-card.sin-stock,
+.bs-shop-row.sin-stock { opacity: .62; }
+.bs-shop-card.sin-stock .bs-shop-card-media { filter: grayscale(1); }
+.bs-shop-card.sin-stock .bs-shop-add,
+.bs-shop-row.sin-stock .bs-shop-add-sm {
+  background: var(--line, #ebe5dc);
+  color: var(--ink-3, #78716c);
+  cursor: not-allowed;
+}
+.bs-shop-sinstock {
+  display: inline-block;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--danger-lt, #fef2f2);
+  color: var(--danger-dk, #b91c1c);
+  border: 1px solid var(--danger-lt3, #fecaca);
+  font-size: 10.5px; font-weight: 800;
+}

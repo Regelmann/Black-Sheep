@@ -39,10 +39,16 @@ describe('Catálogo público · resolución de precios', () => {
       /NULLIF\(i\.precio_lista,\s*0\),\s*NULLIF\(st\.precio_unidad,\s*0\)/,
       'p_lista debe caer a stock.precio_unidad cuando la oferta no tiene precio_lista'
     )
+    // V12.1 invirtió el JOIN: STOCK es la tabla base y la oferta
+    // enriquece. Antes la base era oferta_cliente_items y el catálogo
+    // mostraba SÓLO los productos que el vendedor había agregado a mano
+    // — 2 de cientos. El catálogo es una lista de precios, no una
+    // selección: la oferta sirve para destacar y poner precio, no para
+    // esconder.
     assert.match(
       fn,
-      /LEFT JOIN public\.stock\s+st\s+ON\s+st\.sku_canon\s*=\s*i\.sku_canon/,
-      'el JOIN a stock debe existir para poder caer a su precio_unidad'
+      /FROM public\.stock\s+st\s+LEFT JOIN public\.oferta_cliente_items\s+i/s,
+      'stock debe ser la BASE: si no, el cliente sólo ve lo agregado a mano'
     )
   })
 
