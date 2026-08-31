@@ -108,6 +108,18 @@
   color: var(--zone-active, var(--brand, #c2410c));
 }
 .bs-appheader.is-light .bs-appheader-eyebrow { color: var(--brand, #c2410c); }
+
+.bs-appheader-title {
+  margin: 0;
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.1;
+  transition: font-size var(--dur) var(--ease);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .bs-appheader.is-compact .bs-appheader-title { font-size: var(--t-lg); }
 
 .bs-appheader-sub,
@@ -120,6 +132,8 @@
 }
 .bs-appheader.is-light .bs-appheader-sub,
 .bs-appheader.is-light .bs-appheader-hola { color: var(--ink-3, #78716c); }
+
+.bs-appheader-zone { flex: 0 0 auto; }
 
 /* ------------------------------------------------------------
    2 · SEGMENTED CONTROL de zona
@@ -151,6 +165,24 @@
 }
 .bs-seg-thumb.is-ready {
   transition: transform var(--dur) var(--ease), width var(--dur) var(--ease);
+}
+
+.bs-seg-btn {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  padding: 0 var(--s3);
+  min-height: 34px;
+  border-radius: var(--r-full);
+  font-family: inherit;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: rgba(255,255,255,.72);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease);
+  -webkit-tap-highlight-color: transparent;
 }
 .bs-appheader.is-light .bs-seg-btn { color: var(--ink-3, #78716c); }
 .bs-seg-btn.is-active { font-weight: 800; }
@@ -297,6 +329,15 @@
   text-align: right;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   6 · ZONA DEL PULGAR
+   El contenido nunca queda tapado por la barra inferior.
+   ------------------------------------------------------------ */
+.app-body,
+.bs-page {
+  padding-bottom: calc(var(--nav-h) + var(--s4) + env(safe-area-inset-bottom, 0px));
 }
 
 /* CTA fija en el tercio inferior */
@@ -544,6 +585,14 @@ input, select, textarea { font-size: max(16px, 1em); }
   padding: var(--s3) var(--s4);
 }
 .bs-appheader-main { min-width: 0; }
+
+.bs-appheader-title {
+  font-size: var(--t-lg);        /* 17px, no 28: es un saludo */
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  margin: 0;
+}
 .bs-appheader.is-compact .bs-appheader-title { font-size: 15px; }
 
 .bs-appheader-sub {
@@ -560,6 +609,21 @@ input, select, textarea { font-size: max(16px, 1em); }
 /* --- 13.2 · Segmented: "Sur" se salía del fondo
    Causa: el contenedor no reservaba ancho; el último botón desbordaba. */
 .bs-appheader-zone { min-width: 0; }
+.bs-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;        /* las tres del mismo ancho */
+  gap: 0;
+  padding: 3px;
+  max-width: 62vw;
+}
+.bs-seg-btn {
+  padding: 0 var(--s2);
+  font-size: 12px;
+  min-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* --- 13.3 · Barra inferior cortada
    Se veía "nteStock Más": los ítems desbordaban a la izquierda.

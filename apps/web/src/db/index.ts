@@ -2,10 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
-
-const globalForDb = globalThis as typeof globalThis & {
-  __bsPool?: Pool;
-};
+const globalForDb = globalThis as typeof globalThis & { __bsPool?: Pool };
 
 function getPool(): Pool | null {
   if (!databaseUrl) return null;

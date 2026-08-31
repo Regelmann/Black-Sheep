@@ -319,7 +319,7 @@
 }
 .navbar-inner,
 .navbar-inner-4 {
-  display: grid;
+  display: grid !important;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;         /* todos los destinos, mismo ancho */
   justify-content: stretch;
@@ -415,6 +415,27 @@
    suelto bajo "Tus habituales".
    ============================================================ */
 .bs-shop-section { margin-bottom: 22px; }
+
+.bs-shop-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+.bs-shop-section-head > div { min-width: 0; }
+.bs-shop-section-head h2 {
+  margin: 0;
+  font-size: 17px; font-weight: 800;
+  letter-spacing: -.02em; line-height: 1.2;
+  color: var(--ink, #1c1917);
+}
+.bs-shop-section-head p {
+  margin: 3px 0 0;
+  font-size: 12.5px; font-weight: 500; line-height: 1.35;
+  color: var(--ink-3, #78716c);
+}
 /* El contador: pastilla a la derecha, no un número suelto abajo */
 .bs-shop-section-head > span {
   flex: 0 0 auto;
@@ -463,6 +484,12 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.bs-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 0 16px;
 }
 
 /* ============================================================
@@ -1077,55 +1104,7 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 
-/* ============================================================
-   ESCRITORIO — la app se ve en pantalla ancha (demos, Control Center)
-   En las capturas de 1366px la app quedaba como una columna angosta
-   con la barra inferior tapando contenido y todo el espacio lateral
-   desperdiciado.
-
-   No se convierte en un layout de escritorio: es una PWA de terreno y
-   el diseño de una mano es el correcto. Pero en pantalla ancha se
-   centra bien, se le da respiro y la barra deja de tapar.
-   ============================================================ */
-@media (min-width: 700px) {
-  /* La columna se centra y tiene fondo propio, para que se lea como
-     "esta es la app" y no como una página rota. */
-  #root {
-    max-width: 560px;
-    margin-inline: auto;
-    background: var(--surface, #f7f4ef);
-    box-shadow: 0 0 0 1px var(--line, #ebe5dc), 0 8px 40px rgba(28,25,23,.07);
-    min-height: 100vh;
-  }
-
-  /* El header sigue el ancho de la columna, no el de la ventana */
-  .bs-appheader {
-    max-width: 560px;
-    margin-inline: auto;
-    left: 0; right: 0;
-  }
-
-  /* La barra inferior también, y flota sobre la columna */
-  .navbar {
-    max-width: 528px;
-  }
-
-  /* Espacio bajo el contenido para que la barra nunca tape */
-  .bs-shell, .bs-page, .wrap {
-    padding-bottom: calc(var(--nav-h, 68px) + 28px);
-  }
-}
-
-/* Pantallas MUY anchas: el fondo alrededor da contexto de marca */
-@media (min-width: 1100px) {
-  body {
-    background:
-      radial-gradient(1200px 600px at 50% -10%, rgba(194,65,12,.06), transparent 60%),
-      var(--surface-2, #f0ece6);
-  }
-}
-
-/* --- Admin · Prospectos ---------------------------------------- */
+/* --- Admin · Prospectos (V12.3) --------------------------------- */
 .bs-adm-pros-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
 .bs-adm-stat {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -1138,7 +1117,6 @@ html, body {
 .bs-adm-stat.is-on { border-color: var(--ink,#1c1917); background: var(--ink,#1c1917); }
 .bs-adm-stat.is-on strong, .bs-adm-stat.is-on span { color: #fff; }
 .bs-adm-stat.is-alert:not(.is-on) strong { color: var(--danger,#ef4444); }
-
 .bs-adm-aviso {
   margin: 0 0 12px; padding: 11px 13px; border-radius: 12px;
   background: var(--warn-lt6,#fff7ed); border: 1px solid var(--warn-lt5,#fdba74);
@@ -1150,17 +1128,12 @@ html, body {
   font-family: inherit; font-size: 16px; box-sizing: border-box;
 }
 .bs-adm-pros-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.bs-adm-pros-row {
-  padding: 12px; border: 1px solid var(--line,#ebe5dc); border-radius: 13px; background: #fff;
-}
+.bs-adm-pros-row { padding: 12px; border: 1px solid var(--line,#ebe5dc); border-radius: 13px; background: #fff; }
 .bs-adm-pros-row.is-alert { border-color: var(--danger-lt3,#fecaca); background: var(--danger-lt,#fef2f2); }
 .bs-adm-pros-info { min-width: 0; margin-bottom: 9px; }
 .bs-adm-pros-info strong { display: block; font-size: 14px; font-weight: 700; }
 .bs-adm-pros-meta { display: block; font-size: 12px; color: var(--ink-3,#78716c); margin-top: 1px; }
-.bs-adm-pros-conflicto {
-  display: block; margin-top: 5px; font-size: 11.5px;
-  color: var(--danger-dk,#b91c1c); line-height: 1.4;
-}
+.bs-adm-pros-conflicto { display: block; margin-top: 5px; font-size: 11.5px; color: var(--danger-dk,#b91c1c); line-height: 1.4; }
 .bs-adm-pros-acciones { display: flex; gap: 8px; align-items: center; }
 .bs-adm-select {
   flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 10px;
@@ -1168,115 +1141,8 @@ html, body {
   background: #fff; font-family: inherit; font-size: 13.5px;
 }
 .bs-adm-fix {
-  flex: 0 0 auto; min-height: 44px; padding: 0 13px;
-  border: 0; border-radius: 11px;
+  flex: 0 0 auto; min-height: 44px; padding: 0 13px; border: 0; border-radius: 11px;
   background: var(--brand,#c2410c); color: #fff;
-  font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
-  white-space: nowrap;
+  font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap;
 }
-.bs-adm-vacio, .bs-admin-loading {
-  padding: 30px 16px; text-align: center; font-size: 13.5px; color: var(--ink-3,#78716c);
-}
-
-/* ══════════════════════════════════════════════════════════════
-   .bs-chip · CONSOLIDADO
-   Estaba definido en CINCO hojas (identidad, v90-fixes, ds-2026,
-   system, shell). Nadie podía saber cuál regla ganaba sin abrir el
-   inspector — y por eso cada arreglo del chip necesitaba tres
-   intentos.
-   Acá está todo junto, en la hoja que gana la cascada.
-   ══════════════════════════════════════════════════════════════ */
-
-/* ← identidad.css */
-/* ══ Píldoras ════════════════════════════════════════════════════════ */
-.bs-chip,
-.badge {
-  border-radius: var(--r-pill);
-  font-weight: var(--weight-bold);
-}
-
-/* ← v90-fixes.css */
-/* Chip compacto: entran ~40% más que antes en la misma pantalla */
-.bs-chip {
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 44px;   /* táctil: 34px no se toca caminando */
-  padding: 0 11px;
-  border-radius: 999px;
-  border: 1px solid var(--line-2, #d6cfc4);
-  background: #fff;
-  color: var(--ink-4, #57534e);
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
-}
-
-/* ← v90-fixes.css */
-/* Área de toque de 44px sin agrandar el chip visualmente */
-.bs-chip::before {
-  content: '';
-  position: absolute;
-  inset: -5px 0;
-}
-
-/* ← v90-fixes.css */
-.bs-chip:active { transform: scale(0.97); }
-
-/* ← v90-fixes.css */
-.bs-chip.is-active {
-  background: var(--ink, #1c1917);
-  border-color: var(--ink, #1c1917);
-  color: #fff;
-}
-
-/* ← v90-fixes.css */
-.bs-chip.is-danger        { border-color: var(--danger-lt3, #fecaca); color: var(--danger-dk, #b91c1c); }
-
-/* ← v90-fixes.css */
-.bs-chip.is-danger.is-active  { background: var(--danger-dk, #b91c1c); border-color: var(--danger-dk, #b91c1c); color: #fff; }
-
-/* ← v90-fixes.css */
-.bs-chip.is-warn          { border-color: var(--warn-lt5, #fdba74); color: var(--brand, #c2410c); }
-
-/* ← v90-fixes.css */
-.bs-chip.is-warn.is-active    { background: var(--brand, #c2410c); border-color: var(--brand, #c2410c); color: #fff; }
-
-/* ← v90-fixes.css */
-.bs-chip.is-ok            { border-color: var(--ok-lt4, #a7f3d0); color: var(--ok-dk, #166534); }
-
-/* ← v90-fixes.css */
-.bs-chip.is-ok.is-active      { background: var(--ok-dk, #166534); border-color: var(--ok-dk, #166534); color: #fff; }
-
-/* ← v90-fixes.css */
-.bs-chip-count {
-  font-size: 11px;
-  font-weight: 800;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.07);
-}
-
-/* ← v90-fixes.css */
-.bs-chip.is-active .bs-chip-count { background: rgba(255, 255, 255, 0.22); }
-
-/* ← ds-2026.css */
-.bs-chip.is-on,
-.bs-chip.is-active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
-}
-
-/* ← system.css */
-.bs-chip.is-on, .bs-chip.is-active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
-}
+.bs-adm-vacio, .bs-admin-loading { padding: 30px 16px; text-align: center; font-size: 13.5px; color: var(--ink-3,#78716c); }

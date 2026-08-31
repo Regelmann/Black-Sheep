@@ -7,11 +7,11 @@ import Logo from "@/components/Logo";
 import Magnetic from "@/components/Magnetic";
 
 const LINKS = [
+  { href: "#terreno", label: "Terreno" },
+  { href: "#gerencia", label: "Gerencia" },
   { href: "#producto", label: "Producto" },
-  { href: "#como-funciona", label: "Cómo funciona" },
-  { href: "#impacto", label: "Impacto" },
   { href: "#precios", label: "Precios" },
-  { href: "#faq", label: "FAQ" },
+  { href: "#demo", label: "Demo" },
 ];
 
 export default function Navbar() {

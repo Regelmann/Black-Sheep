@@ -104,7 +104,7 @@ button, input, select, textarea { font-family: inherit; }
 .bs-zone-chip-caret { font-size: 9px; opacity: 0.7; }
 
 /* Kill legacy global bars */
-.bs-topbar, .bs-greet, .bs-greet--clean { display: none; }
+.bs-topbar, .bs-greet, .bs-greet--clean { display: none !important; }
 
 /* ── Card ── */
 .bs-card {
@@ -160,6 +160,25 @@ button, input, select, textarea { font-family: inherit; }
   -webkit-overflow-scrolling: touch;
 }
 .bs-chips::-webkit-scrollbar, .bs-filter-bar::-webkit-scrollbar { display: none; }
+.bs-chip {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  border: 1.5px solid var(--line-2);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+}
+.bs-chip.is-on, .bs-chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
 
 /* ── Search ── */
 .bs-search {
@@ -188,6 +207,19 @@ button, input, select, textarea { font-family: inherit; }
   padding: 0 var(--space-4);
   margin-bottom: var(--space-3);
 }
+.bs-stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--space-2) 6px;
+  text-align: center;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-xs);
+}
 .bs-stat-val {
   font-size: 18px;
   font-weight: 900;
@@ -200,6 +232,14 @@ button, input, select, textarea { font-family: inherit; }
 .bs-stat-val.is-ok { color: var(--ok); }
 .bs-stat-val.is-warn { color: var(--warn); }
 .bs-stat-val.is-danger { color: var(--danger); }
+.bs-stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
 
 /* ── Client row ── */
 .bs-client-row, .cli-card {
@@ -503,21 +543,21 @@ button, input, select, textarea { font-family: inherit; }
   box-shadow: var(--shadow-sm);
 }
 .bs-stock-buyer-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   gap: 12px;
   width: 100%;
-  padding: 12px 0;
-  border: none;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
+  padding: 12px 0 !important;
+  border: none !important;
+  border-bottom: 1px solid var(--line) !important;
+  background: transparent !important;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
   min-height: var(--touch);
 }
-.bs-stock-buyer-row:last-child { border-bottom: none; }
+.bs-stock-buyer-row:last-child { border-bottom: none !important; }
 .bs-stock-buyer-row .name {
   flex: 1;
   min-width: 0;
@@ -570,7 +610,7 @@ button, input, select, textarea { font-family: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms;
-    transition-duration: 0.01ms;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

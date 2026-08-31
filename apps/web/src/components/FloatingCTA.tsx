@@ -57,7 +57,7 @@ export default function FloatingCTA() {
             <Magnetic strength={0.22}>
               <a
                 href="#demo"
-                className="btn-shine group inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-black text-white transition hover:bg-primary-soft active:scale-95"
+                className="btn-shine group inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-black text-black transition hover:bg-primary-soft active:scale-95"
               >
                 Empezar
                 <ArrowRight

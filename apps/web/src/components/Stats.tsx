@@ -78,7 +78,7 @@ function Counter({ value, decimals = 0, prefix = "", suffix = "" }: StatDef) {
 
 export default function Stats() {
   return (
-    <section className="relative border-y border-line/40 bg-navy-deep/60">
+    <section id="impacto" className="relative border-y border-line/40 bg-navy-deep/60">
       <div className="mx-auto w-full max-w-7xl px-6 py-14">
         <p className="mb-10 text-center font-display text-[11px] font-bold tracking-[0.28em] text-ink/60 uppercase">
           Resultados medidos en operación real · 2025
