@@ -43,6 +43,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Un SW que no parsea el navegador lo rechaza y deja el viejo
+      # cacheando HTML → pantalla en blanco. Los tests de strings no
+      # alcanzan: hay que parsear el archivo de verdad.
+      - name: Service worker parseable
+        run: node --check public/sw.js
+
       # 2. Reglas de regresión — cada una nació de un bug real en producción
       - name: Guard (regresiones conocidas)
         run: npm run guard

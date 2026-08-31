@@ -10,6 +10,7 @@ import PedidoSheet from '../domain/PedidoSheet.jsx'
 import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { enqueueAction, isProbablyOffline, markHoyResultado } from '../lib/offline.js'
+import { guardarNotaTerreno } from '../lib/nota.js'
 import { esNombreProducto } from '../lib/productDisplay.js'
 
 const money = n => {
@@ -484,6 +485,21 @@ export default function Visita({ session }) {
           motivo: noVentaMotivo || null,
         },
       })
+      await guardarNotaTerreno({
+        ejecutivoId: eje?.eidVista || session?.user?.id,
+        cliente: {
+          cliente_key: visita?.cliente_key || cliente?.cliente_key,
+          nombre_cliente: visita?.nombre_local,
+        },
+        tipo: 'resultado_visita',
+        texto: [
+          `Resultado: ${finalRes}`,
+          noVentaMotivo ? `Motivo: ${noVentaMotivo}` : null,
+          pedidoOk ? 'Pedido capturado' : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })
       setBusy(false)
       nav('/')
       return
@@ -498,24 +514,23 @@ export default function Visita({ session }) {
     if (!visita?._sinRuta) {
       await supabase.from('visitas').update({ estado: 'visitada' }).eq('id', id)
     }
-    // Nota de resultado para gerencia / timeline
-    try {
-      await supabase.from('notas_cliente').insert({
-        ejecutivo_id: session.user.id,
+    // Nota de resultado para gerencia / timeline. Por outbox: sin
+    // señal no se puede perder, y client_op_id evita duplicados.
+    await guardarNotaTerreno({
+      ejecutivoId: eje?.eidVista || session?.user?.id,
+      cliente: {
         cliente_key: visita?.cliente_key || cliente?.cliente_key,
-        nombre_local: visita?.nombre_local,
-        tipo: 'resultado_visita',
-        texto: [
-          `Resultado: ${finalRes}`,
-          noVentaMotivo ? `Motivo: ${noVentaMotivo}` : null,
-          pedidoOk ? 'Pedido capturado' : null,
-        ]
-          .filter(Boolean)
-          .join(' · '),
-      })
-    } catch {
-      /* tabla opcional */
-    }
+        nombre_cliente: visita?.nombre_local,
+      },
+      tipo: 'resultado_visita',
+      texto: [
+        `Resultado: ${finalRes}`,
+        noVentaMotivo ? `Motivo: ${noVentaMotivo}` : null,
+        pedidoOk ? 'Pedido capturado' : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    })
     setBusy(false)
     nav('/')
   }
@@ -1016,25 +1031,15 @@ export default function Visita({ session }) {
               className="bs-cta-primary bs-visit-cta"
               onClick={async () => {
                 if (fotoPreview) {
-                  try {
-                    await supabase.from('notas_cliente').insert({
-                      ejecutivo_id: session.user.id,
+                  await guardarNotaTerreno({
+                    ejecutivoId: eje?.eidVista || session?.user?.id,
+                    cliente: {
                       cliente_key: visita.cliente_key || cliente?.cliente_key,
-                      nombre_local: visita.nombre_local,
-                      tipo: 'foto_visita',
-                      texto: `Foto en visita${fotoName ? ': ' + fotoName : ''} · ${new Date().toISOString()}`,
-                    })
-                  } catch {
-                    enqueueAction({
-                      type: 'nota',
-                      payload: {
-                        ejecutivo_id: session.user.id,
-                        cliente_key: visita.cliente_key || cliente?.cliente_key,
-                        tipo: 'foto_visita',
-                        texto: `Foto visita ${fotoName || ''}`.trim(),
-                      },
-                    })
-                  }
+                      nombre_cliente: visita.nombre_local,
+                    },
+                    tipo: 'foto_visita',
+                    texto: `Foto en visita${fotoName ? ': ' + fotoName : ''} · ${new Date().toISOString()}`,
+                  })
                 }
                 await terminar(
                   pedidoOk ? 'pedido' : resultado === 'no_venta' ? 'no_venta' : 'completada'
@@ -1218,11 +1223,11 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
     }
     const { error } = await supabase.from('encuestas_visita').insert(row)
     if (error) {
-      // Fallback: guardar como nota estructurada si la tabla aún no existe
-      await supabase.from('notas_cliente').insert({
-        ejecutivo_id: session.user.id,
-        cliente_key: row.cliente_key,
-        nombre_local: row.nombre_local,
+      // Fallback: guardar como nota estructurada si la tabla aún no existe.
+      // Por outbox: si no hay señal acá, la encuesta no se pierde.
+      await guardarNotaTerreno({
+        ejecutivoId: session.user.id,
+        cliente: { cliente_key: row.cliente_key, nombre_cliente: row.nombre_local },
         tipo: 'encuesta_visita',
         texto: [
           `Encargado: ${encargado ? 'Sí' : 'No'}`,

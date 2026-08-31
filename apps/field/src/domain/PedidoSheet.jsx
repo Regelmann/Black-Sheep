@@ -14,6 +14,7 @@ import {
   marcarPedidoEstado,
 } from '../lib/pedido.js'
 import { precioDesdeLista, resolverPrecio } from '../lib/precios.js'
+import { mensajeDeError } from '../lib/erroresUsuario.js'
 
 const money = n => {
   const v = Number(n)
@@ -213,7 +214,7 @@ export default function PedidoSheet({ initialPedido,
     setBusy(true)
     setMsg('')
     const estado = waCliente || waBodega || pdf ? 'enviado' : 'borrador'
-    const { data, error } = await guardarPedido({
+    const { data, error, encolado } = await guardarPedido({
       ejecutivoId,
       clienteKey: cliente?.cliente_key,
       nombreCliente: cliente?.nombre_cliente || cliente?.nombre,
@@ -222,11 +223,16 @@ export default function PedidoSheet({ initialPedido,
       estado,
     })
     if (error) {
-      setMsg(error.message || String(error))
+      setMsg(mensajeDeError(error, { encolado: !!encolado }))
       setBusy(false)
       return
     }
-    const pedidoId = data?.id
+    // Si quedó en la cola, data.id es el client_op_id, NO un id de
+    // pedidos. No se puede marcar estado contra esa clave.
+    const pedidoId = encolado ? null : data?.id
+    if (encolado) {
+      setMsg('Sin señal · guardado en el teléfono, se envía solo cuando vuelva la conexión')
+    }
     if (pdf) {
       const r = imprimirPedidoPdf({
         cliente,
@@ -249,11 +255,11 @@ export default function PedidoSheet({ initialPedido,
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`
       window.open(url, '_blank')
     }
-    if (pedidoId && estado === 'enviado') {
+    if (pedidoId && estado === 'enviado' && !encolado) {
       await marcarPedidoEstado(pedidoId, 'enviado')
     }
     setBusy(false)
-    onSaved?.({ pedidoId, estado })
+    onSaved?.({ pedidoId, estado, encolado: !!encolado })
     if (!pdf) onClose?.()
   }
 

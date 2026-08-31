@@ -130,7 +130,18 @@ describe('outbox · durabilidad en IndexedDB', () => {
     assert.ok(it.client_op_id, 'sin client_op_id un reintento duplica el dato')
     assert.equal(it.id, it.client_op_id)
   })
+
+  test('reutiliza el client_op_id del caller — un id nuevo duplicaría', () => {
+    const it = enqueueAction({
+      type: 'nota',
+      payload: { texto: 'x' },
+      client_op_id: 'op-fijo-1',
+    })
+    assert.equal(it.id, 'op-fijo-1')
+    assert.equal(it.client_op_id, 'op-fijo-1')
+  })
 })
+
 
 describe('outbox · ciclo de vida de un dato de terreno', () => {
   test('recorrido completo: sin señal → falla → vuelve la red → sube', async () => {

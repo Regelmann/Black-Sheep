@@ -4,15 +4,11 @@
  *
  * ANTES había DOS `addEventListener('fetch')`. En un Service Worker sólo se
  * puede llamar `respondWith` UNA vez por evento, así que el segundo handler
- * (el de navegación, "siempre a red primero") quedaba ANULADO: respondía el
- * primero y el segundo sólo alcanzaba a escribir en `bs-html`, una cache que
- * el `activate` borraba. En la práctica la estrategia de HTML "network-first"
- * nunca gobernó y la cache de nav era efímera.
+ * (el de navegación, "siempre a red primero") quedaba ANULADO.
  *
- * Además la cache `bs-shell` acumulaba TODO el GET same-origin SIN tope de
- * entradas. Los chunks tienen hash y cambian en cada build: cada deploy
- * sumaba chunks viejos que jamás se sacaban, llenando un teléfono de poco
- * disco.
+ * Además la cache `bs-shell` acumulaba TODO el GET same-origin SIN tope.
+ * Los chunks tienen hash y cambian en cada build: cada deploy sumaba
+ * chunks viejos que jamás se sacaban.
  *
  * AHORA: un único handler que distingue por tipo de request:
  *   · Navegación → siempre red primero, fallback a un HTML cacheado.
@@ -20,23 +16,35 @@
  *                  si no, un index.html viejo apunta a chunks con hash viejo
  *                  que ya no existen y la app queda en PANTALLA BLANCA.
  *   · Assets estáticos same-origin (hasheados / imagen / css / js) →
- *                  cache-first con tope de entradas. Los hasheados son
- *                  inmutables, así que cachearlos "para siempre" es seguro.
- *   · API (supabase / googleapis) → se ignoran: la estrategia de red de las
- *                  consultas la decide TanStack (offlineFirst), acá no se
- *                  debe cachear un GET que puede cambiar por tenant.
+ *                  cache-first con tope de entradas.
+ *   · API (supabase / googleapis) → se ignoran.
+ *
+ * v6: el archivo anterior no parseaba (SHELL indefinido, listeners sin
+ * cerrar). El navegador rechazaba el SW o dejaba uno viejo instalado.
  */
-const SHELL_CACHE = 'bs-shell-v5'
-const HTML_CACHE  = 'bs-html-v2'
+const SHELL_CACHE = 'bs-shell-v6'
+const HTML_CACHE  = 'bs-html-v3'
 /* Topes de entradas: evitan que el cache crezca sin límite en el teléfono. */
 const MAX_SHELL_ENTRIES = 40
 const MAX_HTML_ENTRIES  = 6
 
+const SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/brand/logo-mark-192.png',
+]
+
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(SHELL_CACHE)
+      .then((c) => c.addAll(SHELL).catch(() => { /* un asset faltante no puede impedir el SW */ }))
+      .then(() => self.skipWaiting())
   )
+})
+
 self.addEventListener('activate', (e) => {
+  e.waitUntil(
     caches
       .keys()
       .then((keys) =>
@@ -47,6 +55,9 @@ self.addEventListener('activate', (e) => {
         )
       )
       .then(() => self.clients.claim())
+  )
+})
+
 /* Guarda en una cache respetando un tope de entradas (evicta las más viejas). */
 async function cachePutBounded(cacheName, key, res, maxEntries) {
   const cache = await caches.open(cacheName)
@@ -145,6 +156,7 @@ self.addEventListener('push', (event) => {
     })
   )
 })
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = (event.notification.data && event.notification.data.url) || '/'
@@ -157,3 +169,6 @@ self.addEventListener('notificationclick', (event) => {
           if ('focus' in cl) return cl.focus()
         }
         return self.clients.openWindow(url)
+      })
+  )
+})

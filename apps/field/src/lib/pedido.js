@@ -68,6 +68,7 @@ export async function guardarPedido({
   nota,
   fuente = 'field_app',
   estado = 'borrador',
+  clientOpId,
 }) {
   const items = (lineas || [])
     .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
@@ -79,9 +80,10 @@ export async function guardarPedido({
       precio: Number(l.precio) > 0 ? Number(l.precio) : null,
       motivo: l.motivo || null,
     }))
-  if (!items.length) return { error: 'Sin líneas' }
+  if (!items.length) return { data: null, error: { message: 'Sin líneas' }, encolado: false }
 
   const total = items.reduce((a, l) => a + (Number(l.precio) || 0) * Number(l.cantidad), 0)
+  const opId = clientOpId || nuevoOpId()
 
   const row = {
     ejecutivo_id: ejecutivoId,
@@ -92,40 +94,63 @@ export async function guardarPedido({
     estado: estado || 'borrador',
     fuente,
     creado_en: new Date().toISOString(),
+    client_op_id: opId,
   }
 
-  // total_estimado si la columna existe (ignore error)
   try {
     row.total_estimado = total > 0 ? Math.round(total) : null
   } catch (_) { void _ }
 
+  const payloadCola = {
+    ejecutivoId,
+    clienteKey,
+    nombreCliente,
+    lineas: items,
+    nota,
+    estado,
+    fuente: fuente === 'field_app' ? 'field_app_offline' : fuente,
+    creado_en: row.creado_en,
+    client_op_id: opId,
+  }
+  const encolar = () => {
+    enqueueAction({ type: 'pedido', payload: payloadCola, client_op_id: opId })
+    return { data: { id: opId, _offline: true }, error: null, encolado: true }
+  }
+
+  if (isProbablyOffline()) return encolar()
+
   const { data, error } = await supabase.from('pedidos').insert(row).select().maybeSingle()
-  if (error) {
-    const msg = error.message || String(error)
-    if (/cliente_key|schema cache|column|creado_en/i.test(msg)) {
-      // reintento mínimo sin campos opcionales
-      const minimal = {
-        ejecutivo_id: ejecutivoId,
-        cliente_key: clienteKey || null,
-        nombre_cliente: nombreCliente || null,
-        lineas: items,
-        nota: nota || null,
-        estado: estado || 'borrador',
-        fuente,
-      }
-      const r2 = await supabase.from('pedidos').insert(minimal).select().maybeSingle()
-      if (!r2.error) return r2
-      return {
-        data: null,
-        error: {
-          ...error,
-          message:
-            'Tabla pedidos incompleta. Corré SUPABASE_FIX_GERENCIA_Y_PEDIDOS.sql en Supabase y hard refresh.',
-        },
-      }
+  if (!error) return { data, error: null, encolado: false }
+  if (error.code === '23505' || /duplicate key/i.test(String(error.message || ''))) {
+    return { data: { id: opId }, error: null, encolado: false, yaExistia: true }
+  }
+  if (esFalloDeRed(error)) return encolar()
+
+  const msg = error.message || String(error)
+  if (/cliente_key|schema cache|column|creado_en/i.test(msg)) {
+    const minimal = {
+      ejecutivo_id: ejecutivoId,
+      cliente_key: clienteKey || null,
+      nombre_cliente: nombreCliente || null,
+      lineas: items,
+      nota: nota || null,
+      estado: estado || 'borrador',
+      fuente,
+    }
+    const r2 = await supabase.from('pedidos').insert(minimal).select().maybeSingle()
+    if (!r2.error) return { ...r2, encolado: false }
+    if (esFalloDeRed(r2.error)) return encolar()
+    return {
+      data: null,
+      error: {
+        ...error,
+        message:
+          'Tabla pedidos incompleta. Corré SUPABASE_FIX_GERENCIA_Y_PEDIDOS.sql en Supabase y hard refresh.',
+      },
+      encolado: false,
     }
   }
-  return { data, error }
+  return { data: null, error, encolado: false }
 }
 
 export async function listarPedidosHoy(ejecutivoId) {
