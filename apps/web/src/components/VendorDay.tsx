@@ -17,7 +17,7 @@ const TIMELINE = [
   },
   {
     time: "09:20",
-    title: "KeyFoods Central",
+    title: "Mercado Andino",
     body: "NBA sugerida: reponer el stock crítico del SKU más vendido antes del fin de semana. Venta $1.240.000.",
   },
   {
@@ -111,7 +111,7 @@ function PhoneMock() {
               Reponer stock crítico
             </p>
             <p className="mt-0.5 flex items-center gap-1 text-[10px] text-ink">
-              <MapPin size={9} /> KeyFoods Central · SKU 0884
+              <MapPin size={9} /> Mercado Andino · SKU 0884
             </p>
             <div className="mt-2.5 grid h-8 place-items-center rounded-lg bg-mint text-[11px] font-black text-navy-deep">
               Iniciar visita

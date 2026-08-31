@@ -1,21 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-/**
- * Las fuentes van por <link>, NO por next/font/google.
- *
- * next/font las descarga en tiempo de BUILD: si Google no responde
- * —corte de red, timeout, bloqueo— el deploy entero falla con
- * "Failed to fetch Inter". Un sitio comercial no puede quedar sin
- * publicar porque un CDN de fuentes tuvo un mal minuto.
- *
- * Con <link> + display=swap, si no llegan se ve con la del sistema.
- */
-const inter = { variable: "font-inter" };
-const spaceGrotesk = { variable: "font-space" };
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
-
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   icons: {
@@ -56,14 +54,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es-CL">
-      <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="/logo-mark-32.png" />
-        <link rel="apple-touch-icon" href="/logo-mark-180.png" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" />
-      </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-navy text-mist antialiased`}
       >

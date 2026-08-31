@@ -63,7 +63,7 @@ export default function BentoFeatures() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between rounded-xl border border-line/70 bg-navy/85 p-3 text-xs">
                     <span className="font-semibold text-mist">
-                      1. Reponer stock crítico — KeyFoods Central
+                      1. Reponer stock crítico — Mercado Andino
                     </span>
                     <span className="shrink-0 pl-3 font-bold text-mint">
                       Foco prioritario
@@ -156,21 +156,21 @@ export default function BentoFeatures() {
                 <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                   <div className="rounded-xl border border-line/60 bg-navy/65 p-3">
                     <div className="text-[11px] font-bold text-ink">
-                      Nor-Poniente
+                      Sector Poniente
                     </div>
                     <div className="mt-1 font-display text-base font-black text-white">
                       3.870
                     </div>
                   </div>
                   <div className="rounded-xl border border-line/60 bg-navy/65 p-3">
-                    <div className="text-[11px] font-bold text-ink">Zona Sur</div>
+                    <div className="text-[11px] font-bold text-ink">Sector Sur</div>
                     <div className="mt-1 font-display text-base font-black text-white">
                       3.627
                     </div>
                   </div>
                   <div className="rounded-xl border border-primary/35 bg-navy/65 p-3 shadow-lg shadow-primary/10">
                     <div className="text-[11px] font-bold text-primary-soft">
-                      Nor-Oriente
+                      Sector Norte
                     </div>
                     <div className="mt-1 font-display text-base font-black text-white">
                       2.389

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 
 const WA = "56932188569";
+const MAIL = "hola@black-sheep.cl";
 
 export default function CTAForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "err">("idle");
@@ -12,7 +13,8 @@ export default function CTAForm() {
     e.preventDefault();
     setStatus("loading");
     setErr("");
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const payload = {
       nombre: String(fd.get("nombre") || ""),
       empresa: String(fd.get("empresa") || ""),
@@ -21,24 +23,41 @@ export default function CTAForm() {
       tamanoEquipo: String(fd.get("tamanoEquipo") || ""),
       mensaje: String(fd.get("mensaje") || ""),
     };
+
+    const body = [
+      `Nombre: ${payload.nombre}`,
+      `Empresa: ${payload.empresa}`,
+      `Email: ${payload.email}`,
+      `Teléfono: ${payload.telefono}`,
+      `Equipo: ${payload.tamanoEquipo}`,
+      `Mensaje: ${payload.mensaje}`,
+    ].join("\n");
+
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "Error al enviar");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        // Fallback mailto si API no persiste
+        window.location.href = `mailto:${MAIL}?subject=${encodeURIComponent(
+          "Demo Black Sheep Field — " + payload.nombre,
+        )}&body=${encodeURIComponent(body)}`;
+      }
       setStatus("ok");
-      e.currentTarget.reset();
-    } catch (ex) {
-      setStatus("err");
-      setErr(ex instanceof Error ? ex.message : "No se pudo enviar");
+      form.reset();
+    } catch {
+      window.location.href = `mailto:${MAIL}?subject=${encodeURIComponent(
+        "Demo Black Sheep Field — " + payload.nombre,
+      )}&body=${encodeURIComponent(body)}`;
+      setStatus("ok");
     }
   }
 
   return (
-    <section id="demo" className="scroll-mt-24 px-6 py-24">
+    <section id="demo" className="scroll-mt-24 px-6 py-16 pb-10">
       <div className="mx-auto grid max-w-6xl items-start gap-12 lg:grid-cols-2">
         <div>
           <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
@@ -56,7 +75,7 @@ export default function CTAForm() {
           <ul className="mt-8 space-y-4">
             {[
               ["Migración de Excel", "Clientes, listas y acuerdos — semana 1."],
-              ["Respuesta en 24 h hábiles", "Correo o WhatsApp, como te acomode."],
+              ["Respuesta en 24 h hábiles", "Correo o WhatsApp."],
               ["Sin tarjeta ni compromiso", "La demo es gratuita."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">
@@ -68,14 +87,19 @@ export default function CTAForm() {
               </li>
             ))}
           </ul>
-          <a
-            href={`https://wa.me/${WA}?text=${encodeURIComponent("Hola, quiero una demo de Black Sheep Field")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline"
-          >
-            O escríbenos por WhatsApp →
-          </a>
+          <div className="mt-8 flex flex-col gap-2 text-sm">
+            <a
+              href={`https://wa.me/${WA}?text=${encodeURIComponent("Hola, quiero una demo de Black Sheep Field")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-primary hover:underline"
+            >
+              WhatsApp +56 9 3218 8569 →
+            </a>
+            <a href={`mailto:${MAIL}`} className="font-bold text-primary hover:underline">
+              {MAIL} →
+            </a>
+          </div>
         </div>
 
         <form
@@ -125,23 +149,22 @@ export default function CTAForm() {
                 name="telefono"
                 autoComplete="tel"
                 className="w-full rounded-xl border border-line bg-black px-4 py-3 text-white outline-none focus:border-primary"
-                placeholder="+56 9 3218 8569"
+                placeholder="+56 9 …"
               />
             </label>
           </div>
           <label className="mt-4 block text-sm">
             <span className="mb-1.5 block font-semibold text-white">
-              Tamaño del equipo en terreno
+              Tamaño del equipo (usuarios)
             </span>
             <select
               name="tamanoEquipo"
               className="w-full rounded-xl border border-line bg-black px-4 py-3 text-white outline-none focus:border-primary"
               defaultValue="2-5"
             >
-              <option value="1">1 vendedor</option>
-              <option value="2-5">2–5 vendedores</option>
-              <option value="6-15">6–15 vendedores</option>
-              <option value="16+">16 o más</option>
+              <option value="1-5">1–5 usuarios (Campo)</option>
+              <option value="6-15">6–15 usuarios (Comando)</option>
+              <option value="16+">16 o más (a medida)</option>
             </select>
           </label>
           <label className="mt-4 block text-sm">
@@ -159,12 +182,16 @@ export default function CTAForm() {
 
           {status === "ok" && (
             <p className="mt-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">
-              Listo. Te contactamos en menos de 24 h hábiles.
+              Listo. Te contactamos a la brevedad (o revisá tu cliente de correo si se abrió
+              el mail a {MAIL}).
             </p>
           )}
           {status === "err" && (
             <p className="mt-4 rounded-xl border border-rose/40 bg-rose/10 px-4 py-3 text-sm text-rose">
-              {err}
+              {err}{" "}
+              <a className="underline" href={`mailto:${MAIL}`}>
+                Escribinos a {MAIL}
+              </a>
             </p>
           )}
 
@@ -180,7 +207,11 @@ export default function CTAForm() {
             <a href="/privacidad" className="text-primary underline">
               política de privacidad
             </a>
-            . Nunca vendemos tus datos.
+            . También podés escribir a{" "}
+            <a href={`mailto:${MAIL}`} className="text-primary underline">
+              {MAIL}
+            </a>
+            .
           </p>
         </form>
       </div>

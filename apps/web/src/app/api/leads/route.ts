@@ -56,11 +56,6 @@ export async function POST(request: Request) {
     if (process.env.DATABASE_URL) {
       const { db } = await import("@/db");
       const { leads } = await import("@/db/schema");
-      // `db` puede ser null si el módulo no logró conectar. Sin esta
-      // guarda TypeScript frena el build — y en runtime sería un
-      // "Cannot read properties of null" que perdería el lead sin
-      // decir por qué.
-      if (!db) throw new Error("db no inicializada");
       await db.insert(leads).values({
         nombre,
         empresa: empresa || null,

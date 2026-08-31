@@ -144,8 +144,11 @@ export default function Hero() {
                   Red operativa · RM
                 </span>
               </div>
-              <span className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+              <span className="flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-2.5 py-1 text-[10px] font-bold text-primary">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
                 EN VIVO
               </span>
             </div>
