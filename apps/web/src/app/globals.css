@@ -1,49 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* Definidas acá y no por next/font: si Google Fonts no responde, el
-     sitio se ve con la fuente del sistema en vez de no desplegarse. */
-  --font-inter: 'Inter';
-  --font-space: 'Space Grotesk';
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: var(--font-space), var(--font-inter), ui-sans-serif, sans-serif;
 
-  /* Black Sheep Field — premium 2026
-     Oscuro cálido + cobre (marca field) + mint operativo */
-  --color-navy: #0c0a09;
-  --color-navy-deep: #090807;
-  --color-card: #1c1917;
-  --color-card-soft: #231f1c;
-  --color-panel: #292524;
-  --color-line: #3f3a36;
-  /* ══════════════════════════════════════════════════════════════
-     IDENTIDAD BLACK SHEEP — negro + lima eléctrico.
-
-     El naranja #c2410c que había acá es el color de KeyFoods, que es
-     un TENANT. Sólo va DENTRO de la app después del login, aplicado
-     por applyTenantBrand(). Nunca en black-sheep.cl.
-
-     CONTRASTE, que decide todo lo demás:
-       lima sobre negro   16.81:1   ✅ el doble de lo que WCAG pide
-       lima sobre blanco   1.40:1   ❌ ilegible
-
-     Por eso TODO botón lima lleva texto NEGRO, nunca blanco.
-     ══════════════════════════════════════════════════════════════ */
-  --color-primary: #ccff00;        /* lima Black Sheep */
-  --color-primary-soft: #d9ff4d;
-  --color-primary-deep: #8fb800;   /* para texto sobre fondo claro */
-  --color-mint: #34d399;
+  /* Black Sheep 2026 — pure black + neon green (logo)
+     Alta contraste tipo landonorris.com / cyber-ops */
+  --color-navy: #000000;
+  --color-navy-deep: #000000;
+  --color-card: #0a0a0a;
+  --color-card-soft: #111111;
+  --color-panel: #161616;
+  --color-line: #262626;
+  --color-primary: #39ff14;
+  --color-primary-soft: #7cff5c;
+  --color-mint: #39ff14;
   --color-rose: #f87171;
   --color-amber: #fbbf24;
   --color-sky: #38bdf8;
-  --color-ink: #a8a29e;
-  --color-mist: #fafaf9;
+  --color-ink: #a3a3a3;
+  --color-mist: #f5f5f5;
 
   --animate-marquee: marquee 38s linear infinite;
   --animate-floaty: floaty 7s ease-in-out infinite;
   --animate-floaty-slow: floaty 10s ease-in-out infinite;
   --animate-spin-slow: spin 14s linear infinite;
   --animate-beam: beam 7s linear infinite;
+  --animate-glow-pulse: glow-pulse 2.4s ease-in-out infinite;
 
   @keyframes beam {
     0% { left: -14rem; opacity: 0; }
@@ -58,6 +41,10 @@
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-11px); }
   }
+  @keyframes glow-pulse {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(57, 255, 20, 0.45)); }
+    50% { filter: drop-shadow(0 0 22px rgba(57, 255, 20, 0.85)); }
+  }
 }
 
 html {
@@ -66,66 +53,66 @@ html {
 }
 
 body {
-  background-color: var(--color-navy);
+  background-color: #000000;
   color: var(--color-mist);
   overflow-x: clip;
 }
 
-/* Grano cinematográfico */
+/* Grano cinematográfico sutil */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 34;
   pointer-events: none;
-  opacity: 0.04;
+  opacity: 0.035;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
 }
 
 ::selection {
-  background: rgba(163, 230, 53, 0.45);
-  color: #ffffff;
+  background: rgba(57, 255, 20, 0.35);
+  color: #000000;
 }
 
 ::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-track { background: var(--color-navy-deep); }
+::-webkit-scrollbar-track { background: #000; }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-panel);
+  background: #262626;
   border-radius: 999px;
-  border: 2px solid var(--color-navy-deep);
+  border: 2px solid #000;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--color-line); }
+::-webkit-scrollbar-thumb:hover { background: #39ff14; }
 
-.bg-grid {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 75%);
-}
-
-.glass {
-  background: rgba(28, 25, 23, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* CTAs: texto negro sobre neón (legibilidad) */
+.btn-neon,
+a.bg-primary,
+button.bg-primary {
+  color: #000000 !important;
 }
 
-.text-gradient {
-  /* Identidad Black Sheep: blanco → lima. */
-  background: linear-gradient(135deg, #ffffff 0%, #e8ffa3 45%, #ccff00 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* Glow utility for hero network / logo */
+.glow-primary {
+  box-shadow: 0 0 40px rgba(57, 255, 20, 0.12), inset 0 0 40px rgba(57, 255, 20, 0.04);
 }
 
-.btn-primary {
-  /* Texto NEGRO sobre lima: 13.1:1.
-     Al revés (lima sobre blanco) da 1.51:1 — ilegible. */
-  background: linear-gradient(180deg, #d9ff4d, #ccff00);
-  color: #0c0a09;
-  box-shadow: 0 10px 32px rgba(163, 230, 53, 0.30);
+/* Shine button */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
 }
-.btn-primary:hover {
-  filter: brightness(1.06);
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+.btn-shine:hover::after {
+  transform: translateX(120%);
 }

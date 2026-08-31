@@ -17,7 +17,9 @@ export default function GlobalError({
   return (
     <div className="grid min-h-screen place-items-center px-6">
       <div className="w-full max-w-md space-y-6 text-center">
-        <img src="/logo-mark-192.png" alt="" width={56} height={56} className="h-14 w-14 rounded-xl" />
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary-soft font-display text-lg font-black text-white shadow-lg shadow-primary/30">
+          BΣ
+        </span>
         <div className="space-y-2">
           <h1 className="font-display text-2xl font-black text-white">
             Algo tropezó en el terreno
@@ -31,7 +33,7 @@ export default function GlobalError({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary text-[#0c0a09] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-soft active:scale-95"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-soft active:scale-95"
           >
             <RotateCcw size={15} />
             Reintentar

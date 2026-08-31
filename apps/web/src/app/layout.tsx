@@ -1,20 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-/**
- * Las fuentes se cargan por <link>, NO con `next/font/google`.
- *
- * `next/font/google` las descarga en tiempo de BUILD. Si Google no
- * responde —corte de red en el runner, bloqueo regional, timeout— el
- * deploy entero falla con "Failed to fetch Space Grotesk".
- *
- * Un sitio comercial no puede quedar sin desplegar porque un CDN de
- * fuentes tuvo un mal minuto. Con <link> + `display=swap`, si las
- * fuentes no cargan el sitio se ve con la del sistema y se publica igual.
- */
-const inter = { variable: "font-inter" };
-const spaceGrotesk = { variable: "font-space" };
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.black-sheep.cl"),
@@ -51,19 +50,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es-CL">
-      <head>
-        {/* Favicon: el logo real. La web no tenía ninguno — el navegador
-            mostraba el ícono genérico de página en la pestaña. */}
-        <link rel="icon" type="image/png" sizes="32x32" href="/logo-mark-32.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/logo-mark-192.png" />
-        <link rel="apple-touch-icon" href="/logo-mark-180.png" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
-        />
-      </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-navy text-mist antialiased`}
       >

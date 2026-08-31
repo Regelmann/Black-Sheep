@@ -41,7 +41,7 @@ export default function DynamicBackground() {
         className="absolute -left-1/4 top-[-20%] h-[70vh] w-[80vw] rounded-full opacity-60"
         style={{
           background:
-            "radial-gradient(ellipse at center, rgba(163,230,53,0.18) 0%, transparent 65%)",
+            "radial-gradient(ellipse at center, rgba(234,88,12,0.18) 0%, transparent 65%)",
         }}
         animate={
           reduce

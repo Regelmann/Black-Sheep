@@ -1,36 +1,25 @@
 import Image from "next/image";
 
-/**
- * Logo de Black Sheep — el archivo REAL.
- *
- * Historial de dos errores acá:
- *  1. Un cuadradito con las letras "BΣ" y un degradado, inventado.
- *  2. `logo-mark-transparent.svg`, que resultó ser un dibujo genérico de
- *     oveja en verde #16a34a — tampoco es el logo.
- *
- * El logo verdadero es la oveja con circuitos en lima fluorescente sobre
- * negro. Vive en `public/logo-mark-512.png`, derivado del master 1024.
- *
- * Se usa el PNG y no un SVG porque el logo tiene degradados y glow: un
- * trazado vectorial no lo reproduce.
- */
 export default function Logo() {
   return (
     <a
       href="#top"
       className="group flex items-center gap-2.5"
-      aria-label="Black Sheep — inicio"
+      aria-label="Black Sheep Field — inicio"
     >
-      <Image
-        src="/logo-mark-512.png"
-        alt=""
-        width={40}
-        height={40}
-        className="h-10 w-10 rounded-xl transition-transform duration-300 group-hover:scale-105"
-        priority
-      />
+      <span className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl border border-primary/30 bg-black shadow-[0_0_20px_rgba(57,255,20,0.25)] transition-transform duration-300 group-hover:scale-105">
+        <Image
+          src="/brand/logo-mark.png"
+          alt=""
+          width={36}
+          height={36}
+          className="h-9 w-9 object-contain animate-[glow-pulse_2.4s_ease-in-out_infinite]"
+          priority
+        />
+      </span>
       <span className="font-display text-lg font-bold tracking-tight text-white">
-        Black&nbsp;Sheep <span className="text-primary">Field</span>
+        Black&nbsp;Sheep{" "}
+        <span className="text-primary">Field</span>
       </span>
     </a>
   );

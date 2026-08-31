@@ -238,7 +238,7 @@ function PlanCard({ plan, reduce }: { plan: Plan; reduce: boolean }) {
           whileTap={reduce ? undefined : { scale: 0.96 }}
           className={`group relative mt-7 inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-3.5 text-sm font-bold ${
             plan.featured
-              ? "bg-primary text-[#0c0a09] shadow-lg shadow-primary/40"
+              ? "bg-primary text-black shadow-lg shadow-primary/40"
               : "border border-line/80 bg-navy/60 text-mist hover:border-primary/50 hover:bg-panel"
           }`}
         >

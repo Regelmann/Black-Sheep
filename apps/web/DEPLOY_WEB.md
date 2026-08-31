@@ -57,3 +57,13 @@ No mezclar root directories en el mismo proyecto Vercel.
 | primary-soft | `#fb923c` | hover / glow |
 | mint | `#34d399` | éxito / pedidos |
 | mist | `#fafaf9` | texto |
+
+## Animaciones (Framer Motion)
+
+- `Reveal` — variantes: `up` | `down` | `left` | `right` | `scale` | `fade`
+- `Stagger` — cascada de hijos al entrar en viewport
+- `AmbientGlow` — resplandores con pulse suave
+- `TrustBar` — marquee con `motion` (respeta reduced-motion)
+- Hero, Stats, FAQ, FloatingCTA ya usaban motion
+
+Todo respeta `prefers-reduced-motion`.

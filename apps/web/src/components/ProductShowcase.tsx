@@ -136,7 +136,7 @@ function RutaPanel() {
                 stop.state === "done"
                   ? "bg-mint/15 text-mint"
                   : stop.state === "current"
-                    ? "bg-primary text-[#0c0a09]"
+                    ? "bg-primary text-white"
                     : "bg-panel text-ink"
               }`}
             >
@@ -433,7 +433,7 @@ export default function ProductShowcase() {
                 onClick={() => setActive(id)}
                 className={`flex items-center gap-2 rounded-xl px-4 py-2.5 font-display text-xs font-bold transition-all duration-300 ${
                   active === id
-                    ? "bg-primary text-[#0c0a09] shadow-lg shadow-primary/30"
+                    ? "bg-primary text-white shadow-lg shadow-primary/30"
                     : "text-ink hover:text-white"
                 }`}
               >
