@@ -142,15 +142,38 @@ function buildFechas() {
 }
 const FECHAS = buildFechas()
 
+/**
+ * 🔴 POR QUÉ TODOS LOS PINES SALÍAN NEGROS
+ *
+ * Estos colores se inyectan en un `data:image/svg+xml`, que el navegador
+ * trata como un ARCHIVO APARTE: no tiene acceso al CSS de la página.
+ * `var(--ok-mid)` no resuelve ahí dentro y el `fill` queda inválido →
+ * negro.
+ *
+ * En el mapa eso significa que no se distinguía un prospecto de un
+ * cliente activo ni de uno en riesgo: 2.834 pines negros iguales.
+ *
+ * Los colores del SVG van en HEX, siempre. Es la única forma.
+ */
+const PIN = {
+  ruta:       '#1d4ed8',   // azul fuerte · parada de la ruta de hoy
+  prospecto:  '#16a34a',   // verde · todavía no es cliente
+  bloqueado:  '#93c5fd',   // celeste apagado · no se le puede vender
+  activo:     '#2563eb',   // azul · compra normal
+  riesgo:     '#f59e0b',   // ámbar · se está enfriando
+  perdido:    '#ef4444',   // rojo · dormido, fugado o nunca compró
+  otro:       '#78716c',
+}
+
 function pinColor(item) {
-  if (item._tipo === 'ruta') return 'var(--info-dk2)'
-  if (item._tipo === 'prospecto') return 'var(--ok-mid)'
-  if (item.es_bloqueado) return 'var(--info-mid4)'
+  if (item._tipo === 'ruta') return PIN.ruta
+  if (item._tipo === 'prospecto') return PIN.prospecto
+  if (item.es_bloqueado) return PIN.bloqueado
   const e = (item.estado_fuga || '').toUpperCase()
-  if (e.includes('ACTIV')) return 'var(--info)'
-  if (e.includes('ENFRIANDO') || e.includes('RIESGO')) return 'var(--warn)'
-  if (e.includes('DORMIDO') || e.includes('FUGADO') || e.includes('NUNCA')) return 'var(--danger)'
-  return 'var(--info-mid3)'
+  if (e.includes('ACTIV')) return PIN.activo
+  if (e.includes('ENFRIANDO') || e.includes('RIESGO')) return PIN.riesgo
+  if (e.includes('DORMIDO') || e.includes('FUGADO') || e.includes('NUNCA')) return PIN.perdido
+  return PIN.otro
 }
 
 function pinSvg(color, label) {
@@ -163,12 +186,14 @@ function pinSvg(color, label) {
   )}`
 }
 
+// Los mismos hex que los pines: la pastilla del filtro tiene que
+// coincidir con el color del punto en el mapa, si no no sirve de leyenda.
 const FILTROS = [
-  { id: 'ruta', label: 'Ruta', color: 'var(--info-dk2)' },
-  { id: 'riesgo', label: 'En riesgo', color: 'var(--warn)' },
-  { id: 'activo', label: 'Activos', color: 'var(--brand)' },
-  { id: 'recuperar', label: 'Recuperar', color: 'var(--danger)' },
-  { id: 'prospecto', label: 'Prospectos', color: 'var(--ok-mid)' },
+  { id: 'ruta',       label: 'Ruta',       color: PIN.ruta },
+  { id: 'riesgo',     label: 'En riesgo',  color: PIN.riesgo },
+  { id: 'activo',     label: 'Activos',    color: PIN.activo },
+  { id: 'recuperar',  label: 'Recuperar',  color: PIN.perdido },
+  { id: 'prospecto',  label: 'Prospectos', color: PIN.prospecto },
 ]
 
 export default function Ruta({ session }) {

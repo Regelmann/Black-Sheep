@@ -251,15 +251,35 @@ export default function Stock() {
     // Orden explícito — antes venía sólo por es_foco_mes desde la query.
     const txt = (v) => String(v || '').trim()
     const num = (v) => { const n = Number(v); return isNaN(n) ? Infinity : n }
+    /** ¿Hay stock de esto? Lo que no hay no se puede vender. */
+    const hay = (r) => {
+      const est = String(r.estado_stock || '').toUpperCase()
+      if (est.includes('SIN STOCK')) return 0
+      const op = Number(r.stock_operativo)
+      if (!isNaN(op) && op <= 0) return 0
+      return 1
+    }
+
     const sorters = {
-      foco:      (a, b) => (b.es_foco_mes ? 1 : 0) - (a.es_foco_mes ? 1 : 0)
-                        || num(a.cobertura_dias) - num(b.cobertura_dias),
+      // 🔴 ANTES ordenaba por cobertura ASCENDENTE: lo que MENOS hay
+      // salía primero. El vendedor abría Stock y lo primero que veía
+      // era una lista de productos que no puede vender, y tenía que
+      // buscar entre 200 para encontrar los que sí.
+      //
+      // Ahora: primero lo que HAY, después el foco del mes, y recién
+      // ahí la cobertura. Lo que no hay va al final, no desaparece
+      // —sirve para saber qué pedir— pero no estorba.
+      foco:      (a, b) => hay(b) - hay(a)
+                        || (b.es_foco_mes ? 1 : 0) - (a.es_foco_mes ? 1 : 0)
+                        || num(b.cobertura_dias) - num(a.cobertura_dias),
       nombre:    (a, b) => txt(a.producto_nombre || a.sku_canon)
                         .localeCompare(txt(b.producto_nombre || b.sku_canon), 'es'),
       categoria: (a, b) => txt(a.subfamilia).localeCompare(txt(b.subfamilia), 'es')
                         || txt(a.producto_nombre).localeCompare(txt(b.producto_nombre), 'es'),
-      cobertura: (a, b) => num(a.cobertura_dias) - num(b.cobertura_dias),
-      volumen:   (a, b) => num(b.stock_operativo) - num(a.stock_operativo),
+      // Cobertura: los que menos duran primero, PERO sólo entre los
+      // que hay. Un producto sin stock no tiene cobertura que gestionar.
+      cobertura: (a, b) => hay(b) - hay(a) || num(a.cobertura_dias) - num(b.cobertura_dias),
+      volumen:   (a, b) => hay(b) - hay(a) || num(b.stock_operativo) - num(a.stock_operativo),
     }
     return [...rows].sort(sorters[orden] || sorters.foco)
   }, [stock, q, filtro, orden])

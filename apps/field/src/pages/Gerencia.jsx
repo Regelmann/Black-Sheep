@@ -1154,7 +1154,21 @@ export default function Gerencia({ esGerente }) {
                 ((Number(r.venta_mtd) || 0) / (Number(r.meta_mensual) || 1)) * 100
               )
               return (
-                <button type="button" key={i} onClick={() => setCanalSel(r.ejecutivo)}>
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => {
+                    // Antes sólo hacía setCanalSel: cambiaba un estado que
+                    // no llevaba a ninguna parte visible. Ahora selecciona
+                    // la zona Y baja al detalle, que es lo que "ver causa"
+                    // promete.
+                    setCanalSel(r.ejecutivo)
+                    requestAnimationFrame(() => {
+                      document.getElementById('detalle-zonas')
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    })
+                  }}
+                >
                   <span>{r.ejecutivo}</span>
                   <strong>{pct}%</strong>
                   <em>ver causa →</em>
@@ -1228,7 +1242,10 @@ export default function Gerencia({ esGerente }) {
         <button
           type="button"
           className="admin-entry"
-          onClick={() => window.open('https://black-sheep.cl/dashboard', '_blank')}
+          /* Abría black-sheep.cl/dashboard en otra pestaña — la web de
+             marketing, no el dashboard. El de verdad es una ruta de esta
+             misma app: /dashboard (DashboardGerencia). */
+          onClick={() => navAdmin('/dashboard')}
           style={{
             width: '100%', marginBottom: 12, padding: '12px 14px', borderRadius: 14,
             border: '1px solid var(--line)', background: 'var(--surface)',
@@ -1474,8 +1491,8 @@ export default function Gerencia({ esGerente }) {
           </div>
         )}
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, margin: '12px 0', overflowX: 'auto' }}>
+        {/* Tabs · destino de "ver causa" */}
+        <div id="detalle-zonas" style={{ display: 'flex', gap: 8, margin: '12px 0', overflowX: 'auto' }}>
           {[
             { id: 'zonas', label: 'Zonas / canales' },
             { id: 'actividad', label: 'Actividad terreno' },

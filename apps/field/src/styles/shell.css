@@ -1146,3 +1146,157 @@ html, body {
   font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap;
 }
 .bs-adm-vacio, .bs-admin-loading { padding: 30px 16px; text-align: center; font-size: 13.5px; color: var(--ink-3,#78716c); }
+
+/* ══════════════════════════════════════════════════════════════════
+   ARREGLOS V12.9 · lo que se ve en TODAS las pantallas
+   ══════════════════════════════════════════════════════════════════ */
+
+/* --- 1 · La franja blanca del número de versión -----------------
+   Ocupaba una banda blanca completa arriba de cada pantalla. El sello
+   sirve para saber qué versión corre, no para decorar: va discreto,
+   sobre el header oscuro, sin franja propia. */
+.build-stamp {
+  position: absolute;
+  top: 0; right: 10px;
+  z-index: 1;
+  padding: 2px 6px;
+  background: transparent;
+  border: 0;
+  font-size: 9px;
+  line-height: 1.6;
+  letter-spacing: .02em;
+  color: rgba(255,255,255,.28);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.app-body { position: relative; }
+
+/* --- 2 · Selector de zonas: los nombres tienen que entrar --------
+   Se veía cortado o con la pastilla activa sin texto. Tres opciones
+   en 380px: la letra baja, el padding se ajusta, y nada se corta. */
+.bs-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  width: 100%;
+  padding: 3px;
+  gap: 2px;
+  box-sizing: border-box;
+}
+.bs-seg-btn {
+  min-height: 44px;   /* táctil: 42 no pasa el mínimo */
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  box-sizing: border-box;
+}
+@media (max-width: 380px) {
+  .bs-seg-btn { font-size: 12px; }
+}
+/* La pastilla activa SIEMPRE con texto legible sobre el color */
+.bs-seg-btn.is-on,
+.bs-seg-btn[aria-pressed="true"] {
+  color: #fff;
+  font-weight: 800;
+}
+
+/* --- 3 · Clientes: las tarjetas de estado, alineadas -------------
+   Se veían 4 arriba y 3 abajo, sin alinear con el margen de la
+   página. Una grilla de 4 columnas fijas resuelve las dos cosas. */
+.bs-statgrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+.bs-statgrid > * {
+  min-width: 0;
+  padding: 10px 6px;
+  border-radius: 13px;
+  background: #fff;
+  border: 1px solid var(--line, #ebe5dc);
+  text-align: center;
+}
+.bs-stat-value, .bs-statgrid strong {
+  display: block;
+  font-size: 20px; font-weight: 800; line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.bs-stat-label {
+  display: block;
+  margin-top: 3px;
+  font-size: 9.5px; font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-3, #78716c);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 360px) {
+  .bs-statgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* --- 4 · El buscador usa la MISMA tipografía que el resto --------
+   Los input no heredan font-family: el navegador les pone la suya.
+   Por eso "Buscar cliente o comuna" se veía con otra letra. */
+input, select, textarea, button {
+  font-family: inherit;
+}
+.bs-search, .bs-search input, input.search, .search {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line-2, #d6cfc4);
+  border-radius: 13px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 16px;              /* 16 reales: sin zoom en iOS */
+  font-weight: 500;
+  color: var(--ink, #1c1917);
+  box-sizing: border-box;
+}
+
+/* --- 5 · Los filtros: todos visibles, no algunos -----------------
+   La barra cortaba las opciones. Ahora hace scroll horizontal y se
+   ven todas, con el mismo alto táctil. */
+.bs-filterbar, .filter-row {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.bs-filterbar::-webkit-scrollbar, .filter-row::-webkit-scrollbar { display: none; }
+.bs-filterbar > *, .filter-row > * {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 15px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+/* --- 6 · "Copiar" parecía un botón del sistema -------------------
+   Era un <button> sin estilos: el navegador le ponía su apariencia
+   nativa, gris y cuadrada. */
+.bs-copy-btn, .bs-shop-copy,
+button[data-copy] {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--ink, #1c1917);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
