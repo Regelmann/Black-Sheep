@@ -50,19 +50,7 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          <a
-            href="https://app.black-sheep.cl"
-            className="text-sm font-bold text-ink transition-colors hover:text-white"
-          >
-            Ingresar
-          </a>
           <Magnetic strength={0.26}>
-            <a
-              href="https://app.black-sheep.cl"
-              className="mb-2 block text-center text-sm font-bold text-primary"
-            >
-              Ingresar al sistema
-            </a>
             <a
               href="#demo"
               className="btn-shine group inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-primary/25 transition-all hover:bg-primary-soft hover:shadow-primary/40 active:scale-95"

@@ -5,9 +5,9 @@ import { motion } from "framer-motion";
 
 /** UF referencial ~30-ago-2026 */
 const UF = 40872;
-const PLAN_CAMPO_UF = 6; // hasta 5 usuarios
-const PLAN_COMANDO_UF = 10; // hasta 15 usuarios
-const ANNUAL_FACTOR = 10 / 12;
+const PLAN_CAMPO_UF = 6;
+const PLAN_COMANDO_UF = 10;
+const ANNUAL_FACTOR = 10 / 12; // 2 meses de descuento
 
 function clp(n: number) {
   return "$" + Math.round(n).toLocaleString("es-CL");
@@ -17,16 +17,15 @@ const plans = [
   {
     id: "campo",
     name: "Campo",
-    tagline: "Para equipos chicos que salen a la calle todos los días.",
+    tagline: "Para el equipo que vive en la calle.",
     uf: PLAN_CAMPO_UF,
-    users: "Hasta 5 usuarios",
     features: [
       "App de terreno (Hoy, Mapa, Clientes)",
       "Ruta del día y check-in GPS",
       "Pedidos con precio por cliente",
       "Catálogo web al cliente",
       "1 lista de precios + histórico",
-      "Soporte WhatsApp en horario hábil",
+      "Soporte por WhatsApp en horario hábil",
     ],
     cta: "Empezar con Campo",
     featured: false,
@@ -34,9 +33,8 @@ const plans = [
   {
     id: "comando",
     name: "Comando",
-    tagline: "Operación completa: terreno + gerencia + control.",
+    tagline: "Operación completa: terreno + gerencia.",
     uf: PLAN_COMANDO_UF,
-    users: "Hasta 15 usuarios",
     features: [
       "Todo lo de Campo",
       "Next-Best-Action y focos diarios",
@@ -54,21 +52,22 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(true);
 
   return (
-    <section id="precios" className="relative scroll-mt-24 px-6 py-20">
+    <section id="precios" className="relative scroll-mt-24 px-6 py-24">
       <div className="mx-auto max-w-5xl">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
             Precios
           </p>
           <h2 className="mt-3 font-display text-4xl font-black tracking-tight text-white sm:text-5xl">
-            Plan empresa.
-            <span className="text-primary"> Por usuarios.</span>
+            Claro en UF.
+            <span className="text-primary"> Sin letra chica.</span>
           </h2>
           <p className="mt-4 text-ink">
-            Se cotiza el plan de la empresa según la cantidad de usuarios activos.
-            UF referencial {clp(UF)} (Banco Central). El peso se actualiza con la UF del día de facturación.
+            Por vendedor / mes. UF referencial {clp(UF)} (Banco Central). El monto en pesos
+            se actualiza con la UF del día de facturación.
           </p>
 
+          {/* Toggle */}
           <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-line bg-card p-1">
             <button
               type="button"
@@ -115,16 +114,13 @@ export default function Pricing() {
                 )}
                 <h3 className="font-display text-2xl font-black text-white">{p.name}</h3>
                 <p className="mt-1 text-sm text-ink">{p.tagline}</p>
-                <p className="mt-3 inline-flex w-fit rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                  {p.users}
-                </p>
                 <div className="mt-6">
                   <div className="flex items-baseline gap-2">
                     <span className="font-display text-5xl font-black text-white">
                       {p.uf}
                     </span>
                     <span className="text-lg font-bold text-primary">UF</span>
-                    <span className="text-sm text-ink">/ mes · plan empresa</span>
+                    <span className="text-sm text-ink">/ vendedor / mes</span>
                   </div>
                   <p className="mt-2 text-sm text-ink">
                     ≈ {clp(billed)}
@@ -160,11 +156,9 @@ export default function Pricing() {
         </div>
 
         <p className="mx-auto mt-10 max-w-xl text-center text-xs text-ink">
-          ¿Más de 15 usuarios o multi-empresa?{" "}
-          <a href="mailto:hola@black-sheep.cl" className="font-bold text-primary hover:underline">
-            hola@black-sheep.cl
-          </a>{" "}
-          · plan a medida.
+          Comparativa mercado field sales 2026: Badger ~USD 58–69, SalesRabbit ~USD 49–75,
+          Map My Customers desde USD 99. Nuestros planes en UF se reajustan con inflación
+          chilena y se cotizan en pesos al valor UF del día.
         </p>
       </div>
     </section>

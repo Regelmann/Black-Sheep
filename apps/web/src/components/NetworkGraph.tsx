@@ -234,19 +234,13 @@ export default function NetworkGraph() {
     let hoveredNeighbors: Set<string> | null = null;
 
     sigma.setSetting("nodeReducer", (node, data) => {
-      // Siempre mostrar nombre del nodo; al hover realzar vecinos
       if (!hovered) {
-        return { ...data, label: data.label, zIndex: node === HUB ? 2 : 1 };
+        return { ...data, label: node === HUB ? data.label : "" };
       }
       if (node === hovered || hoveredNeighbors?.has(node)) {
-        return {
-          ...data,
-          label: data.label,
-          zIndex: 3,
-          size: (data.size as number) * (node === hovered ? 1.35 : 1.1),
-        };
+        return { ...data, label: node === hovered ? data.label : "" };
       }
-      return { ...data, label: data.label, color: DIM_COLOR, zIndex: 0 };
+      return { ...data, label: "", color: DIM_COLOR };
     });
 
     sigma.setSetting("edgeReducer", (edge, data) => {
@@ -262,27 +256,6 @@ export default function NetworkGraph() {
       hoveredNeighbors = new Set(graph.neighbors(node));
       container.style.cursor = "pointer";
       sigma.refresh();
-    });
-    sigma.on("clickNode", ({ node }) => {
-      const label = graph.getNodeAttribute(node, "label") as string;
-      const kind = (node as string).startsWith("a")
-        ? "Alerta de fuga"
-        : (node as string).startsWith("p")
-          ? "Prospecto"
-          : node === HUB
-            ? "Núcleo"
-            : "Cliente activo";
-      // Feedback simple en consola + title del contenedor
-      container.title = `${kind}: ${label}`;
-      // Destacar 1.2s
-      hovered = node;
-      hoveredNeighbors = new Set(graph.neighbors(node));
-      sigma.refresh();
-      window.setTimeout(() => {
-        hovered = null;
-        hoveredNeighbors = null;
-        sigma.refresh();
-      }, 1400);
     });
     sigma.on("leaveNode", () => {
       hovered = null;

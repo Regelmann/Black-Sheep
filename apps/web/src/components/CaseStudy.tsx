@@ -18,12 +18,13 @@ export default function CaseStudy() {
             Caso de éxito · 90 días
           </span>
           <h2 className="font-display text-4xl leading-[1.02] font-black tracking-tight text-white sm:text-5xl">
-            KeyFoods dejó el Excel
+            AndesAlimentos dejó el Excel
             <br />
             en <span className="text-gradient">12 días</span>
           </h2>
           <p className="text-base leading-relaxed text-ink">
-            Distribuidora de alimentos con fuerza de venta en terreno en la Región Metropolitana. Los pedidos llegaban
+            Distribuidora de alimentos premium con 14 vendedores en terreno,
+            900 clientes activos entre la RM y la IV Región. Los pedidos llegaban
             por WhatsApp y los precios se consultaban en planillas de 40
             pestañas.
           </p>
@@ -55,7 +56,7 @@ export default function CaseStudy() {
               </span>
               <span className="text-xs text-ink">
                 <strong className="text-white">Camila Rojas</strong> · Gerente
-                Comercial, KeyFoods SpA
+                Comercial, AndesAlimentos SpA
               </span>
             </footer>
           </blockquote>
