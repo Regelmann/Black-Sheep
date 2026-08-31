@@ -188,10 +188,10 @@ Copiar 35 archivos al SQL Editor no escala y ya costó funciones duplicadas. El 
 
 ### Sprint A — que lo desplegado sea lo que el repo cree
 
-- [ ] Parse-check del SW + arreglar `apps/field/public/sw.js`
-- [ ] Correr SQL `41` → `40` → `26` + `00_VERIFICAR_ESTADO.sql`
-- [ ] `client_op_id` en nota y pedido del outbox
-- [ ] `NotaRapidaMap` pasa por el outbox (nunca insert directo)
+- [x] Parse-check del SW + arreglar `apps/field/public/sw.js` (test `new Function` + R19 `node --check` en el guard)
+- [ ] Correr SQL `41` → `40` → `26` + `00_VERIFICAR_ESTADO.sql` *(no se aplica desde acá)*
+- [x] `client_op_id` en nota y pedido del outbox
+- [x] `NotaRapidaMap` pasa por el outbox (nunca insert directo)
 - [ ] Prueba modo avión en teléfono real
 - [ ] Confirmar stamp `v-BS-PLATFORM-V12.9` en `app.black-sheep.cl`
 
@@ -201,7 +201,8 @@ Copiar 35 archivos al SQL Editor no escala y ya costó funciones duplicadas. El 
 - [x] `App.jsx`: si falla `ejecutivos`, error visible — no ejecutivo fantasma
 - [ ] Cablear Data Health en Gerencia (el código ya existe)
 - [ ] Sentry (o un webhook) en el `ErrorBoundary`
-- [ ] CI de `apps/web` + `node --check` del SW
+- [ ] CI de `apps/web`
+- [x] Parse-check del SW en CI (R19 del guard)
 - [ ] Test: JWT tenant A no lee cartera tenant B
 
 ### Sprint C — poder mantenerlo
@@ -230,8 +231,8 @@ Copiar 35 archivos al SQL Editor no escala y ya costó funciones duplicadas. El 
 |---|---|---|
 | Sello de build | `apps/field/src/lib/buildStamp.js` | `v-BS-PLATFORM-V12.9` |
 | Outbox | `apps/field/src/lib/offline.js` + `outboxDb.js` | Sólido; snapshot de cartera aún en localStorage |
-| Handlers sync | `apps/field/src/lib/syncHandlers.js` | Check-in idempotente; nota/pedido no |
-| Guard | `apps/field/scripts/guard.js` | 18 reglas; R4/R6/R7/R11 avisan |
+| Handlers sync | `apps/field/src/lib/syncHandlers.js` | Check-in, nota y pedido mandan `client_op_id`; 23505 = éxito |
+| Guard | `apps/field/scripts/guard.js` | 19 reglas; R19 parsea `sw.js` |
 | CI | `.github/workflows/ci.yml` | Solo `apps/field` |
 | RLS estricto | `sql/28_RLS_ESTRICTO.sql` | Escrito; hay que correrlo |
 | Idempotencia SQL | `sql/27_IDEMPOTENCIA.sql` | Índices parciales; inútil si el cliente no manda el id |
