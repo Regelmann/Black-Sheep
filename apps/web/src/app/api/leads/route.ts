@@ -39,35 +39,36 @@ export async function POST(request: Request) {
     );
   }
 
-  const lead = {
-    nombre,
-    empresa,
-    email,
-    telefono,
-    tamanoEquipo,
-    mensaje,
-    createdAt: new Date().toISOString(),
-  };
-
-  // Sin Postgres: log en servidor Vercel. Conectá DATABASE_URL + drizzle cuando quieras persistir.
-  console.info("[lead]", JSON.stringify(lead));
+  console.info(
+    "[lead]",
+    JSON.stringify({
+      nombre,
+      empresa,
+      email,
+      telefono,
+      tamanoEquipo,
+      mensaje,
+      createdAt: new Date().toISOString(),
+    }),
+  );
 
   try {
     if (process.env.DATABASE_URL) {
       const { db } = await import("@/db");
       const { leads } = await import("@/db/schema");
-      await db.insert(leads).values({
-        nombre,
-        empresa: empresa || null,
-        email,
-        telefono: telefono || null,
-        tamanoEquipo: tamanoEquipo || null,
-        mensaje: mensaje || null,
-      });
+      if (db) {
+        await db.insert(leads).values({
+          nombre,
+          empresa: empresa || null,
+          email,
+          telefono: telefono || null,
+          tamanoEquipo: tamanoEquipo || null,
+          mensaje: mensaje || null,
+        });
+      }
     }
   } catch (err) {
     console.error("[lead] persist failed", err);
-    // Igual confirmamos al usuario: el lead quedó en logs
   }
 
   return NextResponse.json({ ok: true });
