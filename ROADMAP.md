@@ -1,6 +1,18 @@
 # Black Sheep Field — Roadmap
 
-**Estado actual:** `v-BS-PLATFORM-V13.1` · build verde · 24/24 tests · 0 imports rotos
+**Estado actual:** `v-BS-PLATFORM-V13.2` · build verde · 571 tests · 0 imports rotos
+
+---
+
+## Cerrado en V13.2
+
+- **RLS multi-tenant:** `sql/47_RLS_CIERRE_FINAL.sql` cierra cualquier `USING(true)` residual.
+- **`updated_at`:** `sql/48_AUDITORIA_TIMESTAMPS.sql` agrega trigger a tablas editables.
+- **Idempotencia total del outbox:** `nota`, `pedido` y `no_venta` mandan `client_op_id` y tratan `23505` como éxito (tests `syncIdempotencia` reactivados).
+- **Totales de pedido consistentes:** `lineasValidas`/`totalLineas` y los 4 caminos (guardar, WhatsApp cliente, WhatsApp bodega, PDF) usan la misma regla (test `pedidoTotales` reactivado).
+- **IndexedDB también para snapshot de cartera** (`snapshotDb`), no sólo para la cola.
+- **Data Health visible** en Gerencia y Dashboard.
+- **Web lint/typecheck/build** sin errores.
 
 ---
 
@@ -41,23 +53,24 @@ Falta **probarlo con un teléfono real en un sótano**, no en devtools.
 Quedan en `Visita`, `Metas`, `Ruta`, `Admin`, `components.jsx`.
 Cada una puede mostrar "0" cuando en realidad falló.
 
-- [ ] Una página por PR, verificando en pantalla
-- [ ] **Métrica:** 0 ocurrencias de `const { data }` sin `error`
+- [x] Una página por PR, verificando en pantalla
+- [x] **Métrica:** 0 ocurrencias de `const { data }` sin `error`
 
 ### 1.3 RLS estricto antes de multi-tenant
-Los SQL `13`/`14` tienen políticas abiertas. Hoy no duele porque hay un solo tenant.
-**El día que entre el segundo, es una fuga de datos entre clientes.**
+Los SQL `13`/`14` tienen políticas abiertas, pero ya **no son el estado final**:
+`28_RLS_ESTRICTO.sql` + `35_RLS_CATALOGO.sql` + `47_RLS_CIERRE_FINAL.sql`
+cierran el modelo. Falta validar en base real con JWT de otro tenant.
 
-- [ ] Auditar toda política `USING (true)`
-- [ ] Aislar por `ejecutivo_id` / `tenant_id`
+- [x] Auditar toda política `USING (true)`
+- [x] Aislar por `ejecutivo_id` / `tenant_id`
 - [ ] Test: con el JWT del tenant A, intentar leer datos del tenant B → debe fallar
 
 ### 1.4 Data Health visible
-`dataHealth.js` y `dataIntegrity.js` ya existen y tienen tests. Falta mostrarlos.
+`dataHealth.js` y `dataIntegrity.js` ya existían; ahora se muestran.
 
-- [ ] Semáforo en Gerencia: verde / ámbar / rojo por bloque
-- [ ] Si la bajada es vieja o inconsistente, **decirlo antes** de mostrar números
-- [ ] Regla: ningún panel muestra un número sin saber de cuándo es
+- [x] Semáforo en Gerencia: verde / ámbar / rojo por bloque
+- [x] Si la bajada es vieja o inconsistente, **decirlo antes** de mostrar números
+- [x] Regla: ningún panel muestra un número sin saber de cuándo es
 
 ---
 
@@ -93,14 +106,14 @@ Data Health → planDia → Visita → Pedido → outbox → Supabase
 ### 3.1 Code-splitting
 Bundle actual: **728 kB** (207 kB gzip). En 4G de terreno eso son varios segundos.
 
-- [ ] `React.lazy` por ruta: Gerencia y Admin no los carga un vendedor
-- [ ] Objetivo: **< 250 kB** en la carga inicial
+- [x] `React.lazy` por ruta: Gerencia y Admin no los carga un vendedor
+- [ ] Objetivo: **< 250 kB** en la carga inicial (chunk actual ~266 kB)
 
 ### 3.2 IndexedDB en vez de localStorage
-La cola vive en localStorage (~5 MB, escritura síncrona que bloquea el hilo).
+La cola y el snapshot ya viven en IndexedDB con respaldo en localStorage.
 
-- [ ] Migrar outbox y snapshot a IndexedDB
-- [ ] Migración transparente: si hay cola vieja en localStorage, importarla
+- [x] Migrar outbox y snapshot a IndexedDB
+- [x] Migración transparente: si hay cola vieja en localStorage, importarla
 
 ### 3.3 Presupuesto de rendimiento
 - [ ] Primera pintura útil < 1,5 s en 4G
@@ -115,9 +128,9 @@ La cola vive en localStorage (~5 MB, escritura síncrona que bloquea el hilo).
 Hoy los tests existen pero **nadie los corre antes de subir**. Por eso llegaron
 tres ZIPs consecutivos que no compilaban.
 
-- [ ] GitHub Actions: `build` + `test` en cada push
-- [ ] Bloquear merge si el build falla
-- [ ] **Esto solo habría evitado V9.0, V92 y el catálogo eliminado**
+- [x] GitHub Actions: `build` + `test` en cada push
+- [x] Bloquear merge si el build falla
+- [x] **Esto solo habría evitado V9.0, V92 y el catálogo eliminado**
 
 ### 4.2 ETL automatizado
 - [ ] Configurar los secrets pendientes (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `GOOGLE_MAPS_API_KEY`, `GDRIVE_SA_JSON`, `GDRIVE_FOLDER_ID`)
@@ -150,10 +163,10 @@ tres ZIPs consecutivos que no compilaban.
 | 2 | `mix%` inflado (`promClp` per-línea en vez de per-mes) | Media | 1.4 |
 | 3 | 57 SKUs sin precio de lista | Media | 1.4 |
 | 4 | Sur Capital sin filas en `ventas_lineas` | Media | 1.4 |
-| 5 | RLS abierto en SQL `13`/`14` | **Alta** | 1.3 |
+| 5 | RLS abierto en SQL `13`/`14` | ~~Alta~~ **Cerrado con 47** | 1.3 |
 | 6 | `limit(2000)` fijo en cartera — se rompe al crecer | Media | 3.1 |
-| 7 | Bundle 728 kB | Media | 3.1 |
-| 8 | localStorage como cola | Media | 3.2 |
+| 7 | Bundle 728 kB → ~266 kB (code-splitting hecho) | Media | 3.1 |
+| 8 | localStorage como cola/snapshot | ~~Media~~ **Cerrado con IndexedDB** | 3.2 |
 
 ---
 

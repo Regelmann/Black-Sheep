@@ -85,5 +85,12 @@ export function availableTenants() {
   return listTenants()
 }
 
+/** Inyecta un doble de Supabase para tests unitarios de los handlers. */
+export function registerSupabaseForTests(mockClient) {
+  client = mockClient
+  activeTenant = { id: 'test', name: 'test', supabaseUrl: 'test', supabaseAnon: 'test' }
+  return client
+}
+
 // Bootstrap al cargar el módulo
 initSupabase(resolveTenant())

@@ -1,6 +1,6 @@
 # Black Sheep
 
-**Versión vigente: `v-BS-PLATFORM-V13.1`**
+**Versión vigente: `v-BS-PLATFORM-V13.2`**
 PWA comercial de ventas en terreno + analítica operacional + catálogo/pedidos, multi-tenant y offline-first.
 
 ## Estado de esta entrega
@@ -12,6 +12,11 @@ PWA comercial de ventas en terreno + analítica operacional + catálogo/pedidos,
 - **Catálogo:** conserva la lógica de stock visible y bloqueo de compra cuando corresponde.
 - **Web:** landing/control center y navegación coherentes con la plataforma.
 - **Deploy:** GitHub → CI → Vercel, con `BUILD_STAMP` único.
+- **V13.2 — RLS multi-tenant cerrado:** `sql/47_RLS_CIERRE_FINAL.sql` reemplaza cualquier `USING(true)` residual.
+- **V13.2 — `updated_at`:** `sql/48_AUDITORIA_TIMESTAMPS.sql` agrega auditoría de escrituras concurrentes.
+- **V13.2 — offline-first:** cola y snapshot de cartera en IndexedDB con migración desde localStorage.
+- **V13.2 — Data Health visible:** semáforo en Gerencia y Dashboard antes de mostrar números.
+- **V13.2 — idempotencia completa:** `nota`, `pedido` y `no_venta` mandan `client_op_id` y tratan `23505` como éxito.
 
 > Esta repo es la fuente única de verdad. No se versionan ZIPs, builds, `node_modules`, `.env`, `__pycache__` ni copias de scripts por versión. El historial técnico vive en `docs/historial/`.
 
@@ -55,6 +60,8 @@ La capa de ventas nueva se instala con:
 
 1. `sql/44_VENTAS_INTEGRACION_TOTAL.sql` — tablas/índices de operación.
 2. `sql/46_VENTAS_REPORTES_APP.sql` — vistas consumidas por la app.
+3. `sql/47_RLS_CIERRE_FINAL.sql` — cierre total de RLS multi-tenant.
+4. `sql/48_AUDITORIA_TIMESTAMPS.sql` — `updated_at` en tablas editables.
 
 `sql/45_VENTAS_TOTAL_ANALITICA.sql` quedó superseded y ya no forma parte del deploy.
 
@@ -133,7 +140,7 @@ Nunca se hace `git push` si `verify` falla.
 
 ## Documentación vigente
 
-- `DEPLOY.md` — procedimiento de despliegue.
+- `DEPLOY.md` — procedimiento de despliegue (incluye 47 y 48).
 - `ARQUITECTURA.md` — arquitectura.
 - `SEGURIDAD.md` — RLS/seguridad.
 - `RENDIMIENTO.md` — rendimiento y bundle.

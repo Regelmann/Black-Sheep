@@ -8,14 +8,16 @@
 2. Backup si el cambio modifica esquema/datos.
 3. Ejecutar `sql/44_VENTAS_INTEGRACION_TOTAL.sql` si la capa de ventas no existe.
 4. Ejecutar `sql/46_VENTAS_REPORTES_APP.sql`.
-5. Ejecutar el Ciclo Único en modo validación/sin escritura.
-6. Revisar totales histórico + nuevo.
-7. `cd apps/field && npm ci && npm run verify`.
-8. Verificar Web: `cd apps/web && npm ci && npm run lint && npm run typecheck && npm run build`.
-9. Commit + push.
-10. Esperar CI verde y verificar Vercel.
-11. Confirmar `BUILD_STAMP = v-BS-PLATFORM-V13.1`.
-12. Smoke test móvil y offline.
+5. Ejecutar `sql/47_RLS_CIERRE_FINAL.sql` — **cierra el último RLS abierto**.
+6. Ejecutar `sql/48_AUDITORIA_TIMESTAMPS.sql` — **`updated_at` en tablas editables**.
+7. Ejecutar el Ciclo Único en modo validación/sin escritura.
+8. Revisar totales histórico + nuevo.
+9. `cd apps/field && npm ci && npm run verify`.
+10. Verificar Web: `cd apps/web && npm ci && npm run lint && npm run typecheck && npm run build`.
+11. Commit + push.
+12. Esperar CI verde y verificar Vercel.
+13. Confirmar `BUILD_STAMP = v-BS-PLATFORM-V13.2`.
+14. Smoke test móvil y offline.
 
 ## Ventas
 
@@ -89,3 +91,5 @@ El guard exige que **todo `.sql` del repositorio aparezca aquí**. Los archivos 
 - `41_VENTAS_LINEAS.sql`
 - `44_VENTAS_INTEGRACION_TOTAL.sql` — **VENTAS V13.1**
 - `46_VENTAS_REPORTES_APP.sql` — **VENTAS V13.1**
+- `47_RLS_CIERRE_FINAL.sql` — **V13.2 · RLS multi-tenant**
+- `48_AUDITORIA_TIMESTAMPS.sql` — **V13.2 · updated_at**

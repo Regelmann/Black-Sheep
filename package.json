@@ -1,8 +1,8 @@
 {
   "name": "blacksheep-platform",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "private": true,
-  "description": "Black Sheep Field + Web \u2014 V2.9 Integrado",
+  "description": "Black Sheep Field + Web \u2014 V13.2 Integrado",
   "scripts": {
     "dev:field": "npm --prefix apps/field run dev",
     "build:field": "npm --prefix apps/field run build",

@@ -4,10 +4,11 @@
  * + registro local de resultados del día (visitado / pedido / no_venta).
  */
 
-const KEY = 'kf_offline_v1'
 import { leerCola, escribirCola, agregarItem, LEGACY_KEY } from './outboxDb.js'
+import { saveSnapshot, loadSnapshot, SNAPSHOT_LEGACY_KEY } from './snapshotDb.js'
 
 export const QUEUE_KEY = LEGACY_KEY
+export const SNAPSHOT_KEY = SNAPSHOT_LEGACY_KEY
 
 /**
  * BACKOFF EXPONENCIAL CON JITTER
@@ -90,24 +91,15 @@ function safeParse(s) {
 
 /** @param {any} payload */
 export function saveOfflineSnapshot(payload) {
-  const data = {
+  // IndexedDB (durable) + localStorage (respaldo), con lectura síncrona.
+  return saveSnapshot({
     ...payload,
     savedAt: new Date().toISOString(),
-  }
-  try {
-    localStorage.setItem(KEY, JSON.stringify(data))
-    return true
-  } catch {
-    return false
-  }
+  })
 }
 
 export function loadOfflineSnapshot() {
-  try {
-    return safeParse(localStorage.getItem(KEY))
-  } catch {
-    return null
-  }
+  return loadSnapshot()
 }
 
 export function isProbablyOffline() {

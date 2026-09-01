@@ -17,12 +17,8 @@
  *   2. sql/27_IDEMPOTENCIA.sql crea índices únicos parciales sobre esa
  *      columna en checkins, pedidos y notas.      → ya existía
  *   3. Los handlers mandan ese id y tratan 23505 (unique_violation) como
- *      ÉXITO, porque el dato YA está en la base.  → SOLO handleCheckin
- *
- * Faltaba el eslabón 3 en handleNota, handlePedido y handleNoVenta: la
- * columna viajaba en NULL, el índice único nunca se disparaba y el
- * reintento duplicaba. Estos tests ejercitan los handlers REALES contra
- * un doble de Supabase que cuenta filas, no un handler de mentira.
+ *      ÉXITO, porque el dato YA está en la base.  → handleCheckin ya lo
+ *      hacía; handleNota, handlePedido y handleNoVenta lo usan ahora.
  *
  * NOTA SOBRE LA MIGRACIÓN: si sql/27 no está aplicada, la columna
  * client_op_id no existe y Postgres responde PGRST204/42703. Los

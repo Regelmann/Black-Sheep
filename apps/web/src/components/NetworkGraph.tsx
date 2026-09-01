@@ -225,7 +225,9 @@ export default function NetworkGraph() {
       });
     } catch (error) {
       console.error("[NetworkGraph] WebGL no disponible, usando fallback:", error);
-      setFallback(true);
+      // Diferido: React desaconseja setState síncrono dentro del cuerpo
+      // del effect y de paso evita un render anidado durante el setup.
+      queueMicrotask(() => setFallback(true));
       return;
     }
 

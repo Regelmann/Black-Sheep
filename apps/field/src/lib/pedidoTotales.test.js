@@ -1,6 +1,9 @@
 /**
  * El total de un pedido, en los cuatro lugares donde se muestra.
  *
+ * Reactivado desde `docs/tests-pendientes/pedidoTotales.test.js.pendiente`
+ * cuando se escribieron `lineasValidas()` y `totalLineas()` en `pedido.js`.
+ *
  * `guardarPedido` descarta las líneas sin cantidad o sin nombre antes de
  * escribir, y calcula `total_estimado` sobre lo que queda. Pero el
  * WhatsApp al cliente, el de bodega, el PDF formal y `totalPedido`

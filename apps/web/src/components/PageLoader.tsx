@@ -12,14 +12,10 @@ export default function PageLoader({
   minMs?: number;
 }) {
   const reduce = useReducedMotion();
-  const [show, setShow] = useState(!reduce);
+  const [show, setShow] = useState(true);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    if (reduce) {
-      setShow(false);
-      return;
-    }
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
@@ -35,7 +31,7 @@ export default function PageLoader({
   return (
     <>
       <AnimatePresence>
-        {show && (
+        {show && !reduce && (
           <motion.div
             key="loader"
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-black"

@@ -29,6 +29,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { traerTodo } from '../lib/traerTodo.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
+import { assessDataHealth } from '../lib/dataHealth.js'
+import DataHealthCard from '../domain/DataHealthCard.jsx'
 import { AccionesGerencia } from '../domain/AccionesGerencia.jsx'
 
 const clp = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')
@@ -50,10 +52,11 @@ export default function DashboardGerencia() {
   const [err, setErr] = useState(null)
   const [detalle, setDetalle] = useState(null)   // canal abierto
   const [aviso, setAviso] = useState(null)
+  const [health, setHealth] = useState(null)     // semáforo de confianza
 
   const cargar = useCallback(async () => {
     setLoading(true)
-    const [rg, rm] = await Promise.all([
+    const [rg, rm, rs] = await Promise.all([
       traerTodo(
         (d, h) => supabase
           .from('gerencia_clientes')
@@ -66,11 +69,23 @@ export default function DashboardGerencia() {
         (d, h) => supabase.from('gerencia').select('*').range(d, h),
         { label: 'metas_zona' }
       ),
+      traerTodo(
+        (d, h) => supabase.from('stock').select('*').range(d, h),
+        { label: 'dashboard_stock' }
+      ),
     ])
 
     if (!rg.ok) { setErr(mensajeDeError(rg.error)); setRows([]) }
     else { setErr(null); setRows(rg.rows) }
     if (rm.ok) setMetas(rm.rows)
+
+    const snaps = (rm.rows || []).map(r => r.fecha_snapshot).filter(Boolean)
+    setHealth(assessDataHealth({
+      cartera: rg.ok ? rg.rows : [],
+      stock: rs.ok ? rs.rows : [],
+      meta: rm.rows?.[0] || null,
+      dataAsOf: snaps.length ? [...snaps].sort().pop() : null,
+    }))
     setLoading(false)
   }, [])
 
@@ -136,6 +151,9 @@ export default function DashboardGerencia() {
           <strong className="dg-head-monto">{clp(total)}</strong>
         </div>
       </header>
+
+      {/* Estado de los datos primero: el semáforo se ve antes que las cifras */}
+      <DataHealthCard health={health} />
 
       {/* Fila 1 · los números que definen el mes */}
       <section className="dg-kpis">

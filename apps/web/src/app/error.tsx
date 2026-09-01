@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 
 export default function GlobalError({
@@ -38,12 +39,12 @@ export default function GlobalError({
             <RotateCcw size={15} />
             Reintentar
           </button>
-          <a
+          <Link
             href="/"
             className="rounded-xl border border-line/80 bg-card/60 px-6 py-3 text-sm font-semibold text-mist/85 transition hover:bg-panel"
           >
             Volver al inicio
-          </a>
+          </Link>
         </div>
       </div>
     </div>

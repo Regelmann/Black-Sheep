@@ -30,10 +30,7 @@ export default function ScrambleText({
 
   useEffect(() => {
     if (!inView) return;
-    if (reduce) {
-      setDisplay(text);
-      return;
-    }
+    if (reduce) return;
 
     let interval: ReturnType<typeof setInterval> | null = null;
     let progress = 0;

@@ -1,32 +1,41 @@
 # Auditoría de arquitectura
 
-**Versión de referencia:** `v-BS-PLATFORM-V13.1` · 25 de agosto de 2026
+**Versión de referencia:** `v-BS-PLATFORM-V13.2` · 1 de septiembre de 2026
 **Contra:** estándares de arquitectura móvil offline-first y UX móvil 2026
 
 Este documento sirve para dos cosas: saber si la app está bien construida, y
 poder **replicarla** para otro cliente sin repetir los errores.
 
+> **Actualización V13.2:** se cerraron las brechas grandes que este documento
+> listaba como pendientes: RLS multi-tenant (`47_RLS_CIERRE_FINAL.sql`),
+> `updated_at` (`48_AUDITORIA_TIMESTAMPS.sql`), IndexedDB para cola **y**
+> snapshot, Data Health visible en gerencia, y la idempotencia total del
+> outbox (`nota`, `pedido`, `no_venta`).
+
 ---
 
 ## Veredicto
 
-**La app está bien encaminada, con una brecha crítica que se cerró en esta
-versión y tres pendientes conocidas.**
+**La app está bien encaminada y las brechas de confianza/securas se cerraron
+en V13.2. Quedan deudas de mantenimiento (capas viejas de UI, bundle 266 kB)
+y la validación en producción sobre un segundo tenant.**
 
 El motor de negocio es una ventaja real y difícil de copiar. La arquitectura
 técnica llegó tarde pero está tomando la forma correcta. Lo que faltaba —y era
-grave— era **idempotencia en la cola offline**.
+grave— era **idempotencia en la cola offline** (cerrado) y **RLS abierto**
+(cerrado).
 
 | Capa | Estado | Nota |
 |---|---|---|
 | Motor de datos / ETL | 🟢 Sólido | Ciclo único, maestra manda, VALIDAR/PUBLICAR |
 | Lógica de negocio | 🟢 Sólido | Pura, testeada, separada de la UI |
 | Capa de datos (lectura) | 🟢 Sólido | `safeSelect` + tolerancia a esquema |
-| Cola offline | 🟡 Recién arreglado | Idempotencia agregada en V9.9.4 |
-| Almacenamiento local | 🟡 Aceptable | localStorage; debería ser IndexedDB |
+| Cola offline | 🟢 Cerrrado | Idempotencia total + outbox en IndexedDB |
+| Almacenamiento local | 🟢 Migrado | Cola + snapshot en IndexedDB, degrada a localStorage |
 | UX / design system | 🟡 En transición | Sistema nuevo conviviendo con capas viejas |
-| Rendimiento | 🟠 Pendiente | Bundle 730 kB, sin code-splitting |
-| Seguridad (RLS) | 🔴 Riesgo | Políticas `USING(true)` en 13/14 |
+| Rendimiento | 🟡 Código-splitted | Carga por ruta; chunk app 266 kB (meta <250) |
+| Seguridad (RLS) | 🟢 Cerrrado | `47_RLS_CIERRE_FINAL.sql` cierra todo `USING(true)` |
+| Auditoría de escritura | 🟢 Agregado | `updated_at` + trigger en tablas editables |
 
 ---
 
@@ -34,20 +43,15 @@ grave— era **idempotencia en la cola offline**.
 
 El estándar define cuatro. Así estamos:
 
-### 1.1 Almacenamiento local primero — 🟡
+### 1.1 Almacenamiento local primero — 🟢
 
-Hay `saveOfflineSnapshot` / `loadOfflineSnapshot`, pero sobre **localStorage**.
+La cola offline vive en IndexedDB (`outboxDb`) y el snapshot de cartera
+también (`snapshotDb`). Ambos usan **escritura doble**: espejo en memoria
+para lecturas síncronas + IndexedDB durable + localStorage como respaldo.
+Si IndexedDB no existe o falla, la app degrada a localStorage.
 
-Problemas conocidos de localStorage:
-- Límite ~5 MB. Una cartera de 3.000 clientes con `sku_detalle` se acerca.
-- **Escritura síncrona: bloquea el hilo principal.** Guardar un snapshot
-  grande produce un salto visible en la interfaz.
-- Sólo strings: todo pasa por `JSON.stringify`.
-
-Debería ser **IndexedDB**: asíncrona, sin bloquear, cientos de MB.
-
-*Migración planificada en Fase 3.2 del ROADMAP. No es urgente con colas
-chicas, sí lo es al crecer.*
+*El snapshot migra solo desde `kf_offline_v1` al primer arranque, así que
+un vendedor con la app actualizada no pierde la cartera guardada.*
 
 ### 1.2 Motor de sincronización — 🟢 (tras V9.9.4)
 
@@ -100,9 +104,10 @@ converger.
 CRDT resuelve edición concurrente del mismo registro. Ese problema no existe
 en este dominio. Meterlo sería complejidad sin beneficio.
 
-**Lo que sí falta:** `updated_at` en las entidades editables (estado de
-pedido, notas). Si un pedido se edita en la app y en el Control Center a la
-vez, hoy gana el último que escribe sin registro de que hubo conflicto.
+**Resuelto en V13.2:** `sql/48_AUDITORIA_TIMESTAMPS.sql` agrega
+`updated_at` + trigger `touch_updated_at()` a las tablas editables. Si un
+pedido se edita en la app y en el Control Center a la vez, ahora ambas
+escrituras dejan huella y se puede detectar el conflicto.
 
 ### 1.4 Estado de red visible — 🟢
 
@@ -164,15 +169,14 @@ mantener 5 años".*
 | Segmented control para 3–5 opciones | 🟢 corregido en V9.9 |
 | 16px reales en inputs (anti-zoom iOS) | 🟢 |
 | Contraste 4.5:1 | 🟡 sin auditar formalmente |
-| LCP < 2,5 s | 🟠 bundle de 730 kB |
+| LCP < 2,5 s | 🟡 bundle ~266 kB (code-splitting hecho) |
 | Passkeys | ⚪ no aplica |
 
-**El punto flojo es el rendimiento.** El estándar es tajante: *el 70% de los
-usuarios espera menos de 2 segundos*. Con 730 kB en 4G de terreno no se
-cumple. Gerencia y Admin se cargan aunque un vendedor nunca los abra.
-
-`React.lazy` por ruta baja eso a menos de 250 kB. Es el cambio con mejor
-relación esfuerzo/impacto que queda pendiente.
+**El rendimiento mejoró.** Ya hay `React.lazy` por ruta: Gerencia, Admin,
+Stock y Dashboard no bajan en el teléfono de un vendedor. El chunk app
+quedó en ~266 kB (gzip ~80 kB); falta pulir los últimos ~16 kB para el
+objetivo <250 kB. Si es necesario, el siguiente corte es extraer
+componentes pesados de `Cartera.jsx` (PedidoSheet / OfetaSheet) a lazy.
 
 ---
 
@@ -196,28 +200,34 @@ confirmar que la escritura quedó.
 
 ## 5 · Riesgos abiertos, por gravedad
 
-### 🔴 RLS abierto — bloqueante para multi-tenant
+### 🟢 RLS cerrado — listo para multi-tenant
 
-`13_ADMIN_PANEL.sql` y `14_ADMIN_CONTROL.sql` tienen políticas `USING(true)`:
-cualquier usuario autenticado ve **todo**.
+`08`, `13`, `14`, `15`, `17`, `19` y `20` abren políticas `USING(true)`.
+Eso ya **no es el estado final**: `28_RLS_ESTRICTO.sql` +
+`35_RLS_CATALOGO.sql` + `47_RLS_CIERRE_FINAL.sql` cierran el modelo. La
+migración `47` es la última palabra: cualquier re-ejecución de un SQL viejo
+se corrige volviendo a correr `47`.
 
-Con un solo tenant no duele. **El día que entre el segundo cliente, es una
-fuga de datos entre empresas competidoras.** No es un bug de calidad: es un
-incidente.
+*Pendiente operativo: verificar el aislamiento en una base SQL real con un
+JWT de tenant A intentando leer datos de tenant B, y correr el pre-vuelo
+de `28` (usuarios sin fila en `ejecutivos` quedan bloqueados).*
 
-Debe cerrarse **antes** de vender el segundo tenant, no después.
+### 🟡 Bundle ~266 kB (code-splitting hecho, meta <250)
+Ya hay `React.lazy` por ruta (Gerencia, Admin, Stock, Catálogo, Ventas y
+Dashboard van aparte), por lo que el vendedor no baja todo el panel de
+gerencia. El chunk principal quedó en ~266 kB y el objetivo del roadmap es
+<250 kB; sigue siendo una deuda de rendimiento, no un bloqueo.
 
-### 🟠 Bundle de 730 kB
-Code-splitting por ruta. Fase 3.1.
-
-### 🟡 localStorage en vez de IndexedDB
-Bloquea el hilo al guardar snapshots grandes. Fase 3.2.
+### 🟢 IndexedDB (cola + snapshot)
+La cola y el snapshot de cartera ya no usan localStorage como fuente
+durable. Ambos degradan a localStorage si IndexedDB no está disponible.
 
 ### 🟡 Sin repositorios
-Las páginas conocen tablas y columnas.
+Esto sigue vigente: `pages/` todavía consulta tablas y columnas directo
+(`Admin`, `Visita`, `Ruta`). Es la mayor deuda de mantenimiento que queda.
 
-### 🟡 Sin `updated_at` en entidades editables
-Sin registro de conflicto si un pedido se edita en dos lados.
+### 🟢 `updated_at` en entidades editables
+Agregado con `48_AUDITORIA_TIMESTAMPS.sql`.
 
 ---
 

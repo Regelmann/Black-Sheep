@@ -18,23 +18,56 @@ export function sanitizeNombreProducto(n) {
   return s
 }
 
+/**
+ * Líneas realmente enviables de un pedido.
+ * Una línea sin nombre NI sku, con cantidad 0/negativa o sin cantidad
+ * numérica no se guarda, no se cobra, no se manda por WhatsApp y no
+ * aparece en el documento formal. La regla vive acá y la usan los cuatro
+ * caminos (guardar, WhatsApp cliente, WhatsApp bodega, PDF formal).
+ */
+export function lineasValidas(lineas) {
+  if (!Array.isArray(lineas)) return []
+  const out = []
+  for (const l of lineas) {
+    if (!l || typeof l !== 'object') continue
+    const nombre = sanitizeNombreProducto(l.nombre)
+    const sku = String(l.sku || '').trim()
+    const cantidad = Number(l.cantidad)
+    if (!(cantidad > 0) || (!nombre && !sku)) continue
+    const precio = Number(l.precio)
+    out.push({
+      ...l,
+      nombre: nombre || sku,
+      sku: sku || null,
+      cantidad,
+      precio: Number.isFinite(precio) ? precio : 0,
+    })
+  }
+  return out
+}
+
+/** Total de las líneas enviables. Nunca NaN. */
+export function totalLineas(lineas) {
+  return lineasValidas(lineas).reduce((a, l) => {
+    const precio = Number(l.precio)
+    const cantidad = Number(l.cantidad)
+    if (!Number.isFinite(precio) || !Number.isFinite(cantidad) || cantidad <= 0) return a
+    return a + precio * cantidad
+  }, 0)
+}
+
 export function buildWhatsAppPedido({ cliente, lineas, ejecutivoNombre }) {
   const nom = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
-  const lines = (lineas || [])
-    .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
-    .map(l => {
-      const p = Number(l.precio)
-      const cant = Number(l.cantidad)
-      const sub = p > 0 ? cant * p : null
-      const precioTxt = p > 0 ? ` @ $${Math.round(p).toLocaleString('es-CL')}` : ''
-      const subTxt = sub != null ? ` = $${Math.round(sub).toLocaleString('es-CL')}` : ''
-      return `• ${l.nombre || l.sku}: ${cant} ${l.unidad || 'ud'}${precioTxt}${subTxt}`
-    })
-  const total = (lineas || []).reduce((a, l) => {
-    const p = Number(l.precio) || 0
-    const c = Number(l.cantidad) || 0
-    return a + p * c
-  }, 0)
+  const validas = lineasValidas(lineas)
+  const lines = validas.map(l => {
+    const p = Number(l.precio)
+    const cant = Number(l.cantidad)
+    const sub = p > 0 ? cant * p : null
+    const precioTxt = p > 0 ? ` @ $${Math.round(p).toLocaleString('es-CL')}` : ''
+    const subTxt = sub != null ? ` = $${Math.round(sub).toLocaleString('es-CL')}` : ''
+    return `• ${l.nombre || l.sku}: ${cant} ${l.unidad || 'ud'}${precioTxt}${subTxt}`
+  })
+  const total = totalLineas(validas)
   const body = [
     `Hola${cliente?.persona_contacto ? ' ' + cliente.persona_contacto : ''},`,
     `pedido KeyFoods para *${nom}*:`,
@@ -69,16 +102,14 @@ export async function guardarPedido({
   fuente = 'field_app',
   estado = 'borrador',
 }) {
-  const items = (lineas || [])
-    .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
-    .map(l => ({
-      sku: l.sku || null,
-      nombre: l.nombre || l.sku,
-      cantidad: Number(l.cantidad),
-      unidad: l.unidad || 'ud',
-      precio: Number(l.precio) > 0 ? Number(l.precio) : null,
-      motivo: l.motivo || null,
-    }))
+  const items = lineasValidas(lineas).map(l => ({
+    sku: l.sku || null,
+    nombre: l.nombre || l.sku,
+    cantidad: Number(l.cantidad),
+    unidad: l.unidad || 'ud',
+    precio: Number(l.precio) > 0 ? Number(l.precio) : null,
+    motivo: l.motivo || null,
+  }))
   if (!items.length) return { error: 'Sin líneas' }
 
   const total = items.reduce((a, l) => a + (Number(l.precio) || 0) * Number(l.cantidad), 0)
@@ -187,8 +218,7 @@ export async function getPedidoById(id) {
 export function totalPedido(p) {
   if (!p) return 0
   if (Number(p.total_estimado) > 0) return Number(p.total_estimado)
-  const lineas = Array.isArray(p.lineas) ? p.lineas : []
-  return lineas.reduce((a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0), 0)
+  return totalLineas(p.lineas)
 }
 
 export function formatFechaPedido(iso) {
@@ -386,8 +416,8 @@ export function buildPedidoFormalHtml({
     dateStyle: 'medium',
     timeStyle: 'short',
   })
-  const rows = (lineas || [])
-    .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
+  const validas = lineasValidas(lineas)
+  const rows = validas
     .map(l => {
       const cant = Number(l.cantidad) || 0
       const precio = Number(l.precio) || 0
@@ -400,7 +430,7 @@ export function buildPedidoFormalHtml({
       </tr>`
     })
     .join('')
-  const tot = total != null ? total : (lineas || []).reduce((a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0), 0)
+  const tot = total != null ? total : totalLineas(validas)
   return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Pedido KeyFoods — ${escapeHtml(nom)}</title>
   <style>
     body{font-family:system-ui,-apple-system,sans-serif;color:#1c1917;padding:24px;max-width:720px;margin:0 auto}
@@ -490,13 +520,12 @@ export function imprimirPedidoPdf(opts) {
 /** Texto formal para WhatsApp bodega (sin depender del teléfono del cliente). */
 export function buildWhatsAppBodega({ cliente, lineas, ejecutivoNombre, nota }) {
   const nom = cliente?.nombre_cliente || cliente?.nombre || 'Cliente'
-  const lines = (lineas || [])
-    .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
-    .map(l => {
-      const cant = Number(l.cantidad)
-      return `• ${l.nombre || l.sku}: ${cant} ${l.unidad || 'ud'}`
-    })
-  const total = (lineas || []).reduce((a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0), 0)
+  const validas = lineasValidas(lineas)
+  const lines = validas.map(l => {
+    const cant = Number(l.cantidad)
+    return `• ${l.nombre || l.sku}: ${cant} ${l.unidad || 'ud'}`
+  })
+  const total = totalLineas(validas)
   const body = [
     `*PEDIDO TERRENO — BODEGA*`,
     `Cliente: *${nom}*`,

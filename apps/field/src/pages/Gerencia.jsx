@@ -8,6 +8,8 @@ import { DataError } from '../ui/DataState.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { parseSkuDetalle, clpEfectivo } from '../lib/coach.js'
 import { predict7Days } from '../lib/predictor.js'
+import { assessDataHealth } from '../lib/dataHealth.js'
+import DataHealthCard from '../domain/DataHealthCard.jsx'
 
 /** Fuente de verdad del mix: líneas de venta del cliente (mes + histórico reciente) */
 async function mixDesdeVentasLineas(clienteKey) {
@@ -185,6 +187,7 @@ export default function Gerencia({ esGerente }) {
   const [carteraCache, setCarteraCache] = useState([]) // mix + bloqueos por zona de terreno
   const [actividad, setActividad] = useState(null) // { loading, rango, checkins, pedidos, notas, stats }
   const [actRango, setActRango] = useState('hoy') // hoy | 7d
+  const [health, setHealth] = useState(null) // assessDataHealth({...})
 
   useEffect(() => {
     ;(async () => {
@@ -371,6 +374,17 @@ export default function Gerencia({ esGerente }) {
           })
           .slice(0, 25)
         setStockLento(lento)
+
+        // Semáforo de confianza: se muestra ANTES de los números, no después.
+        // datos rotos + números bonitos = gerencia decide sobre una mentira.
+        setHealth(assessDataHealth({
+          cartera: carAll,
+          stock: stock || [],
+          focos: focos || [],
+          meta: rows[0] || null,
+          dataAsOf: dataAsOf || (snaps.length ? [...snaps].sort().pop() : null),
+        }))
+
         // Alerta: SKU de foco sin precio publicado
         const sp = (stock || []).filter(s => s.es_foco_mes && !(Number(s.precio_unidad||0) > 0 || Number(s.precio_lista||0) > 0 || Number(s.precio||0) > 0))
         if (sp.length) console.warn('[BS] Focos sin precio:', sp.length)
@@ -1116,6 +1130,7 @@ export default function Gerencia({ esGerente }) {
 
   return (
     <div className="gerencia-page bs-page">
+      <DataHealthCard health={health} />
       <section className="bs-executive-pulse">
         <div className="bs-pulse-top">
           <div>
