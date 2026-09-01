@@ -25,8 +25,9 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const DIR = new URL('.', import.meta.url).pathname
+const DIR = fileURLToPath(new URL('.', import.meta.url))
 const hojas = fs.readdirSync(DIR)
   .filter((f) => f.endsWith('.css'))
   .map((f) => ({ nombre: f, css: fs.readFileSync(path.join(DIR, f), 'utf8') }))

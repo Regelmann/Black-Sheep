@@ -24,8 +24,9 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const RAIZ = path.resolve(new URL('.', import.meta.url).pathname, '../../../..')
+const RAIZ = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..')
 const SQL = fs.readFileSync(path.join(RAIZ, 'sql', '26_CATALOGO_ORDEN.sql'), 'utf8')
 
 describe('el stock es la base, no la oferta', () => {
