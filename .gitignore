@@ -23,3 +23,12 @@ npm-debug.log*
 # Temporales de deploy
 _bs_tmp/
 *.patch
+
+# Python / ETL artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Archives / local release bundles
+*.zip
+*.tar.gz

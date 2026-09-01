@@ -38,11 +38,35 @@ const DB_VERSION = 1
 const STORE = 'outbox'
 export const LEGACY_KEY = 'kf_action_queue_v1'
 
+/**
+ * Item persistido en la cola offline.
+ *
+ * El outbox acepta payloads heterogéneos según el tipo de operación
+ * (check-in, pedido, nota, etc.), por lo que los campos adicionales son
+ * intencionalmente abiertos.
+ *
+ * @typedef {{
+ *   id?: string,
+ *   client_op_id?: string,
+ *   enqueuedAt?: string,
+ *   type?: string,
+ *   [key: string]: unknown
+ * }} OutboxItem
+ */
+
+/** @type {IDBDatabase | null} */
 let db = null
+
+/** @type {boolean | null} */
 let disponible = null // null = sin evaluar, false = no usable
+
+/** @type {OutboxItem[]} */
 let espejo = []
+
 let hidratado = false
 let cerrado = false // tras cerrarOutbox() no se vuelve a abrir sola
+
+/** @type {Set<(items: OutboxItem[]) => void>} */
 const suscriptores = new Set()
 
 /**
@@ -58,10 +82,12 @@ const suscriptores = new Set()
  */
 let cadena = Promise.resolve()
 
+/**
+ * @param {() => Promise<unknown>} fn
+ * @returns {Promise<void>}
+ */
 function encolarEscritura(fn) {
-  cadena = cadena.then(fn).catch(() => {
-    /* el respaldo en localStorage ya quedó escrito */
-  })
+  cadena = cadena.then(() => fn()).then(() => undefined).catch(() => undefined)
   return cadena
 }
 
@@ -93,6 +119,7 @@ function leerLocalStorage() {
   }
 }
 
+/** @param {OutboxItem[]} items */
 function escribirLocalStorage(items) {
   // Respaldo secundario: si IndexedDB falla o el navegador no lo soporta,
   // la cola sigue sobreviviendo a un cierre de app.
@@ -116,6 +143,10 @@ function notificar() {
 }
 
 /** Suscribe a cambios de la cola. Devuelve la función para desuscribirse. */
+/**
+ * @param {(items: OutboxItem[]) => void} fn
+ * @returns {() => boolean}
+ */
 export function onOutboxChange(fn) {
   suscriptores.add(fn)
   return () => suscriptores.delete(fn)
@@ -148,17 +179,18 @@ function abrir() {
       }
     }
     req.onsuccess = () => {
-      db = req.result
+      const conexion = req.result
+      db = conexion
       // Si otra pestaña pide una versión nueva, hay que soltar la conexión.
-      db.onversionchange = () => {
+      conexion.onversionchange = () => {
         try {
-          db.close()
+          conexion.close()
         } catch {
           /* ya cerrada */
         }
         db = null
       }
-      resolve(db)
+      resolve(conexion)
     }
     req.onerror = () => resolve(null)
     // Modo privado de Safari: open() se queda colgado sin error.
@@ -166,6 +198,11 @@ function abrir() {
   })
 }
 
+/**
+ * @param {IDBTransactionMode} modo
+ * @param {(store: IDBObjectStore) => unknown} fn
+ * @returns {Promise<unknown>}
+ */
 function tx(modo, fn) {
   return abrir().then(
     d =>
@@ -202,7 +239,7 @@ function tx(modo, fn) {
  * Hidrata el espejo desde IndexedDB y migra lo que hubiera en localStorage.
  * Idempotente: llamarla varias veces no duplica items.
  *
- * @returns {Promise<{ durable: boolean, items: number, migrados: number }>}
+ * @returns {Promise<{ durable: boolean, items: number, migrados: number, rescatados: number }>}
  */
 export async function initOutbox() {
   if (hidratado) return { durable: !!disponible, items: espejo.length, migrados: 0, rescatados: 0 }
@@ -231,7 +268,9 @@ export async function initOutbox() {
     })
   })
 
-  const desdeDb = Array.isArray(await guardados) ? await guardados : []
+  /** @type {OutboxItem[]} */
+  const desdeDb = Array.isArray(guardados) ? guardados : []
+
 
   // MIGRACIÓN: los items que quedaron en localStorage de la versión anterior
   // se copian a IndexedDB. Se deduplica por id para que reabrir la app no
@@ -307,6 +346,10 @@ export function leerCola() {
 }
 
 /** Reemplaza la cola completa (usado por el flush al terminar). */
+/**
+ * @param {OutboxItem[]} items
+ * @returns {OutboxItem[]}
+ */
 export function escribirCola(items) {
   espejo = Array.isArray(items) ? items : []
   escribirLocalStorage(espejo)
@@ -326,6 +369,10 @@ export function escribirCola(items) {
 }
 
 /** Agrega un item. */
+/**
+ * @param {OutboxItem} item
+ * @returns {OutboxItem}
+ */
 export function agregarItem(item) {
   espejo = [...espejo, item]
   escribirLocalStorage(espejo)
@@ -337,6 +384,10 @@ export function agregarItem(item) {
 }
 
 /** Quita un item por id. */
+/**
+ * @param {string} id
+ * @returns {OutboxItem[]}
+ */
 export function quitarItem(id) {
   espejo = espejo.filter(x => x.id !== id)
   escribirLocalStorage(espejo)

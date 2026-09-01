@@ -1,0 +1,18 @@
+/* Ventas V13.1 — superficie de decisión, responsive y densa sin ser ruidosa. */
+.bs-report-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.bs-section-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.bs-section-head h2 { margin:2px 0 0; }
+.bs-section-head p { margin:4px 0 0; }
+.bs-kicker { font-size:10px; font-weight:800; letter-spacing:.12em; color:var(--brand,#c2410c); text-transform:uppercase; }
+.bs-stat-delta { display:block; margin-top:3px; font-size:10px; font-weight:700; color:var(--ink-3,#78716c); }
+.bs-stat-delta.is-positive { color:#15803d; }
+.bs-stat-delta.is-negative { color:#b91c1c; }
+.bs-mini-bars { display:flex; align-items:flex-end; gap:5px; height:150px; padding:8px 2px 0; overflow-x:auto; }
+.bs-mini-bar { min-width:20px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:5px; font-size:9px; color:var(--ink-3,#78716c); }
+.bs-mini-bar-fill { width:100%; min-height:4px; border-radius:5px 5px 2px 2px; background:var(--brand,#c2410c); opacity:.86; }
+.bs-table-card { overflow:hidden; }
+.bs-table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.bs-table-scroll table { min-width:860px; }
+.bs-table-scroll th { white-space:nowrap; }
+@media (max-width:900px) { .bs-report-grid { grid-template-columns:1fr; } }
+@media (max-width:640px) { .bs-report-grid { grid-template-columns:1fr; } .bs-section-head { flex-direction:column; } .bs-mini-bars { height:125px; } }

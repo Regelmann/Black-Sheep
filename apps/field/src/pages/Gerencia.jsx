@@ -1242,10 +1242,12 @@ export default function Gerencia({ esGerente }) {
         <button
           type="button"
           className="admin-entry"
-          /* Abría black-sheep.cl/dashboard en otra pestaña — la web de
-             marketing, no el dashboard. El de verdad es una ruta de esta
-             misma app: /dashboard (DashboardGerencia). */
-          onClick={() => navAdmin('/dashboard')}
+          /* V13.0: el dashboard es para pantalla grande y debe vivir en su
+             propia pestaña, no navegado por React Router dentro de esta
+             SPA — si no, arrastra el AppShell/NavBar móvil encima. Por eso
+             es window.open a /dashboard (chrome-less, ver App.jsx) y NO
+             navAdmin/useNavigate. */
+          onClick={() => window.open('/dashboard', '_blank', 'noopener,noreferrer')}
           style={{
             width: '100%', marginBottom: 12, padding: '12px 14px', borderRadius: 14,
             border: '1px solid var(--line)', background: 'var(--surface)',

@@ -199,7 +199,13 @@ export async function flushActionQueue(handlers = {}) {
     // Todavía en backoff: se pospone sin gastar red.
     if (!leToca(item, ahora)) { remaining.push(item); pospuestos++; continue }
 
-    const fn = handlers[item.type]
+    const type = item?.type
+    if (!type) {
+      remaining.push(item)
+      continue
+    }
+
+    const fn = handlers[type]
     if (!fn) { remaining.push(item); continue }
 
     try {

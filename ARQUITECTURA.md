@@ -1,6 +1,6 @@
 # Auditoría de arquitectura
 
-**Versión auditada:** `v-BS-PLATFORM-V9.9.4` · 25 de agosto de 2026
+**Versión de referencia:** `v-BS-PLATFORM-V13.1` · 25 de agosto de 2026
 **Contra:** estándares de arquitectura móvil offline-first y UX móvil 2026
 
 Este documento sirve para dos cosas: saber si la app está bien construida, y

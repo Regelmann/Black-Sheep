@@ -1,6 +1,6 @@
 # Rendimiento
 
-**Versión:** `v-BS-PLATFORM-V9.9.6`
+**Versión:** `v-BS-PLATFORM-V13.1`
 
 ## Punto de partida
 

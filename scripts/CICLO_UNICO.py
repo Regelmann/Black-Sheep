@@ -1,11 +1,11 @@
 # =============================================================================
 # KEYFOODS CICLO LIMPIO — UN SOLO SCRIPT CANÓNICO
 # =============================================================================
-# VERSION = CICLO_UNICO_v1.34_MIX
+# VERSION = CICLO_UNICO_v1.38_VENTAS_TOTAL
 #
 # Una corrida hace TODO:
-#   1. Carga Excel (VENTAS, MAESTRA, STOCK, LISTA_PRECIOS) + opcional PRODUCTOS_MEDIA
-#   2. Valida columnas (contrato v1)
+#   1. Carga Excel (VENTAS HISTÓRICO + NUEVAS VENTAS, MAESTRA, STOCK, LISTA_PRECIOS) + opcional PRODUCTOS_MEDIA
+#   2. Valida columnas y normaliza los dos formatos de ventas (contrato v1)
 #   3. Normaliza cliente_key / sku / zona
 #   4. Ventas INCREMENTALES reales:
 #        - Excel nuevo se SUMA a public.ventas_lineas (no reemplaza el mes)
@@ -22,7 +22,7 @@
 #   Secrets (llave): SUPABASE_URL, SUPABASE_SERVICE_KEY, GOOGLE_MAPS_API_KEY
 #   !pip install -q supabase openpyxl pandas requests
 #   Subí los 4 Excel o montá Drive y ajustá PATHS abajo.
-#   %run KEYFOODS_CICLO_LIMPIO.py
+#   %run scripts/CICLO_UNICO.py
 #
 # FLAGS (opcional, antes del run):
 #   os.environ["KF_SKIP_PLACES"] = "1"          # no llama Places
@@ -55,10 +55,10 @@ from typing import Any, Dict, List, Optional, Tuple
 # ---------------------------------------------------------------------------
 # Banner
 # ---------------------------------------------------------------------------
-VERSION = "CICLO_UNICO_v1.34_MIX"
+VERSION = "CICLO_UNICO_v1.38_VENTAS_INTEGRAL_APP"
 print("=" * 72)
 print(f"VERSION = {VERSION}")
-print("Un solo script. Validar → Calcular → Metas → Places → Supabase.")
+print("Un solo script. Validar → Fusionar ventas → Calcular → Metas → Places → Supabase.")
 print("Atribución: MAESTRA (cliente→ejecutivo). Places auto-skip salvo KF_FORCE_PLACES=1.")
 if _data_dir := (os.environ.get("KF_DATA_DIR") or "").strip():
     print(f"KF_DATA_DIR = {_data_dir}")
@@ -96,7 +96,12 @@ SEARCH_DIRS = (
 ]
 SEARCH_DIRS = [d for d in SEARCH_DIRS if d]
 
-VENTAS_GLOBS = ["VENTAS_KEYFOODS_ACTUAL.xlsx", "VENTAS*.xlsx", "*VENTAS*.xlsx"]
+# Ventas: se detectan DOS fuentes dentro del mismo ciclo.
+# Histórico = VENTAS_KEYFOODS_ACTUAL.xlsx; Operativo = Nuevas ventas.xlsx.
+VENTAS_HISTORICO_GLOBS = ["VENTAS_KEYFOODS_ACTUAL.xlsx", "*VENTAS*ACTUAL*.xlsx"]
+VENTAS_NUEVAS_GLOBS = ["Nuevas ventas.xlsx", "NUEVAS VENTAS*.xlsx", "*Nuevas*ventas*.xlsx", "*VENTAS_NUEVAS*.xlsx"]
+# Compatibilidad: otros procesos pueden seguir consultando VENTAS_GLOBS.
+VENTAS_GLOBS = VENTAS_HISTORICO_GLOBS + ["VENTAS*.xlsx", "*VENTAS*.xlsx"]
 MAESTRA_GLOBS = ["MAESTRA_CLIENTES_ACTUAL.xlsx", "MAESTRA*.xlsx", "*MAESTRA*.xlsx"]
 STOCK_GLOBS = [
     "Detalle_Stock_Diario*.xlsx",
@@ -132,6 +137,7 @@ _sp = (os.environ.get("KF_SKIP_PLACES") or "auto").strip().lower()
 SKIP_PLACES = _sp in ("1", "true", "yes")
 SKIP_PLACES_AUTO = _sp in ("", "auto")  # default: no re-buscar Places si ya hay data
 SKIP_SUPABASE = os.environ.get("KF_SKIP_SUPABASE", "").strip() in ("1", "true", "True")
+TENANT_ID = (os.environ.get("KF_TENANT_ID") or "keyfoods").strip().lower()
 VENTAS_FULL_REPLACE = os.environ.get("KF_VENTAS_FULL_REPLACE", "").strip() in ("1", "true", "True")
 FORCE_VENTAS = os.environ.get("KF_FORCE_VENTAS", "").strip() in ("1", "true", "True")  # permite FULL_REPLACE o MTD a la baja
 FORCE_MAESTRA = os.environ.get("KF_FORCE_MAESTRA", "").strip() in ("1", "true", "True")  # permite maestra con menos clientes que snapshot previo
@@ -872,10 +878,25 @@ def sb_client():
 # ---------------------------------------------------------------------------
 # LOADERS
 # ---------------------------------------------------------------------------
-def load_ventas(path: Path) -> pd.DataFrame:
+def _read_excel_clean(path: Path) -> pd.DataFrame:
     raw = pd.read_excel(path, engine="openpyxl")
     raw.columns = [str(c).strip() for c in raw.columns]
-    # KeyFoods: columnas duplicadas "CODIGO" → pandas usa CODIGO y CODIGO.1
+    return raw
+
+
+def _col(raw: pd.DataFrame, *names: str) -> Optional[str]:
+    """Encuentra una columna ignorando mayúsculas/espacios."""
+    for n in names:
+        for c in raw.columns:
+            if _norm_col(c) == _norm_col(n):
+                return c
+    return None
+
+
+def load_ventas_historico(path: Path) -> pd.DataFrame:
+    """Carga el formato histórico VENTAS_KEYFOODS_ACTUAL.xlsx."""
+    raw = _read_excel_clean(path)
+    # KeyFoods histórico: dos CODIGO; pandas los expone como CODIGO/CODIGO.1.
     rename = {}
     seen_codigo = 0
     for c in list(raw.columns):
@@ -885,69 +906,393 @@ def load_ventas(path: Path) -> pd.DataFrame:
             rename[c] = "CODIGO_CLIENTE" if seen_codigo == 1 else "CODIGO_PRODUCTO"
     if rename:
         raw = raw.rename(columns=rename)
-    print(f"  ventas cols: {list(raw.columns)[:14]}")
 
-    def col(*names):
-        for n in names:
-            for c in raw.columns:
-                if _norm_col(c) == _norm_col(n):
-                    return c
-        return None
-
-    c_cli = col("CODIGO_CLIENTE", "CODIGO", "COD CLIENTE")
-    c_sku = col("CODIGO_PRODUCTO", "CODIGO.1", "SKU")
-    c_fecha = col("FECHA")
-    c_neto = col("NETO", "VENTA_NETA")
-    c_nom = col("NOMBRE", "RAZON SOCIAL")
-    c_prod = col("PRODUCTO", "DESCRIPCION")
-    c_cant = col("CANTIDAD")
-    c_vend = col("VENDEDOR", "EJECUTIVO")
-    c_dir = col("DOMICILIO", "DIRECCION")
-    c_com = col("COMUNA")
-    c_num = col("NUMERO")
-    c_tipo = col("TIPO")
-    c_precio = col("PRECIO")
+    c_cli = _col(raw, "CODIGO_CLIENTE", "CODIGO", "COD CLIENTE")
+    c_sku = _col(raw, "CODIGO_PRODUCTO", "CODIGO.1", "SKU")
+    c_fecha = _col(raw, "FECHA")
+    c_neto = _col(raw, "NETO", "VENTA_NETA")
+    c_nom = _col(raw, "NOMBRE", "RAZON SOCIAL")
+    c_prod = _col(raw, "PRODUCTO", "DESCRIPCION")
+    c_cant = _col(raw, "CANTIDAD")
+    c_vend = _col(raw, "VENDEDOR", "EJECUTIVO")
+    c_dir = _col(raw, "DOMICILIO", "DIRECCION")
+    c_com = _col(raw, "COMUNA")
+    c_num = _col(raw, "NUMERO")
+    c_tipo = _col(raw, "TIPO")
+    c_precio = _col(raw, "PRECIO")
+    c_costo = _col(raw, "COSTO UNITARIO", "COSTO_UNITARIO")
 
     if not c_cli or not c_fecha or not c_neto:
-        raise ValueError(f"VENTAS sin columnas mínimas. cols={list(raw.columns)}")
+        raise ValueError(f"VENTAS HISTÓRICO sin columnas mínimas. cols={list(raw.columns)}")
 
     df = pd.DataFrame({
         "cliente_key": raw[c_cli].map(normalize_cliente_key),
         "fecha": parse_fecha_series(raw[c_fecha]),
         "venta_neta_clp": raw[c_neto].map(_f),
+        "fuente_ventas": "HISTORICO",
+        "tipo_hecho": raw[c_tipo].map(_s) if c_tipo else "FA",
     })
-    if c_sku:
-        df["sku_canon"] = raw[c_sku].map(normalize_sku)
-    else:
-        df["sku_canon"] = None
-    if c_nom:
-        df["nombre_cliente"] = raw[c_nom].map(_s)
-    if c_prod:
-        df["producto_nombre"] = raw[c_prod].map(_s)
-    if c_cant:
-        df["cantidad"] = raw[c_cant].map(_f)
-    if c_vend:
-        df["vendedor_raw"] = raw[c_vend].map(_s)
-        df["zona_vendedor"] = raw[c_vend].map(normalize_zona)
-    else:
-        df["zona_vendedor"] = "OTROS"
-    if c_dir:
-        df["direccion_venta"] = raw[c_dir].map(_s)
-    if c_com:
-        df["comuna_venta"] = raw[c_com].map(_s)
-    if c_num:
-        df["numero_doc"] = raw[c_num].map(_s)
-    if c_tipo:
-        df["tipo_doc"] = raw[c_tipo].map(_s)
-    if c_precio:
-        df["precio_unit"] = raw[c_precio].map(_f)
-
-    n_sku = int(df["sku_canon"].notna().sum())
-    print(f"  ventas mapping manual | sku_col={c_sku} | sku_canon={n_sku}/{len(df)}")
-    df = df[df["cliente_key"].notna() & df["fecha"].notna()].copy()
+    df["numero_documento"] = raw[c_num].map(_s) if c_num else None
+    df["tipo_doc"] = raw[c_tipo].map(_s) if c_tipo else "FA"
+    df["sku_canon"] = raw[c_sku].map(normalize_sku) if c_sku else None
+    df["nombre_cliente"] = raw[c_nom].map(_s) if c_nom else None
+    df["producto_nombre"] = raw[c_prod].map(_s) if c_prod else None
+    df["cantidad"] = raw[c_cant].map(_f) if c_cant else None
+    df["vendedor_raw"] = raw[c_vend].map(_s) if c_vend else None
+    df["zona_vendedor"] = raw[c_vend].map(normalize_zona) if c_vend else "OTROS"
+    df["direccion_venta"] = raw[c_dir].map(_s) if c_dir else None
+    df["comuna_venta"] = raw[c_com].map(_s) if c_com else None
+    df["precio_unit"] = raw[c_precio].map(_f) if c_precio else None
+    df["costo_unitario"] = raw[c_costo].map(_f) if c_costo else None
     df["fecha_d"] = df["fecha"].dt.date
+    df = df[df["cliente_key"].notna() & df["fecha"].notna()].copy()
     return df
 
+
+def load_ventas_nuevas(path: Path) -> pd.DataFrame:
+    """Carga NUEVAS VENTAS como hechos del ciclo y del proceso operacional.
+
+    Genera:
+      - PEDIDO: hecho operacional (NO entra al MTD/ventas_lineas).
+      - FACTURA: hecho positivo.
+      - NC: hecho negativo.
+    Se conservan todos los identificadores para poder reconstruir Pedido→Factura→NC.
+    """
+    raw = _read_excel_clean(path)
+    required = ["Rut_Cliente","Codigo_Producto","Nombre_Producto","Fecha_Digitacion",
+                "Total_Neto_Pedido","Total_Neto_Factura","Total_Neto_NC"]
+    missing=[c for c in required if _col(raw,c) is None]
+    if missing:
+        raise ValueError(f"NUEVAS VENTAS sin columnas requeridas: {missing}. cols={list(raw.columns)}")
+
+    def C(*names): return _col(raw,*names)
+    c_rut=C("Rut_Cliente"); c_sku=C("Codigo_Producto"); c_prod=C("Nombre_Producto")
+    c_cli=C("Nombre_Cliente"); c_nomcom=C("Nombre_Comercial"); c_local=C("Local")
+    c_pedido=C("Num_Pedido"); c_oc=C("OC"); c_estado=C("Estado_Pedido"); c_alm=C("Almacen")
+    c_fdig=C("Fecha_Digitacion"); c_hora=C("Hora_Digitacion"); c_ent=C("Fecha_Entrega_Solicitada")
+    c_com=C("Comuna_Despacho"); c_dir=C("Calle_Despacho"); c_region=C("Region"); c_hac=C("Hacienda")
+    c_um=C("UM_Venta"); c_qsol=C("Cant_Solicitada"); c_kgsol=C("Kg_Solicitados"); c_cajas=C("Cajas_Sol")
+    c_prec=C("Precio_Unitario"); c_tped=C("Total_Neto_Pedido"); c_pxkg=C("Px/Kg")
+    c_dfact=C("#Doc_Factura"); c_ffol=C("Num_Folio"); c_ffec=C("Fecha_Factura")
+    c_qfact=C("Cant_Facturada"); c_kgfact=C("Kg_Facturados"); c_tfact=C("Total_Neto_Factura")
+    c_dnc=C("#Doc_NC"); c_fnc=C("Folio_NC"); c_fecn=C("Fecha_Nota_Credito")
+    c_qnc=C("Cant_Abonada"); c_kgnc=C("Kg_Abonados"); c_tnc=C("Total_Neto_NC")
+    c_pago=C("Condicion_Pago"); c_vend=C("Empleado_Ventas"); c_user=C("Usuario_Digitador")
+    c_ov=C("Comm OV"); c_factc=C("Comm Factura"); c_ncc=C("Comm NC"); c_trans=C("Transporte")
+
+    rows=[]
+    for _,r in raw.iterrows():
+        ck=normalize_cliente_key(r.get(c_rut))
+        if not ck: continue
+        sku=normalize_sku(r.get(c_sku))
+        fd=parse_fecha_series(pd.Series([r.get(c_fdig)])).iloc[0] if c_fdig else pd.NaT
+        fe=parse_fecha_series(pd.Series([r.get(c_ffec)])).iloc[0] if c_ffec else pd.NaT
+        fn=parse_fecha_series(pd.Series([r.get(c_fecn)])).iloc[0] if c_fecn else pd.NaT
+        if pd.isna(fe): fe=fd
+        if pd.isna(fn): fn=fd
+        common={
+            "cliente_key":ck,"rut_cliente":_s(r.get(c_rut)),
+            "nombre_cliente":_s(r.get(c_cli)),"nombre_comercial":_s(r.get(c_nomcom)),
+            "local":_s(r.get(c_local)),"sku_canon":sku,"producto_nombre":_s(r.get(c_prod)),
+            "vendedor_raw":_s(r.get(c_vend)),"zona_vendedor":normalize_zona(r.get(c_vend)),
+            "pedido_id":_s(r.get(c_pedido)),"oc":_s(r.get(c_oc)),
+            "estado_pedido":_s(r.get(c_estado)),"almacen":_s(r.get(c_alm)),
+            "fecha_digitacion":fd,"hora_digitacion":_s(r.get(c_hora)),
+            "fecha_entrega_solicitada":parse_fecha_series(pd.Series([r.get(c_ent)])).iloc[0] if c_ent else pd.NaT,
+            "cantidad_solicitada":_f(r.get(c_qsol)) if c_qsol else None,
+            "kg_solicitados":_f(r.get(c_kgsol)) if c_kgsol else None,
+            "cajas_solicitadas":_f(r.get(c_cajas)) if c_cajas else None,
+            "precio_unit_pedido":_f(r.get(c_prec)) if c_prec else None,
+            "total_neto_pedido":_f(r.get(c_tped)) if c_tped else None,
+            "precio_kg_pedido":_f(r.get(c_pxkg)) if c_pxkg else None,
+            "region":_s(r.get(c_region)),"comuna_despacho":_s(r.get(c_com)),
+            "direccion_despacho":_s(r.get(c_dir)),"hacienda":_s(r.get(c_hac)),
+            "um_venta":_s(r.get(c_um)),"condicion_pago":_s(r.get(c_pago)),
+            "usuario_digitador":_s(r.get(c_user)),"comentario_ov":_s(r.get(c_ov)),
+            "comentario_factura":_s(r.get(c_factc)),"comentario_nc":_s(r.get(c_ncc)),
+            "transporte":_s(r.get(c_trans)),"fuente_ventas":"NUEVO_OPERATIVO",
+            "documento_factura":_s(r.get(c_dfact)),"folio_factura":_s(r.get(c_ffol)),
+            "fecha_factura":fe,"documento_nc":_s(r.get(c_dnc)),"folio_nc":_s(r.get(c_fnc)),
+            "fecha_nc":fn,
+        }
+        # Pedido: se conserva para operación/Fill Rate, pero venta_neta_clp=0
+        pedido_id=common["pedido_id"]
+        pedido_amt=_f(r.get(c_tped)) if c_tped else None
+        if pedido_id or pedido_amt not in (None,0):
+            rec=dict(common)
+            rec.update({
+                "fecha":fd,"fecha_d":fd.date() if not pd.isna(fd) else None,
+                "numero_documento":pedido_id,"folio_documento":None,
+                "tipo_doc":"OV","tipo_hecho":"PEDIDO",
+                "cantidad":_f(r.get(c_qsol)) if c_qsol else None,
+                "kg":_f(r.get(c_kgsol)) if c_kgsol else None,
+                "cajas":_f(r.get(c_cajas)) if c_cajas else None,
+                "venta_neta_clp":0.0,"precio_unit":_f(r.get(c_prec)) if c_prec else None,
+            })
+            rows.append(rec)
+
+        fact_amt=_f(r.get(c_tfact)) if c_tfact else None
+        if fact_amt not in (None,0) and _s(r.get(c_dfact)):
+            rec=dict(common)
+            rec.update({
+                "fecha":fe,"fecha_d":fe.date() if not pd.isna(fe) else None,
+                "numero_documento":_s(r.get(c_dfact)),"folio_documento":_s(r.get(c_ffol)),
+                "tipo_doc":"FA","tipo_hecho":"FACTURA",
+                "cantidad":_f(r.get(c_qfact)) if c_qfact else None,
+                "kg":_f(r.get(c_kgfact)) if c_kgfact else None,
+                "cajas":_f(r.get(c_cajas)) if c_cajas else None,
+                "venta_neta_clp":fact_amt,"precio_unit":_f(r.get(c_prec)) if c_prec else None,
+            })
+            rows.append(rec)
+
+        nc_amt=_f(r.get(c_tnc)) if c_tnc else None
+        if nc_amt not in (None,0) and (_s(r.get(c_dnc)) or _s(r.get(c_fnc))):
+            rec=dict(common)
+            rec.update({
+                "fecha":fn,"fecha_d":fn.date() if not pd.isna(fn) else None,
+                "numero_documento":_s(r.get(c_dnc)) or _s(r.get(c_fnc)),
+                "folio_documento":_s(r.get(c_fnc)),"tipo_doc":"NC","tipo_hecho":"NC",
+                "cantidad":-abs(_f(r.get(c_qnc)) or 0) if c_qnc else None,
+                "kg":-abs(_f(r.get(c_kgnc)) or 0) if c_kgnc else None,
+                "cajas":None,"venta_neta_clp":-abs(nc_amt),
+                "precio_unit":_f(r.get(c_prec)) if c_prec else None,
+            })
+            rows.append(rec)
+
+    df=pd.DataFrame(rows)
+    if df.empty: raise ValueError("NUEVAS VENTAS no produjo PEDIDO/FACTURA/NC válidos.")
+    df["fecha"]=pd.to_datetime(df["fecha"],errors="coerce")
+    df["fecha_d"]=df["fecha"].dt.date
+    df=df[df["fecha_d"].notna() & df["cliente_key"].notna()].copy()
+    print(f"  nuevas ventas: {len(df)} hechos → pedidos={int((df.tipo_hecho=='PEDIDO').sum())} "
+          f"facturas={int((df.tipo_hecho=='FACTURA').sum())} NC={int((df.tipo_hecho=='NC').sum())}")
+    return df
+
+def load_ventas(path: Path) -> pd.DataFrame:
+    """Compatibilidad: carga el formato histórico antiguo."""
+    return load_ventas_historico(path)
+
+
+def load_ventas_fusion(path_historico: Optional[Path], path_nuevo: Optional[Path]) -> pd.DataFrame:
+    """Única entrada de ventas: histórico + operativo nuevo, con contrato canónico."""
+    partes=[]
+    if path_historico:
+        h=load_ventas_historico(path_historico)
+        print(f"  ventas histórico: {len(h)} filas | {h['fecha_d'].min()} → {h['fecha_d'].max()}")
+        partes.append(h)
+    if path_nuevo:
+        n=load_ventas_nuevas(path_nuevo)
+        print(f"  ventas operativo: {len(n)} hechos | {n['fecha_d'].min()} → {n['fecha_d'].max()}")
+        partes.append(n)
+    if not partes:
+        raise SystemExit("No se encontró ninguna fuente de ventas.")
+    out=pd.concat(partes,ignore_index=True,sort=False)
+    out=dedupe_ventas(out)
+    # Mantener columnas derivadas esperadas por el resto del ciclo.
+    if "numero_doc" not in out.columns:
+        out["numero_doc"]=out.get("numero_documento")
+    out["fecha"]=pd.to_datetime(out["fecha"],errors="coerce")
+    out["fecha_d"]=out["fecha"].dt.date
+    return out
+
+
+
+def reconciliar_ventas_con_maestra(ventas: pd.DataFrame, maestra: pd.DataFrame) -> pd.DataFrame:
+    """Une el RUT del archivo operativo al cliente_key maestro cuando existe.
+
+    Nunca usa similitud difusa para escribir producción. Sólo acepta coincidencia
+    exacta RUT↔RUT de la maestra. Si no existe, conserva el identificador original.
+    """
+    if ventas is None or ventas.empty or maestra is None or maestra.empty:
+        return ventas
+    v=ventas.copy()
+    if "fuente_ventas" not in v.columns or "rut_cliente" not in v.columns:
+        return v
+    rut_col = "rut" if "rut" in maestra.columns else None
+    ck_col = "cliente_key" if "cliente_key" in maestra.columns else None
+    if not rut_col or not ck_col:
+        return v
+    mapa={}
+    for _,r in maestra.iterrows():
+        rut=normalize_cliente_key(r.get(rut_col))
+        ck=normalize_cliente_key(r.get(ck_col))
+        if rut and ck: mapa[rut]=ck
+    if not mapa: return v
+    v["cliente_key_origen"] = v["cliente_key"]
+    matched=0
+    for idx,r in v.iterrows():
+        if str(r.get("fuente_ventas") or "").upper() != "NUEVO_OPERATIVO":
+            continue
+        rut=normalize_cliente_key(r.get("rut_cliente"))
+        ck=mapa.get(rut)
+        if ck:
+            v.at[idx,"cliente_key"] = ck
+            v.at[idx,"cliente_match_maestra"] = True
+            matched += 1
+        else:
+            v.at[idx,"cliente_match_maestra"] = False
+    print(f"  reconciliación RUT→MAESTRA: {matched}/{int((v['fuente_ventas']=='NUEVO_OPERATIVO').sum())} hechos con cliente maestro")
+    return v
+
+
+def _operational_document_key(r) -> str:
+    # Una OV representa el ciclo completo. Si existe pedido, domina la identidad.
+    # Si no existe, factura/NC forman una clave estable para no colisionar.
+    cliente=str(r.get("cliente_key") or "").strip()
+    pedido=str(r.get("pedido_id") or "").strip()
+    factura=str(r.get("documento_factura") or r.get("numero_documento") or "").strip()
+    folio_f=str(r.get("folio_factura") or "").strip()
+    nc=str(r.get("documento_nc") or "").strip()
+    folio_nc=str(r.get("folio_nc") or "").strip()
+    if pedido:
+        ident=f"OV:{pedido}"
+    elif factura or folio_f:
+        ident=f"FA:{factura}:{folio_f}"
+    elif nc or folio_nc:
+        ident=f"NC:{nc}:{folio_nc}"
+    else:
+        # Nunca colapsar hechos sin documento en una misma OV ficticia.
+        ident=f"ROW:{r.get('fecha_d') or r.get('fecha')}:{r.get('sku_canon') or ''}:{r.get('tipo_hecho') or ''}:{r.get('venta_neta_clp') or 0}"
+    return hashlib.sha1(f"{cliente}|{ident}".encode("utf-8")).hexdigest()
+
+
+def _operational_fact_key(r) -> str:
+    # Incluye tipo de hecho para impedir colisiones PEDIDO/FACTURA/NC.
+    tipo=str(r.get("tipo_hecho") or "").upper()
+    parts=[
+        _operational_document_key(r), tipo, str(r.get("sku_canon") or ""),
+        str(r.get("fecha_d") or ""), str(round(float(r.get("venta_neta_clp") or r.get("total_neto_pedido") or 0),0)),
+        str(round(float(r.get("cantidad") or 0),6)),
+        str(r.get("numero_documento") or ""), str(r.get("folio_documento") or ""),
+    ]
+    return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
+
+
+def publish_ventas_integral(sb, ventas_df: pd.DataFrame) -> Dict[str,int]:
+    """Publica el ciclo operacional completo: PEDIDO + FACTURA + NC.
+    El documento se agrega por acumulación: nunca se pierde una NC por aparecer
+    después de la factura.
+    """
+    stats={"documentos":0,"hechos":0,"clientes":0,"productos":0}
+    if sb is None or ventas_df is None or ventas_df.empty: return stats
+    op=ventas_df[ventas_df.get("fuente_ventas","").eq("NUEVO_OPERATIVO")].copy() if "fuente_ventas" in ventas_df.columns else pd.DataFrame()
+    if op.empty: return stats
+
+    def iso(v):
+        try:
+            if pd.isna(v): return None
+        except Exception: pass
+        try: return pd.to_datetime(v).date().isoformat()
+        except Exception: return str(v)[:10] if str(v) else None
+
+    # Acumular por documento antes del upsert.
+    docs={}
+    for _,r in op.iterrows():
+        dk=_operational_document_key(r)
+        d=docs.setdefault(dk,{
+            "documento_key":dk,"cliente_master_key":str(r.get("cliente_key") or ""),
+            "num_pedido":None,"orden_compra":None,"estado_pedido":None,"almacen":None,
+            "fecha_digitacion":None,"hora_digitacion":None,"fecha_entrega_solicitada":None,
+            "documento_factura":None,"folio_factura":None,"fecha_factura":None,
+            "documento_nc":None,"folio_nc":None,"fecha_nc":None,
+            "condicion_pago":None,"transporte":None,"vendedor":None,"usuario_digitador":None,
+            "region":None,"comuna_despacho":None,"direccion_despacho":None,
+            "comentario_ov":None,"comentario_factura":None,"comentario_nc":None,
+            "fuente":"NUEVO_OPERATIVO",
+            "tenant_id": TENANT_ID,
+        })
+        def fill(field,val):
+            if val is None or val == "": return
+            if field in {"folio_factura","documento_factura","folio_nc","documento_nc"} and d.get(field):
+                vals=[x.strip() for x in str(d[field]).split(",") if x.strip()]
+                sval=str(val).strip()
+                if sval and sval not in vals: vals.append(sval)
+                d[field]=" ,".join(vals).replace(" ,",",")
+            elif d.get(field) in (None, ""):
+                d[field]=val
+        fill("num_pedido",_s(r.get("pedido_id"))); fill("orden_compra",_s(r.get("oc")))
+        fill("estado_pedido",_s(r.get("estado_pedido"))); fill("almacen",_s(r.get("almacen")))
+        fill("fecha_digitacion",iso(r.get("fecha_digitacion"))); fill("hora_digitacion",_s(r.get("hora_digitacion")))
+        fill("fecha_entrega_solicitada",iso(r.get("fecha_entrega_solicitada")))
+        fill("documento_factura",_s(r.get("documento_factura")) if _s(r.get("documento_factura")) else (_s(r.get("numero_documento")) if r.get("tipo_hecho")=="FACTURA" else None))
+        fill("folio_factura",_s(r.get("folio_factura")) if _s(r.get("folio_factura")) else (_s(r.get("folio_documento")) if r.get("tipo_hecho")=="FACTURA" else None))
+        fill("fecha_factura",iso(r.get("fecha_factura")) if r.get("fecha_factura") is not None else (iso(r.get("fecha")) if r.get("tipo_hecho")=="FACTURA" else None))
+        fill("documento_nc",_s(r.get("documento_nc")) if _s(r.get("documento_nc")) else (_s(r.get("numero_documento")) if r.get("tipo_hecho")=="NC" else None))
+        fill("folio_nc",_s(r.get("folio_nc")) if _s(r.get("folio_nc")) else (_s(r.get("folio_documento")) if r.get("tipo_hecho")=="NC" else None))
+        fill("fecha_nc",iso(r.get("fecha_nc")) if r.get("fecha_nc") is not None else (iso(r.get("fecha")) if r.get("tipo_hecho")=="NC" else None))
+        for f in ["condicion_pago","transporte","vendedor","usuario_digitador","region","comuna_despacho","direccion_despacho","comentario_ov","comentario_factura","comentario_nc"]:
+            fill(f,_s(r.get(f)))
+
+    docs_list=list(docs.values())
+    try:
+        upsert(sb,"ventas_documentos",docs_list,on_conflict="documento_key",batch=200)
+        stats["documentos"]=len(docs_list); print(f"  ventas_documentos: {len(docs_list)} documentos acumulados")
+    except Exception as e:
+        print(f"  ventas_documentos skip: {str(e)[:180]}")
+
+    # Hechos: PEDIDO, FACTURA y NC. Cada hecho tiene clave idempotente propia.
+    hechos=[]
+    for _,r in op.iterrows():
+        tipo=str(r.get("tipo_hecho") or "").upper()
+        if tipo not in ("PEDIDO","FACTURA","NC"): continue
+        try: fecha=pd.to_datetime(r.get("fecha"),errors="coerce").date().isoformat()
+        except Exception: continue
+        hechos.append({
+            "hecho_id":_operational_fact_key(r),"documento_key":_operational_document_key(r),
+            "cliente_master_key":str(r.get("cliente_key") or ""),
+            "producto_master_key":str(r.get("sku_canon") or "") or None,
+            "fecha":fecha,"tipo_hecho":tipo,
+            "cantidad":_f(r.get("cantidad")),"kg":_f(r.get("kg")),
+            "cajas":_f(r.get("cajas") if r.get("cajas") is not None else r.get("cajas_solicitadas")),
+            "precio_unitario":_f(r.get("precio_unit")),
+            "total_neto":_f(r.get("total_neto_pedido")) if tipo=="PEDIDO" else (_f(r.get("venta_neta_clp")) or 0),
+            "costo_unitario":_f(r.get("costo_unitario")),
+            "fuente":"NUEVO_OPERATIVO",
+            "tenant_id": TENANT_ID
+        })
+    try:
+        if hechos:
+            upsert(sb,"ventas_hechos",hechos,on_conflict="hecho_id",batch=200)
+            stats["hechos"]=len(hechos); print(f"  ventas_hechos: {len(hechos)} hechos")
+    except Exception as e: print(f"  ventas_hechos skip: {str(e)[:180]}")
+
+    # Maestros observados. Las claves maestras se resuelven por RUT/SKU exactos.
+    clientes={}; productos={}
+    hist_skus=set()
+    if "sku_canon" in ventas_df.columns and "fuente_ventas" in ventas_df.columns:
+        hist_skus=set(str(v).strip() for v in ventas_df.loc[
+            ventas_df["fuente_ventas"].astype(str).eq("HISTORICO"), "sku_canon"
+        ].dropna() if str(v).strip())
+    for _,r in op.iterrows():
+        ck=str(r.get("cliente_key") or "").strip()
+        if ck:
+            clientes[ck]={
+                "cliente_master_key":ck,
+                "codigo_historico":ck,
+                "rut_cliente":_s(r.get("rut_cliente")),
+                "nombre_canon":_s(r.get("nombre_cliente")) or _s(r.get("nombre_comercial")),
+                "estado":"CONCILIADO" if r.get("cliente_match_maestra") else "OBSERVADO",
+                "tenant_id": TENANT_ID,
+            }
+        sk=str(r.get("sku_canon") or "").strip()
+        if sk:
+            productos[sk]={
+                "producto_master_key":sk,
+                "sku_historico": sk if sk in hist_skus else None,
+                "sku_nuevo":sk,
+                "nombre_canon":_s(r.get("producto_nombre")),
+                "estado":"CONCILIADO" if sk in hist_skus else "OBSERVADO",
+                "tenant_id": TENANT_ID,
+            }
+    try:
+        if clientes:
+            upsert(sb,"ventas_clientes_mapa",list(clientes.values()),on_conflict="cliente_master_key"); stats["clientes"]=len(clientes)
+    except Exception as e: print(f"  ventas_clientes_mapa skip: {str(e)[:130]}")
+    try:
+        if productos:
+            upsert(sb,"ventas_productos_mapa",list(productos.values()),on_conflict="producto_master_key"); stats["productos"]=len(productos)
+    except Exception as e: print(f"  ventas_productos_mapa skip: {str(e)[:130]}")
+    return stats
 
 def load_maestra(path: Path) -> pd.DataFrame:
     raw = pd.read_excel(path, engine="openpyxl")
@@ -1619,6 +1964,7 @@ def _venta_key_row(r) -> tuple:
     else:
         fd = str(fd or "")[:10]
     doc = _norm_doc(r.get("numero_documento") or r.get("numero_doc"))
+    tipo = str(r.get("tipo_doc") or r.get("tipo_hecho") or "").strip().upper()
     sku = str(r.get("sku_canon") or "").strip()
     try:
         neto = round(float(r.get("venta_neta_clp") or 0), 0)
@@ -1628,7 +1974,7 @@ def _venta_key_row(r) -> tuple:
         cant = round(float(r.get("cantidad") or 0), 4)
     except Exception:
         cant = 0.0
-    return (ck, fd, doc, sku, neto, cant)
+    return (ck, fd, doc, tipo, sku, neto, cant)
 
 
 def dedupe_ventas(df: pd.DataFrame) -> pd.DataFrame:
@@ -1647,7 +1993,7 @@ def dedupe_ventas(df: pd.DataFrame) -> pd.DataFrame:
     df["_neto_r"] = pd.to_numeric(df.get("venta_neta_clp"), errors="coerce").fillna(0).round(0)
     df["_cant_r"] = pd.to_numeric(df.get("cantidad"), errors="coerce").fillna(0).round(4)
     strong = [c for c in [
-        "cliente_key", "fecha_d", "_doc_norm", "sku_canon", "_neto_r", "_cant_r",
+        "cliente_key", "fecha_d", "_doc_norm", "tipo_doc", "sku_canon", "_neto_r", "_cant_r",
     ] if c in df.columns]
     if len(strong) >= 4:
         df = df.drop_duplicates(subset=strong, keep="last")
@@ -3212,7 +3558,9 @@ def purge_ventas_mes(sb, mes_inicio: date) -> int:
 
 
 def publish_ventas_lineas(sb, excel_df: pd.DataFrame) -> int:
-    """Upsert solo las líneas del Excel (idempotente por linea_id)."""
+    """Upsert sólo hechos de venta a ventas_lineas; PEDIDO queda en capa operacional."""
+    if excel_df is not None and "tipo_hecho" in excel_df.columns:
+        excel_df = excel_df[excel_df["tipo_hecho"].astype(str).str.upper() != "PEDIDO"].copy()
     rows = _ventas_df_to_rows(excel_df)
     if not rows:
         print("  ventas_lineas: nada que publicar")
@@ -3647,7 +3995,8 @@ def merge_ventas_incremental(excel_df: pd.DataFrame, sb, mes_inicio: date) -> pd
 # ---------------------------------------------------------------------------
 def main():
     # --- resolver archivos ---
-    p_ventas = find_file(VENTAS_GLOBS)
+    p_ventas_historico = find_file(VENTAS_HISTORICO_GLOBS)
+    p_ventas_nuevo = find_file(VENTAS_NUEVAS_GLOBS)
     p_maestra = find_file(MAESTRA_GLOBS)
     p_stock = find_file(STOCK_GLOBS)
     p_precios = find_file(PRECIOS_GLOBS)
@@ -3655,7 +4004,8 @@ def main():
 
     print("\n[1] ARCHIVOS")
     for label, p in [
-        ("VENTAS", p_ventas),
+        ("VENTAS_HISTORICO", p_ventas_historico),
+        ("VENTAS_NUEVO", p_ventas_nuevo),
         ("MAESTRA", p_maestra),
         ("STOCK", p_stock),
         ("PRECIOS", p_precios),
@@ -3663,15 +4013,15 @@ def main():
     ]:
         print(f"  {label}: {p if p else 'NO ENCONTRADO'}")
     print(f"  STOCK_API: {STOCK_API_URL or '(off)'}")
-    if not all([p_ventas, p_maestra, p_precios]):
-        raise SystemExit("Faltan VENTAS/MAESTRA/PRECIOS. Stock puede venir de API.")
+    if not any([p_ventas_historico, p_ventas_nuevo]) or not all([p_maestra, p_precios]):
+        raise SystemExit("Faltan VENTAS (histórico o nuevo)/MAESTRA/PRECIOS. Stock puede venir de API.")
     if not p_stock and not STOCK_API_URL:
         raise SystemExit("Falta stock: Excel o KF_STOCK_URL / API default.")
 
     print("\n[2] VALIDAR Y CARGAR")
-    ventas_excel = load_ventas(p_ventas)
-    ventas_excel = dedupe_ventas(ventas_excel)
+    ventas_excel = load_ventas_fusion(p_ventas_historico, p_ventas_nuevo)
     maestra = load_maestra(p_maestra)
+    ventas_excel = reconciliar_ventas_con_maestra(ventas_excel, maestra)
     try:
         stock = load_stock(p_stock)
     except Exception as e:
@@ -3680,7 +4030,11 @@ def main():
     media_map = load_productos_media()
     metas_cfg, focos_cfg_mes, foco_sku_map, foco_kg_factor = load_config_mensual(p_config)
 
-    print(f"  ventas Excel filas={len(ventas_excel)} | {ventas_excel['fecha_d'].min()} → {ventas_excel['fecha_d'].max()}")
+    print(f"  ventas fusionadas filas={len(ventas_excel)} | {ventas_excel['fecha_d'].min()} → {ventas_excel['fecha_d'].max()}")
+    if "fuente_ventas" in ventas_excel.columns:
+        print(f"  fuentes: {ventas_excel['fuente_ventas'].value_counts(dropna=False).to_dict()}")
+    if "tipo_hecho" in ventas_excel.columns:
+        print(f"  hechos: {ventas_excel['tipo_hecho'].value_counts(dropna=False).to_dict()}")
     print(f"  maestra clientes={len(maestra)} | zonas={maestra['zona'].value_counts().to_dict()}")
     print(f"  stock skus={len(stock)}")
     print(f"  precios filas={len(precios)}")
@@ -3713,6 +4067,9 @@ def main():
     print("\n[2b] VENTAS INCREMENTALES")
     mes_hint = mes_mtd(ventas_excel)
     ventas, mes_inicio, ventas_excel_only = merge_ventas_incremental(ventas_excel, sb, mes_hint)
+    # PEDIDO alimenta la capa operacional/Fill Rate, nunca ventas_lineas ni ciclo de recompra.
+    if "tipo_hecho" in ventas.columns:
+        ventas = ventas[ventas["tipo_hecho"].astype(str).str.upper() != "PEDIDO"].copy()
     print(f"\n[3] MES MTD = {mes_inicio} | filas cálculo={len(ventas)}")
     audit_venta_mtd(ventas, mes_inicio)
 
@@ -4120,6 +4477,8 @@ def main():
                 print(f"  repair date parse: {e}")
         n_pub = publish_ventas_lineas(sb, ventas_excel_only)
         print(f"  ventas_lineas publicadas desde Excel: {n_pub}")
+        integral_stats = publish_ventas_integral(sb, ventas_excel)
+        print(f"  ventas integral: {integral_stats}")
     if SKIP_SUPABASE or sb is None:
         print("  skip publish")
         # dump local summary
