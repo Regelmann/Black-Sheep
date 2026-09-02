@@ -1,34 +1,7 @@
-# Dependencias
 node_modules/
-
-# Build
 dist/
-*.local
-
-# Entorno — NUNCA versionar credenciales
-.env
-.env.*
-!.env.example
-
-# Editor / SO
-.DS_Store
-.vscode/
-.idea/
-*.swp
-
-# Logs
-npm-debug.log*
+.next/
 *.log
-
-# Temporales de deploy
-_bs_tmp/
-*.patch
-
-# Python / ETL artifacts
-__pycache__/
-*.py[cod]
-*.pyo
-
-# Archives / local release bundles
-*.zip
-*.tar.gz
+.DS_Store
+.env
+.env.local

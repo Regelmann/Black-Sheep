@@ -4,6 +4,20 @@
  */
 import { supabase } from './supabase.js'
 
+/** 23505 = unique_violation: ESTE MISMO op ya se insertó. Es éxito. */
+function esDuplicadoIdempotente(error) {
+  if (!error) return false
+  return error.code === '23505' || /duplicate key|already exists/i.test(String(error.message || ''))
+}
+
+function opIdDe(item) {
+  return item?.client_op_id || item?.id || item?.payload?.client_op_id || null
+}
+
+function esErrorDeEsquema(error) {
+  return /column|schema cache|42703|PGRST204/i.test(String(error?.message || ''))
+}
+
 export async function handleCheckin(item) {
   const p = item.payload || {}
   const row = {
@@ -26,7 +40,7 @@ export async function handleCheckin(item) {
   // en un intento anterior cuya respuesta se perdió. Es éxito, no error:
   // el dato está en la base. Tratarlo como fallo dejaría el item en la
   // cola reintentando para siempre.
-  if (error && (error.code === '23505' || /duplicate key|already exists/i.test(String(error.message)))) {
+  if (esDuplicadoIdempotente(error)) {
     console.info('[sync:checkin] ya estaba guardado (idempotencia)')
     return { ok: true, yaExistia: true }
   }
@@ -34,7 +48,7 @@ export async function handleCheckin(item) {
   if (error) {
     // Reintento sin columnas opcionales SOLO si el fallo es de esquema.
     // Ante RLS/red hay que reintentar completo mas tarde, no mutilar la fila.
-    const schemaIssue = /column|schema cache|42703|PGRST204/i.test(String(error.message || ''))
+    const schemaIssue = esErrorDeEsquema(error)
     if (!schemaIssue) return { ok: false, error: error.message }
     console.warn('[sync:checkin] esquema reducido, se pierden cliente_key/ejecutivo_id', error)
     const { error: e2 } = await supabase.from('checkins').insert({
@@ -72,8 +86,30 @@ export async function handleCompletar(item) {
 }
 
 export async function handleNota(item) {
-  const { error } = await supabase.from('notas_cliente').insert(item.payload || {})
-  return error ? { ok: false, error: error.message } : { ok: true }
+  const p = item.payload || {}
+  if (!p || typeof p !== 'object' || !Object.keys(p).length) {
+    console.error('[sync:nota] payload vacío — item corrupto, se descarta')
+    return { ok: false, error: 'payload vacío', descartar: true }
+  }
+  // El id vive en el item, NO sólo en el payload. Antes se insertaba
+  // el payload crudo: client_op_id iba NULL y el índice único de 27
+  // no protegía. Un reintento duplicaba la nota.
+  const row = { ...p, client_op_id: opIdDe(item) }
+  const { error } = await supabase.from('notas_cliente').insert(row)
+  if (esDuplicadoIdempotente(error)) {
+    console.info('[sync:nota] ya estaba guardada (idempotencia)')
+    return { ok: true, yaExistia: true }
+  }
+  if (error) {
+    if (!esErrorDeEsquema(error) || !row.client_op_id) {
+      return { ok: false, error: error.message }
+    }
+    const { client_op_id: _op, ...sinOp } = row
+    const { error: e2 } = await supabase.from('notas_cliente').insert(sinOp)
+    if (esDuplicadoIdempotente(e2)) return { ok: true, yaExistia: true }
+    return e2 ? { ok: false, error: e2.message } : { ok: true, degraded: true }
+  }
+  return { ok: true }
 }
 
 export async function handlePedido(item) {
@@ -86,8 +122,15 @@ export async function handlePedido(item) {
     return { ok: false, error: 'payload vacío', descartar: true }
   }
 
+  const opId = opIdDe(item)
+
   if (p.table && p.row) {
-    const { data, error } = await supabase.from(p.table).insert(p.row).select('id')
+    const row = { ...p.row, client_op_id: opId }
+    const { data, error } = await supabase.from(p.table).insert(row).select('id')
+    if (esDuplicadoIdempotente(error)) {
+      console.info('[sync:pedido] ya estaba guardado (idempotencia)')
+      return { ok: true, yaExistia: true }
+    }
     if (error) return { ok: false, error: error.message }
     // DOBLE CHEQUEO: el insert "sin error" no basta. Si no volvió id,
     // no hay confirmación de que la fila exista.
@@ -98,14 +141,15 @@ export async function handlePedido(item) {
   }
   // Insert directo (nunca reencolar desde acá: lo maneja flushActionQueue).
   const row = {
-    ejecutivo_id: p.ejecutivoId,
-    cliente_key: p.clienteKey || null,
-    nombre_cliente: p.nombreCliente || null,
+    ejecutivo_id: p.ejecutivoId || p.ejecutivo_id,
+    cliente_key: p.clienteKey || p.cliente_key || null,
+    nombre_cliente: p.nombreCliente || p.nombre_cliente || null,
     lineas: p.lineas || [],
     nota: p.nota || null,
     estado: p.estado || 'borrador',
     fuente: p.fuente || 'field_app_offline',
     creado_en: p.creado_en || item.enqueuedAt || new Date().toISOString(),
+    client_op_id: opId,
   }
   try {
     row.total_estimado = (p.lineas || []).reduce(
@@ -114,6 +158,10 @@ export async function handlePedido(item) {
     )
   } catch (_) { void _ }
   const { error } = await supabase.from('pedidos').insert(row)
+  if (esDuplicadoIdempotente(error)) {
+    console.info('[sync:pedido] ya estaba guardado (idempotencia)')
+    return { ok: true, yaExistia: true }
+  }
   if (error) {
     const minimal = {
       ejecutivo_id: row.ejecutivo_id,
@@ -125,7 +173,8 @@ export async function handlePedido(item) {
       fuente: row.fuente,
     }
     const r2 = await supabase.from('pedidos').insert(minimal)
-    return r2.error ? { ok: false, error: r2.error.message } : { ok: true }
+    if (esDuplicadoIdempotente(r2.error)) return { ok: true, yaExistia: true }
+    return r2.error ? { ok: false, error: r2.error.message } : { ok: true, degraded: true }
   }
   return { ok: true }
 }
@@ -144,7 +193,11 @@ export async function handleNoVenta(item) {
       cliente_key: p.cliente_key,
       texto: p.nota,
       tipo: 'no_venta',
+      client_op_id: opIdDe(item),
     })
+    if (esDuplicadoIdempotente(error)) {
+      return { ok: true, yaExistia: true }
+    }
     if (error) return { ok: false, error: error.message }
   }
   return { ok: true }

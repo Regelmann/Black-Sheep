@@ -11,6 +11,8 @@ import { Oportunidad } from '../domain/Oportunidad.jsx'
 import { formatDist, formatEta } from '../lib/geo.js'
 import { money } from '../components.jsx'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
+import { guardarNotaTerreno } from '../lib/nota.js'
+import { mensajeDeError } from '../lib/erroresUsuario.js'
 
 /** Comunas por zona de terreno (maestra KeyFoods). Providencia en NOR-ORIENTE y NOR-PONIENTE. */
 /** Alineado a ZONAS_COMUNAS.csv de producción (fuente de verdad). */
@@ -764,9 +766,10 @@ export default function Ruta({ session }) {
         icon: {
           path: maps.SymbolPath.CIRCLE,
           scale: 12,
-          fillColor: 'var(--info)',
+          // HEX, no var(): Google Maps no resuelve CSS. Mismo bug de los pines negros.
+          fillColor: '#2563eb',
           fillOpacity: 1,
-          strokeColor: 'var(--white)',
+          strokeColor: '#ffffff',
           strokeWeight: 4,
         },
       })
@@ -774,9 +777,9 @@ export default function Ruta({ session }) {
         map: mapInstance.current,
         center: pos,
         radius: Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200),
-        fillColor: 'var(--info-mid)',
+        fillColor: '#60a5fa',
         fillOpacity: 0.18,
-        strokeColor: 'var(--info)',
+        strokeColor: '#2563eb',
         strokeOpacity: 0.5,
         strokeWeight: 2,
         zIndex: 9998,
@@ -882,7 +885,7 @@ export default function Ruta({ session }) {
       polyRef.current = new maps.Polyline({
         path,
         geodesic: true,
-        strokeColor: 'var(--brand)',
+        strokeColor: '#c2410c',
         strokeOpacity: 0.85,
         strokeWeight: 3,
         map: mapInstance.current,
@@ -1859,11 +1862,12 @@ export default function Ruta({ session }) {
   )
 }
 
-function NotaRapidaMap({ cliente, session, onClose }) {
+function NotaRapidaMap({ cliente, ejecutivoId, onClose }) {
   const [texto, setTexto] = useState('')
   const [tipo, setTipo] = useState('otro')
   const [busy, setBusy] = useState(false)
   const [ok, setOk] = useState(false)
+  const [err, setErr] = useState('')
   const tipos = [
     { v: 'sin_stock', l: 'Sin stock' },
     { v: 'volver', l: 'Volver' },
@@ -1872,17 +1876,22 @@ function NotaRapidaMap({ cliente, session, onClose }) {
     { v: 'otro', l: 'Otro' },
   ]
   async function guardar() {
+    if (!texto.trim()) return
     setBusy(true)
-    await supabase.from('notas_cliente').insert({
-      ejecutivo_id: session.user.id,
-      cliente_key: cliente.cliente_key || cliente.punto_id_bq,
-      nombre_local: cliente.nombre_cliente || cliente.nombre_local,
+    setErr('')
+    const r = await guardarNotaTerreno({
+      ejecutivoId,
+      cliente,
       tipo,
-      texto,
+      texto: texto.trim(),
     })
     setBusy(false)
-    setOk(true)
-    setTimeout(onClose, 700)
+    if (r.ok) {
+      setOk(true)
+      setTimeout(onClose, 700)
+    } else {
+      setErr(mensajeDeError(r.error) || 'No se pudo guardar')
+    }
   }
   return (
     <div onClick={onClose} style={{
@@ -1914,6 +1923,7 @@ function NotaRapidaMap({ cliente, session, onClose }) {
               placeholder="Escribe la nota…"
               style={{ width: '100%', padding: 12, borderRadius: 12, border: '1.5px solid #e7e5e4', fontFamily: 'inherit', fontSize: 14, resize: 'none' }}
             />
+            {err && <div style={{ color: 'var(--danger-dk)', fontWeight: 600, fontSize: 13, marginTop: 8 }}>{err}</div>}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button type="button" onClick={onClose} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1.5px solid #e7e5e4', background: '#fff', fontWeight: 700, fontFamily: 'inherit' }}>Cancelar</button>
               <button type="button" disabled={busy || !texto} onClick={guardar} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: texto ? 'var(--brand)' : 'var(--line-2)', color: '#fff', fontWeight: 800, fontFamily: 'inherit' }}>{busy ? '…' : 'Guardar'}</button>

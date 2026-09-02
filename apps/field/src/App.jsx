@@ -53,6 +53,8 @@ import { BandejaAgotados } from './chrome/BandejaAgotados.jsx'
 // App → ErrorBoundary → App.
 import { BUILD_STAMP } from './lib/buildStamp.js'
 export { BUILD_STAMP }
+import { resolverPerfil } from './lib/perfilEjecutivo.js'
+import { mensajeDeError } from './lib/erroresUsuario.js'
 import { syncHandlers } from './lib/syncHandlers.js'
 import { SyncBanner } from './chrome/SyncBanner.jsx'
 import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
@@ -80,6 +82,7 @@ export default function App() {
   const [todosEjecutivos, setTodosEjecutivos] = useState([])
   const [zonaVista, setZonaVista] = useState(null)
   const [eidVista, setEidVista] = useState(null)
+  const [perfilError, setPerfilError] = useState(null)
 
   useEffect(() => {
     const t = resolveTenant()
@@ -98,34 +101,35 @@ export default function App() {
   useEffect(() => {
     if (!session) {
       setEjecutivo(null)
+      setPerfilError(null)
       return
     }
+    let cancelled = false
     supabase
       .from('ejecutivos')
       .select('*')
       .eq('id', session.user.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (!data) {
-          // Usuario auth sin fila en ejecutivos
-          setEjecutivo({
-            id: session.user.id,
-            nombre: session.user.email || '',
-            zona: '',
-            rol: 'ejecutivo',
-            esSuperAdmin: false,
-          })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        // Sin mirar `error`, data=null se leía como "sin fila" y se
+        // fabricaba un ejecutivo fantasma. Un gerente con red caída
+        // entraba como vendedor, sin /gerencia y sin aviso.
+        const r = resolverPerfil({ data, error }, session.user)
+        if (r.error) {
+          setPerfilError(r.error)
+          setEjecutivo(null)
           return
         }
-        const rol = (data.rol || 'ejecutivo').toLowerCase()
-        setEjecutivo({
-          id: data.id,
-          nombre: data.nombre || '',
-          zona: data.zona || '',
-          rol,
-          esSuperAdmin: rol === 'superadmin' || rol === 'gerente' || rol === 'admin',
-        })
+        setPerfilError(null)
+        setEjecutivo(r.perfil)
       })
+      .catch((e) => {
+        if (cancelled) return
+        setPerfilError(e?.message || 'No se pudo leer tu perfil')
+        setEjecutivo(null)
+      })
+    return () => { cancelled = true }
   }, [session])
 
   // Cargar lista de zonas de campo + setear vista inicial
@@ -238,8 +242,18 @@ export default function App() {
           />
           <div className="bs-boot-logo-fb" style={{display:'none'}}>BS</div>
         </div>
-        <div className="bs-boot-bar"><span /></div>
-        <p>Cargando tu perfil…</p>
+        {!perfilError && <div className="bs-boot-bar"><span /></div>}
+        <p>{perfilError ? mensajeDeError({ message: perfilError }) : 'Cargando tu perfil…'}</p>
+        {perfilError && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ marginTop: 16 }}
+            onClick={() => window.location.reload()}
+          >
+            Reintentar
+          </button>
+        )}
       </div>
     )
   }

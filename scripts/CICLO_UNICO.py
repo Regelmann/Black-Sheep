@@ -1031,12 +1031,28 @@ def load_ventas_nuevas(path: Path) -> pd.DataFrame:
             })
             rows.append(rec)
 
+        # V13.2 FIX: el neto de factura/NC sólo cuenta como venta cerrada
+        # cuando Estado_Pedido == "Cerrado". Antes se sumaba SIEMPRE que
+        # hubiera Total_Neto_Factura > 0, sin mirar el estado — el 97.3%
+        # de esa plata venía de filas con Estado_Pedido en blanco (ni
+        # Abierto ni Cerrado), inflando la venta MTD muy por encima de lo
+        # real (detectado: $394M reales al día 24 vs $800M+ calculados).
+        estado_val = _s(r.get(c_estado))
+        es_cerrado = estado_val == "Cerrado"
+
         fact_amt=_f(r.get(c_tfact)) if c_tfact else None
-        if fact_amt not in (None,0) and _s(r.get(c_dfact)):
+        if es_cerrado and fact_amt not in (None,0) and _s(r.get(c_dfact)):
             rec=dict(common)
             rec.update({
                 "fecha":fe,"fecha_d":fe.date() if not pd.isna(fe) else None,
-                "numero_documento":_s(r.get(c_dfact)),"folio_documento":_s(r.get(c_ffol)),
+                # V13.2 FIX: numero_documento va con Num_Folio, no con
+                # #Doc_Factura. El histórico usa el folio (columna NUMERO,
+                # p.ej. "54451") como identificador; #Doc_Factura es un ID
+                # interno distinto (p.ej. "8012929") que nunca va a calzar
+                # con el histórico en el dedupe, aunque sea la misma
+                # factura. Confirmado: Num_Folio = NUMERO en 12.872 de
+                # 12.873 casos — #Doc_Factura no calza en ninguno.
+                "numero_documento":_s(r.get(c_ffol)) or _s(r.get(c_dfact)),"folio_documento":_s(r.get(c_ffol)),
                 "tipo_doc":"FA","tipo_hecho":"FACTURA",
                 "cantidad":_f(r.get(c_qfact)) if c_qfact else None,
                 "kg":_f(r.get(c_kgfact)) if c_kgfact else None,
@@ -1046,7 +1062,7 @@ def load_ventas_nuevas(path: Path) -> pd.DataFrame:
             rows.append(rec)
 
         nc_amt=_f(r.get(c_tnc)) if c_tnc else None
-        if nc_amt not in (None,0) and (_s(r.get(c_dnc)) or _s(r.get(c_fnc))):
+        if es_cerrado and nc_amt not in (None,0) and (_s(r.get(c_dnc)) or _s(r.get(c_fnc))):
             rec=dict(common)
             rec.update({
                 "fecha":fn,"fecha_d":fn.date() if not pd.isna(fn) else None,
@@ -1977,11 +1993,60 @@ def _venta_key_row(r) -> tuple:
     return (ck, fd, doc, tipo, sku, neto, cant)
 
 
+def dedupe_documentos_cruzados(df: pd.DataFrame) -> pd.DataFrame:
+    """V13.3 FIX: dedupe_ventas exige que el SKU calce (sku_canon) además
+    de cliente+fecha+doc+tipo+neto+cantidad. Pero HISTORICO y
+    NUEVO_OPERATIVO codifican el producto distinto para la MISMA factura
+    (mismo NUMERO/Num_Folio, misma fecha, mismo cliente) — así que la
+    dedup por línea nunca los reconoce como duplicados y la factura
+    completa queda sumada dos veces.
+
+    Detectado: agosto 2026 tenía 1.014 documentos presentes en ambas
+    fuentes ($196.8M) que se sumaban dos veces — el total del mes salía
+    $642M en vez de ~$451M.
+
+    Este paso trabaja a nivel de DOCUMENTO, no de línea: si un mismo
+    (cliente_key, fecha_d, doc_norm, tipo_doc) existe en HISTORICO Y en
+    NUEVO_OPERATIVO, se descarta el documento completo de HISTORICO —
+    NUEVO_OPERATIVO es la fuente más reciente y granular (trae
+    pedido/factura/NC por separado), así que se prioriza.
+    """
+    if df is None or df.empty or "fuente_ventas" not in df.columns:
+        return df
+    if "numero_documento" not in df.columns:
+        return df
+    d = df.copy()
+    d["_doc_norm"] = d["numero_documento"].map(_norm_doc)
+    # V13.3 FIX (2): HISTORICO guarda el cliente como "77961324-C" (letra
+    # "C" literal en vez de dígito verificador) y NUEVO_OPERATIVO como
+    # "77961324-0" (RUT real) — el mismo cliente, cliente_key nunca calza
+    # como string. Se compara por el bloque numérico del RUT solamente.
+    d["_rut_num"] = d["cliente_key"].astype(str).str.extract(r"(\d+)", expand=False)
+    claves = [c for c in ["_rut_num", "fecha_d", "_doc_norm", "tipo_doc"] if c in d.columns]
+    if len(claves) < 3:
+        return df
+    en_nuevo = set(
+        map(tuple, d.loc[d["fuente_ventas"] == "NUEVO_OPERATIVO", claves].dropna().values)
+    )
+    if not en_nuevo:
+        return df
+    es_hist_duplicado = (d["fuente_ventas"] == "HISTORICO") & d[claves].apply(
+        lambda r: tuple(r) in en_nuevo, axis=1
+    )
+    quitadas = int(es_hist_duplicado.sum())
+    if quitadas:
+        print(f"  dedupe cruzado HISTORICO↔NUEVO_OPERATIVO (por documento, no por sku): "
+              f"{quitadas} líneas de HISTORICO descartadas por duplicar documento ya presente en NUEVO_OPERATIVO")
+    df = df.loc[~es_hist_duplicado].copy()
+    return df
+
+
 def dedupe_ventas(df: pd.DataFrame) -> pd.DataFrame:
     """Elimina líneas de venta repetidas (misma factura + sku + neto + cantidad)."""
     if df is None or df.empty:
         return df
     before = len(df)
+    df = dedupe_documentos_cruzados(df)
     df = df.copy()
     if "numero_doc" in df.columns and "numero_documento" not in df.columns:
         df["numero_documento"] = df["numero_doc"]
@@ -4665,3 +4730,4 @@ if __name__ == "__main__":
     except Exception:
         traceback.print_exc()
         raise
+

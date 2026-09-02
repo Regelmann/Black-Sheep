@@ -16,6 +16,21 @@ const RAIZ = path.resolve(import.meta.dirname, '..', '..')
 const leer = (p) => fs.readFileSync(path.join(RAIZ, p), 'utf8')
 
 describe('service worker · no puede dejar la pantalla en blanco', () => {
+  // 0 · Un SW que no parsea el navegador lo rechaza y deja el viejo
+  //     instalado. Los tests de strings pasaban en verde con SHELL
+  //     indefinido y listeners sin cerrar. new Function es el parse-check.
+  test('sw.js parsea — si no, el navegador no lo instala', () => {
+    const sw = leer('public/sw.js')
+    assert.doesNotThrow(
+      () => new Function(sw),
+      'public/sw.js no es JS válido: el SW viejo queda cacheando HTML'
+    )
+    assert.ok(/\bconst SHELL\b/.test(sw), 'SHELL tiene que estar definido: se precachea en install')
+    assert.ok(/self\.addEventListener\('install'/.test(sw))
+    assert.ok(/self\.addEventListener\('activate'/.test(sw))
+    assert.ok(/notificationclick/.test(sw), 'el handler de push no puede cortarse a mitad de archivo')
+  })
+
   // 1 · En desarrollo el SW compite con el HMR de Vite: cachea módulos
   //     servidos con ?t=<timestamp> y ante cualquier fallo momentáneo
   //     devuelve una combinación de HTML y módulos que no encaja.

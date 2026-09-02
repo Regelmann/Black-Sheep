@@ -5,6 +5,7 @@ import PedidoSheet from '../domain/PedidoSheet.jsx'
 import HistorialPedidos from '../domain/HistorialPedidos.jsx'
 import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
 import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../lib/offline.js'
+import { guardarNotaTerreno } from '../lib/nota.js'
 import { FilterBar, SearchField, StatGrid } from '../domain/FilterBar.jsx'
 import { ClientActionBar } from '../domain/ClientActionBar.jsx'
 import { PageShell } from '../shells/PageShell.jsx'
@@ -235,17 +236,12 @@ export default function Cartera({ session }) {
       alert('No se pudo bloquear: ' + (error.message || 'permiso / red'))
       return
     }
-    try {
-      await supabase.from('notas_cliente').insert({
-        ejecutivo_id: session.user.id,
-        cliente_key: key,
-        nombre_local: cliente.nombre_cliente || cliente.razon_social,
-        tipo: motivo === 'deuda' ? 'bloqueo_deuda' : 'bloqueo_cerrado',
-        texto: motivo === 'deuda' ? 'Bloqueado por deuda' : 'Cerrado / sin actividad',
-      })
-    } catch {
-      /* nota opcional */
-    }
+    await guardarNotaTerreno({
+      ejecutivoId: eje?.eidVista || session.user.id,
+      cliente,
+      tipo: motivo === 'deuda' ? 'bloqueo_deuda' : 'bloqueo_cerrado',
+      texto: motivo === 'deuda' ? 'Bloqueado por deuda' : 'Cerrado / sin actividad',
+    })
   }
 
   async function desbloquear(cliente) {

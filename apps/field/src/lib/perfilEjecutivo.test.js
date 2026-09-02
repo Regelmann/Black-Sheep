@@ -12,6 +12,9 @@
  */
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 import { perfilDesdeFila, resolverPerfil } from './perfilEjecutivo.js'
 
 const USUARIO = { id: 'u-1', email: 'ana@keyfoods.cl' }
@@ -82,5 +85,19 @@ describe('resolverPerfil · un error de lectura no degrada a nadie', () => {
   test('una respuesta vacía no rompe', () => {
     const r = resolverPerfil(undefined, USUARIO)
     assert.ok(r.perfil || r.error === null)
+  })
+})
+
+describe('App.jsx · no fabrica el perfil a mano', () => {
+  test('usa resolverPerfil y mira error', () => {
+    const app = readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'App.jsx'),
+      'utf8',
+    )
+    assert.ok(/resolverPerfil/.test(app), 'App.jsx tiene que pasar por resolverPerfil')
+    assert.ok(
+      !/rol:\s*'ejecutivo'/.test(app),
+      'el fantasma con rol ejecutivo volvió a App.jsx',
+    )
   })
 })

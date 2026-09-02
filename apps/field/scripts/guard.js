@@ -11,6 +11,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src')
 
@@ -347,6 +348,22 @@ if (stampFile) {
       if (!fs.readFileSync(f, 'utf8').includes(stamp)) {
         problemas.push(`[R9 doc desactualizada]  ${doc} no menciona ${stamp}`)
       }
+    }
+  }
+}
+
+// ── R19 · El service worker tiene que parsear ───────────────────────
+// Un SW inválido el navegador lo rechaza y deja el viejo cacheando
+// HTML → pantalla en blanco. Los tests de strings no alcanzan.
+{
+  const sw = path.resolve(SRC, '..', 'public', 'sw.js')
+  if (!fs.existsSync(sw)) {
+    problemas.push('[R19 SW ausente]  public/sw.js no existe')
+  } else {
+    const r = spawnSync(process.execPath, ['--check', sw], { encoding: 'utf8' })
+    if (r.status !== 0) {
+      const detalle = String(r.stderr || r.stdout || 'falló node --check').trim().slice(0, 200)
+      problemas.push(`[R19 SW no parsea]  ${detalle}`)
     }
   }
 }

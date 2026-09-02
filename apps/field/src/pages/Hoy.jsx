@@ -307,6 +307,16 @@ export default function Hoy() {
       </header>
 
       <div className="bs-hoy-body">
+        {/* V13.1: el avance del mes va PRIMERO — es lo primero que un
+            ejecutivo quiere ver al abrir la app, antes que la próxima
+            acción sugerida. */}
+        <VentaHero
+          venta={m.ventaMtd}
+          meta={m.metaMensual}
+          zona={zonaVista}
+          clientes={cartera?.length}
+        />
+
         {/* ÚNICA acción primaria */}
         <section className="bs-hoy-nba">
           <p className="bs-hoy-nba-label">Siguiente mejor acción</p>
@@ -342,16 +352,6 @@ export default function Hoy() {
             Armar ruta del día
           </button>
         </section>
-
-        {/* V9.9: la venta manda, y el color sale del RITMO por días
-            hábiles — no de un umbral fijo. Antes era `pct >= 70 ? ok`,
-            que pinta igual un 70% el día 3 que el día 28. */}
-        <VentaHero
-          venta={m.ventaMtd}
-          meta={m.metaMensual}
-          zona={zonaVista}
-          clientes={cartera?.length}
-        />
 
         {/* La venta dice DÓNDE ESTÁS. La proyección dice A DÓNDE LLEGÁS
             si el ritmo no cambia — que es lo que genera la acción.
@@ -392,7 +392,7 @@ export default function Hoy() {
             </button>
           </div>
           {focos?.length > 0 && (
-            <details className="bs-hoy-focos-fold">
+            <details className="bs-hoy-focos-fold" open>
               <summary>Focos del mes</summary>
               <FocosMes focos={focos} />
             </details>

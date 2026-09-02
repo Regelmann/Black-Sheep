@@ -137,7 +137,7 @@ export function offlineAgeMinutes(snap) {
  * crypto.randomUUID() en vez de Date.now()+Math.random(): dos acciones
  * en el mismo milisegundo podían colisionar.
  */
-function nuevoOpId() {
+export function nuevoOpId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
   // Respaldo para WebView viejos sin randomUUID
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -147,18 +147,24 @@ function nuevoOpId() {
 }
 
 /**
- * @param {{type:string, payload?:any}} action
+ * @param {{type:string, payload?:any, client_op_id?:string, id?:string}} action
  * @returns {any}
  */
 export function enqueueAction(action) {
-  const opId = nuevoOpId()
+  // Si el caller ya generó el id (insert online que falló a mitad de
+  // camino), hay que REUTILIZARLO. Un id nuevo en el reintento duplica
+  // la fila: el índice único de 27_IDEMPOTENCIA.sql no sirve si cada
+  // intento manda un UUID distinto.
+  //
+  // id y client_op_id se asignan AL FINAL a propósito: el spread de
+  // `action` no puede pisarlos y dejarlos distintos entre sí.
+  const opId = action.client_op_id || action.id || nuevoOpId()
   const item = {
-    id: opId,
-    // Viaja al servidor: es la llave de idempotencia.
-    client_op_id: opId,
-    enqueuedAt: new Date().toISOString(),
     attempts: 0,
     ...action,
+    id: opId,
+    client_op_id: opId,
+    enqueuedAt: action.enqueuedAt || new Date().toISOString(),
   }
   // Escritura durable: IndexedDB + respaldo en localStorage.
   agregarItem(item)

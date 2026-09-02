@@ -61,6 +61,22 @@ describe('syncHandlers · scope', () => {
     }
   })
 
+  test('handleNota y handlePedido mandan client_op_id (índice de 27)', () => {
+    // El índice único de 27_IDEMPOTENCIA.sql es parcial: varios NULL
+    // no colisionan. Insertar el payload crudo = duplicar al reintentar.
+    for (const n of ['handleNota', 'handlePedido', 'handleNoVenta']) {
+      const f = cuerpoDe(n)
+      assert.ok(
+        /client_op_id/.test(f),
+        `${n} no adjunta client_op_id — un reintento duplica la fila`
+      )
+      assert.ok(
+        /23505|esDuplicadoIdempotente/.test(f),
+        `${n} no trata 23505 como éxito — la cola reintenta para siempre`
+      )
+    }
+  })
+
   test('todo handler devuelve un objeto con ok', () => {
     const nombres = [...código.matchAll(/export async function (handle\w+)/g)].map(m => m[1])
     for (const n of nombres) {

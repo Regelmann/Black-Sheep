@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { guardarNotaTerreno } from '../lib/nota.js'
+import { mensajeDeError } from '../lib/erroresUsuario.js'
 
 const TIPOS = [
   { v: 'sin_stock',     l: 'Sin stock'   },
@@ -14,19 +15,21 @@ export default function NotaModal({ cliente, ejecutivoId, onClose }) {
   const [tipo, setTipo]   = useState('otro')
   const [busy, setBusy]   = useState(false)
   const [ok,   setOk]     = useState(false)
+  const [err,  setErr]    = useState('')
 
   async function guardar() {
     if (!texto.trim()) return
     setBusy(true)
-    const { error } = await supabase.from('notas_cliente').insert({
-      ejecutivo_id: ejecutivoId,
-      cliente_key:  cliente.cliente_key,
-      nombre_local: cliente.nombre_cliente,
+    setErr('')
+    const r = await guardarNotaTerreno({
+      ejecutivoId,
+      cliente,
       tipo,
       texto: texto.trim(),
     })
     setBusy(false)
-    if (!error) { setOk(true); setTimeout(onClose, 900) }
+    if (r.ok) { setOk(true); setTimeout(onClose, 900) }
+    else setErr(mensajeDeError(r.error) || 'No se pudo guardar')
   }
 
   return (
@@ -83,6 +86,9 @@ export default function NotaModal({ cliente, ejecutivoId, onClose }) {
                 fontSize:14, resize:'none', outline:'none',
               }}
             />
+            {err && (
+              <div style={{ color:'var(--danger-dk)', fontWeight:600, fontSize:13, marginTop:8 }}>{err}</div>
+            )}
             <div style={{ display:'flex', gap:8, marginTop:12 }}>
               <button className="btn btn-ghost btn-block" onClick={onClose}>Cancelar</button>
               <button
