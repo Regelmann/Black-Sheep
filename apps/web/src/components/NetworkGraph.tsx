@@ -5,7 +5,7 @@ import Graph from "graphology";
 import Sigma from "sigma";
 
 const HUB = "hub";
-const EDGE_COLOR = "#2b3674";
+const EDGE_COLOR = "rgba(67, 24, 255, 0.55)";
 const DIM_COLOR = "#1b2559";
 
 const COLORS = {
@@ -64,7 +64,7 @@ type NodeDef = {
 
 function buildNodes(): NodeDef[] {
   const nodes: NodeDef[] = [
-    { id: HUB, label: "Black Sheep Core", kind: "hub", x: 0, y: 0, size: 13 },
+    { id: HUB, label: "Black Sheep Core", kind: "hub", x: 0, y: 0, size: 16 },
   ];
   STABLES.forEach(([label, deg, r, size], i) => {
     const { x, y } = polar(r, deg);
