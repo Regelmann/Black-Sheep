@@ -23,3 +23,7 @@ npm-debug.log*
 # Temporales de deploy
 _bs_tmp/
 *.patch
+
+apps/web/.next/
+.next/
+node_modules/
