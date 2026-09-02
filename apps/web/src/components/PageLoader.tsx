@@ -26,7 +26,15 @@ export default function PageLoader({
       const t = Math.min(1, (now - start) / minMs);
       setProgress(Math.round((1 - Math.pow(1 - t, 3)) * 100));
       if (t < 1) raf = requestAnimationFrame(tick);
-      else setTimeout(() => setShow(false), 80);
+      else
+        setTimeout(() => {
+          setShow(false);
+          try {
+            window.dispatchEvent(new Event("bs:loader-done"));
+          } catch {
+            /* ignore */
+          }
+        }, 80);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -38,7 +46,7 @@ export default function PageLoader({
         {show && (
           <motion.div
             key="loader"
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-black"
+            className="fixed inset-x-0 top-0 z-[100] flex h-[100dvh] flex-col items-center justify-center overflow-hidden bg-black"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}

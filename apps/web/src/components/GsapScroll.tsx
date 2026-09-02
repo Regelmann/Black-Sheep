@@ -5,85 +5,115 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 /**
- * Sistema global de animaciones GSAP + ScrollTrigger.
- *
- * Marcá elementos con data-attributes:
- *   data-gsap="fade-up" | "fade" | "scale" | "slide-left" | "slide-right" | "clip"
- *   data-gsap-delay="0.1"   (segundos)
- *   data-gsap-stagger="0.08"  en el contenedor padre con data-gsap-stagger-children
- *   data-gsap-parallax="0.2"  movimiento vertical suave al scroll
- *   data-gsap-pin              pin de sección (capítulos)
- *
- * Respeta prefers-reduced-motion.
+ * GSAP + ScrollTrigger global.
+ * Móvil: fromTo (no se queda invisible), start más bajo, sin pin,
+ * refresh tras loader / orientación / resize.
  */
 export default function GsapScroll() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
+    if (reduce) {
+      document
+        .querySelectorAll<HTMLElement>("[data-gsap], [data-gsap-stagger-children] > *")
+        .forEach((el) => {
+          el.style.opacity = "";
+          el.style.transform = "";
+        });
+      return;
+    }
 
     gsap.registerPlugin(ScrollTrigger);
+    ScrollTrigger.config({ ignoreMobileResize: true });
+
+    const isTouch =
+      window.matchMedia("(hover: none), (pointer: coarse)").matches ||
+      window.innerWidth < 768;
+
+    const startIn = isTouch ? "top 95%" : "top 88%";
+    const startStagger = isTouch ? "top 92%" : "top 85%";
 
     const ctx = gsap.context(() => {
-      // —— Entradas por tipo ——
-      const presets: Record<
-        string,
-        gsap.TweenVars
-      > = {
-        "fade-up": { y: 48, opacity: 0, duration: 0.9, ease: "power3.out" },
-        fade: { opacity: 0, duration: 0.8, ease: "power2.out" },
-        scale: { scale: 0.92, opacity: 0, duration: 0.85, ease: "power3.out" },
-        "slide-left": { x: -56, opacity: 0, duration: 0.9, ease: "power3.out" },
-        "slide-right": { x: 56, opacity: 0, duration: 0.9, ease: "power3.out" },
+      const presets: Record<string, { from: gsap.TweenVars; to: gsap.TweenVars }> = {
+        "fade-up": {
+          from: { y: isTouch ? 28 : 48, autoAlpha: 0 },
+          to: { y: 0, autoAlpha: 1, duration: isTouch ? 0.65 : 0.9, ease: "power3.out" },
+        },
+        fade: {
+          from: { autoAlpha: 0 },
+          to: { autoAlpha: 1, duration: isTouch ? 0.55 : 0.8, ease: "power2.out" },
+        },
+        scale: {
+          from: { scale: isTouch ? 0.96 : 0.92, autoAlpha: 0 },
+          to: { scale: 1, autoAlpha: 1, duration: isTouch ? 0.65 : 0.85, ease: "power3.out" },
+        },
+        "slide-left": {
+          from: { x: isTouch ? -24 : -56, autoAlpha: 0 },
+          to: { x: 0, autoAlpha: 1, duration: isTouch ? 0.65 : 0.9, ease: "power3.out" },
+        },
+        "slide-right": {
+          from: { x: isTouch ? 24 : 56, autoAlpha: 0 },
+          to: { x: 0, autoAlpha: 1, duration: isTouch ? 0.65 : 0.9, ease: "power3.out" },
+        },
         clip: {
-          clipPath: "inset(12% 12% 12% 12%)",
-          opacity: 0.4,
-          duration: 1,
-          ease: "power3.out",
+          from: { clipPath: "inset(8% 8% 8% 8%)", autoAlpha: 0.5 },
+          to: {
+            clipPath: "inset(0% 0% 0% 0%)",
+            autoAlpha: 1,
+            duration: isTouch ? 0.7 : 1,
+            ease: "power3.out",
+          },
         },
       };
 
       Object.keys(presets).forEach((key) => {
         gsap.utils.toArray<HTMLElement>(`[data-gsap="${key}"]`).forEach((el) => {
           const delay = Number(el.dataset.gsapDelay || 0);
-          const from = { ...presets[key] };
-          gsap.from(el, {
-            ...from,
+          const { from, to } = presets[key];
+          gsap.fromTo(el, from, {
+            ...to,
             delay,
+            immediateRender: false,
             scrollTrigger: {
               trigger: el,
-              start: "top 88%",
+              start: startIn,
               toggleActions: "play none none none",
+              once: true,
+              invalidateOnRefresh: true,
             },
           });
         });
       });
 
-      // —— Stagger children ——
-      gsap.utils
-        .toArray<HTMLElement>("[data-gsap-stagger-children]")
-        .forEach((parent) => {
-          const amount = Number(parent.dataset.gsapStagger || 0.08);
-          const kids = parent.querySelectorAll<HTMLElement>(":scope > *");
-          if (!kids.length) return;
-          gsap.from(kids, {
-            y: 36,
-            opacity: 0,
-            duration: 0.75,
+      gsap.utils.toArray<HTMLElement>("[data-gsap-stagger-children]").forEach((parent) => {
+        const amount = Number(parent.dataset.gsapStagger || 0.08);
+        const kids = parent.querySelectorAll<HTMLElement>(":scope > *");
+        if (!kids.length) return;
+        gsap.fromTo(
+          kids,
+          { y: isTouch ? 20 : 36, autoAlpha: 0 },
+          {
+            y: 0,
+            autoAlpha: 1,
+            duration: isTouch ? 0.55 : 0.75,
             ease: "power3.out",
-            stagger: amount,
+            stagger: isTouch ? Math.min(amount, 0.06) : amount,
+            immediateRender: false,
             scrollTrigger: {
               trigger: parent,
-              start: "top 85%",
+              start: startStagger,
               toggleActions: "play none none none",
+              once: true,
+              invalidateOnRefresh: true,
             },
-          });
-        });
+          }
+        );
+      });
 
-      // —— Parallax suave ——
       gsap.utils.toArray<HTMLElement>("[data-gsap-parallax]").forEach((el) => {
-        const speed = Number(el.dataset.gsapParallax || 0.2);
+        const speed = Number(el.dataset.gsapParallax || 0.2) * (isTouch ? 0.35 : 1);
+        if (isTouch && Math.abs(speed) < 0.05) return;
         gsap.to(el, {
           y: () => speed * 120,
           ease: "none",
@@ -91,23 +121,25 @@ export default function GsapScroll() {
             trigger: el,
             start: "top bottom",
             end: "bottom top",
-            scrub: true,
+            scrub: isTouch ? 0.6 : true,
+            invalidateOnRefresh: true,
           },
         });
       });
 
-      // —— Pin secciones (capítulos) ——
-      gsap.utils.toArray<HTMLElement>("[data-gsap-pin]").forEach((el) => {
-        ScrollTrigger.create({
-          trigger: el,
-          start: "top top",
-          end: () => `+=${Math.min(el.offsetHeight * 0.6, 480)}`,
-          pin: true,
-          pinSpacing: true,
+      if (!isTouch) {
+        gsap.utils.toArray<HTMLElement>("[data-gsap-pin]").forEach((el) => {
+          ScrollTrigger.create({
+            trigger: el,
+            start: "top top",
+            end: () => `+=${Math.min(el.offsetHeight * 0.6, 480)}`,
+            pin: true,
+            pinSpacing: true,
+            invalidateOnRefresh: true,
+          });
         });
-      });
+      }
 
-      // —— Línea de progreso de sección (opcional data-gsap-progress) ——
       gsap.utils.toArray<HTMLElement>("[data-gsap-progress]").forEach((el) => {
         const bar = el.querySelector<HTMLElement>("[data-gsap-progress-bar]");
         if (!bar) return;
@@ -123,33 +155,68 @@ export default function GsapScroll() {
               start: "top 80%",
               end: "bottom 40%",
               scrub: true,
+              invalidateOnRefresh: true,
             },
           }
         );
       });
 
-      // —— Scrub de opacidad en hero residual ——
       gsap.utils.toArray<HTMLElement>("[data-gsap-fade-out]").forEach((el) => {
         gsap.to(el, {
-          opacity: 0,
-          y: -40,
+          autoAlpha: 0,
+          y: isTouch ? -20 : -40,
           ease: "none",
           scrollTrigger: {
             trigger: el,
             start: "top top",
             end: "bottom top",
             scrub: true,
+            invalidateOnRefresh: true,
           },
         });
       });
     });
 
-    // refresh después de imágenes / fonts
-    const t = window.setTimeout(() => ScrollTrigger.refresh(), 400);
-    window.addEventListener("load", () => ScrollTrigger.refresh());
+    const refresh = () => {
+      try {
+        ScrollTrigger.refresh();
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const t1 = window.setTimeout(refresh, 450);
+    const t2 = window.setTimeout(refresh, 1200);
+    const t3 = window.setTimeout(refresh, 2200);
+    window.addEventListener("load", refresh);
+    window.addEventListener("orientationchange", refresh);
+    window.addEventListener("bs:loader-done", refresh);
+
+    let resizeTimer = 0;
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(refresh, 200);
+    };
+    window.addEventListener("resize", onResize);
+
+    const safety = window.setTimeout(() => {
+      document.querySelectorAll<HTMLElement>("[data-gsap]").forEach((el) => {
+        if (window.getComputedStyle(el).opacity === "0") {
+          gsap.set(el, { autoAlpha: 1, x: 0, y: 0, scale: 1, clearProps: "clipPath" });
+        }
+      });
+    }, 4000);
 
     return () => {
-      window.clearTimeout(t);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      window.clearTimeout(safety);
+      window.clearTimeout(resizeTimer);
+      window.removeEventListener("load", refresh);
+      window.removeEventListener("orientationchange", refresh);
+      window.removeEventListener("bs:loader-done", refresh);
+      window.removeEventListener("resize", onResize);
       ctx.revert();
     };
   }, []);
