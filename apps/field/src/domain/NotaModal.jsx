@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { guardarNotaTerreno } from '../lib/nota.js'
+import { mensajeDeError } from '../lib/erroresUsuario.js'
 
 const TIPOS = [
   { v: 'sin_stock',     l: 'Sin stock'   },
@@ -14,19 +15,24 @@ export default function NotaModal({ cliente, ejecutivoId, onClose }) {
   const [tipo, setTipo]   = useState('otro')
   const [busy, setBusy]   = useState(false)
   const [ok,   setOk]     = useState(false)
+  const [err,  setErr]    = useState(null)
 
   async function guardar() {
     if (!texto.trim()) return
     setBusy(true)
-    const { error } = await supabase.from('notas_cliente').insert({
-      ejecutivo_id: ejecutivoId,
-      cliente_key:  cliente.cliente_key,
-      nombre_local: cliente.nombre_cliente,
+    // `if (!error)` sin `else`: cuando fallaba NO pasaba nada. El modal
+    // quedaba abierto sin decir por qué, y el vendedor volvía a apretar
+    // creyendo que no había tocado bien.
+    const r = await guardarNotaTerreno({
+      ejecutivoId,
+      clienteKey:  cliente.cliente_key,
+      nombreLocal: cliente.nombre_cliente,
       tipo,
       texto: texto.trim(),
     })
     setBusy(false)
-    if (!error) { setOk(true); setTimeout(onClose, 900) }
+    if (r.ok) { setOk(true); setTimeout(onClose, 900); return }
+    setErr(mensajeDeError(r.error))
   }
 
   return (
@@ -84,6 +90,7 @@ export default function NotaModal({ cliente, ejecutivoId, onClose }) {
               }}
             />
             <div style={{ display:'flex', gap:8, marginTop:12 }}>
+        {err && <p className="bs-nota-err">{err}</p>}
               <button className="btn btn-ghost btn-block" onClick={onClose}>Cancelar</button>
               <button
                 className="btn btn-primary btn-block"

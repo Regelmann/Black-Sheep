@@ -1,5 +1,6 @@
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
+import react from 'eslint-plugin-react'
 
 /**
  * ESLint — la red que faltaba.
@@ -23,7 +24,8 @@ export default [
       parserOptions: { ecmaFeatures: { jsx: true } },
       globals: { ...globals.browser, ...globals.es2021, process: 'readonly' },
     },
-    plugins: { 'react-hooks': reactHooks },
+    plugins: { 'react-hooks': reactHooks, react },
+    settings: { react: { version: 'detect' } },
     rules: {
       /* --- BLOQUEANTES ------------------------------------------------
          Errores que rompen en runtime y que ni el build ni los tests ven. */
@@ -39,6 +41,15 @@ export default [
       'valid-typeof': 'error',
       'no-self-compare': 'error',       // ya nos pasó en Cartera.jsx
       'react-hooks/rules-of-hooks': 'error',
+
+      /* 🔴 SIN ESTAS DOS REGLAS, `no-unused-vars` da 156 FALSOS POSITIVOS.
+         ESLint no sabe que `<Routes>` usa la variable `Routes`: ve un
+         import sin referencias en JavaScript plano y lo marca como no
+         usado. Marcaba TODO: Hoy, Ruta, Cartera, PageShell, cada icono.
+         156 avisos falsos entierran los reales — que es peor que no
+         tener el lint. */
+      'react/jsx-uses-vars': 'error',
+      'react/jsx-uses-react': 'error',
 
       /* --- AVISOS ------------------------------------------------------
          Deuda conocida. Pasan a 'error' cuando lleguen a cero, igual que

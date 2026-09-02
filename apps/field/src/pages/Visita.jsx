@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
+// Las notas pasan por guardarNotaTerreno: encola sin señal, trata el
+// 23505 como éxito y distingue un fallo de permiso de uno de red.
+// Antes eran tres inserts directos con try/catch y encolado a mano,
+// cada uno un poco distinto.
+import { guardarNotaTerreno } from '../lib/nota.js'
 import { safeSelect } from '../lib/query.js'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo.js'
 import { skusAReponer } from '../lib/coach.js'
@@ -500,10 +505,10 @@ export default function Visita({ session }) {
     }
     // Nota de resultado para gerencia / timeline
     try {
-      await supabase.from('notas_cliente').insert({
-        ejecutivo_id: session.user.id,
-        cliente_key: visita?.cliente_key || cliente?.cliente_key,
-        nombre_local: visita?.nombre_local,
+      await guardarNotaTerreno({
+        ejecutivoId: session.user.id,
+        clienteKey: visita?.cliente_key || cliente?.cliente_key,
+        nombreLocal: visita?.nombre_local,
         tipo: 'resultado_visita',
         texto: [
           `Resultado: ${finalRes}`,
@@ -1017,10 +1022,10 @@ export default function Visita({ session }) {
               onClick={async () => {
                 if (fotoPreview) {
                   try {
-                    await supabase.from('notas_cliente').insert({
-                      ejecutivo_id: session.user.id,
-                      cliente_key: visita.cliente_key || cliente?.cliente_key,
-                      nombre_local: visita.nombre_local,
+                    await guardarNotaTerreno({
+                      ejecutivoId: session.user.id,
+                      clienteKey: visita.cliente_key || cliente?.cliente_key,
+                      nombreLocal: visita.nombre_local,
                       tipo: 'foto_visita',
                       texto: `Foto en visita${fotoName ? ': ' + fotoName : ''} · ${new Date().toISOString()}`,
                     })
@@ -1219,10 +1224,10 @@ function EncuestaVisitaSheet({ visita, cliente, checkin, coords, session, onClos
     const { error } = await supabase.from('encuestas_visita').insert(row)
     if (error) {
       // Fallback: guardar como nota estructurada si la tabla aún no existe
-      await supabase.from('notas_cliente').insert({
-        ejecutivo_id: session.user.id,
-        cliente_key: row.cliente_key,
-        nombre_local: row.nombre_local,
+      await guardarNotaTerreno({
+        ejecutivoId: session.user.id,
+        clienteKey: row.cliente_key,
+        nombreLocal: row.nombre_local,
         tipo: 'encuesta_visita',
         texto: [
           `Encargado: ${encargado ? 'Sí' : 'No'}`,

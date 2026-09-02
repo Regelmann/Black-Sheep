@@ -8,6 +8,7 @@ import { saveOfflineSnapshot, loadOfflineSnapshot, isProbablyOffline } from '../
 import { FilterBar, SearchField, StatGrid } from '../domain/FilterBar.jsx'
 import { ClientActionBar } from '../domain/ClientActionBar.jsx'
 import { PageShell } from '../shells/PageShell.jsx'
+import { guardarNotaTerreno } from '../lib/nota.js'
 import NotaModal from '../domain/NotaModal.jsx'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
@@ -235,17 +236,17 @@ export default function Cartera({ session }) {
       alert('No se pudo bloquear: ' + (error.message || 'permiso / red'))
       return
     }
-    try {
-      await supabase.from('notas_cliente').insert({
-        ejecutivo_id: session.user.id,
-        cliente_key: key,
-        nombre_local: cliente.nombre_cliente || cliente.razon_social,
-        tipo: motivo === 'deuda' ? 'bloqueo_deuda' : 'bloqueo_cerrado',
-        texto: motivo === 'deuda' ? 'Bloqueado por deuda' : 'Cerrado / sin actividad',
-      })
-    } catch {
-      /* nota opcional */
-    }
+    // Esta nota es el RASTRO de por qué un cliente quedó bloqueado.
+    // Estaba en un try/catch vacío con el comentario "nota opcional":
+    // si fallaba, nadie sabía nunca quién lo bloqueó ni por qué.
+    // No es opcional — es la única explicación que queda.
+    await guardarNotaTerreno({
+      ejecutivoId: session.user.id,
+      clienteKey: key,
+      nombreLocal: cliente.nombre_cliente || cliente.razon_social,
+      tipo: motivo === 'deuda' ? 'bloqueo_deuda' : 'bloqueo_cerrado',
+      texto: motivo === 'deuda' ? 'Bloqueado por deuda' : 'Cerrado / sin actividad',
+    })
   }
 
   async function desbloquear(cliente) {

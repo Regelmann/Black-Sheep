@@ -60,14 +60,13 @@ export function NavBar({ esGerente, onLogout }) {
     { to: '/cartera', label: 'Clientes',icon: ICON.clientes },
     { to: '/stock',   label: 'Stock',   icon: ICON.stock },
   ]
-  const morePaths = ['/gerencia', '/ventas', '/admin']
+  const morePaths = ['/gerencia', '/admin']
   const moreActive = morePaths.some(p => loc.pathname.startsWith(p))
 
   const moreItems = []
   if (esGerente) {
     moreItems.push(
       { to: '/gerencia', label: 'Gerencia', sub: 'Resultado del mes y mix', icon: ICON.gerencia },
-      { to: '/ventas', label: 'Ventas', sub: 'Pedido · factura · NC · neto', icon: ICON.gerencia },
     )
   }
 

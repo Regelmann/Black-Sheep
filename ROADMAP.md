@@ -1,6 +1,6 @@
 # Black Sheep Field — Roadmap
 
-**Estado actual:** `v-BS-PLATFORM-V13.1` · build verde · 24/24 tests · 0 imports rotos
+**Estado actual:** `v-BS-PLATFORM-V9.2` · build verde · 24/24 tests · 0 imports rotos
 
 ---
 

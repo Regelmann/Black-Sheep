@@ -1300,3 +1300,13 @@ button[data-copy] {
   font-weight: 800;
   cursor: pointer;
 }
+
+/* Error de nota: antes fallaba en silencio y el modal quedaba abierto
+   sin explicar por qué. */
+.bs-nota-err {
+  margin: 0 0 10px; padding: 10px 12px; border-radius: 10px;
+  background: var(--danger-lt, #fef2f2);
+  border: 1px solid var(--danger-lt3, #fecaca);
+  color: var(--danger-dk, #b91c1c);
+  font-size: 12.5px; font-weight: 600; line-height: 1.4;
+}

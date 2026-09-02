@@ -1,166 +1,198 @@
-# Black Sheep
+# Black Sheep Field
 
-**Versión vigente: `v-BS-PLATFORM-V13.1`**
-PWA comercial de ventas en terreno + analítica operacional + catálogo/pedidos, multi-tenant y offline-first.
+PWA de ventas en terreno para distribución de alimentos.
+Multi-tenant. Cliente principal: **KeyFoods** (Santiago, Chile).
 
-## Estado de esta entrega
+> **`v-BS-PLATFORM-V13.0.1`** · guard ✅ · 24/24 tests · build ✓
 
-- **Ventas integral:** histórico + `Nuevas ventas.xlsx` en un único Ciclo Único.
-- **Modelo operacional:** Pedido → Factura → NC → Venta neta.
-- **Analítica:** resumen mensual, pedidos, pendientes, clientes, productos, vendedores, Fill Rate y calidad de conciliación.
-- **App:** `/ventas` integrada para gerencia.
-- **Catálogo:** conserva la lógica de stock visible y bloqueo de compra cuando corresponde.
-- **Web:** landing/control center y navegación coherentes con la plataforma.
-- **Deploy:** GitHub → CI → Vercel, con `BUILD_STAMP` único.
+---
 
-> Esta repo es la fuente única de verdad. No se versionan ZIPs, builds, `node_modules`, `.env`, `__pycache__` ni copias de scripts por versión. El historial técnico vive en `docs/historial/`.
+## Qué hace
 
-## Arquitectura
+Un ejecutivo abre la app en la calle y ve, en este orden:
 
-```text
-apps/field/        PWA móvil del ejecutivo (React + Vite)
-apps/web/          Web/landing/control center (Next.js)
-scripts/            ETL canónico; un solo Ciclo Único
-sql/                migraciones y vistas Supabase
-docs/               operación, seguridad, arquitectura y ventas
-brand/              activos de marca
-```
+1. **Hoy** — su plan del día: a quién visitar y qué ofrecerle
+2. **Mapa** — la ruta ordenada por GPS
+3. **Clientes** — su cartera, con el estado de cada uno
+4. **Stock** — qué hay disponible y quién lo compra
+5. **Más** — metas, gerencia, catálogo del cliente
 
-## Ciclo Único
+Todo funciona **sin señal**: check-ins, notas y pedidos entran a una cola local
+y suben solos al recuperar red.
 
-El único ETL vigente es `scripts/CICLO_UNICO.py` (V1.38). Acepta el histórico y el archivo operativo nuevo dentro de una misma corrida.
+---
 
-Reglas de datos:
-
-1. **Pedido no es venta.** Alimenta operación y Fill Rate.
-2. **Factura es venta positiva.**
-3. **NC es ajuste negativo.**
-4. **Venta neta real = Factura − NC.**
-5. **Fill Rate = Kg facturados / Kg pedidos.**
-6. La maestra asigna el cliente/zona; no se usa el vendedor del ERP para reasignar cartera.
-7. La conciliación automática de clientes usa coincidencia exacta de RUT; no se escribe matching difuso en producción.
-
-### Fuentes
-
-- `VENTAS_KEYFOODS_ACTUAL.xlsx` — histórico.
-- `Nuevas ventas.xlsx` — Pedido/Factura/NC y atributos operacionales.
-- Maestra de clientes.
-- Stock.
-- Lista de precios.
-- Configuración mensual y media de productos, cuando corresponda.
-
-## Supabase
-
-La capa de ventas nueva se instala con:
-
-1. `sql/44_VENTAS_INTEGRACION_TOTAL.sql` — tablas/índices de operación.
-2. `sql/46_VENTAS_REPORTES_APP.sql` — vistas consumidas por la app.
-
-`sql/45_VENTAS_TOTAL_ANALITICA.sql` quedó superseded y ya no forma parte del deploy.
-
-## App de Ventas
-
-`Más → Ventas` expone:
-
-- Resumen
-- Pedidos
-- Pendientes
-- Clientes
-- Productos
-- Vendedores
-- Calidad
-
-La UI está diseñada como superficie de decisión: estado → cambio → acción, con progressive disclosure, tablas de drill-down, estados de carga/error/vacío y layout responsive.
-
-## UX/UI: criterio de producto
-
-La plataforma no busca ser un museo de métricas. Cada vista debe responder rápido:
-
-1. ¿Cómo estamos?
-2. ¿Qué cambió?
-3. ¿Qué debo hacer?
-
-Los dashboards por rol son preferibles a una pantalla universal; el estándar actual de B2B SaaS prioriza time-to-value, jerarquía de información, filtros, comparaciones y acciones contextualizadas.
-
-## Desarrollo
+## Arranque
 
 ```bash
 cd apps/field
 npm ci
-cp .env.example .env
+cp .env.example .env      # completar SUPABASE_URL y SUPABASE_ANON_KEY
+npm run dev
+```
+
+## Antes de subir cualquier cambio
+
+```bash
 npm run verify
 ```
 
-`npm run verify` ejecuta lint, typecheck, guard, tests y build. CI usa Node 24.
+Un solo comando: **guard + tests + build**. Si falla, no se sube.
 
-Para Web:
+No es opcional. Tres entregas seguidas llegaron sin compilar porque nadie corrió
+el build. El CI ahora lo bloquea, pero conviene verificar antes de pushear.
 
-```bash
-cd apps/web
-npm ci
-npm run lint
-npm run typecheck
-npm run build
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` | Build de producción |
+| `npm run guard` | Reglas de regresión |
+| `npm test` | Tests unitarios |
+| `npm run verify` | Los tres, en orden |
+
+---
+
+## Estructura
+
+```
+apps/field/            PWA del vendedor (React + Vite → Vercel)
+  src/
+    pages/             Hoy · Ruta · Cartera · Stock · Gerencia · Visita · Catálogo
+    components/
+      domain/          Componentes de negocio (ZonePicker, ClientActionBar…)
+      FilterBar.jsx    Filtros, buscador y grilla de stats — UNIFICADOS
+      DataState.jsx    Estados de carga / error / vacío
+    lib/
+      query.js         safeSelect — ninguna consulta falla en silencio
+      offline.js       Cola offline (outbox)
+      syncHandlers.js  Handlers del outbox — fuente ÚNICA
+      planDia.js       Ranking del día: stock + foco + GPS
+      dataHealth.js    Semáforo de confiabilidad de la bajada
+      tenants.js       Branding por cliente
+  scripts/guard.js     Reglas de regresión
+
+apps/web/              Landing y Control Center (HTML estático)
+sql/                   Migraciones Supabase — orden numérico
+scripts/               ETL en Python (Colab / GitHub Actions)
+docs/                  Documentación operativa
+ROADMAP.md             Hacia dónde va
 ```
 
-## Deploy seguro
+---
 
-Usar `scripts/DEPLOY_VENTAS_V13_1.sh`. El flujo recomendado es:
+## Reglas del proyecto
 
-```text
-ZIP limpio
-  ↓
-validar estructura
-  ↓
-rsync --dry-run
-  ↓
-rsync real
-  ↓
-npm ci + verify
-  ↓
-revisión de deletes/diff
-  ↓
-commit
-  ↓
-push
-  ↓
-CI
-  ↓
-Vercel
+Cinco reglas que salieron de bugs reales. No son estilo.
+
+**1 · Una sola rama.**
+Todo sale de la última versión. Las ramas paralelas devolvieron a producción
+bugs ya reparados, tres veces seguidas.
+
+**2 · Nada se sube sin `npm run verify` verde.**
+
+**3 · Ninguna consulta falla en silencio.**
+
+```js
+// ❌ si falla, la UI muestra "0 clientes" como si fuera un resultado real
+const { data } = await supabase.from('cartera').select('a,b,c')
+
+// ✅ vacío y roto son cosas distintas
+const r = await safeSelect(supabase.from('cartera').select('a,b,c'))
+if (!r.ok) mostrarError(r.error)
 ```
 
-Nunca se hace `git push` si `verify` falla.
+**4 · Los colores de marca son hex literales, nunca `var()`.**
+`accent: 'var(--brand)'` + `setProperty('--brand', accent)` produce
+`--brand: var(--brand)` → referencia circular → muere todo el branding.
 
-## Documentación vigente
+**5 · Una función SQL, un solo archivo.**
+`create or replace` sólo pisa la función de **firma idéntica**. Redefinirla en
+varios archivos deja las versiones viejas vivas en la base.
 
-- `DEPLOY.md` — procedimiento de despliegue.
-- `ARQUITECTURA.md` — arquitectura.
-- `SEGURIDAD.md` — RLS/seguridad.
-- `RENDIMIENTO.md` — rendimiento y bundle.
-- `ROADMAP.md` — siguientes fases.
-- `INTEGRACION_V13_1.md` — integración de ventas.
-- `docs/ventas/DEPLOY_V13_1.md` — instalación de la capa de ventas.
-- `docs/PRODUCTO_COMERCIAL.md` — posicionamiento, replicabilidad y estrategia de precio.
-- `docs/historial/` — versiones y auditorías históricas.
+---
 
-## Release gate
+## El guard
 
-Antes de declarar una versión vendible:
+`npm run guard` chequea 8 reglas. Cada una existe porque el bug llegó a una entrega:
 
-- [ ] SQL aplicado y verificado en Supabase.
-- [ ] Colab probado con datos reales en modo sin escritura.
-- [ ] `npm run verify` verde.
-- [ ] Web lint/typecheck/build verde.
-- [ ] CI verde.
-- [ ] Smoke test móvil real, incluyendo modo avión/offline.
-- [ ] Revisión visual de `/`, `/ventas`, catálogo, pedido y navegación.
-- [ ] README y `VERSION` actualizados.
-- [ ] BUILD_STAMP visible en producción.
+| Regla | Qué detecta | De dónde salió |
+|---|---|---|
+| R1 | Imports a archivos inexistentes | Se importaba una página borrada |
+| R2 | `var()` como valor de color en JS | Referencia circular que mató la marca |
+| R3 | `require()` dentro de ESM | Inyectado en un try/catch mudo |
+| R4 | Consultas que descartan el error | 27 casos mostrando fallo como "0" |
+| R5 | `flushActionQueue({})` | Botón "Reintentar" que no hacía nada |
+| R6 | Handler del outbox sin `return` | Devolvía `undefined` → cola eterna |
+| R7 | Clave de storage duplicada | `kf_action_queue_v1` en dos lugares |
+| R8 | Función SQL en varios archivos | 4 definiciones de `get_public_catalogo` |
+| R9 | `README`/`DEPLOY` sin el stamp actual | `DEPLOY.md` decía "V68", el README "v2.4" |
+| R10 | Archivo `.sql` no listado en `DEPLOY.md` | SQL nuevo que nadie corría |
 
-## Producto comercializable
+R1, R2, R3, R5, R8, R9 y R10 **bloquean**. R4, R6 y R7 avisan (deuda conocida).
 
-Black Sheep debe venderse como **plataforma vertical de ejecución comercial y decisiones**, no como “otro dashboard”. El activo diferencial es la combinación de:
+---
 
-`datos ERP → normalización → ciclo de recompra → stock/precio → operación pedido/factura/NC → acción comercial`.
+## Base de datos
 
-La arquitectura multi-tenant permite replicar la plataforma a otros distribuidores, pero cada nuevo cliente requiere un adaptador de datos, mapeo de maestros, reglas de negocio y validación de RLS antes de declararlo productivo.
+Supabase (PostgreSQL + RLS). Migraciones en `sql/`, **en orden numérico**.
+
+Archivos canónicos — no redefinir estas funciones en otro lado:
+
+| Archivo | Función |
+|---|---|
+| `20_CATALOGO_CANONICO.sql` | `get_public_catalogo()` |
+| `21_PEDIDO_PUBLICO_CANONICO.sql` | `crear_pedido_publico()` |
+
+**Antes de tocar nada**, correr `sql/00_VERIFICAR_ESTADO.sql` en el SQL Editor:
+no modifica nada y dice qué tablas, columnas, funciones y permisos faltan.
+
+Los pasos completos de despliegue están en [`DEPLOY.md`](DEPLOY.md).
+
+Ambos traen bloque de verificación al final. El de `21` debe devolver
+**exactamente una fila**; si devuelve más, volvió la ambigüedad de sobrecarga.
+
+---
+
+## ETL
+
+`scripts/KEYFOODS_CICLO_UNICO.py` — el ciclo completo. Alimenta `cartera`,
+`ejecutivos`, `ventas_lineas`, `gerencia` y `snapshot_meta`.
+
+Hoy corre a mano en Google Colab. Automatizarlo requiere estos secrets en
+GitHub Actions:
+
+```
+SUPABASE_URL · SUPABASE_SERVICE_KEY · GOOGLE_MAPS_API_KEY
+GDRIVE_SA_JSON · GDRIVE_FOLDER_ID
+```
+
+**Compuerta VALIDAR/PUBLICAR:** ninguna bajada llega a producción sin pasar los
+chequeos de integridad. No saltearla.
+
+**Regla de datos:** la maestra de clientes es la única fuente de verdad para
+asignar zonas. Nunca `vendedor_origen` ni `ejecutivo_asignacion` del ERP.
+
+---
+
+## Deploy
+
+Vercel, dos proyectos:
+
+| App | Dominio |
+|---|---|
+| `apps/field` | `app.black-sheep.cl` |
+| `apps/web` | `black-sheep.cl` |
+
+Tras desplegar, **verificar el `BUILD_STAMP` en pantalla**. Si no cambió, revisar
+la pestaña Deployments de Vercel: puede haber un rollback activo. Usar
+"Promote to Production" sobre el deploy correcto.
+
+---
+
+## Estado y próximos pasos
+
+Ver [`ROADMAP.md`](ROADMAP.md), [`ARQUITECTURA.md`](ARQUITECTURA.md) y [`SEGURIDAD.md`](SEGURIDAD.md) y [`RENDIMIENTO.md`](RENDIMIENTO.md).
+
+Lo más urgente: **probar la cola offline con un teléfono real en un lugar sin
+señal.** Ningún test lo reemplaza, y es lo que decide si un vendedor confía en
+la app o vuelve al cuaderno.

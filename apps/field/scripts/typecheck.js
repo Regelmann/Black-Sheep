@@ -1,528 +1,115 @@
 #!/usr/bin/env node
-
 /**
- * Black Sheep Field
- * TYPECHECK ENGINE
+ * typecheck.js — chequeo de tipos con trinquete.
  *
- * Objetivo:
- *   Tener un typecheck determinista y robusto para Windows/Git Bash.
+ * POR QUÉ NO `tsc --noEmit` a secas
+ * `checkJs` reporta también los archivos que entran al programa por import,
+ * aunque no estén en `files`. Con 27.000 líneas de JS sin tipar, eso da ~100
+ * errores desde el primer día y el chequeo nace inútil: nadie lo mira.
  *
- * Diseño:
- *   1. No usa npx.
- *   2. No ejecuta tsc.cmd.
- *   3. No depende de la API interna de TypeScript.
- *   4. Ejecuta directamente el CLI JS de TypeScript mediante Node.
- *   5. Lee los archivos protegidos desde tsconfig.json.
- *   6. Los errores en archivos protegidos bloquean.
- *   7. Los errores fuera de los protegidos se reportan como deuda.
- *   8. Un fallo del motor TypeScript siempre bloquea.
+ * Este script filtra la salida de tsc y sólo falla por los archivos que el
+ * equipo YA declaró como tipados en tsconfig.json ("files"). El resto se
+ * cuenta como deuda informativa.
  *
- * Esto permite aumentar progresivamente la superficie tipada sin
- * esconder errores ni declarar verde un typecheck que realmente no corrió.
+ * REGLA: un archivo se agrega a "files" cuando queda en cero errores, y nunca
+ * se saca. El chequeo pasa siempre y el alcance crece por fases.
+ *
+ * Uso:  node scripts/typecheck.js
  */
-
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
-const ROOT = path.resolve(SCRIPT_DIR, '..')
-const CONFIG_FILE = path.join(ROOT, 'tsconfig.json')
-const NODE_MODULES = path.join(ROOT, 'node_modules')
-const TYPESCRIPT_DIR = path.join(NODE_MODULES, 'typescript')
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-const TS_CLI_CANDIDATES = [
-  path.join(TYPESCRIPT_DIR, 'bin', 'tsc'),
-  path.join(TYPESCRIPT_DIR, 'bin', 'tsc.js'),
-  path.join(TYPESCRIPT_DIR, 'lib', 'tsc.js'),
-]
+/** Lee la lista blanca desde tsconfig.json (sin dependencias, tolera comentarios). */
+function archivosTipados() {
+  const txt = fs.readFileSync(path.join(RAIZ, 'tsconfig.json'), 'utf8')
+  const sinComentarios = txt.replace(/^\s*\/\/.*$/gm, '')
+  const bloque = sinComentarios.match(/"files"\s*:\s*\[([^\]]*)\]/)
+  if (!bloque) return []
+  return [...bloque[1].matchAll(/"([^"]+)"/g)]
+    .map(m => m[1])
+    .filter(f => !f.endsWith('.d.ts'))
+}
 
-const LINE = '─'.repeat(72)
+// Se invoca el binario local, NO `npx tsc`: si typescript no está instalado,
+// npx se ofrece a bajar un paquete distinto del registro e imprime un aviso
+// por stdout saliendo con codigo != 0. El script leia esa salida, no
+// encontraba ninguna linea "error TS" y reportaba VERDE sin haber chequeado
+// nada. Un chequeo que pasa cuando no corre es peor que no tenerlo.
+// En Windows el binario es `tsc.cmd`, un script de shell: execFileSync NO
+// puede ejecutarlo directo, falla sin salida ("tsc falló sin emitir
+// diagnósticos"). Se usa el .js de TypeScript con el node actual, que
+// funciona igual en Windows, Linux y macOS.
+const TSC_JS = path.join(RAIZ, 'node_modules', 'typescript', 'bin', 'tsc')
+const BIN = fs.existsSync(TSC_JS)
+  ? TSC_JS
+  : path.join(RAIZ, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc')
 
-function fail(message, details = '') {
-  console.error(`\n❌ ${message}`)
-  if (details) {
-    console.error(details)
-  }
-  console.error('')
+if (!fs.existsSync(BIN)) {
+  console.error('\n❌ typescript no está instalado en apps/field.')
+  console.error('   Ejecutá `npm ci` antes de correr el chequeo de tipos.\n')
   process.exit(1)
 }
 
-function exists(file) {
-  try {
-    return fs.existsSync(file)
-  } catch {
-    return false
-  }
-}
-
-function normalizePath(value) {
-  return String(value)
-    .replace(/\\/g, '/')
-    .replace(/^file:\/+/i, '')
-    .replace(/\/+/g, '/')
-    .toLowerCase()
-}
-
-function absolutePath(value) {
-  if (path.isAbsolute(value)) {
-    return path.normalize(value)
-  }
-
-  return path.normalize(path.resolve(ROOT, value))
-}
-
-/**
- * El tsconfig de un proyecto normal es JSON con comentarios y, en algunos
- * repositorios, trailing commas. No necesitamos interpretar todo TypeScript:
- * solamente localizar la propiedad "files".
- */
-function parseTsConfig(text) {
-  let source = String(text)
-
-  source = source.replace(
-    /\/\*[\s\S]*?\*\//g,
-    '',
-  )
-
-  source = source.replace(
-    /(^|[^:])\/\/.*$/gm,
-    '$1',
-  )
-
-  source = source.replace(
-    /,\s*([}\]])/g,
-    '$1',
-  )
-
-  try {
-    return JSON.parse(source)
-  } catch (error) {
-    fail(
-      'No se pudo interpretar tsconfig.json.',
-      String(error?.message || error),
-    )
-  }
-}
-
-function readProtectedFiles() {
-  if (!exists(CONFIG_FILE)) {
-    fail(
-      'No existe tsconfig.json.',
-      `Ruta esperada:\n   ${CONFIG_FILE}`,
-    )
-  }
-
-  const config = parseTsConfig(
-    fs.readFileSync(CONFIG_FILE, 'utf8'),
-  )
-
-  const files = Array.isArray(config.files)
-    ? config.files
-    : []
-
-  const protectedFiles = files
-    .filter(value => typeof value === 'string')
-    .filter(value => !value.toLowerCase().endsWith('.d.ts'))
-    .map(absolutePath)
-
-  return protectedFiles
-}
-
-function findTypeScriptCli() {
-  for (const candidate of TS_CLI_CANDIDATES) {
-    if (exists(candidate)) {
-      return candidate
-    }
-  }
-
-  fail(
-    'No se encontró el CLI de TypeScript instalado.',
-    [
-      `TypeScript esperado en:`,
-      `   ${TYPESCRIPT_DIR}`,
-      '',
-      'Ejecuta primero:',
-      '   npm ci',
-    ].join('\n'),
-  )
-}
-
-function readTypeScriptVersion() {
-  const packageFile = path.join(
-    TYPESCRIPT_DIR,
-    'package.json',
-  )
-
-  if (!exists(packageFile)) {
-    return 'desconocida'
-  }
-
-  try {
-    const pkg = JSON.parse(
-      fs.readFileSync(packageFile, 'utf8'),
-    )
-
-    return pkg.version || 'desconocida'
-  } catch {
-    return 'desconocida'
-  }
-}
-
-function protectedSet(files) {
-  return new Set(
-    files.map(file => normalizePath(file)),
-  )
-}
-
-/**
- * Extrae la ruta del archivo desde una línea de diagnóstico de tsc.
- *
- * Ejemplos soportados:
- *
- *   src/lib/offline.js(202,25): error TS2538: ...
- *
- *   C:/repo/src/lib/offline.js(202,25): error TS2538: ...
- *
- *   src/lib/offline.js:202:25 - error TS2538: ...
- */
-function extractDiagnosticFile(line) {
-  const text = String(line)
-
-  let match = text.match(
-    /^(.+?)\(\d+,\d+\):\s+error\s+TS\d+:/,
-  )
-
-  if (match) {
-    return match[1].trim()
-  }
-
-  match = text.match(
-    /^(.+?):\d+:\d+\s+-\s+error\s+TS\d+:/,
-  )
-
-  if (match) {
-    return match[1].trim()
-  }
-
-  return null
-}
-
-function isTypeScriptError(line) {
-  return /(?:error\s+TS\d+:|-+\s+error\s+TS\d+:)/.test(
-    String(line),
-  )
-}
-
-function classifyDiagnostics(output, protectedFiles) {
-  const protectedLookup = protectedSet(protectedFiles)
-
-  const protectedErrors = []
-  const debtErrors = []
-  const unclassifiedErrors = []
-
-  const lines = String(output || '').split(/\r?\n/)
-
-  for (const line of lines) {
-    if (!isTypeScriptError(line)) {
-      continue
-    }
-
-    const file = extractDiagnosticFile(line)
-
-    if (!file) {
-      unclassifiedErrors.push(line)
-      continue
-    }
-
-    const absolute = absolutePath(file)
-    const normalized = normalizePath(absolute)
-
-    if (protectedLookup.has(normalized)) {
-      protectedErrors.push({
-        file: absolute,
-        line,
-      })
-    } else {
-      debtErrors.push({
-        file: absolute,
-        line,
-      })
-    }
-  }
-
-  return {
-    protectedErrors,
-    debtErrors,
-    unclassifiedErrors,
-  }
-}
-
-function formatRelative(file) {
-  const relative = path.relative(ROOT, file)
-
-  if (!relative || relative.startsWith('..')) {
-    return file
-  }
-
-  return relative.replace(/\\/g, '/')
-}
-
-function runTypeScript(tsCli) {
-  /**
-   * Importante:
-   *
-   * En Windows, spawnSync("node_modules/.bin/tsc.cmd") puede producir:
-   *
-   *   spawnSync ... EINVAL
-   *
-   * Por eso NO ejecutamos el .cmd.
-   *
-   * Ejecutamos:
-   *
-   *   node <typescript>/lib/tsc.js --noEmit --pretty false
-   *
-   * Esto elimina la capa problemática de cmd.exe/npm.
-   */
-
-  const result = spawnSync(
-    process.execPath,
-    [
-      tsCli,
-      '--noEmit',
-      '--pretty',
-      'false',
-    ],
-    {
-      cwd: ROOT,
-      encoding: 'utf8',
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  )
-
-  const stdout = result.stdout == null
-    ? ''
-    : String(result.stdout)
-
-  const stderr = result.stderr == null
-    ? ''
-    : String(result.stderr)
-
-  const output = [stdout, stderr]
-    .filter(Boolean)
-    .join('\n')
-
-  return {
-    status: result.status,
-    signal: result.signal,
-    error: result.error,
-    stdout,
-    stderr,
-    output,
-  }
-}
-
-function printHeader(version, tsCli, protectedFiles) {
-  console.log(LINE)
-  console.log('TYPECHECK · MOTOR DETERMINISTA V4')
-  console.log(LINE)
-
-  console.log('\nProyecto:')
-  console.log(`   ${ROOT}`)
-
-  console.log('\nNode:')
-  console.log(`   ${process.version}`)
-
-  console.log('\nTypeScript:')
-  console.log(`   ${version}`)
-
-  console.log('\nCLI TypeScript:')
-  console.log(`   ${tsCli}`)
-
-  console.log('\nArchivos protegidos:')
-  console.log(`   ${protectedFiles.length}`)
-
-  if (protectedFiles.length === 0) {
-    console.log('   ⚠ ninguno')
+let salida = ''
+let falloTsc = false
+try {
+  if (BIN === TSC_JS) {
+    // `node node_modules/typescript/bin/tsc --noEmit` — multiplataforma.
+    execFileSync(process.execPath, [BIN, '--noEmit'],
+      { cwd: RAIZ, encoding: 'utf8', stdio: 'pipe' })
   } else {
-    for (const file of protectedFiles) {
-      console.log(`   ✓ ${formatRelative(file)}`)
-    }
+    execFileSync(BIN, ['--noEmit'],
+      { cwd: RAIZ, encoding: 'utf8', stdio: 'pipe', shell: process.platform === 'win32' })
   }
+} catch (e) {
+  salida = String(e.stdout || '') + String(e.stderr || '')
+  falloTsc = true
 }
 
-function printExecution(result) {
-  console.log('\nEjecución:')
+const lineas = salida.split('\n').filter(l => /error TS/.test(l))
 
-  if (result.error) {
-    console.log('   proceso: ERROR')
-    console.log(`   mensaje: ${result.error.message}`)
-    return
-  }
+// tsc salió con error pero no emitió ningún diagnóstico reconocible: puede ser
+// un tsconfig inválido o un crash. Nunca hay que interpretarlo como éxito.
+if (falloTsc && lineas.length === 0) {
+  console.error('\n❌ tsc falló sin emitir diagnósticos. Salida cruda:\n')
+  console.error(salida.trim() || '(vacía)')
+  process.exit(1)
+}
+const tipados = archivosTipados()
 
-  console.log(
-    `   exit code: ${result.status == null ? 'null' : result.status}`,
-  )
+const propios = []
+const deuda = new Map()
 
-  console.log(
-    `   signal: ${result.signal || 'none'}`,
-  )
+for (const l of lineas) {
+  const archivo = l.split('(')[0].trim()
+  if (tipados.includes(archivo)) propios.push(l)
+  else deuda.set(archivo, (deuda.get(archivo) || 0) + 1)
 }
 
-function printDebt(debtErrors) {
-  if (debtErrors.length === 0) {
-    return
-  }
+const linea = '─'.repeat(60)
+console.log(linea)
+console.log('TYPECHECK · lista blanca creciente')
+console.log(linea)
+console.log(`\nArchivos tipados: ${tipados.length}`)
+for (const f of tipados) console.log('   ✓ ' + f)
 
-  const counts = new Map()
-
-  for (const item of debtErrors) {
-    const file = formatRelative(item.file)
-    counts.set(file, (counts.get(file) || 0) + 1)
-  }
-
-  const ranking = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-
-  console.log(
-    `\n📋 Deuda informativa: ${debtErrors.length} error(es) fuera de archivos protegidos.`,
-  )
-
-  console.log(`   archivos afectados: ${counts.size}`)
-
-  console.log('\n   Principales archivos:')
-
-  for (const [file, count] of ranking.slice(0, 10)) {
-    console.log(
-      `   ${String(count).padStart(4)} · ${file}`,
-    )
-  }
-
-  console.log(
-    '\n   Estos errores NO bloquean el typecheck todavía.',
-  )
+if (deuda.size) {
+  const total = [...deuda.values()].reduce((a, b) => a + b, 0)
+  console.log(`\n📋 Deuda informativa: ${total} error(es) en ${deuda.size} archivo(s) aún sin tipar.`)
+  const top = [...deuda.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  for (const [f, n] of top) console.log(`   ${String(n).padStart(3)} · ${f}`)
+  console.log('   (no bloquean — se saldan al incorporar cada archivo a "files")')
 }
 
-function printProtectedErrors(errors) {
-  if (errors.length === 0) {
-    return
-  }
-
-  console.error(
-    `\n❌ ${errors.length} error(es) en archivos protegidos:\n`,
-  )
-
-  for (const item of errors) {
-    console.error(`   ${item.line}`)
-  }
-
-  console.error(
-    '\nUn archivo protegido no puede retroceder.',
-  )
+if (propios.length) {
+  console.log(`\n❌ ${propios.length} error(es) en archivos YA tipados:\n`)
+  for (const l of propios) console.log('   ' + l)
+  console.log('\nUn archivo en la lista blanca no puede retroceder.\n')
+  process.exit(1)
 }
 
-function printUnclassified(errors) {
-  if (errors.length === 0) {
-    return
-  }
-
-  console.error(
-    `\n❌ ${errors.length} diagnóstico(s) de TypeScript no pudieron clasificarse.`,
-  )
-
-  for (const line of errors) {
-    console.error(`   ${line}`)
-  }
-
-  console.error(
-    '\nEl motor se detiene para evitar un falso verde.',
-  )
-}
-
-function main() {
-  const version = readTypeScriptVersion()
-  const tsCli = findTypeScriptCli()
-  const protectedFiles = readProtectedFiles()
-
-  printHeader(
-    version,
-    tsCli,
-    protectedFiles,
-  )
-
-  const result = runTypeScript(tsCli)
-
-  printExecution(result)
-
-  /**
-   * Error de proceso = TypeScript ni siquiera terminó normalmente.
-   * Eso JAMÁS puede convertirse en verde.
-   */
-  if (result.error) {
-    fail(
-      'No se pudo ejecutar TypeScript.',
-      [
-        `CLI: ${tsCli}`,
-        `Node: ${process.execPath}`,
-        '',
-        String(result.error.message || result.error),
-      ].join('\n'),
-    )
-  }
-
-  const classified = classifyDiagnostics(
-    result.output,
-    protectedFiles,
-  )
-
-  /**
-   * Si TypeScript terminó con código != 0 pero no produjo ningún diagnóstico
-   * reconocible, asumimos que hubo un problema del motor/configuración.
-   */
-  if (
-    result.status !== 0 &&
-    classified.protectedErrors.length === 0 &&
-    classified.debtErrors.length === 0 &&
-    classified.unclassifiedErrors.length === 0
-  ) {
-    fail(
-      'TypeScript terminó con error pero no produjo diagnósticos reconocibles.',
-      result.output.trim() || '(salida vacía)',
-    )
-  }
-
-  printDebt(classified.debtErrors)
-  printUnclassified(classified.unclassifiedErrors)
-  printProtectedErrors(classified.protectedErrors)
-
-  if (classified.unclassifiedErrors.length > 0) {
-    process.exit(1)
-  }
-
-  if (classified.protectedErrors.length > 0) {
-    process.exit(1)
-  }
-
-  console.log('\n' + LINE)
-
-  if (result.status === 0) {
-    console.log('✅ TYPECHECK OK')
-    console.log('   TypeScript terminó correctamente.')
-    console.log('   Sin errores en archivos protegidos.')
-  } else {
-    console.log('✅ TYPECHECK OK · DEUDA CONTROLADA')
-    console.log(
-      '   TypeScript encontró errores solamente fuera de los archivos protegidos.',
-    )
-    console.log(
-      '   Los archivos protegidos permanecen sin errores.',
-    )
-  }
-
-  console.log(LINE)
-  console.log('')
-}
-
-main()
+console.log('\n✅ Sin errores de tipos en los archivos declarados\n')

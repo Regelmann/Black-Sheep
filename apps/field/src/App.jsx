@@ -30,7 +30,6 @@ const Stock           = lazy(() => import('./pages/Stock.jsx'))
 const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
 const DashboardGerencia = lazy(() => import('./pages/DashboardGerencia.jsx'))
 const Admin           = lazy(() => import('./pages/Admin.jsx'))
-const Ventas          = lazy(() => import('./pages/Ventas.jsx'))
 
 /** Placeholder de carga. Nunca pantalla en blanco. */
 function CargandoPagina() {
@@ -184,29 +183,6 @@ export default function App() {
       </Suspense>
     )
   }
-  /* V13.0: /dashboard se abre en pestaña aparte (window.open, ver
-     Gerencia.jsx) y por eso debe renderizar SOLO, sin AppHeader/AppShell/
-     NavBar del terreno — es una pantalla de escritorio, no una vista más
-     de la app móvil. Requiere sesión + esGerente, así que este chequeo va
-     después de resolver sesión/ejecutivo, no antes como /catalogo/. */
-  if (window.location.pathname === '/dashboard') {
-    if (session === undefined || (session && (!ejecutivo || !eidVista))) {
-      return (
-        <div className="bs-boot">
-          <div className="bs-boot-bar"><span /></div>
-          <p>Cargando…</p>
-        </div>
-      )
-    }
-    if (!session) return <Navigate to="/" replace />
-    const esGerenteDash = !!ejecutivo.esSuperAdmin
-    if (!esGerenteDash) return <Navigate to="/" replace />
-    return (
-      <Suspense fallback={<CargandoPagina />}>
-        <Routes><Route path="/dashboard" element={<DashboardGerencia />} /></Routes>
-      </Suspense>
-    )
-  }
   if (session === undefined) {
     return (
       <div className="bs-boot">
@@ -295,12 +271,14 @@ export default function App() {
               <Route path="/metas" element={<Navigate to="/" replace />} />
               <Route path="/stock" element={<Stock session={session} />} />
               <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
-              {/* /dashboard YA NO es una ruta de este árbol: se resuelve
-                  standalone más arriba (antes de AppHeader/AppShell/
-                  NavBar) porque ahora se abre en pestaña aparte, no
-                  navegado dentro de la SPA. Ver el chequeo de
-                  window.location.pathname === '/dashboard' arriba. */}
-              <Route path="/ventas" element={esGerente ? <Ventas /> : <Navigate to="/" replace />} />
+              {/* /dashboard es el nombre que usa la web y el que la gente
+                  escribe. El dashboard SIEMPRE existió: es /gerencia. No
+                  había que construirlo, había que hacerlo alcanzable. */}
+              {/* Dashboard de GERENCIA para pantalla grande: todo el
+                  negocio por canal (KAM, Televenta, Corporativo y las 3
+                  zonas). NO es /gerencia, que es la vista móvil de
+                  terreno — se confundieron desde el principio. */}
+              <Route path="/dashboard" element={esGerente ? <DashboardGerencia /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

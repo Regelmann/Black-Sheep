@@ -7,6 +7,8 @@ import { useEjecutivo } from '../App.jsx'
 import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo.js'
 import { ordenarRutaOptima, metricasRuta, candidatosRutaDia } from '../lib/coach.js'
 import { dondeIr, tituloDondeIr } from '../lib/dondeIr.js'
+import { guardarNotaTerreno } from '../lib/nota.js'
+import { mensajeDeError } from '../lib/erroresUsuario.js'
 import { Oportunidad } from '../domain/Oportunidad.jsx'
 import { formatDist, formatEta } from '../lib/geo.js'
 import { money } from '../components.jsx'
@@ -155,6 +157,10 @@ const FECHAS = buildFechas()
  *
  * Los colores del SVG van en HEX, siempre. Es la única forma.
  */
+// Los mismos hex sirven para Google Maps: la API recibe estos valores
+// como strings y los pasa a un canvas propio. una variable CSS queda inválido
+// ahí también — el marcador "yo" salía negro por la misma razón que los
+// pines del mapa.
 const PIN = {
   ruta:       '#1d4ed8',   // azul fuerte · parada de la ruta de hoy
   prospecto:  '#16a34a',   // verde · todavía no es cliente
@@ -764,9 +770,9 @@ export default function Ruta({ session }) {
         icon: {
           path: maps.SymbolPath.CIRCLE,
           scale: 12,
-          fillColor: 'var(--info)',
+          fillColor: PIN.activo,        // Maps no resuelve var()
           fillOpacity: 1,
-          strokeColor: 'var(--white)',
+          strokeColor: '#ffffff',
           strokeWeight: 4,
         },
       })
@@ -774,9 +780,9 @@ export default function Ruta({ session }) {
         map: mapInstance.current,
         center: pos,
         radius: Math.min(Math.max(Number(myPos.accuracy) || 50, 30), 200),
-        fillColor: 'var(--info-mid)',
+        fillColor: '#60a5fa',         // halo de precisión del GPS
         fillOpacity: 0.18,
-        strokeColor: 'var(--info)',
+        strokeColor: PIN.activo,
         strokeOpacity: 0.5,
         strokeWeight: 2,
         zIndex: 9998,
@@ -882,7 +888,7 @@ export default function Ruta({ session }) {
       polyRef.current = new maps.Polyline({
         path,
         geodesic: true,
-        strokeColor: 'var(--brand)',
+        strokeColor: '#c2410c',       // línea de la ruta
         strokeOpacity: 0.85,
         strokeWeight: 3,
         map: mapInstance.current,
@@ -1864,6 +1870,7 @@ function NotaRapidaMap({ cliente, session, onClose }) {
   const [tipo, setTipo] = useState('otro')
   const [busy, setBusy] = useState(false)
   const [ok, setOk] = useState(false)
+  const [err, setErr] = useState(null)
   const tipos = [
     { v: 'sin_stock', l: 'Sin stock' },
     { v: 'volver', l: 'Volver' },
@@ -1873,14 +1880,23 @@ function NotaRapidaMap({ cliente, session, onClose }) {
   ]
   async function guardar() {
     setBusy(true)
-    await supabase.from('notas_cliente').insert({
-      ejecutivo_id: session.user.id,
-      cliente_key: cliente.cliente_key || cliente.punto_id_bq,
-      nombre_local: cliente.nombre_cliente || cliente.nombre_local,
+    // 🔴 ANTES: insert directo, sin cola ni idempotencia.
+    // Una nota tomada SIN SEÑAL —que es cuando más se toman notas, en
+    // la puerta del local— se perdía sin decir nada: el insert fallaba
+    // y la UI igual mostraba el ✓ y cerraba el modal.
+    //
+    // guardarNotaTerreno() encola si no hay red, trata el 23505 como
+    // éxito (ya se había guardado), y distingue un fallo de permiso
+    // —que reintentar no arregla— de uno de red.
+    const r = await guardarNotaTerreno({
+      ejecutivoId: session.user.id,
+      clienteKey: cliente.cliente_key || cliente.punto_id_bq,
+      nombreLocal: cliente.nombre_cliente || cliente.nombre_local,
       tipo,
       texto,
     })
     setBusy(false)
+    if (!r.ok) { setErr(mensajeDeError(r.error)); return }
     setOk(true)
     setTimeout(onClose, 700)
   }
