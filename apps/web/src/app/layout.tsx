@@ -59,10 +59,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link rel="icon" type="image/png" sizes="32x32" href="/logo-mark-32.png" />
         <link rel="apple-touch-icon" href="/logo-mark-180.png" />
+        {/* Fuentes por <link> (no next/font/google): que un timeout de
+            Google no tumbe el deploy. Ver comentario arriba. */}
+        {/* eslint-disable @next/next/no-page-custom-font */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" />
+        {/* eslint-enable @next/next/no-page-custom-font */}
       </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-navy text-mist antialiased`}

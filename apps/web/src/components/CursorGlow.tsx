@@ -19,7 +19,8 @@ export default function CursorGlow() {
   useEffect(() => {
     const finePointer = window.matchMedia("(pointer: fine)").matches;
     if (!finePointer || reduce) return;
-    setEnabled(true);
+    // setState asíncrono: evitar cascade de renders (react-hooks/set-state-in-effect).
+    queueMicrotask(() => setEnabled(true));
 
     const onMove = (event: PointerEvent) => {
       mx.set(event.clientX);

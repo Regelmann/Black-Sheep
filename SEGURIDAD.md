@@ -1,6 +1,6 @@
 # Seguridad · RLS
 
-**Versión:** `v-BS-PLATFORM-V9.9.5`
+**Versión:** `v-BS-PLATFORM-V13.0.2`
 
 ## El problema
 
@@ -96,8 +96,53 @@ Detecta `using (true)` en cualquier `CREATE POLICY`, exceptuando las de `anon`
 Encontró las 13 en su primera corrida. Los archivos viejos quedaron anotados
 indicando que `28` los reemplaza.
 
+## Estado actual (V13.0.2)
+
+El guard R11 hoy reporta **18 avisos** de políticas `USING(true)` en
+`schema`: son las migraciones previas (`08`, `13`, `14`, `15`, `17`, `19`,
+`20`) que quedaron anotadas para ser reemplazadas por `28` (y `35` para el
+catálogo). No bloquean el guard porque son deuda conocida, pero **son deuda
+de seguridad**.
+
+### Orden para cerrarla (en el SQL Editor, sobre la base real)
+
+```sql
+-- 0) Diagnóstico (solo lectura)
+--     Prestar atención al bloque 11: usuarios auth sin perfil en ejecutivos
+--     quedarían bloqueados por el RLS estricto.
+sql/00_VERIFICAR_ESTADO.sql
+
+-- 1) Backup (plan free no lo hace automático)
+--     Database → Backups → Create backup
+
+-- 2) En este orden (idempotentes; esperar a que cada uno termine)
+01 a 27 · si es una base ya trabajada, correr la lista de DEPLOY.md.
+28_RLS_ESTRICTO.sql      ← políticas por ejecutivo/tenant + funciones de identidad
+35_RLS_CATALOGO.sql      ← cierra ofertas_cliente / oferta_cliente_items
+36_CARTERA_INSERT_ADMIN.sql ← permite alta de clientes desde Admin (depende de 28)
+37_PUSH_SUSCRIPCIONES.sql ← suscripciones push (si no está)
+
+-- 3) Doble chequeo
+sql/00_VERIFICAR_ESTADO.sql  → bloques 6, 7, 10 y 11 en verde.
+--    Bloque 7 sólo debe listar zonas_comunas (tabla de referencia).
+```
+
+### Callback de emergencia
+
+Si alguien queda sin acceso:
+
+```sql
+ALTER TABLE public.cartera DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stock   DISABLE ROW LEVEL SECURITY;
+```
+
+Es un parche (deja los datos expuestos): arreglar las filas de `ejecutivos`
+y reactivar el mismo día.
+
 ## Pendiente
 
+- **Aplicar 28 + 35** en la base real: es el pendiente número uno antes de
+  vender el segundo tenant (bloqueo del guard R11 con 18 avisos).
 - **Rotar la service key** si alguna vez estuvo en un archivo versionado
 - **Auditoría de accesos**: hoy no hay registro de quién leyó qué
 - **Expiración de tokens de catálogo**: no caducan nunca

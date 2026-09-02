@@ -137,7 +137,7 @@ export function offlineAgeMinutes(snap) {
  * crypto.randomUUID() en vez de Date.now()+Math.random(): dos acciones
  * en el mismo milisegundo podían colisionar.
  */
-function nuevoOpId() {
+export function nuevoOpId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
   // Respaldo para WebView viejos sin randomUUID
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {

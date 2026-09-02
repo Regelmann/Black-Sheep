@@ -39,40 +39,40 @@ export async function POST(request: Request) {
     );
   }
 
-  const lead = {
-    nombre,
-    empresa,
-    email,
-    telefono,
-    tamanoEquipo,
-    mensaje,
-    createdAt: new Date().toISOString(),
-  };
-
-  // Sin Postgres: log en servidor Vercel. Conectá DATABASE_URL + drizzle cuando quieras persistir.
-  console.info("[lead]", JSON.stringify(lead));
+  // Regla del proyecto: vacío ≠ roto. Si no hay base configurada no
+  // podemos guardar el lead, y decirle "ok" al usuario sería una mentira.
+  if (!process.env.DATABASE_URL) {
+    console.error("[lead] sin DATABASE_URL — no se guardó el lead");
+    return NextResponse.json(
+      { ok: false, error: "No se pudo guardar tu solicitud. Intentá de nuevo." },
+      { status: 503 },
+    );
+  }
 
   try {
-    if (process.env.DATABASE_URL) {
-      const { db } = await import("@/db");
-      const { leads } = await import("@/db/schema");
-      // `db` puede ser null si el módulo no logró conectar. Sin esta
-      // guarda TypeScript frena el build — y en runtime sería un
-      // "Cannot read properties of null" que perdería el lead sin
-      // decir por qué.
-      if (!db) throw new Error("db no inicializada");
-      await db.insert(leads).values({
-        nombre,
-        empresa: empresa || null,
-        email,
-        telefono: telefono || null,
-        tamanoEquipo: tamanoEquipo || null,
-        mensaje: mensaje || null,
-      });
-    }
+    const [{ db }, { leads }] = await Promise.all([
+      import("@/db"),
+      import("@/db/schema"),
+    ]);
+    // `db` puede ser null si el módulo no logró conectar (p. ej. Pool
+    // falló al iniciar). Con la confesión temprana de arriba no debería
+    // pasar, pero la guarda evita un "Cannot read properties of null".
+    if (!db) throw new Error("db no inicializada");
+
+    await db.insert(leads).values({
+      nombre,
+      empresa: empresa || null,
+      email,
+      telefono: telefono || null,
+      tamanoEquipo: tamanoEquipo || null,
+      mensaje: mensaje || null,
+    });
   } catch (err) {
     console.error("[lead] persist failed", err);
-    // Igual confirmamos al usuario: el lead quedó en logs
+    return NextResponse.json(
+      { ok: false, error: "No se pudo guardar tu solicitud. Intentá de nuevo." },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ ok: true });

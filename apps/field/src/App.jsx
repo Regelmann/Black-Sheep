@@ -10,10 +10,11 @@ import { resolveTenant, applyTenantBrand } from './lib/tenants.js'
 
    CRITERIO — qué va directo y qué a demanda:
    · Directo: lo que se usa EN LA CALLE, sin señal garantizada.
-     Login, Hoy, Ruta, Visita, Cartera. Si el vendedor entra a un
-     subterráneo y la ruta no está descargada, no puede trabajar.
-   · A demanda: lo que se abre desde una oficina con wifi.
-     Gerencia, Admin, Stock, Catálogo.
+     Login y Hoy. La entrada inicial tiene que pintar rápido en 4G.
+   · A demanda (con precalentamiento en background): Ruta, Visita,
+     Cartera, Gerencia, Admin, Stock, Catálogo. Los chunks de calle
+     se piden apenas se inicia la sesión (ver usePreloadTerreno), así
+     el vendedor los tiene cacheados cuando entra a un subterráneo.
 
    El catálogo público es su propio bundle: lo abre el CLIENTE, que no
    necesita descargar nada de la app del vendedor.
@@ -21,16 +22,38 @@ import { resolveTenant, applyTenantBrand } from './lib/tenants.js'
 import { lazy, Suspense } from 'react'
 import Login from './pages/Login.jsx'
 import Hoy from './pages/Hoy.jsx'
-import Ruta from './pages/Ruta.jsx'
-import Visita from './pages/Visita.jsx'
-import Cartera from './pages/Cartera.jsx'
 
-const CatalogoCliente = lazy(() => import('./pages/CatalogoCliente.jsx'))
-const Stock           = lazy(() => import('./pages/Stock.jsx'))
-const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
+const Ruta             = lazy(() => import('./pages/Ruta.jsx'))
+const Visita           = lazy(() => import('./pages/Visita.jsx'))
+const Cartera          = lazy(() => import('./pages/Cartera.jsx'))
+const CatalogoCliente  = lazy(() => import('./pages/CatalogoCliente.jsx'))
+const Stock            = lazy(() => import('./pages/Stock.jsx'))
+const Gerencia         = lazy(() => import('./pages/Gerencia.jsx'))
 const DashboardGerencia = lazy(() => import('./pages/DashboardGerencia.jsx'))
-const Ventas            = lazy(() => import('./pages/Ventas.jsx'))
-const Admin           = lazy(() => import('./pages/Admin.jsx'))
+const Ventas           = lazy(() => import('./pages/Ventas.jsx'))
+const Admin            = lazy(() => import('./pages/Admin.jsx'))
+
+/**
+ * Precalienta los chunks de la calle SIN bloquear el arranque.
+ *
+ * React.lazy por sí solo baja el bundle inicial, pero deja de garantizar
+ * que Ruta/Visita/Cartera estén en caché cuando el vendedor pierde señal.
+ * Con este import() en background (después del primer render) Vite baja
+ * los chunks apenas hay red y el service worker los deja listos para un
+ * subterráneo.
+ */
+function usePreloadTerreno(active = false) {
+  useEffect(() => {
+    if (!active) return
+    const preload = [
+      import('./pages/Ruta.jsx'),
+      import('./pages/Visita.jsx'),
+      import('./pages/Cartera.jsx'),
+    ].map((p) => p.catch(() => undefined))
+    // Silencioso: si no hay red, no pasa nada, la app sigue funcionando.
+    void Promise.all(preload)
+  }, [active])
+}
 
 /** Placeholder de carga. Nunca pantalla en blanco. */
 function CargandoPagina() {
@@ -76,6 +99,9 @@ const SYNC_HANDLERS = syncHandlers
 
 export default function App() {
   const [session, setSession] = useState(undefined)
+  // Precalienta los chunks de calle apenas hay sesión; en catálogo
+  // público (anon) no baja código de terreno innecesario.
+  usePreloadTerreno(!!session)
   const [ejecutivo, setEjecutivo] = useState(null)
   const [todosEjecutivos, setTodosEjecutivos] = useState([])
   const [zonaVista, setZonaVista] = useState(null)
