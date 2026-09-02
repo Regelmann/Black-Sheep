@@ -29,6 +29,7 @@ const CatalogoCliente = lazy(() => import('./pages/CatalogoCliente.jsx'))
 const Stock           = lazy(() => import('./pages/Stock.jsx'))
 const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
 const DashboardGerencia = lazy(() => import('./pages/DashboardGerencia.jsx'))
+const Ventas            = lazy(() => import('./pages/Ventas.jsx'))
 const Admin           = lazy(() => import('./pages/Admin.jsx'))
 
 /** Placeholder de carga. Nunca pantalla en blanco. */
@@ -279,6 +280,11 @@ export default function App() {
                   zonas). NO es /gerencia, que es la vista móvil de
                   terreno — se confundieron desde el principio. */}
               <Route path="/dashboard" element={esGerente ? <DashboardGerencia /> : <Navigate to="/" replace />} />
+              {/* Reportes de venta con comparativos mes contra mes.
+                  La página existía en el repo desde V13.1 y NO tenía
+                  ruta: nadie podía llegar. Mismo patrón que GoalCard y
+                  el Control Center. */}
+              <Route path="/ventas" element={esGerente ? <Ventas /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

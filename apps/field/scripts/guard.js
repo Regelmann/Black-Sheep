@@ -28,7 +28,10 @@ function walk(dir) {
 }
 
 const archivos = walk(SRC)
-const rel = (f) => path.relative(SRC, f)
+// Siempre con barra normal, también en Windows. path.relative() devuelve
+// `lib\\buildStamp.js` allá y `lib/buildStamp.js` acá: comparar esas rutas
+// contra rutas escritas a mano falla en un sistema y funciona en el otro.
+const rel = (f) => path.relative(SRC, f).replace(/\\/g, '/')
 
 for (const f of archivos) {
   const txt = fs.readFileSync(f, 'utf8')
@@ -196,7 +199,11 @@ if (fs.existsSync(SQL)) {
   if (stampFiles.length !== 1) {
     problemas.push(`[R16 sello duplicado]  BUILD_STAMP definido en ${stampFiles.length} archivos — debe ser 1`)
   } else if (fs.existsSync(wf)) {
-    const real = rel(stampFiles[0])                       // p.ej. lib/buildStamp.js
+    // 🔴 En Windows path.relative devuelve `lib\buildStamp.js` con barra
+    // INVERTIDA, y el ci.yml tiene `lib/buildStamp.js`. Nunca coincidían:
+    // la regla bloqueaba siempre en Windows y nunca en Linux — que es donde
+    // yo verifico. Los separadores se normalizan antes de comparar.
+    const real = rel(stampFiles[0])
     const yml = fs.readFileSync(wf, 'utf8')
     if (yml.includes('BUILD_STAMP') && !yml.includes(real)) {
       problemas.push(`[R16 CI desincronizado]  ci.yml no lee el sello de src/${real}`)
