@@ -130,6 +130,23 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R19 · No usar .pathname sobre import.meta.url ──────────────────
+// En Windows `new URL('.', import.meta.url).pathname` devuelve
+// "/C:/Users/..." CON barra inicial, y path.join arma "C:\\C:\\Users\\...".
+// El test explota sólo en Windows — invisible al verificar en Linux, que
+// es donde se prepara cada entrega. Ya pasó con tres tests a la vez.
+{
+  for (const f of archivos.filter((x) => /\.(js|jsx|mjs)$/.test(x))) {
+    const t = fs.readFileSync(f, 'utf8')
+    if (/import\.meta\.url\s*\)\s*\.pathname|import\.meta\.url\)\.pathname/.test(t)) {
+      problemas.push(
+        `[R19 ruta rota en Windows]  ${rel(f)} usa .pathname sobre ` +
+        `import.meta.url — usar fileURLToPath() de node:url`
+      )
+    }
+  }
+}
+
 // ── R18 · Un test que no puede correr no es un test ────────────────
 // Llegó un catalogControlCenter.test.js escrito para `vitest`, que NO es
 // dependencia del proyecto. `npm test` lo salteaba: el archivo se veía

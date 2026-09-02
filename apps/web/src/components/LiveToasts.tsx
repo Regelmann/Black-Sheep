@@ -27,7 +27,7 @@ const EVENTS: ToastEvent[] = [
   { tone: "mint", Icon: Undo2, title: "Fuga recuperada a tiempo", meta: "Local Providencia volvió a pedir · hace 4 min" },
   { tone: "amber", Icon: BadgePercent, title: "Acuerdo Lista 3 aplicado", meta: "Café Bodega · margen protegido 26% · hace 5 min" },
   { tone: "sky", Icon: RefreshCw, title: "Sync con ERP completada", meta: "214 SKUs y 3 listas actualizadas · hace 6 min" },
-  { tone: "mint", Icon: Target, title: "NBA ejecutada: +$410.000", meta: "Reposición SKU 0884 · Cliente Premium · hace 7 min" },
+  { tone: "mint", Icon: Target, title: "NBA ejecutada: +$410.000", meta: "Reposición SKU 0884 · KeyFoods · hace 7 min" },
   { tone: "rose", Icon: TrendingUp, title: "Alerta: quiebre de ritmo", meta: "Panadería Central Ñuñoa · hace 8 min" },
   { tone: "mint", Icon: MapPin, title: "Nuevo prospecto detectado", meta: "Zona Estación Central · hace 9 min" },
 ];
