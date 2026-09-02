@@ -14,13 +14,14 @@ const LINKS = [
   { href: "#demo", label: "Demo" },
 ];
 
+const APP_URL = "https://app.black-sheep.cl";
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const { scrollY } = useScroll();
 
-  // Se esconde al bajar y reaparece al subir (patrón lectura cómoda)
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious() ?? 0;
     setHidden(latest > previous && latest > 170);
@@ -50,6 +51,12 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
+          <a
+            href={APP_URL}
+            className="text-sm font-semibold text-ink transition-colors hover:text-white"
+          >
+            Entrar a la app
+          </a>
           <Magnetic strength={0.26}>
             <a
               href="#demo"
@@ -94,6 +101,13 @@ export default function Navbar() {
                   {link.label}
                 </a>
               ))}
+              <a
+                href={APP_URL}
+                onClick={() => setOpen(false)}
+                className="mt-2 inline-flex items-center justify-center rounded-xl border border-line/70 px-5 py-3 text-sm font-semibold text-white transition hover:bg-panel/60"
+              >
+                Entrar a la app
+              </a>
               <a
                 href="#demo"
                 onClick={() => setOpen(false)}
