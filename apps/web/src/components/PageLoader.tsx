@@ -17,7 +17,8 @@ export default function PageLoader({
 
   useEffect(() => {
     if (reduce) {
-      setShow(false);
+      // setState asíncrono: evitar cascade de renders (react-hooks/set-state-in-effect).
+      queueMicrotask(() => setShow(false));
       return;
     }
     const start = performance.now();

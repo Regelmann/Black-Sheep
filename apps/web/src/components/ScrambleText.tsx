@@ -31,7 +31,8 @@ export default function ScrambleText({
   useEffect(() => {
     if (!inView) return;
     if (reduce) {
-      setDisplay(text);
+      // setState asíncrono: evitar cascade de renders (react-hooks/set-state-in-effect).
+      queueMicrotask(() => setDisplay(text));
       return;
     }
 

@@ -225,7 +225,8 @@ export default function NetworkGraph() {
       });
     } catch (error) {
       console.error("[NetworkGraph] WebGL no disponible, usando fallback:", error);
-      setFallback(true);
+      // setState asíncrono: evitar cascade de renders (react-hooks/set-state-in-effect).
+      queueMicrotask(() => setFallback(true));
       return;
     }
 

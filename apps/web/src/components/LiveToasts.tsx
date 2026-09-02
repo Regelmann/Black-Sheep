@@ -51,6 +51,7 @@ export default function LiveToasts() {
   const stopped = useRef(false);
 
   useEffect(() => {
+    const timersList = timers.current;
     const schedule = (delay: number) => {
       const t = setTimeout(() => {
         if (stopped.current) return;
@@ -67,15 +68,15 @@ export default function LiveToasts() {
           setVisible(null);
           schedule(GAP_MS);
         }, VISIBLE_MS);
-        timers.current.push(hide);
+        timersList.push(hide);
       }, delay);
-      timers.current.push(t);
+      timersList.push(t);
     };
 
     schedule(FIRST_MS);
     return () => {
       stopped.current = true;
-      timers.current.forEach(clearTimeout);
+      timersList.forEach(clearTimeout);
     };
   }, []);
 
