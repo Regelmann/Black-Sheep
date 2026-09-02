@@ -1,14 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import { ArrowRight, ChevronsDown } from "lucide-react";
 import Magnetic from "@/components/Magnetic";
+import ProductPhoneMock from "@/components/ProductPhoneMock";
 
-const NetworkGraph = dynamic(() => import("@/components/NetworkGraph"), {
-  ssr: false,
-  loading: () => (
+ => (
     <div className="flex h-full w-full items-center justify-center text-sm text-ink/70">
       <span className="animate-pulse">Cargando red…</span>
     </div>
@@ -99,6 +97,12 @@ export default function Hero() {
               </a>
             </Magnetic>
             <a
+              href="https://app.black-sheep.cl"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3.5 text-sm font-bold text-white transition hover:border-primary/40 hover:text-primary"
+            >
+              Entrar a la app
+            </a>
+            <a
               href="#producto"
               className="inline-flex items-center gap-2 rounded-full border border-line px-6 py-3.5 text-sm font-bold text-white transition hover:border-primary/50"
             >
@@ -151,7 +155,7 @@ export default function Hero() {
             </div>
 
             <div className="absolute inset-0 pt-12">
-              <NetworkGraph />
+              <ProductPhoneMock />
             </div>
 
             {/* Hint drag más obvio */}
