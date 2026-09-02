@@ -24,8 +24,15 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const RAIZ = path.resolve(new URL('.', import.meta.url).pathname, '../../../..')
+// fileURLToPath() en vez de new URL(...).pathname: en Windows, .pathname
+// de una file:// URL da "/C:/Users/..." (con "/" antes de la letra de
+// unidad), y un path.resolve/join posterior con eso duplica el prefijo
+// de disco → "C:\C:\Users\...\ENOENT". fileURLToPath resuelve la unidad
+// correctamente en cualquier plataforma.
+const DIR = path.dirname(fileURLToPath(import.meta.url))
+const RAIZ = path.resolve(DIR, '../../../..')
 const SQL = fs.readFileSync(path.join(RAIZ, 'sql', '26_CATALOGO_ORDEN.sql'), 'utf8')
 
 describe('el stock es la base, no la oferta', () => {

@@ -31,8 +31,11 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const DIR = new URL('.', import.meta.url).pathname
+// fileURLToPath() en vez de new URL(...).pathname: en Windows, .pathname
+// da "/C:/Users/..." y rompe fs.readdirSync/path.resolve más abajo.
+const DIR = path.dirname(fileURLToPath(import.meta.url))
 const RAIZ = path.resolve(DIR, '..')
 const hojas = [
   ...fs.readdirSync(DIR).filter((f) => f.endsWith('.css')).map((f) => path.join(DIR, f)),
