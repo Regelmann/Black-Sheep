@@ -17,9 +17,15 @@ export default function GlobalError({
   return (
     <div className="grid min-h-screen place-items-center px-6">
       <div className="w-full max-w-md space-y-6 text-center">
-        <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary-soft font-display text-lg font-black text-white shadow-lg shadow-primary/30">
-          BΣ
-        </span>
+        {/* El logo REAL. Acá había un cuadradito con las letras "BΣ"
+            inventadas — el mismo error que ya estaba en Logo.tsx. */}
+        <img
+          src="/brand/logo-mark.png"
+          alt=""
+          width={56}
+          height={56}
+          className="mx-auto h-14 w-14 rounded-2xl"
+        />
         <div className="space-y-2">
           <h1 className="font-display text-2xl font-black text-white">
             Algo tropezó en el terreno

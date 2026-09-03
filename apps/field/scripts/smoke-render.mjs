@@ -22,13 +22,18 @@
  */
 import { build } from 'vite'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import fs from 'node:fs'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
+// fileURLToPath, NO `.pathname`: en Windows `.pathname` devuelve
+// "/C:/Users/..." con barra inicial. Rollup recibe eso como ruta y le
+// calcula una relativa encima → "../../../../C:/Users/..." → no resuelve
+// NINGUNA página, y el smoke reporta 9 pantallas en blanco que no lo son.
+// Cuarta vez de este bug: R19 no cubría scripts/, sólo src/.
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SALIDA = path.join(RAIZ, '.smoke')
 
@@ -93,7 +98,12 @@ async function main() {
         },
       })
 
-      const mod = await import(path.join(SALIDA, 'pagina.mjs') + '?t=' + Date.now())
+      // pathToFileURL: en Windows `import('C:\\...')` falla con
+      // "Only URLs with a scheme in: file, data, and node are supported.
+      //  Received protocol 'c:'". Node exige file:// para rutas absolutas.
+      // El ?t= evita que el loader cachee el módulo entre páginas.
+      const url = pathToFileURL(path.join(SALIDA, 'pagina.mjs')).href + '?t=' + Date.now()
+      const mod = await import(url)
       const Componente = mod.default || mod[p.nombre]
       if (typeof Componente !== 'function') throw new Error('no exporta un componente')
 

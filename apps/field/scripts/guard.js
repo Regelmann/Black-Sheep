@@ -130,13 +130,51 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+// ── R20 · import() dinámico con ruta absoluta necesita file:// ─────
+// En Windows `await import('C:\\...')` falla con "Only URLs with a
+// scheme in: file, data, and node are supported. Received protocol 'c:'".
+// En Linux funciona, así que es otro bug que sólo aparece en la máquina
+// del usuario. Quinta variante de la misma familia.
+{
+  const dirScripts2 = path.resolve(SRC, '..', 'scripts')
+  const scripts2 = fs.existsSync(dirScripts2)
+    ? fs.readdirSync(dirScripts2).filter((f) => /\.(js|mjs)$/.test(f))
+        .map((f) => path.join(dirScripts2, f))
+    : []
+  for (const f of [...archivos, ...scripts2]) {
+    if (path.basename(f) === 'guard.js') continue
+    const t = fs.readFileSync(f, 'utf8')
+    // import( ... path.join/resolve ... ) sin pathToFileURL cerca
+    for (const m of t.matchAll(/import\(\s*[^)]*path\.(?:join|resolve)\([^)]*\)[^)]*\)/g)) {
+      if (!/pathToFileURL/.test(m[0])) {
+        problemas.push(
+          `[R20 import sin file://]  ${rel(f)} hace import() con una ruta ` +
+          `absoluta — en Windows falla. Envolver en pathToFileURL().`
+        )
+      }
+    }
+  }
+}
+
 // ── R19 · No usar .pathname sobre import.meta.url ──────────────────
 // En Windows `new URL('.', import.meta.url).pathname` devuelve
 // "/C:/Users/..." CON barra inicial, y path.join arma "C:\\C:\\Users\\...".
 // El test explota sólo en Windows — invisible al verificar en Linux, que
 // es donde se prepara cada entrega. Ya pasó con tres tests a la vez.
 {
-  for (const f of archivos.filter((x) => /\.(js|jsx|mjs)$/.test(x))) {
+  // `archivos` sólo recorre src/. El bug apareció en scripts/ —
+  // smoke-render.mjs— y la regla no lo vio. Se suman los scripts.
+  const dirScripts = path.resolve(SRC, '..', 'scripts')
+  const extra = fs.existsSync(dirScripts)
+    ? fs.readdirSync(dirScripts)
+        .filter((f) => /\.(js|mjs)$/.test(f))
+        .map((f) => path.join(dirScripts, f))
+    : []
+
+  for (const f of [...archivos, ...extra].filter((x) => /\.(js|jsx|mjs)$/.test(x))) {
+    // Este mismo archivo contiene la expresión que busca el patrón:
+    // sin esta línea, la regla se detecta a sí misma.
+    if (path.basename(f) === 'guard.js') continue
     const t = fs.readFileSync(f, 'utf8')
     if (/import\.meta\.url\s*\)\s*\.pathname|import\.meta\.url\)\.pathname/.test(t)) {
       problemas.push(

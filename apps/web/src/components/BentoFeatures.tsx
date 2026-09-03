@@ -63,7 +63,7 @@ export default function BentoFeatures() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between rounded-xl border border-line/70 bg-navy/85 p-3 text-xs">
                     <span className="font-semibold text-mist">
-                      1. Reponer stock crítico — Central Providencia
+                      1. Reponer stock crítico — KeyFoods Central
                     </span>
                     <span className="shrink-0 pl-3 font-bold text-mint">
                       Foco prioritario

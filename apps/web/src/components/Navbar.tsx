@@ -14,14 +14,13 @@ const LINKS = [
   { href: "#demo", label: "Demo" },
 ];
 
-const APP_URL = "https://app.black-sheep.cl";
-
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const { scrollY } = useScroll();
 
+  // Se esconde al bajar y reaparece al subir (patrón lectura cómoda)
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious() ?? 0;
     setHidden(latest > previous && latest > 170);
@@ -51,11 +50,14 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
+          {/* Ingreso a la app. Un vendedor que entra a black-sheep.cl
+              tiene que poder llegar a su app. Va ANTES del CTA de demo:
+              quien ya es cliente no viene a agendar nada. */}
           <a
-            href={APP_URL}
-            className="text-sm font-semibold text-ink transition-colors hover:text-white"
+            href="https://app.black-sheep.cl/"
+            className="inline-flex items-center rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-primary/60 hover:text-primary"
           >
-            Entrar a la app
+            Ingresar
           </a>
           <Magnetic strength={0.26}>
             <a
@@ -102,11 +104,10 @@ export default function Navbar() {
                 </a>
               ))}
               <a
-                href={APP_URL}
-                onClick={() => setOpen(false)}
-                className="mt-2 inline-flex items-center justify-center rounded-xl border border-line/70 px-5 py-3 text-sm font-semibold text-white transition hover:bg-panel/60"
+                href="https://app.black-sheep.cl/"
+                className="mb-2 block rounded-xl border border-white/20 px-4 py-3 text-center text-sm font-semibold text-white"
               >
-                Entrar a la app
+                Ingresar a la app
               </a>
               <a
                 href="#demo"
