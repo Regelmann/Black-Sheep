@@ -6,7 +6,7 @@ import { useRef } from "react";
 import { ArrowRight, ChevronsDown } from "lucide-react";
 import Magnetic from "@/components/Magnetic";
 
-const NetworkGraph = dynamic(() => import("@/components/NetworkGraph"), {
+const HeroAppMock = dynamic(() => import("@/components/HeroAppMock"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center text-sm text-ink/70">
@@ -127,7 +127,7 @@ export default function Hero() {
           </motion.div>
         </motion.div>
 
-        {/* Objeto vivo — grafo */}
+        {/* El producto, no una ilustración */}
         <motion.div
           className="relative z-10"
           initial={{ opacity: 0, scale: 0.96 }}
@@ -135,34 +135,16 @@ export default function Hero() {
           transition={{ delay: 0.35, duration: 0.8 }}
         >
           <div className="glow-primary relative aspect-[5/4] overflow-hidden rounded-3xl border border-line bg-card shadow-2xl">
-            <div className="absolute top-0 right-0 left-0 z-20 flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose" />
-                <span className="h-2.5 w-2.5 rounded-full bg-amber" />
-                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-                <span className="ml-2 text-[10px] font-bold tracking-[0.15em] text-ink uppercase">
-                  Red operativa · RM
-                </span>
-              </div>
-              <span className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                EN VIVO
-              </span>
-            </div>
+                        {/* 🔴 REEMPLAZA EL GRAFO DE PUNTITOS.
+                Se movía, no significaba nada, y al pinchar un nodo
+                salía un fondo blanco con texto ilegible. No explicaba
+                el producto ni servía de demo.
 
-            <div className="absolute inset-0 pt-12">
-              <NetworkGraph />
-            </div>
-
-            {/* Hint drag más obvio */}
-            <div className="pointer-events-none absolute right-4 bottom-4 left-4 z-20 flex items-center justify-between">
-              <span className="rounded-full border border-white/10 bg-black/70 px-3 py-1.5 text-[11px] font-bold tracking-wide text-mist backdrop-blur">
-                Arrastrá nodos · explorá la red
-              </span>
-              <span className="hidden rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary sm:inline">
-                Interactivo
-              </span>
-            </div>
+                Las mejores landings B2B de 2026 ponen el PRODUCTO en
+                el hero: Linear su lista de issues, Loom la pantalla de
+                grabación, Vercel un deploy real. Ninguna una
+                ilustración abstracta. */}
+            <HeroAppMock />
           </div>
         </motion.div>
       </div>

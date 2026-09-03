@@ -42,7 +42,7 @@ export default function BentoFeatures() {
 
         {/* Grid asimétrico estilo Bento */}
         <div className="grid auto-rows-[232px] grid-cols-1 gap-5 md:grid-cols-3">
-          {/* 1. Next-Best-Action (doble ancho) */}
+          {/* 1. Próxima acción (doble ancho) */}
           <Reveal className="md:col-span-2">
             <Tilt max={5}>
               <div className="group flex h-full flex-col justify-between rounded-3xl border border-line/60 bg-card/45 p-6 backdrop-blur-sm transition-colors duration-300 hover:border-mint/35">
@@ -52,7 +52,7 @@ export default function BentoFeatures() {
                       Algoritmo inteligente
                     </span>
                     <h3 className="pt-1 font-display text-xl font-bold text-white">
-                      Next-Best-Action
+                      Próxima acción
                     </h3>
                   </div>
                   <div className="rounded-xl bg-panel p-3 text-mint transition-transform duration-300 group-hover:scale-110">
@@ -63,7 +63,7 @@ export default function BentoFeatures() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between rounded-xl border border-line/70 bg-navy/85 p-3 text-xs">
                     <span className="font-semibold text-mist">
-                      1. Reponer stock crítico — tu empresa Central
+                      1. Reponer stock crítico — Restaurante Aurora
                     </span>
                     <span className="shrink-0 pl-3 font-bold text-mint">
                       Foco prioritario

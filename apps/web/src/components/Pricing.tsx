@@ -53,7 +53,7 @@ const plans: Plan[] = [
     uf: 10,
     features: [
       "Todo lo de Campo",
-      "Next-Best-Action y focos diarios",
+      "Próxima acción y focos diarios",
       "Alertas de fuga y reposición",
       "Gerencia y tablero en vivo",
     ],

@@ -1,10 +1,10 @@
 "use client";
 
 const PRODUCTOS = [
-  { grupo: "REPOSICIÓN", nombre: "Pollo Pechuga", precio: "$7.990" },
-  { grupo: "REPOSICIÓN", nombre: "tu marca Cheddar", precio: "$4.990" },
-  { grupo: "OFERTAS PARA TI", nombre: "tu marca BBQ", precio: "$3.990" },
-  { grupo: "OFERTAS PARA TI", nombre: "tu marca Ketchup", precio: "$3.490" },
+  { grupo: "REPOSICIÓN", nombre: "Pechuga de pollo 10 kg", precio: "$7.990" },
+  { grupo: "REPOSICIÓN", nombre: "Salsa Cheddar 1 kg", precio: "$4.990" },
+  { grupo: "OFERTAS PARA TI", nombre: "Salsa BBQ 3,6 L", precio: "$3.990" },
+  { grupo: "OFERTAS PARA TI", nombre: "Ketchup 5 kg", precio: "$3.490" },
 ];
 
 export default function CatalogoProtagonista() {

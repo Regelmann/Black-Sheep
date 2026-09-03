@@ -62,7 +62,7 @@ const planes: Plan[] = [
     destacado: true,
     features: [
       "Todo lo de Campo",
-      "Next-Best-Action y focos diarios",
+      "Próxima acción y focos diarios",
       "Alertas de fuga y reposición",
       "3 listas + acuerdos por cliente",
       "Gerencia y tablero en vivo",

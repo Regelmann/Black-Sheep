@@ -22,7 +22,7 @@ const STATS: StatDef[] = [
     value: 18,
     prefix: "+",
     suffix: "%",
-    label: "ticket promedio con foco Next-Best-Action",
+    label: "ticket promedio con foco Próxima acción",
   },
   {
     value: 4.2,

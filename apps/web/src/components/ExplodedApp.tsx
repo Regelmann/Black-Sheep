@@ -79,7 +79,7 @@ export default function ExplodedApp() {
         <div className="bs-layer bs-layer-hoy">
           <span className="bs-tag">HOY</span>
           <div className="bs-title">Reponer stock — Cliente Premium</div>
-          <div className="bs-pill">Next-best-action · vence hoy 18:00</div>
+          <div className="bs-pill">Próxima acción · vence hoy 18:00</div>
           <div className="bs-row">
             <span>Visitas</span>
             <span className="bs-accent">6/9</span>

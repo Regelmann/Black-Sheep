@@ -1,55 +1,45 @@
+/**
+ * LANDING — reconstruida sobre el patrón de 2026.
+ *
+ * 🔴 EL PROBLEMA: eran 26 SECCIONES DE CONTENIDO.
+ * Linear, Vercel y Stripe —las tres canónicas— tienen seis. Con 26 el
+ * visitante no llega al precio, y el footer queda tan abajo que
+ * literalmente no se ve.
+ *
+ * EL PATRÓN, de las landings que convierten:
+ *   1 · Hero — el PRODUCTO en el frame, no una promesa
+ *   2 · Prueba social — inmediata, corta
+ *   3 · Problema — el costo de no tenerlo
+ *   4 · Producto — cómo funciona, mostrado
+ *   5 · Territorio — la pieza de identidad
+ *   6 · Precio — transparente, sin "contactar ventas"
+ *   7 · Cierre — FAQ + formulario
+ *
+ * Todo lo demás se sacó del render. Los componentes siguen en el repo
+ * —no se borra trabajo— pero no compiten por la atención.
+ *
+ * Lo que se cortó y por qué:
+ *   Comparison, AntesDespues, Canales  → decían lo mismo tres veces
+ *   Stats, ROICalculator, Integrations → tres bloques de números seguidos
+ *   ProductShowcase + BentoFeatures    → redundantes con ExplodedApp
+ *   ActivityTicker, LiveToasts, Beam   → ruido, no argumento
+ *   FlowMarquee, FlowSteps, VendorDay  → el mismo relato del día
+ */
 import HomeShell from "@/components/HomeShell";
 import Navbar from "@/components/Navbar";
-import CursorGlow from "@/components/CursorGlow";
-import ScrollProgress from "@/components/ScrollProgress";
 import DynamicBackground from "@/components/DynamicBackground";
+import ScrollProgress from "@/components/ScrollProgress";
 import Hero from "@/components/Hero";
 import TrustBar from "@/components/TrustBar";
 import ProblemCost from "@/components/ProblemCost";
-import Comparison from "@/components/Comparison";
-import ProductShowcase from "@/components/ProductShowcase";
-import BentoFeatures from "@/components/BentoFeatures";
-import Stats from "@/components/Stats";
-import FlowSteps from "@/components/FlowSteps";
-import VendorDay from "@/components/VendorDay";
-import ROICalculator from "@/components/ROICalculator";
-import Integrations from "@/components/Integrations";
-import CaseStudy from "@/components/CaseStudy";
+import ExplodedApp from "@/components/ExplodedApp";
+import CatalogoProtagonista from "@/components/CatalogoProtagonista";
+import MapaCostanera from "@/components/MapaCostanera";
 import Pricing from "@/components/Pricing";
-import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import CTAForm from "@/components/CTAForm";
 import Footer from "@/components/Footer";
-import FlowMarquee from "@/components/FlowMarquee";
-import Beam from "@/components/Beam";
-import LiveToasts from "@/components/LiveToasts";
-import FloatingCTA from "@/components/FloatingCTA";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
-import ChapterRail from "@/components/ChapterRail";
-import ExplodedApp from "@/components/ExplodedApp";
-import MapaCostanera from "@/components/MapaCostanera";
-import Canales from "@/components/Canales";
-import AntesDespues from "@/components/AntesDespues";
-import CatalogoProtagonista from "@/components/CatalogoProtagonista";
-import ActivityTicker from "@/components/ActivityTicker";
-
-function S({
-  children,
-  gsap = "fade-up",
-  className = "",
-  id,
-}: {
-  children: React.ReactNode;
-  gsap?: string;
-  className?: string;
-  id?: string;
-}) {
-  return (
-    <div data-gsap={gsap} className={className} id={id}>
-      {children}
-    </div>
-  );
-}
 
 export default function Home() {
   return (
@@ -57,116 +47,40 @@ export default function Home() {
       <div className="relative min-h-screen overflow-x-clip">
         <DynamicBackground />
         <ScrollProgress />
-        <CursorGlow />
         <Navbar />
-        <ChapterRail />
 
         <main className="relative">
-          <div data-gsap-fade-out>
-            <Hero />
-          </div>
+          {/* 1 · El producto en el frame */}
+          <Hero />
 
-          {/* Capítulo TERRENO */}
+          {/* 2 · Prueba social, corta */}
+          <TrustBar />
+
+          {/* 3 · El costo de no tenerlo */}
           <div id="terreno" className="scroll-mt-24">
-            <div className="px-6 pt-8">
-              <div className="mx-auto flex max-w-6xl items-center gap-4">
-                <span className="font-display text-xs font-black tracking-[0.25em] text-primary uppercase">
-                  Terreno
-                </span>
-                <span className="h-px flex-1 bg-gradient-to-r from-primary/50 to-transparent" />
-              </div>
-            </div>
-            <S gsap="fade">
-              <TrustBar />
-            </S>
-            <S gsap="fade-up">
-              <ProblemCost />
-            </S>
-            <S gsap="slide-left">
-              <Comparison />
-            </S>
-            <FlowMarquee />
-            <S gsap="scale" id="producto">
-              <ProductShowcase />
-              {/* Vista despiezada de la app: muestra las capas del
-                  producto sin tener que instalarlo. */}
-              <ExplodedApp />
-            </S>
-            <div data-gsap-stagger-children data-gsap-stagger="0.1">
-              <CatalogoProtagonista />
-              <BentoFeatures />
-            </div>
-            <S gsap="slide-right">
-              <FlowSteps />
-            </S>
-            <S gsap="fade-up">
-              <VendorDay />
-            </S>
+            <ProblemCost />
           </div>
 
-          {/* Capítulo GERENCIA */}
+          {/* 4 · Cómo funciona, mostrado */}
+          <div id="producto" className="scroll-mt-24">
+            <ExplodedApp />
+            <CatalogoProtagonista />
+          </div>
+
+          {/* 5 · La identidad: el territorio real */}
           <div id="gerencia" className="scroll-mt-24">
-            <div className="px-6 pt-16">
-              <div className="mx-auto flex max-w-6xl items-center gap-4">
-                <span className="font-display text-xs font-black tracking-[0.25em] text-primary uppercase">
-                  Gerencia
-                </span>
-                <span className="h-px flex-1 bg-gradient-to-r from-primary/50 to-transparent" />
-              </div>
-            </div>
-            <S gsap="fade-up">
-              {/* Mapa de la Región Metropolitana: el territorio real
-                  donde opera el producto. */}
-              <MapaCostanera />
-              <AntesDespues />
-              <Stats />
-            </S>
-            <Beam />
-            <S gsap="scale">
-              <ROICalculator />
-            </S>
-            <S gsap="fade-up">
-              <Integrations />
-            </S>
-            <S gsap="slide-left">
-              <CaseStudy />
-            </S>
+            <MapaCostanera />
           </div>
 
-          <FlowMarquee
-            items={["Offline-first", "ERP Sync", "Fuga cero", "Hecho en Chile"]}
-            reverse
-          />
+          {/* 6 · Precio transparente */}
+          <Pricing />
 
-          <Beam />
-
-          <div data-gsap-progress className="relative">
-            <div
-              data-gsap-progress-bar
-              className="pointer-events-none absolute top-0 left-0 z-10 h-[2px] w-full origin-left scale-x-0 bg-primary"
-            />
-            <S gsap="fade-up">
-              <Canales />
-              <ActivityTicker />
-              <Pricing />
-            </S>
-          </div>
-
-          <S gsap="fade-up">
-            <Testimonials />
-          </S>
-          <S gsap="fade-up">
-            <FAQ />
-          </S>
-          <Beam />
-          <S gsap="scale">
-            <CTAForm />
-          </S>
+          {/* 7 · Cierre */}
+          <FAQ />
+          <CTAForm />
         </main>
 
         <Footer />
-        <LiveToasts />
-        <FloatingCTA />
         <WhatsAppFloat />
       </div>
     </HomeShell>

@@ -12,7 +12,7 @@ const clp = new Intl.NumberFormat("es-CL", {
 });
 
 const PLAN_EQUPO_MENSUAL = 34_990; // por vendedor, sin IVA
-const UPLIFT_NBA = 0.1; // +10% ticket por foco Next-Best-Action (observado: +18%)
+const UPLIFT_NBA = 0.1; // +10% ticket por foco Próxima acción (observado: +18%)
 const FUGA_SILENCIOSA = 0.02; // 2% de la venta se va cada mes sin señal
 const RECUPERACION_FUGA = 0.6; // se recupera ~60% actuando a tiempo
 const HORAS_SEMANA_VENDEDOR = 4.2;
@@ -157,7 +157,7 @@ export default function ROICalculator() {
                 <div className="flex items-center justify-between rounded-2xl border border-mint/20 bg-mint/6 px-4 py-3">
                   <span className="flex items-center gap-2.5 text-xs font-bold text-mist">
                     <TrendingUp size={14} className="text-mint" />
-                    +10% ticket con foco Next-Best-Action
+                    +10% ticket con foco Próxima acción
                   </span>
                   <span className="font-display text-sm font-black text-mint tabular-nums">
                     {clp.format(resultado.uplift)}

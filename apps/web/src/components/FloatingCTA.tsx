@@ -21,13 +21,25 @@ export default function FloatingCTA() {
   });
 
   useEffect(() => {
-    const demo = document.getElementById("demo");
-    if (!demo) return;
+    // Se oculta al llegar al demo Y al footer.
+    // Antes sólo miraba #demo: el footer va DESPUÉS, así que la barra
+    // volvía a aparecer y lo tapaba por completo. Por eso "el footer
+    // no existe" — sí existe, estaba debajo de esta barra.
+    const objetivos = [
+      document.getElementById("demo"),
+      document.querySelector("footer"),
+    ].filter(Boolean) as Element[];
+    if (!objetivos.length) return;
+
+    const vistos = new Set<Element>();
     const observer = new IntersectionObserver(
-      (entries) => setDemoVisible(entries[0]?.isIntersecting ?? false),
+      (entries) => {
+        entries.forEach((e) => (e.isIntersecting ? vistos.add(e.target) : vistos.delete(e.target)));
+        setDemoVisible(vistos.size > 0);
+      },
       { rootMargin: "-12% 0px" },
     );
-    observer.observe(demo);
+    objetivos.forEach((o) => observer.observe(o));
     return () => observer.disconnect();
   }, []);
 

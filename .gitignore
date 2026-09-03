@@ -24,6 +24,6 @@ npm-debug.log*
 _bs_tmp/
 *.patch
 
-# Build de Next.js
+# Build de Next.js — NO va al repo
 .next/
 apps/web/.next/
