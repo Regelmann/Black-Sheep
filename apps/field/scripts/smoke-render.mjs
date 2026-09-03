@@ -22,13 +22,14 @@
  */
 import { build } from 'vite'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
-const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SALIDA = path.join(RAIZ, '.smoke')
 
 /**

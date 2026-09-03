@@ -87,3 +87,23 @@ export function availableTenants() {
 
 // Bootstrap al cargar el módulo
 initSupabase(resolveTenant())
+
+/**
+ * Inyecta un cliente falso de Supabase, sólo para pruebas.
+ *
+ * `scripts/smoke-render.mjs` monta todas las páginas en un DOM simulado
+ * para verificar que no exploten. Sin credenciales reales el Proxy lanza
+ * "Supabase sin configurar" —que es correcto en producción— y el smoke
+ * no puede correr.
+ *
+ * Esto le permite pasar un doble. NO se usa en la app: si alguien lo
+ * llama en runtime, está haciendo algo mal.
+ *
+ * @param {any} clienteFalso
+ */
+export function registerSupabaseForTests(clienteFalso) {
+  if (import.meta.env?.PROD) {
+    throw new Error('registerSupabaseForTests no se puede usar en producción')
+  }
+  client = clienteFalso
+}

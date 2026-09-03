@@ -12,9 +12,10 @@
     "preview": "vite preview",
     "test": "node --test src/**/*.test.js",
     "guard": "node scripts/guard.js",
-    "verify": "npm run lint && npm run typecheck && npm run guard && npm run test && npm run build",
+    "verify": "npm run lint && npm run typecheck && npm run guard && npm run test && npm run smoke && npm run build",
     "lint": "eslint src",
-    "typecheck": "node scripts/typecheck.js"
+    "typecheck": "node scripts/typecheck.js",
+    "smoke": "node scripts/smoke-render.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
