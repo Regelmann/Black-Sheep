@@ -4,6 +4,10 @@ import CursorGlow from "@/components/CursorGlow";
 import ScrollProgress from "@/components/ScrollProgress";
 import DynamicBackground from "@/components/DynamicBackground";
 import Hero from "@/components/Hero";
+import CirculoBlackSheep from "@/components/CirculoBlackSheep";
+import CatalogoProtagonista from "@/components/CatalogoProtagonista";
+import AntesDespues from "@/components/AntesDespues";
+import Canales from "@/components/Canales";
 import TrustBar from "@/components/TrustBar";
 import ProblemCost from "@/components/ProblemCost";
 import Comparison from "@/components/Comparison";
@@ -26,9 +30,6 @@ import LiveToasts from "@/components/LiveToasts";
 import FloatingCTA from "@/components/FloatingCTA";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import ChapterRail from "@/components/ChapterRail";
-import ExplodedApp from "@/components/ExplodedApp";
-import MapaChileRMSection from "@/components/MapaChileRMSection";
-import ActivityTicker from "@/components/ActivityTicker";
 
 function S({
   children,
@@ -63,6 +64,8 @@ export default function Home() {
             <Hero />
           </div>
 
+          <CirculoBlackSheep />
+
           {/* Capítulo TERRENO */}
           <div id="terreno" className="scroll-mt-24">
             <div className="px-6 pt-8">
@@ -82,13 +85,12 @@ export default function Home() {
             <S gsap="slide-left">
               <Comparison />
             </S>
+            <AntesDespues />
             <FlowMarquee />
             <S gsap="scale" id="producto">
               <ProductShowcase />
-              {/* Vista despiezada de la app: muestra las capas del
-                  producto sin tener que instalarlo. */}
-              <ExplodedApp />
             </S>
+            <CatalogoProtagonista />
             <div data-gsap-stagger-children data-gsap-stagger="0.1">
               <BentoFeatures />
             </div>
@@ -110,10 +112,8 @@ export default function Home() {
                 <span className="h-px flex-1 bg-gradient-to-r from-primary/50 to-transparent" />
               </div>
             </div>
+            <Canales />
             <S gsap="fade-up">
-              {/* Mapa de la Región Metropolitana: el territorio real
-                  donde opera el producto. */}
-              <MapaChileRMSection />
               <Stats />
             </S>
             <Beam />
@@ -141,7 +141,6 @@ export default function Home() {
               className="pointer-events-none absolute top-0 left-0 z-10 h-[2px] w-full origin-left scale-x-0 bg-primary"
             />
             <S gsap="fade-up">
-              <ActivityTicker />
               <Pricing />
             </S>
           </div>
