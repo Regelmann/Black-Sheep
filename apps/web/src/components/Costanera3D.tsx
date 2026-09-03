@@ -63,11 +63,14 @@ export default function Costanera3D() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const escena = new THREE.Scene();
-    escena.fog = new THREE.Fog(0x040604, 60, 190);
+    escena.fog = new THREE.Fog(0x040604, 85, 230);
 
     const camara = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
-    camara.position.set(52, 34, 52);
-    camara.lookAt(0, 14, 0);
+    // Vista AÉREA: la cámara sube y se aleja para que se lea el
+    // territorio completo y la ruta entre puntos, no la fachada de la
+    // torre. Es la vista que tiene sentido para un producto de rutas.
+    camara.position.set(46, 78, 46);
+    camara.lookAt(0, 4, 0);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
@@ -209,19 +212,63 @@ export default function Costanera3D() {
     // ══ LA CARTERA ═════════════════════════════════════════════
     // Puntos flotando sobre los edificios, con los colores de la app.
     const puntos: { m: THREE.Mesh; base: number; f: number }[] = [];
-    const geomPunto = new THREE.SphereGeometry(0.5, 10, 10);
+    const geomPunto = new THREE.SphereGeometry(0.6, 12, 12);
 
-    for (let i = 0; i < 26; i++) {
-      const e = edificios[Math.floor(rnd() * edificios.length)];
+    // ── LA RUTA DEL DÍA ────────────────────────────────────────
+    // Los puntos NO son aleatorios: se eligen recorriendo el sector
+    // en espiral desde el centro hacia afuera, que es como se arma
+    // una ruta real. Después se unen con una línea.
+    const candidatos = edificios
+      .map((e, i) => ({ e, i, r: Math.hypot(e.position.x, e.position.z) }))
+      .filter((c) => c.r > 12 && c.r < 62)
+      .sort((a, b) => Math.atan2(a.e.position.z, a.e.position.x) -
+                      Math.atan2(b.e.position.z, b.e.position.x));
+
+    const paso = Math.max(1, Math.floor(candidatos.length / 14));
+    const parada: THREE.Vector3[] = [];
+
+    for (let k = 0; k < candidatos.length && parada.length < 14; k += paso) {
+      const e = candidatos[k].e;
       const c = COLOR_CARTERA[Math.floor(rnd() * COLOR_CARTERA.length)];
       const m = new THREE.Mesh(
         geomPunto,
         new THREE.MeshBasicMaterial({ color: c.hex })
       );
-      const base = e.position.y + e.scale.y / 2 + 2.2;
+      const base = e.position.y + e.scale.y / 2 + 2.4;
       m.position.set(e.position.x, base, e.position.z);
       grupo.add(m);
       puntos.push({ m, base, f: rnd() * Math.PI * 2 });
+      parada.push(new THREE.Vector3(e.position.x, base, e.position.z));
+    }
+
+    // La línea que une las paradas. `CatmullRomCurve3` la curva: una
+    // ruta real no va en línea recta entre esquinas.
+    let rutaLinea: THREE.Line | null = null;
+    let rutaMat: THREE.LineDashedMaterial | null = null;
+
+    if (parada.length > 2) {
+      const curva = new THREE.CatmullRomCurve3(parada, true, "catmullrom", 0.35);
+      const geomRuta = new THREE.BufferGeometry().setFromPoints(curva.getPoints(220));
+      rutaMat = new THREE.LineDashedMaterial({
+        color: NEON,
+        dashSize: 1.8,
+        gapSize: 1.1,
+        transparent: true,
+        opacity: 0.75,
+      });
+      rutaLinea = new THREE.Line(geomRuta, rutaMat);
+      rutaLinea.computeLineDistances();   // obligatorio para el guionado
+      grupo.add(rutaLinea);
+
+      // Un vehículo recorriendo la ruta: hace evidente que es un
+      // recorrido y no una constelación de puntos sueltos.
+      const movil = new THREE.Mesh(
+        new THREE.SphereGeometry(0.9, 14, 14),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      grupo.add(movil);
+      (grupo as unknown as { _movil?: THREE.Mesh; _curva?: THREE.CatmullRomCurve3 })._movil = movil;
+      (grupo as unknown as { _movil?: THREE.Mesh; _curva?: THREE.CatmullRomCurve3 })._curva = curva;
     }
 
     // ── Bucle ──────────────────────────────────────────────────
@@ -243,7 +290,19 @@ export default function Costanera3D() {
       raf = requestAnimationFrame(animar);
       if (!visible) return;
       t += 0.0022;
-      if (!reduce) grupo.rotation.y = t;
+      // Rotación lenta: en vista aérea, más lenta que antes — si no,
+      // marea.
+      if (!reduce) grupo.rotation.y = t * 0.55;
+
+      // El móvil avanza por la ruta
+      const g = grupo as unknown as { _movil?: THREE.Mesh; _curva?: THREE.CatmullRomCurve3 };
+      if (g._movil && g._curva) {
+        const u = (t * 0.9) % 1;
+        g._movil.position.copy(g._curva.getPointAt(u));
+        g._movil.position.y += 0.4;
+      }
+      // El guionado se desplaza: da sensación de avance.
+      if (rutaMat && !reduce) rutaMat.dashSize = 1.8 + Math.sin(t * 6) * 0.35;
       // Los puntos flotan: llama la atención sin ser un parpadeo.
       puntos.forEach((p, i) => {
         p.m.position.y = p.base + Math.sin(t * 9 + p.f) * 0.5;
@@ -283,9 +342,9 @@ export default function Costanera3D() {
             Tu ciudad, con cada cliente en su estado real
           </h2>
           <p className="mt-4 text-base leading-relaxed text-white/50 sm:text-lg">
-            Costanera Center y el sector oriente. Cada punto sobre los edificios es
-            un cliente con su estado — los mismos colores que ve el vendedor al
-            abrir la app en la calle.
+            Vista aérea del sector oriente, con Costanera Center como ancla. Cada
+            punto es un cliente con su estado real, y la línea es la ruta del día
+            ya calculada — los mismos colores que ve el vendedor al abrir la app.
           </p>
         </div>
 
@@ -323,7 +382,7 @@ export default function Costanera3D() {
               </div>
             ))}
             <p className="mt-2 px-1 text-[11px] leading-relaxed text-white/30">
-              La ruta del día se ordena por{" "}
+              La línea punteada es la ruta del día. Se ordena por{" "}
               <span className="text-white/55">valor × urgencia ÷ distancia</span> — el
               almacén de la esquina no le gana al cliente grande que está a seis
               cuadras.
