@@ -34,7 +34,7 @@ import TrustBar from "@/components/TrustBar";
 import ProblemCost from "@/components/ProblemCost";
 import ExplodedApp from "@/components/ExplodedApp";
 import CatalogoProtagonista from "@/components/CatalogoProtagonista";
-import MapaCostanera from "@/components/MapaCostanera";
+import Costanera3D from "@/components/Costanera3D";
 import Pricing from "@/components/Pricing";
 import FAQ from "@/components/FAQ";
 import CTAForm from "@/components/CTAForm";
@@ -69,7 +69,7 @@ export default function Home() {
 
           {/* 5 · La identidad: el territorio real */}
           <div id="gerencia" className="scroll-mt-24">
-            <MapaCostanera />
+            <Costanera3D />
           </div>
 
           {/* 6 · Precio transparente */}
