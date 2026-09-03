@@ -63,7 +63,7 @@ export default function Costanera3D() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const escena = new THREE.Scene();
-    escena.fog = new THREE.Fog(0x040604, 85, 230);
+    escena.fog = new THREE.Fog(0x040604, 110, 340);
 
     const camara = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
     // Vista AÉREA: la cámara sube y se aleja para que se lea el
@@ -282,6 +282,21 @@ export default function Costanera3D() {
       if (!w || !h) return;
       renderer.setSize(w, h, false);
       camara.aspect = w / h;
+
+      // 🔴 EN EL TELÉFONO NO SE VEÍA NADA.
+      // La cámara estaba fija en (46,78,46) con FOV 42. En un viewport
+      // angosto (aspect ~0.75) el encuadre horizontal se recorta y sólo
+      // aparecen dos edificios de costado — que es exactamente lo que
+      // se veía en la captura.
+      //
+      // La cámara se ALEJA y ABRE el campo cuando la pantalla es
+      // angosta. El factor sale del aspect, así que también cubre
+      // tablets y ventanas a medio ancho.
+      const angosto = Math.min(1, Math.max(0.5, camara.aspect));
+      const lejos = 1 + (1 - angosto) * 1.25;   // hasta 1.6× más lejos
+      camara.fov = 42 + (1 - angosto) * 22;      // hasta 53° de apertura
+      camara.position.set(46 * lejos, 78 * lejos, 46 * lejos);
+      camara.lookAt(0, 4, 0);
       camara.updateProjectionMatrix();
     };
     dimensionar();
@@ -352,7 +367,7 @@ export default function Costanera3D() {
           <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-[#070a07]">
             <div
               ref={cont}
-              className="h-[400px] w-full sm:h-[560px]"
+              className="h-[460px] w-full sm:h-[560px]"
               aria-label="Vista 3D del sector Costanera Center con la cartera"
             />
             {!soportado && (

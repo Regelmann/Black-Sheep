@@ -1,6 +1,15 @@
 export default function Footer() {
   return (
-    <footer className="border-t border-line px-6 py-14">
+    <footer
+      /* 🔴 POR QUÉ EL FOOTER NO SE VEÍA
+         No tenía fondo NI z-index. `DynamicBackground` es
+         `fixed inset-0 z-0` y ocupa toda la ventana: el footer
+         quedaba debajo del degradado y se leía como un vacío negro
+         al final de la página.
+         Con `relative z-10` sube por encima, y el fondo sólido lo
+         separa visualmente del resto. */
+      className="relative z-10 border-t border-line bg-[#050705] px-6 py-14"
+    >
       <div className="mx-auto flex max-w-6xl flex-col gap-10 md:flex-row md:justify-between">
         <div>
           <p className="font-display text-lg font-bold text-white">
