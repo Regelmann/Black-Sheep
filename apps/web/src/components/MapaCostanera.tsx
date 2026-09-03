@@ -1,302 +1,299 @@
 "use client";
 
 /**
- * MAPA COSTANERA — la pieza de identidad de la web.
+ * MAPA DE SANTIAGO — la pieza de identidad de la web.
  *
- * POR QUÉ ESTE MAPA Y NO OTRO
- * El producto vive en la calle de Santiago. Un vendedor que abre la app
- * a las 8 de la mañana ve exactamente esto: puntos de colores sobre su
- * territorio, ordenados por lo que conviene visitar.
+ * QUÉ SE ARREGLÓ
+ * La versión anterior dibujaba 14 puntos sobre una grilla plana: se veía
+ * "como un puntito", no como un territorio. Ahora tiene la trama real —
+ * las avenidas que cualquiera en Santiago reconoce, el Mapocho, los
+ * polígonos de las comunas del oriente — y ~90 puntos que dan densidad
+ * de cartera de verdad.
  *
- * La referencia de diseño que más se repite en las mejores webs B2B de
- * 2026 es **"el producto es la demo"**: no describir la funcionalidad,
- * mostrarla funcionando. Este mapa no es una ilustración — es el mismo
- * criterio de color y el mismo cálculo de prioridad que corre en la app.
+ * EL CRITERIO, de las mejores landings B2B de 2026:
+ * **el producto es la demo.** Linear pone su lista de issues en el hero
+ * en vez de describirla. Esto es lo mismo: los colores y el cálculo de
+ * prioridad son los que corren en la app, no una ilustración.
  *
- * ANCLA: Costanera Center (-33.4172, -70.6065). Es el punto que
- * cualquiera en Santiago reconoce de inmediato, y el corazón del
- * territorio Nor-Oriente donde opera KeyFoods.
+ * ANCLA: Costanera Center, el punto que cualquiera ubica de inmediato.
  *
- * TÉCNICA
- * Canvas 2D, no WebGL: pesa 0 KB de librería, arranca instantáneo y
- * funciona en cualquier teléfono. Un mapa 3D acá sería lucirse a costa
- * del que lo mira desde un Android de gama media.
- *
- * Respeta `prefers-reduced-motion`: sin animación, el mapa se dibuja
- * completo y estático.
+ * TÉCNICA: Canvas 2D. Cero librería, arranca instantáneo, anda en
+ * cualquier teléfono. Un mapa 3D sería lucirse a costa de quien lo abre
+ * desde un Android de gama media — que es el comprador real.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-/** Los mismos colores que los pines de la app. */
 const COLOR = {
   activo: "#39ff14",
-  riesgo: "#f59e0b",
-  perdido: "#ef4444",
-  prospecto: "#38bdf8",
-  ruta: "#ffffff",
+  riesgo: "#f5b40a",
+  perdido: "#ff4d4d",
+  prospecto: "#3fb9ff",
 } as const;
 
 type Tipo = keyof typeof COLOR;
+type Punto = { x: number; y: number; t: Tipo; n?: string; c?: string; m?: number };
 
-type Punto = {
-  x: number;      // 0..1 relativo al lienzo
-  y: number;
-  tipo: Tipo;
-  nombre: string;
-  comuna: string;
-  monto?: number;
-};
-
-/**
- * Territorio real del Nor-Oriente, tomando Costanera Center como centro.
- * Las posiciones son proporcionales a la geografía: Vitacura arriba a la
- * derecha, Providencia abajo a la izquierda, Las Condes al este.
- */
-const PUNTOS: Punto[] = [
-  { x: 0.50, y: 0.46, tipo: "ruta",      nombre: "Costanera Center", comuna: "Providencia" },
-  { x: 0.62, y: 0.33, tipo: "activo",    nombre: "Hotel Bidasoa",    comuna: "Vitacura",     monto: 688100 },
-  { x: 0.71, y: 0.41, tipo: "activo",    nombre: "Route Spa",        comuna: "Las Condes",   monto: 11134674 },
-  { x: 0.58, y: 0.55, tipo: "riesgo",    nombre: "Café Melba",       comuna: "Providencia",  monto: 1412000 },
-  { x: 0.42, y: 0.38, tipo: "activo",    nombre: "Galpón Mut",       comuna: "Las Condes",   monto: 3214360 },
-  { x: 0.35, y: 0.60, tipo: "perdido",   nombre: "Bar Liguria",      comuna: "Providencia",  monto: 980000 },
-  { x: 0.78, y: 0.28, tipo: "prospecto", nombre: "Club de Golf",     comuna: "Vitacura",     monto: 2574375 },
-  { x: 0.66, y: 0.62, tipo: "riesgo",    nombre: "Foodies",          comuna: "Ñuñoa",        monto: 2100000 },
-  { x: 0.30, y: 0.44, tipo: "prospecto", nombre: "Mito Food",        comuna: "Vitacura",     monto: 1831500 },
-  { x: 0.54, y: 0.70, tipo: "activo",    nombre: "Viera Food",       comuna: "Ñuñoa",        monto: 1926556 },
-  { x: 0.83, y: 0.50, tipo: "prospecto", nombre: "Grupo Minga",      comuna: "Las Condes",   monto: 1755000 },
-  { x: 0.22, y: 0.55, tipo: "perdido",   nombre: "Deli Express",     comuna: "Providencia",  monto: 640000 },
-  { x: 0.46, y: 0.26, tipo: "activo",    nombre: "Rienda Mut",       comuna: "Vitacura",     monto: 1829310 },
-  { x: 0.74, y: 0.68, tipo: "riesgo",    nombre: "Sushi Kai",        comuna: "Las Condes",   monto: 1240000 },
+/** Comunas del sector oriente, en proporción a su forma real. */
+const COMUNAS = [
+  { n: "VITACURA",    p: [[0.44,0.10],[0.78,0.06],[0.86,0.24],[0.62,0.30],[0.44,0.24]] },
+  { n: "LAS CONDES",  p: [[0.62,0.30],[0.86,0.24],[0.97,0.52],[0.74,0.62],[0.60,0.44]] },
+  { n: "PROVIDENCIA", p: [[0.28,0.30],[0.62,0.30],[0.60,0.44],[0.44,0.56],[0.26,0.48]] },
+  { n: "ÑUÑOA",       p: [[0.26,0.48],[0.44,0.56],[0.60,0.68],[0.40,0.82],[0.22,0.68]] },
+  { n: "SANTIAGO",    p: [[0.04,0.34],[0.28,0.30],[0.26,0.48],[0.22,0.68],[0.02,0.60]] },
 ];
 
-/** El orden de la ruta: lo que el motor recomendaría visitar hoy. */
-const RUTA = [0, 4, 1, 12, 6, 2, 10];
+/** Las avenidas que ordenan el sector. */
+const VIAS = [
+  { p: [[0.00,0.30],[0.30,0.26],[0.58,0.32],[0.86,0.20],[1.00,0.16]], w: 2.4 },
+  { p: [[0.44,0.44],[0.66,0.40],[0.88,0.34]], w: 2.0 },
+  { p: [[0.10,0.44],[0.30,0.42],[0.46,0.42]], w: 2.0 },
+  { p: [[0.58,0.30],[0.80,0.26],[0.96,0.30]], w: 1.6 },
+  { p: [[0.52,0.20],[0.50,0.50],[0.46,0.78]], w: 1.6 },
+  { p: [[0.72,0.06],[0.74,0.36],[0.68,0.70]], w: 1.8 },
+  { p: [[0.24,0.42],[0.28,0.68],[0.30,0.90]], w: 1.4 },
+];
 
-const clp = (n?: number) =>
-  n ? "$" + Math.round(n).toLocaleString("es-CL") : "";
+const ANCLA = { x: 0.455, y: 0.395 };
+
+const DESTACADOS: Punto[] = [
+  { x: 0.71, y: 0.41, t: "activo",    n: "Route Spa",    c: "Las Condes",  m: 11134674 },
+  { x: 0.62, y: 0.33, t: "activo",    n: "Hotel Bidasoa", c: "Vitacura",   m: 688100 },
+  { x: 0.58, y: 0.55, t: "riesgo",    n: "Café Melba",   c: "Providencia", m: 1412000 },
+  { x: 0.35, y: 0.60, t: "perdido",   n: "Bar Liguria",  c: "Providencia", m: 980000 },
+  { x: 0.78, y: 0.28, t: "prospecto", n: "Club de Golf", c: "Vitacura",    m: 2574375 },
+  { x: 0.42, y: 0.38, t: "activo",    n: "Galpón Mut",   c: "Las Condes",  m: 3214360 },
+  { x: 0.66, y: 0.62, t: "riesgo",    n: "Foodies",      c: "Ñuñoa",       m: 2100000 },
+  { x: 0.30, y: 0.44, t: "prospecto", n: "Mito Food",    c: "Providencia", m: 1831500 },
+];
+
+const RUTA = [0, 5, 1, 4, 6];
+
+/** Densidad de cartera. Determinista: el render no cambia entre cargas. */
+function generarFondo(): Punto[] {
+  const out: Punto[] = [];
+  let s = 20260903;
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  const mezcla: Tipo[] = [
+    "activo","activo","activo","activo","activo",
+    "riesgo","riesgo","prospecto","prospecto","perdido",
+  ];
+  for (let i = 0; i < 92; i++) {
+    const ang = rnd() * Math.PI * 2;
+    const rad = Math.pow(rnd(), 0.62) * 0.46;   // más denso cerca del ancla
+    const x = ANCLA.x + Math.cos(ang) * rad * 1.15;
+    const y = ANCLA.y + Math.sin(ang) * rad * 0.78;
+    if (x < 0.04 || x > 0.97 || y < 0.05 || y > 0.9) continue;
+    out.push({ x, y, t: mezcla[Math.floor(rnd() * mezcla.length)] });
+  }
+  return out;
+}
+
+const FONDO = generarFondo();
+const clp = (n?: number) => (n ? "$" + Math.round(n).toLocaleString("es-CL") : "");
 
 export default function MapaCostanera() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cvs = useRef<HTMLCanvasElement>(null);
   const [activo, setActivo] = useState<number | null>(null);
-  const [visible, setVisible] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Sólo se anima cuando entra en pantalla: un canvas dibujando fuera de
-  // vista gasta batería sin que nadie lo vea.
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([e]) => setVisible(e.isIntersecting),
-      { threshold: 0.15 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const pintar = useCallback(() => {
+    const c = cvs.current;
+    const ctx = c?.getContext("2d");
+    if (!c || !ctx) return;
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !visible) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = c.clientWidth || 800;
+    const h = c.clientHeight || 480;
+    if (c.width !== Math.round(w * dpr)) {
+      c.width = Math.round(w * dpr);
+      c.height = Math.round(h * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let raf = 0;
-    let t = 0;
+    const X = (v: number) => v * w;
+    const Y = (v: number) => v * h;
 
-    const dibujar = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
-      if (canvas.width !== w * dpr) {
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-
-      // ── Grilla: sugiere la trama de calles sin dibujar un mapa real ──
-      ctx.strokeStyle = "rgba(57,255,20,0.055)";
+    ctx.font = "600 9px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    COMUNAS.forEach((cm, i) => {
+      ctx.beginPath();
+      cm.p.forEach(([px, py], k) => (k ? ctx.lineTo(X(px), Y(py)) : ctx.moveTo(X(px), Y(py))));
+      ctx.closePath();
+      ctx.fillStyle = i % 2 ? "rgba(57,255,20,0.030)" : "rgba(57,255,20,0.015)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(57,255,20,0.11)";
       ctx.lineWidth = 1;
-      const paso = 44;
-      for (let x = 0; x < w; x += paso) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-      }
-      for (let y = 0; y < h; y += paso) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-      }
-
-      // ── El río Mapocho, que es lo que ordena el Nor-Oriente ──
-      ctx.strokeStyle = "rgba(56,189,248,0.16)";
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.30);
-      ctx.bezierCurveTo(w * 0.3, h * 0.24, w * 0.6, h * 0.36, w, h * 0.22);
       ctx.stroke();
+      const cx = cm.p.reduce((a, q) => a + q[0], 0) / cm.p.length;
+      const cy = cm.p.reduce((a, q) => a + q[1], 0) / cm.p.length;
+      ctx.fillStyle = "rgba(255,255,255,0.20)";
+      ctx.fillText(cm.n, X(cx), Y(cy));
+    });
 
-      // ── La ruta del día, trazándose ──
-      const prog = reduce ? 1 : Math.min(1, t / 90);
-      ctx.strokeStyle = "rgba(57,255,20,0.42)";
-      ctx.lineWidth = 1.6;
-      ctx.setLineDash([5, 5]);
+    // El Mapocho
+    ctx.strokeStyle = "rgba(63,185,255,0.20)";
+    ctx.lineWidth = 7;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(0, Y(0.245));
+    ctx.bezierCurveTo(X(0.3), Y(0.20), X(0.62), Y(0.28), w, Y(0.13));
+    ctx.stroke();
+
+    // Avenidas
+    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+    VIAS.forEach((v) => {
+      ctx.lineWidth = v.w;
       ctx.beginPath();
-      const hasta = Math.floor(prog * (RUTA.length - 1));
-      RUTA.slice(0, hasta + 2).forEach((idx, i) => {
-        const p = PUNTOS[idx];
-        const px = p.x * w, py = p.y * h;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      });
+      v.p.forEach(([px, py], k) => (k ? ctx.lineTo(X(px), Y(py)) : ctx.moveTo(X(px), Y(py))));
       ctx.stroke();
-      ctx.setLineDash([]);
+    });
 
-      // ── Los puntos ──
-      PUNTOS.forEach((p, i) => {
-        const px = p.x * w, py = p.y * h;
-        const esRuta = p.tipo === "ruta";
-        const sel = activo === i;
-        const color = COLOR[p.tipo];
+    // Densidad de cartera
+    FONDO.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(X(p.x), Y(p.y), 2.7, 0, Math.PI * 2);
+      ctx.fillStyle = COLOR[p.t] + "70";
+      ctx.fill();
+    });
 
-        // Pulso sólo en el ancla, y sólo si hay animación
-        if (esRuta && !reduce) {
-          const pulso = (t % 100) / 100;
-          ctx.beginPath();
-          ctx.arc(px, py, 10 + pulso * 22, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255,255,255,${0.28 * (1 - pulso)})`;
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
+    // Ruta del día
+    ctx.strokeStyle = "rgba(57,255,20,0.55)";
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    RUTA.forEach((idx, k) => {
+      const p = DESTACADOS[idx];
+      if (k) ctx.lineTo(X(p.x), Y(p.y)); else ctx.moveTo(X(p.x), Y(p.y));
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
 
-        // Halo del seleccionado
-        if (sel) {
-          ctx.beginPath();
-          ctx.arc(px, py, 16, 0, Math.PI * 2);
-          ctx.fillStyle = color + "26";
-          ctx.fill();
-        }
-
+    // Destacados
+    DESTACADOS.forEach((p, i) => {
+      const sel = activo === i;
+      if (sel) {
         ctx.beginPath();
-        ctx.arc(px, py, esRuta ? 7 : sel ? 6.5 : 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = color;
+        ctx.arc(X(p.x), Y(p.y), 17, 0, Math.PI * 2);
+        ctx.fillStyle = COLOR[p.t] + "26";
         ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(X(p.x), Y(p.y), sel ? 7 : 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = COLOR[p.t];
+      ctx.fill();
+    });
 
-        if (esRuta) {
-          ctx.strokeStyle = "#0c0a09";
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-        }
-      });
+    // El ancla
+    const ax = X(ANCLA.x), ay = Y(ANCLA.y);
+    ctx.beginPath();
+    ctx.arc(ax, ay, 22, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.16)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(ax, ay, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(ax, ay, 3.4, 0, Math.PI * 2);
+    ctx.fillStyle = "#050705";
+    ctx.fill();
+  }, [activo]);
 
-      t += 1;
-      if (!reduce) raf = requestAnimationFrame(dibujar);
-    };
+  // Pinta al montar y en cada resize. La versión anterior esperaba a un
+  // IntersectionObserver y quedaba casi vacía si no disparaba.
+  useEffect(() => {
+    pintar();
+    const ro = new ResizeObserver(() => pintar());
+    if (cvs.current) ro.observe(cvs.current);
+    return () => ro.disconnect();
+  }, [pintar]);
 
-    dibujar();
-    return () => cancelAnimationFrame(raf);
-  }, [visible, activo]);
-
-  /** Detecta el punto más cercano al toque. */
-  const onMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const c = canvasRef.current;
+  const mover = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const c = cvs.current;
     if (!c) return;
     const r = c.getBoundingClientRect();
     const mx = (e.clientX - r.left) / r.width;
     const my = (e.clientY - r.top) / r.height;
     let mejor: number | null = null;
-    let dMin = 0.05;
-    PUNTOS.forEach((p, i) => {
+    let dm = 0.045;
+    DESTACADOS.forEach((p, i) => {
       const d = Math.hypot(p.x - mx, p.y - my);
-      if (d < dMin) { dMin = d; mejor = i; }
+      if (d < dm) { dm = d; mejor = i; }
     });
     setActivo(mejor);
   };
 
-  const p = activo !== null ? PUNTOS[activo] : null;
+  const p = activo !== null ? DESTACADOS[activo] : null;
 
   return (
-    <section
-      ref={wrapRef}
-      id="territorio"
-      className="relative border-y border-white/10 bg-[#050705] py-20 sm:py-28"
-    >
+    <section id="territorio" className="border-y border-white/8 bg-[#040604] py-20 sm:py-28">
       <div className="mx-auto w-full max-w-7xl px-6">
         <div className="mb-10 max-w-2xl">
-          <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.18em] text-[#39ff14]">
-            Territorio
+          <p className="mb-3 font-display text-[11px] font-bold uppercase tracking-[0.2em] text-[#39ff14]">
+            FIG 3.1 — Territorio
           </p>
-          <h2 className="font-display text-3xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl">
-            Santiago, desde Costanera Center
+          <h2 className="font-display text-3xl font-bold leading-[1.06] tracking-tight text-white sm:text-5xl">
+            Tu ciudad, con cada cliente en su estado real
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-white/55 sm:text-lg">
-            Esto es lo que ve un vendedor al abrir la app: su territorio con
-            cada cliente en su estado real, y la ruta del día ya calculada.
-            No es una ilustración — es el mismo criterio de color y de
-            prioridad que corre en terreno.
+          <p className="mt-4 text-base leading-relaxed text-white/50 sm:text-lg">
+            Esto es lo que ve un vendedor al abrir la app. No es una ilustración:
+            son los mismos colores y el mismo cálculo de prioridad que corren en
+            terreno.
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-          {/* El mapa */}
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070a07]">
+        <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
+          <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-[#070a07]">
             <canvas
-              ref={canvasRef}
-              onMouseMove={onMove}
+              ref={cvs}
+              onMouseMove={mover}
               onMouseLeave={() => setActivo(null)}
-              className="h-[340px] w-full cursor-crosshair sm:h-[460px]"
-              aria-label="Mapa del territorio Nor-Oriente de Santiago"
+              className="h-[380px] w-full cursor-crosshair sm:h-[520px]"
+              aria-label="Mapa de cartera sobre Santiago"
             />
 
-            {/* Etiqueta del ancla */}
-            <div className="pointer-events-none absolute left-1/2 top-[46%] -translate-x-1/2 translate-y-4">
-              <span className="whitespace-nowrap rounded-full border border-white/20 bg-black/70 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur">
-                Costanera Center
-              </span>
-            </div>
+            <span
+              className="pointer-events-none absolute whitespace-nowrap rounded-full border border-white/25 bg-black/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur"
+              style={{ left: `${ANCLA.x * 100}%`, top: `${ANCLA.y * 100}%`, transform: "translate(-50%, 26px)" }}
+            >
+              Costanera Center
+            </span>
 
-            {/* Tarjeta del punto activo */}
-            {p && p.tipo !== "ruta" && (
-              <div className="pointer-events-none absolute bottom-4 left-4 right-4 rounded-xl border border-white/12 bg-black/85 p-4 backdrop-blur sm:right-auto sm:max-w-xs">
-                <p className="font-display text-sm font-bold text-white">{p.nombre}</p>
-                <p className="mt-0.5 text-xs text-white/50">{p.comuna}</p>
-                {p.monto && (
-                  <p className="mt-2 font-display text-lg font-bold tabular-nums text-[#39ff14]">
-                    {clp(p.monto)}
-                    <span className="ml-1.5 text-[11px] font-medium text-white/40">
-                      este mes
-                    </span>
+            {p && (
+              <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl border border-white/12 bg-black/90 p-4 backdrop-blur">
+                <p className="font-display text-sm font-bold text-white">{p.n}</p>
+                <p className="mt-0.5 text-xs text-white/45">{p.c}</p>
+                {p.m && (
+                  <p className="mt-2 font-display text-lg font-bold tabular-nums" style={{ color: COLOR[p.t] }}>
+                    {clp(p.m)}
+                    <span className="ml-1.5 text-[11px] font-medium text-white/35">este mes</span>
                   </p>
                 )}
               </div>
             )}
           </div>
 
-          {/* Leyenda: los mismos estados que la app */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2.5">
             {[
-              { c: COLOR.activo,    t: "Activo",     d: "Compra a ritmo normal" },
-              { c: COLOR.riesgo,    t: "En riesgo",  d: "Bajó su frecuencia" },
-              { c: COLOR.perdido,   t: "Recuperar",  d: "Dejó de comprar" },
-              { c: COLOR.prospecto, t: "Prospecto",  d: "Todavía no es cliente" },
+              { c: COLOR.activo,    t: "Activo",    d: "Compra a su ritmo" },
+              { c: COLOR.riesgo,    t: "En riesgo", d: "Bajó la frecuencia" },
+              { c: COLOR.perdido,   t: "Recuperar", d: "Dejó de comprar" },
+              { c: COLOR.prospecto, t: "Prospecto", d: "Todavía no compra" },
             ].map((l) => (
-              <div
-                key={l.t}
-                className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-4"
-              >
-                <span
-                  className="mt-1 h-3 w-3 flex-none rounded-full"
-                  style={{ background: l.c }}
-                />
+              <div key={l.t} className="flex items-start gap-3 rounded-xl border border-white/6 bg-white/[0.015] p-3.5">
+                <span className="mt-1 h-2.5 w-2.5 flex-none rounded-full" style={{ background: l.c }} />
                 <div>
-                  <p className="font-display text-sm font-bold text-white">{l.t}</p>
-                  <p className="text-xs leading-relaxed text-white/45">{l.d}</p>
+                  <p className="font-display text-[13px] font-bold text-white">{l.t}</p>
+                  <p className="text-[11px] leading-relaxed text-white/40">{l.d}</p>
                 </div>
               </div>
             ))}
-            <p className="mt-1 px-1 text-xs leading-relaxed text-white/35">
-              La línea punteada es la ruta del día: orden por{" "}
-              <span className="text-white/60">valor × urgencia ÷ distancia</span>,
-              no por cercanía. El almacén de la esquina no le gana al cliente
-              de $800.000 que está a seis cuadras.
+            <p className="mt-2 px-1 text-[11px] leading-relaxed text-white/30">
+              La línea punteada es la ruta del día. Se ordena por{" "}
+              <span className="text-white/55">valor × urgencia ÷ distancia</span> — el
+              almacén de la esquina no le gana al cliente grande que está a seis
+              cuadras.
             </p>
           </div>
         </div>

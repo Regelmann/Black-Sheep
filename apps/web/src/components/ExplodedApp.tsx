@@ -147,7 +147,13 @@ export default function ExplodedApp() {
       <style jsx>{`
         .bs-explode-wrap {
           position: relative;
-          height: 100vh;
+          /* 🔴 SE VEÍA QUEBRADO:
+             height:100vh + overflow:hidden con capas de 640px que se
+             separan hasta 105px hacia abajo. En un portátil de 800px
+             de alto la pila no entra y las capas quedan cortadas por
+             el borde. min-height + padding le dan aire real. */
+          min-height: 100vh;
+          padding: 7rem 0 5rem;
           perspective: 1400px;
           display: flex;
           align-items: center;
@@ -187,9 +193,17 @@ export default function ExplodedApp() {
         }
         .bs-stack {
           position: relative;
-          width: min(320px, 72vw);
-          height: 640px;
+          width: min(300px, 70vw);
+          /* La pila escala con el alto de la ventana en vez de estar
+             fija en 640px. Así entra completa en cualquier pantalla. */
+          height: min(560px, 62vh);
           transform-style: preserve-3d;
+        }
+        @media (max-width: 900px) {
+          /* En móvil el efecto 3D se lee mal y come rendimiento:
+             las capas se apilan planas, que es más legible. */
+          .bs-explode-wrap { perspective: none; padding: 5rem 0 4rem; }
+          .bs-stack { height: min(480px, 58vh); }
         }
         .bs-layer {
           position: absolute;

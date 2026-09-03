@@ -17,8 +17,8 @@ const TIMELINE = [
   },
   {
     time: "09:20",
-    title: "KeyFoods Central",
-    body: "NBA sugerida: reponer el stock crítico del SKU más vendido antes del fin de semana. Venta $1.240.000.",
+    title: "tu empresa Central",
+    body: "Próxima acción: reponer el stock crítico del SKU más vendido antes del fin de semana. Venta $1.240.000.",
   },
   {
     time: "11:05",
@@ -65,7 +65,7 @@ function PhoneMock() {
                 Hoy · Mar 24
               </p>
               <p className="font-display text-base font-black text-white">
-                Hola, Camilo
+                Hola, Matías
               </p>
             </div>
             <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-primary to-primary-soft font-display text-[11px] font-black text-white">
@@ -99,7 +99,7 @@ function PhoneMock() {
             </div>
           </div>
 
-          {/* NBA destacada */}
+          {/* próxima acción destacada */}
           <div className="mx-5 mt-3 rounded-2xl border border-mint/25 bg-mint/8 p-3.5">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1 rounded-md bg-mint/15 px-2 py-0.5 text-[9px] font-black tracking-widest text-mint uppercase">
@@ -111,7 +111,7 @@ function PhoneMock() {
               Reponer stock crítico
             </p>
             <p className="mt-0.5 flex items-center gap-1 text-[10px] text-ink">
-              <MapPin size={9} /> KeyFoods Central · SKU 0884
+              <MapPin size={9} /> tu empresa Central · SKU 0884
             </p>
             <div className="mt-2.5 grid h-8 place-items-center rounded-lg bg-mint text-[11px] font-black text-navy-deep">
               Iniciar visita

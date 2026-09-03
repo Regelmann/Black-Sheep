@@ -31,7 +31,7 @@ type TabId = (typeof TABS)[number]["id"];
 
 const STOPS = [
   { n: 1, local: "Minimarket Los Trapenses", zona: "Vitacura", time: "09:20", state: "done" },
-  { n: 2, local: "KeyFoods Central", zona: "Providencia", time: "10:05", state: "done" },
+  { n: 2, local: "tu empresa Central", zona: "Providencia", time: "10:05", state: "done" },
   { n: 3, local: "Botillería San Miguel 26", zona: "San Miguel", time: "11:10", state: "current" },
   { n: 4, local: "Almacén El Trébol", zona: "Maipú", time: "12:40", state: "next" },
   { n: 5, local: "Panadería Central", zona: "Ñuñoa", time: "15:15", state: "next" },
@@ -177,7 +177,7 @@ function PreciosPanel() {
           </span>
         ))}
         <span className="ml-auto rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary-soft">
-          Cliente: KeyFoods Central
+          Cliente: tu empresa Central
         </span>
       </div>
 
@@ -249,7 +249,7 @@ function PedidosPanel() {
         <div className="flex items-center justify-between border-b border-line/50 px-4 py-3">
           <div>
             <p className="font-display text-sm font-black text-white">Pedido #4821</p>
-            <p className="text-[10px] text-ink/70">KeyFoods Central · 10:07 hrs</p>
+            <p className="text-[10px] text-ink/70">tu empresa Central · 10:07 hrs</p>
           </div>
           <span className="rounded-lg border border-mint/30 bg-mint/10 px-2.5 py-1 text-[10px] font-black tracking-widest text-mint uppercase">
             Aprobado automático
