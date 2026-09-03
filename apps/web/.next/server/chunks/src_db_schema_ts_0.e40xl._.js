@@ -1,3 +1,0 @@
-module.exports=[18916,e=>{"use strict";var a=e.i(94093),t=e.i(5694),l=e.i(84259),r=e.i(3090),i=e.i(23624);let n=(0,a.pgTable)("leads",{id:(0,t.serial)("id").primaryKey(),nombre:(0,i.varchar)("nombre",{length:120}).notNull(),empresa:(0,i.varchar)("empresa",{length:160}),email:(0,i.varchar)("email",{length:180}).notNull(),telefono:(0,i.varchar)("telefono",{length:40}),tamanoEquipo:(0,i.varchar)("tamano_equipo",{length:40}),mensaje:(0,l.text)("mensaje"),createdAt:(0,r.timestamp)("created_at",{withTimezone:!0}).defaultNow().notNull()});e.s(["leads",0,n])}];
-
-//# sourceMappingURL=src_db_schema_ts_0.e40xl._.js.map
