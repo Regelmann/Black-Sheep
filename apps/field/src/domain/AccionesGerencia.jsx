@@ -28,6 +28,7 @@ import {
 import { traerTodo } from '../lib/traerTodo.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 import { TabProspectos } from './TabProspectos.jsx'
+import { PanelZonas } from './PanelZonas.jsx'
 import { AsignarClientes } from './AsignarClientes.jsx'
 
 const clp = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')
@@ -69,6 +70,14 @@ export function AccionesGerencia({ rows, onFlash }) {
         </button>
         <button
           type="button"
+          className={'dg-accion' + (panel === 'zonas' ? ' is-on' : '')}
+          onClick={() => setPanel(panel === 'zonas' ? null : 'zonas')}
+        >
+          <strong>Zonas y ejecutivos</strong>
+          <span>Crear · renombrar · metas · asignar</span>
+        </button>
+        <button
+          type="button"
           className={'dg-accion' + (panel === 'prospectos' ? ' is-on' : '')}
           onClick={() => setPanel(panel === 'prospectos' ? null : 'prospectos')}
         >
@@ -81,6 +90,7 @@ export function AccionesGerencia({ rows, onFlash }) {
       {panel === 'asignar'    && <AsignarClientes onFlash={onFlash} />}
       {panel === 'precios'    && <PanelPrecios onFlash={onFlash} />}
       {panel === 'asignar'    && <PanelAsignar rows={rows} onFlash={onFlash} />}
+      {panel === 'zonas'      && <PanelZonas onFlash={onFlash} />}
       {panel === 'prospectos' && (
         <div className="dg-panel-embed"><TabProspectos onFlash={onFlash} /></div>
       )}

@@ -367,3 +367,28 @@
   background: var(--dg-lima); color: var(--dg-neg);
   font-family: inherit; font-size: 14px; font-weight: 800; cursor: pointer;
 }
+
+/* --- Zonas y ejecutivos ---------------------------------------- */
+.dg-zona-punto {
+  display: inline-block;
+  width: 10px; height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.dg-inline {
+  min-height: 36px;
+  margin: 0;
+  padding: 0 9px;
+  font-size: 13px;
+}
+.dg-sub-titulo {
+  margin: 22px 0 6px;
+  font-size: 15px; font-weight: 800;
+  color: var(--dg-txt, #f5f5f4);
+}
+.dg-sub-mail {
+  display: block;
+  font-size: 11px;
+  color: var(--dg-mut, #8a8078);
+}

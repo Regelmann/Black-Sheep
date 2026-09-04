@@ -1,6 +1,6 @@
 # DEPLOY — paso a paso
 
-**Versión:** `v-BS-PLATFORM-V14.5`
+**Versión:** `v-BS-PLATFORM-V14.6`
 
 Este documento se actualiza **en cada entrega**. Si una versión trae SQL nuevo,
 aparece en la sección 2.
@@ -93,6 +93,7 @@ uno termine antes del siguiente.
 39_PORTAL_PEDIDOS.sql           ← historial de pedidos por token de catálogo
 40_STOCK_COLUMNAS_CICLO.sql     ← stock acepta las 26 columnas del ciclo
 41_VENTAS_LINEAS.sql            ← 🔴 la tabla que hace funcionar el incremental
+42_ZONAS_CONFIGURABLES.sql      ← 🔴 zonas como DATOS, no código (base de replicación)
 44_VENTAS_INTEGRACION_TOTAL.sql ← integración de ventas por canal
 46_VENTAS_REPORTES_APP.sql      ← reportes de la página Ventas
 47_STORAGE_CARGAS.sql           ← 🔴 bucket de los 4 archivos, aislado por empresa
@@ -181,7 +182,7 @@ borrados antes de confirmar.
 Vercel despliega solo al recibir el push. Verificar:
 
 1. **Deployments** → el último debe decir *Ready*
-2. Abrir `app.black-sheep.cl` → el stamp abajo debe decir **`v-BS-PLATFORM-V14.5`**
+2. Abrir `app.black-sheep.cl` → el stamp abajo debe decir **`v-BS-PLATFORM-V14.6`**
 
 **Si el stamp no cambió:** hay un rollback activo. Deployments → buscar el
 deploy correcto → menú `⋯` → **Promote to Production**.
@@ -282,7 +283,7 @@ GDRIVE_SA_JSON · GDRIVE_FOLDER_ID
 [ ] 2 · 00_VERIFICAR_ESTADO.sql de nuevo → sin ❌
 [ ] 3 · npm run verify → verde
 [ ] 3 · git push
-[ ] 4 · Stamp en pantalla dice v-BS-PLATFORM-V14.5
+[ ] 4 · Stamp en pantalla dice v-BS-PLATFORM-V14.6
 [ ] 5 · Puntos 1-8 de la prueba de humo
 [ ] 5 · Punto 9 — modo avión (el que importa)
 ```
