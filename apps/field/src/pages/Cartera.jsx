@@ -1187,15 +1187,21 @@ export default function Cartera({ session }) {
                       <div className="cli-bloqueo" style={{ marginTop: 12 }}>
                         {c.es_bloqueado ? (
                           <button type="button" className="blq-btn blq-off" onClick={() => desbloquear(c)}>
-                            Desbloquear
+                            ✓ Desbloquear cliente
                           </button>
                         ) : (
                           <>
-                            <button type="button" className="blq-btn blq-on" onClick={() => bloquear(c, 'cerrado')}>
-                              Cerrado
+                            {/* 🔴 "Cerrado" y "Deuda" eran dos botones idénticos
+                                sin decir qué hacían. Ahora el rótulo dice la
+                                ACCIÓN y cada uno tiene su color: cerrado es
+                                una situación temporal, deuda es un bloqueo
+                                comercial. No son lo mismo. */}
+                            <span className="blq-label">No vender:</span>
+                            <button type="button" className="blq-btn blq-cerrado" onClick={() => bloquear(c, 'cerrado')}>
+                              Local cerrado
                             </button>
-                            <button type="button" className="blq-btn blq-on" onClick={() => bloquear(c, 'deuda')}>
-                              Deuda
+                            <button type="button" className="blq-btn blq-deuda" onClick={() => bloquear(c, 'deuda')}>
+                              Tiene deuda
                             </button>
                           </>
                         )}

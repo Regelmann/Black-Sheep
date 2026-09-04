@@ -458,15 +458,26 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
         )}
 
         <footer className="kf-sheet-foot">
+          {/* 🔴 El botón y el enlace NO tenían clase: el navegador les
+              aplicaba su apariencia nativa —gris, cuadrada, de otro
+              sistema— en medio de una pantalla con estilo propio. */}
           {publicLink && (
             <div className="kf-offer-link">
+              <p className="kf-offer-link-label">Link del catálogo para el cliente</p>
               <span className="kf-offer-link-url">{publicLink}</span>
-              <button type="button" onClick={copyLink}>
-                {copied ? 'Copiado' : 'Copiar'}
-              </button>
-              <a href={publicLink} target="_blank" rel="noreferrer">
-                Ver
-              </a>
+              <div className="kf-offer-link-acciones">
+                <button type="button" className="kf-link-btn" onClick={copyLink}>
+                  {copied ? '✓ Copiado' : 'Copiar link'}
+                </button>
+                <a
+                  href={publicLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="kf-link-btn kf-link-btn-ghost"
+                >
+                  Ver catálogo ↗
+                </a>
+              </div>
             </div>
           )}
           {msg && <div className="kf-offer-msg">{msg}</div>}

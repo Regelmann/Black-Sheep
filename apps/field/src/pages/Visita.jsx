@@ -646,8 +646,12 @@ export default function Visita({ session }) {
         </div>
       </div>
 
-      <div style={{ padding: '0 14px', marginTop: -18 }}>
-        {/* Stepper glanceable — patrón Field Service */}
+      {/* 🔴 `marginTop: -18` SUBÍA ESTE BLOQUE DEBAJO DE LA TARJETA
+          del encabezado, que lo tapaba: "1 · Llegada 2 · Pedido
+          3 · Cierre" quedaba cortado por el borde del degradado.
+          Sin margen negativo, y con aire propio. */}
+      <div style={{ padding: '0 14px', marginTop: 14 }}>
+        {/* Stepper: en qué paso de la visita está */}
         <div className="bs-visit-steps">
           <span className={paso >= 1 ? 'on' : ''}>1 · Llegada</span>
           <span className={paso >= 2 ? 'on' : ''}>2 · Pedido</span>

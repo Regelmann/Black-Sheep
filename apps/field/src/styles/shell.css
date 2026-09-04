@@ -1208,12 +1208,23 @@ html, body {
 /* --- 3 · Clientes: las tarjetas de estado, alineadas -------------
    Se veían 4 arriba y 3 abajo, sin alinear con el margen de la
    página. Una grilla de 4 columnas fijas resuelve las dos cosas. */
+/* 🔴 SALÍAN 4 ARRIBA Y 3 ABAJO PEGADAS A LA IZQUIERDA.
+   Una grilla de 4 columnas deja la última fila alineada al inicio.
+   Con flex + wrap y `justify-content: center`, las 3 que sobran
+   quedan centradas — que es lo que se espera al mirarlo.
+   El ancho sale de --sg-cols, que el componente ya pasa. */
 .bs-statgrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   padding: 0 16px;
   margin-bottom: 12px;
+}
+.bs-statgrid > * {
+  flex: 0 1 calc((100% - 3 * 8px) / var(--sg-cols, 4));
+  min-width: 78px;
+  max-width: 160px;
 }
 .bs-statgrid > * {
   min-width: 0;
@@ -1248,18 +1259,44 @@ html, body {
 input, select, textarea, button {
   font-family: inherit;
 }
-.bs-search, .bs-search input, input.search, .search {
+/* 🔴 EL BUSCADOR SE SUPERPONÍA CON LOS FILTROS.
+   La regla anterior aplicaba borde, fondo y min-height al CONTENEDOR
+   `.bs-search` (un div) Y al input adentro: dos cajas de 48px, una
+   dentro de la otra, empujando los chips de filtro hacia arriba.
+
+   Ahora la caja la dibuja el contenedor y el input va desnudo. */
+.bs-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   min-height: 48px;
   padding: 0 14px;
+  margin: 0 0 10px;
   border: 1.5px solid var(--line-2, #d6cfc4);
   border-radius: 13px;
   background: #fff;
+  box-sizing: border-box;
+}
+.bs-search:focus-within {
+  border-color: var(--brand, #c2410c);
+  box-shadow: 0 0 0 3px rgba(194,65,12,.12);
+}
+.bs-search-icon { flex: 0 0 auto; color: var(--ink-3, #78716c); }
+.bs-search-input, .bs-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
   font-family: inherit;
   font-size: 16px;              /* 16 reales: sin zoom en iOS */
   font-weight: 500;
   color: var(--ink, #1c1917);
-  box-sizing: border-box;
 }
 
 /* --- 5 · Los filtros: todos visibles, no algunos -----------------
@@ -1309,4 +1346,176 @@ button[data-copy] {
   border: 1px solid var(--danger-lt3, #fecaca);
   color: var(--danger-dk, #b91c1c);
   font-size: 12.5px; font-weight: 600; line-height: 1.4;
+}
+
+/* --- Visita · el stepper -----------------------------------------
+   No tenía NINGÚN estilo: eran tres <span> sueltos en una línea, sin
+   separación ni jerarquía. Ahora se lee de un vistazo en qué paso va
+   la visita, que es para lo que existe. */
+.bs-visit-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--surface-2, #f0ece6);
+  border: 1px solid var(--line, #ebe5dc);
+}
+.bs-visit-steps span {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 9px 4px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-3, #78716c);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 160ms ease, color 160ms ease;
+}
+/* El paso alcanzado se marca: el vendedor ve el avance sin leer. */
+.bs-visit-steps span.on {
+  background: #fff;
+  color: var(--brand, #c2410c);
+  box-shadow: 0 1px 3px rgba(28,25,23,.10);
+}
+@media (max-width: 360px) {
+  .bs-visit-steps span { font-size: 11.5px; padding: 8px 2px; }
+}
+
+/* --- Cartera · bloquear cliente ----------------------------------
+   "Cerrado" y "Deuda" eran dos botones con la misma clase y sin
+   contexto: parecían lo mismo. Ahora la fila dice "No vender:" y cada
+   motivo tiene su color, porque no son la misma situación —cerrado se
+   resuelve solo, la deuda la resuelve cobranza. */
+.cli-bloqueo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2, #f7f4ef);
+  border: 1px solid var(--line, #ebe5dc);
+}
+.blq-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3, #78716c);
+}
+.blq-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.blq-cerrado {
+  background: #fff;
+  border: 1.5px solid var(--ink-4, #a8a29e);
+  color: var(--ink-2, #44403c);
+}
+.blq-deuda {
+  background: var(--danger-lt, #fef2f2);
+  border: 1.5px solid var(--danger-lt3, #fecaca);
+  color: var(--danger-dk, #b91c1c);
+}
+.blq-off {
+  flex: 1 1 auto;
+  background: var(--ok-lt3, #d1fae5);
+  border: 1.5px solid var(--ok-mid, #16a34a);
+  color: var(--ok-dk, #166534);
+  font-weight: 800;
+}
+
+/* --- Catálogo del cliente · el link ------------------------------
+   El botón "Copiar" y el enlace "Ver" no tenían clase: salían con la
+   apariencia nativa del navegador —gris, cuadrada— en medio de una
+   pantalla con estilo propio. Se veía como un cuadro de diálogo de
+   otro sistema. */
+.kf-offer-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 13px;
+  background: var(--surface-2, #f7f4ef);
+  border: 1px solid var(--line, #ebe5dc);
+}
+.kf-offer-link-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-3, #78716c);
+}
+.kf-offer-link-url {
+  display: block;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #fff;
+  border: 1px solid var(--line, #ebe5dc);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--ink-2, #44403c);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kf-offer-link-acciones { display: flex; gap: 8px; }
+.kf-link-btn {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--brand, #c2410c);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kf-link-btn-ghost {
+  background: #fff;
+  border: 1.5px solid var(--line-2, #d6cfc4);
+  color: var(--ink-2, #44403c);
+}
+
+/* --- Hoy · focos del mes -----------------------------------------
+   Estaban dentro de un <details>: había que desplegarlos. Un foco que
+   no se ve no cumple su función. Ahora abiertos, pegados a la venta,
+   porque responden la misma pregunta: cómo viene el mes. */
+.bs-hoy-focos { margin: 0 0 14px; }
+.bs-hoy-focos .bs-hoy-nba-label { margin-bottom: 8px; }
+
+/* --- Selector de zona · nombre completo --------------------------
+   Se volvió a NOR-ORIENTE / NOR-PONIENTE / ZONA SUR: "N-Oriente"
+   ahorraba tres letras y se leía peor. Con nombres largos la letra
+   baja y el espaciado se ajusta, pero nada se corta. */
+.bs-seg-btn {
+  font-size: 12px;
+  letter-spacing: .01em;
+  padding: 0 2px;
+}
+@media (max-width: 400px) {
+  .bs-seg-btn { font-size: 10.5px; letter-spacing: 0; }
+}
+@media (min-width: 480px) {
+  .bs-seg-btn { font-size: 13px; }
 }

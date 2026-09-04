@@ -3,7 +3,7 @@
 PWA de ventas en terreno para distribución de alimentos.
 Multi-tenant. Cliente principal: **KeyFoods** (Santiago, Chile).
 
-> **`v-BS-PLATFORM-V14.0`** · guard ✅ · 24/24 tests · build ✓
+> **`v-BS-PLATFORM-V14.4`** · guard ✅ · 24/24 tests · build ✓
 
 ---
 

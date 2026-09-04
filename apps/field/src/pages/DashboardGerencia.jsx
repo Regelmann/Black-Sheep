@@ -30,6 +30,9 @@ import { supabase } from '../lib/supabase.js'
 import { traerTodo } from '../lib/traerTodo.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 import { AccionesGerencia } from '../domain/AccionesGerencia.jsx'
+import CargaArchivos from '../domain/CargaArchivos.jsx'
+import { useParams, useNavigate } from 'react-router-dom'
+import { loadSavedTenantId } from '../lib/tenants.js'
 
 const clp = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')
 const clpCorto = (n) => {
@@ -43,13 +46,31 @@ const clpCorto = (n) => {
 /** Los canales de terreno tienen meta; los demás no. */
 const ZONAS_TERRENO = new Set(['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR'])
 
-export default function DashboardGerencia() {
+export default function DashboardGerencia({ seccion = null }) {
+  const { empresa } = useParams()
+  const navegar = useNavigate()
+  // Si la URL trae empresa (/keyfoods/dashboard) manda esa; si no, la
+  // sesión. Así el mismo componente sirve para una instalación de un
+  // solo tenant y para el modo multi-empresa.
+  const tenantId = empresa || loadSavedTenantId() || 'keyfoods'
+  const [vista, setVista] = useState(seccion || 'tablero')
   const [rows, setRows] = useState([])
   const [metas, setMetas] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
   const [detalle, setDetalle] = useState(null)   // canal abierto
   const [aviso, setAviso] = useState(null)
+
+  // La URL canónica lleva la empresa: /keyfoods/dashboard.
+  // Si se entró por /dashboard a secas, se reescribe — así el gerente
+  // puede compartir el link y cada cliente tiene el suyo propio, que
+  // es lo que hace falta para replicar a otras empresas.
+  useEffect(() => {
+    if (!empresa && tenantId) {
+      const cola = seccion === 'datos' ? 'datos' : 'dashboard'
+      navegar(`/${tenantId}/${cola}`, { replace: true })
+    }
+  }, [empresa, tenantId, seccion, navegar])
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -131,11 +152,37 @@ export default function DashboardGerencia() {
           <p className="dg-kicker">Black Sheep · Dashboard</p>
           <h1 className="dg-title">El negocio completo</h1>
         </div>
+        <nav className="dg-tabs">
+          <button
+            type="button"
+            className={'dg-tab' + (vista === 'tablero' ? ' is-on' : '')}
+            onClick={() => setVista('tablero')}
+          >
+            Tablero
+          </button>
+          <button
+            type="button"
+            className={'dg-tab' + (vista === 'datos' ? ' is-on' : '')}
+            onClick={() => setVista('datos')}
+          >
+            Cargar datos
+          </button>
+        </nav>
+
         <div className="dg-head-total">
           <span className="dg-head-label">Venta del mes · todos los canales</span>
           <strong className="dg-head-monto">{clp(total)}</strong>
         </div>
       </header>
+
+      {vista === 'datos' && (
+        <CargaArchivos
+          tenantId={tenantId}
+          onListo={() => { setVista('tablero'); cargar() }}
+        />
+      )}
+
+      {vista === 'tablero' && (<>
 
       {/* Fila 1 · los números que definen el mes */}
       <section className="dg-kpis">
@@ -260,6 +307,8 @@ export default function DashboardGerencia() {
           {aviso.msg}
         </div>
       )}
+
+      </>)}
 
       <footer className="dg-foot">
         <span>{rows.length.toLocaleString('es-CL')} clientes en la maestra · {porCanal.length} canales</span>

@@ -60,13 +60,19 @@ export function NavBar({ esGerente, onLogout }) {
     { to: '/cartera', label: 'Clientes',icon: ICON.clientes },
     { to: '/stock',   label: 'Stock',   icon: ICON.stock },
   ]
-  const morePaths = ['/gerencia', '/admin']
+  // 🔴 EL DASHBOARD NO ERA ALCANZABLE DESDE EL TELÉFONO.
+  // Estaba construido, con ruta y con la carga de los 4 archivos, pero
+  // ningún botón llevaba ahí: sólo se llegaba escribiendo la URL. Es el
+  // mismo patrón que ya vimos con GoalCard y con Ventas.
+  const morePaths = ['/gerencia', '/dashboard', '/datos', '/admin']
   const moreActive = morePaths.some(p => loc.pathname.startsWith(p))
 
   const moreItems = []
   if (esGerente) {
     moreItems.push(
-      { to: '/gerencia', label: 'Gerencia', sub: 'Resultado del mes y mix', icon: ICON.gerencia },
+      { to: '/gerencia',  label: 'Gerencia',  sub: 'Resultado del mes y mix', icon: ICON.gerencia },
+      { to: '/dashboard', label: 'Dashboard', sub: 'Todo el negocio por canal', icon: ICON.gerencia },
+      { to: '/datos',     label: 'Cargar datos', sub: 'Ventas · precios · stock · maestra', icon: ICON.stock },
     )
   }
 

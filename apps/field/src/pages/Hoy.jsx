@@ -307,7 +307,37 @@ export default function Hoy() {
       </header>
 
       <div className="bs-hoy-body">
-        {/* ÚNICA acción primaria */}
+        {/* 🔴 EL ORDEN CAMBIÓ: la venta del mes va PRIMERO.
+            Antes abría con "Siguiente mejor acción" y la venta quedaba
+            más abajo. Pero lo primero que un vendedor quiere saber al
+            abrir la app es CÓMO VIENE EL MES — ese número enmarca todo
+            lo demás. La acción sugerida se entiende distinto sabiendo
+            si vas 66% o 110%. */}
+
+        {/* V9.9: la venta manda, y el color sale del RITMO por días
+            hábiles — no de un umbral fijo. Antes era `pct >= 70 ? ok`,
+            que pinta igual un 70% el día 3 que el día 28. */}
+        <VentaHero
+          venta={m.ventaMtd}
+          meta={m.metaMensual}
+          zona={zonaVista}
+          clientes={cartera?.length}
+        />
+
+        {/* 🔴 LOS FOCOS ESTABAN DENTRO DE UN <details>: había que
+            desplegarlos para verlos. Un foco del mes que no se ve no
+            cumple su función — el vendedor tiene que saber qué está
+            empujando la empresa SIN tocar nada.
+            Van pegados a la venta porque responden la misma pregunta:
+            cómo viene el mes, y con qué producto. */}
+        {focos?.length > 0 && (
+          <section className="bs-hoy-focos">
+            <p className="bs-hoy-nba-label">Focos del mes</p>
+            <FocosMes focos={focos} />
+          </section>
+        )}
+
+        {/* Recién después: qué hacer ahora, con el mes ya en contexto */}
         <section className="bs-hoy-nba">
           <p className="bs-hoy-nba-label">Siguiente mejor acción</p>
           {commandResults.length === 0 ? (
@@ -342,16 +372,6 @@ export default function Hoy() {
             Armar ruta del día
           </button>
         </section>
-
-        {/* V9.9: la venta manda, y el color sale del RITMO por días
-            hábiles — no de un umbral fijo. Antes era `pct >= 70 ? ok`,
-            que pinta igual un 70% el día 3 que el día 28. */}
-        <VentaHero
-          venta={m.ventaMtd}
-          meta={m.metaMensual}
-          zona={zonaVista}
-          clientes={cartera?.length}
-        />
 
         {/* La venta dice DÓNDE ESTÁS. La proyección dice A DÓNDE LLEGÁS
             si el ritmo no cambia — que es lo que genera la acción.
@@ -391,12 +411,6 @@ export default function Hoy() {
               <span>Visitas</span>
             </button>
           </div>
-          {focos?.length > 0 && (
-            <details className="bs-hoy-focos-fold">
-              <summary>Focos del mes</summary>
-              <FocosMes focos={focos} />
-            </details>
-          )}
         </section>
 
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${m.totalClientes} clientes`} />}

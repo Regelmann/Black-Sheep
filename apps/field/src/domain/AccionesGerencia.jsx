@@ -57,7 +57,7 @@ export function AccionesGerencia({ rows, onFlash }) {
           onClick={() => setPanel(panel === 'asignar' ? null : 'asignar')}
         >
           <strong>Clientes sin asignar</strong>
-          <span>Repartir a carteras · uno o toda una comuna</span>
+          <span>Nuevos y sin canal · repartir a carteras</span>
         </button>
         <button
           type="button"
@@ -66,14 +66,6 @@ export function AccionesGerencia({ rows, onFlash }) {
         >
           <strong>Lista de precios</strong>
           <span>Cambiar precios · sumar o sacar productos</span>
-        </button>
-        <button
-          type="button"
-          className={'dg-accion' + (panel === 'asignar' ? ' is-on' : '')}
-          onClick={() => setPanel(panel === 'asignar' ? null : 'asignar')}
-        >
-          <strong>Clientes sin asignar</strong>
-          <span>Nuevos y sin canal · mandarlos a una cartera</span>
         </button>
         <button
           type="button"

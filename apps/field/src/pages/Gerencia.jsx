@@ -1116,6 +1116,16 @@ export default function Gerencia({ esGerente }) {
 
   return (
     <div className="gerencia-page bs-page">
+      {/* 🔴 EL ENCABEZADO IBA DESPUÉS DEL CONTENIDO.
+          "Resultado del mes" aparecía DEBAJO del pulso: se leía el
+          detalle antes de saber de qué pantalla se trataba. El título
+          va primero, como en todas las demás pestañas. */}
+      <header className="bs-shell-hero" style={{ margin: '0 -16px' }}>
+        <p className="bs-shell-eyebrow">Vista gerencial</p>
+        <h1 className="bs-shell-title">Resultado del mes</h1>
+        <p className="bs-shell-sub">Venta total · terreno · canales</p>
+      </header>
+
       <section className="bs-executive-pulse">
         <div className="bs-pulse-top">
           <div>
@@ -1188,14 +1198,6 @@ export default function Gerencia({ esGerente }) {
         {pred7?.resumen && <p className="bs-pulse-resumen">{pred7.resumen}</p>}
       </section>
 
-      {/* Hero del shell: misma estructura que el resto de las pestañas.
-          Antes Gerencia tenía su propio hero con otro padding y otro
-          tamaño de título, y por eso "se veía distinta". */}
-      <header className="bs-shell-hero" style={{ margin: '0 -16px' }}>
-        <p className="bs-shell-eyebrow">Vista gerencial</p>
-        <h1 className="bs-shell-title">Resultado del mes</h1>
-        <p className="bs-shell-sub">Venta total · terreno · canales</p>
-      </header>
       <div className="wrap">
 
         {fallos.length > 0 && (

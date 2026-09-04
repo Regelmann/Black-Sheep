@@ -280,6 +280,12 @@ export default function App() {
                   zonas). NO es /gerencia, que es la vista móvil de
                   terreno — se confundieron desde el principio. */}
               <Route path="/dashboard" element={esGerente ? <DashboardGerencia /> : <Navigate to="/" replace />} />
+              {/* Dashboard POR EMPRESA: app.black-sheep.cl/keyfoods/dashboard
+                  Es la base de replicación — cada cliente entra por su slug
+                  y ve sólo lo suyo. El tenant se resuelve en la página. */}
+              <Route path="/:empresa/dashboard" element={esGerente ? <DashboardGerencia /> : <Navigate to="/" replace />} />
+              <Route path="/:empresa/datos" element={esGerente ? <DashboardGerencia seccion="datos" /> : <Navigate to="/" replace />} />
+              <Route path="/datos" element={esGerente ? <DashboardGerencia seccion="datos" /> : <Navigate to="/" replace />} />
               {/* Reportes de venta con comparativos mes contra mes.
                   La página existía en el repo desde V13.1 y NO tenía
                   ruta: nadie podía llegar. Mismo patrón que GoalCard y

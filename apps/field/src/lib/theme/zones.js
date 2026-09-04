@@ -7,7 +7,7 @@ export const ZONE_THEME = Object.freeze({
   'NOR-ORIENTE': Object.freeze({
     key: 'NOR-ORIENTE',
     label: 'Nor-Oriente',
-    short: 'N-Oriente',
+    short: 'NOR-ORIENTE',
     chip: '#c2410c',
     chipMuted: '#fdba74',
     header: '#1e3a5f',
@@ -19,7 +19,7 @@ export const ZONE_THEME = Object.freeze({
   'NOR-PONIENTE': Object.freeze({
     key: 'NOR-PONIENTE',
     label: 'Nor-Poniente',
-    short: 'N-Poniente',
+    short: 'NOR-PONIENTE',
     chip: '#0d9488',
     chipMuted: '#5eead4',
     header: '#0f766e',
@@ -31,7 +31,7 @@ export const ZONE_THEME = Object.freeze({
   'ZONA SUR': Object.freeze({
     key: 'ZONA SUR',
     label: 'Zona Sur',
-    short: 'Sur',
+    short: 'ZONA SUR',
     chip: '#ea580c',
     chipMuted: '#fdba74',
     header: '#7c2d12',
