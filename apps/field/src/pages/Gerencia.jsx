@@ -1259,8 +1259,11 @@ export default function Gerencia({ esGerente }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>Control Center ↗</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>Clientes · metas · precios · config — desde PC</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>Control Center</div>
+            {/* 🔴 Decía "desde PC" y llevaba una flecha de enlace externo:
+                parecía que en el teléfono no funcionaba. Funciona igual en
+                los dos — es una ruta de esta misma app. */}
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>Clientes · metas · precios · prospectos</div>
           </div>
         </button>
         {error && (

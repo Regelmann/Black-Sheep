@@ -239,13 +239,12 @@ button, input, select, textarea { font-family: inherit; }
 .bs-topbar-caret { font-size: 9px; opacity: 0.6; }
 
 /* ── Stats compactas (2 filas, scannable) ── */
-.bs-statgrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-2);
-  padding: 0 var(--space-4);
-  margin-bottom: var(--space-3);
-}
+/* 🔴 ESTA REGLA COMPETÍA CON shell.css Y GANABA A MEDIAS.
+   `display: grid` con 4 columnas fijas dejaba la última fila —las 3
+   que sobran de 7— pegada a la izquierda. En shell.css puse flex con
+   centrado, pero el `flex: 0 1 calc(...)` de los hijos no hace nada
+   sobre una grilla, así que seguía descentrado.
+   La definición vive AHORA sólo en shell.css. */
 .bs-statgrid .bs-stat,
 .bs-stat {
   background: var(--surface);

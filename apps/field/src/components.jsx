@@ -71,8 +71,10 @@ export function NavBar({ esGerente, onLogout }) {
   if (esGerente) {
     moreItems.push(
       { to: '/gerencia',  label: 'Gerencia',  sub: 'Resultado del mes y mix', icon: ICON.gerencia },
-      { to: '/dashboard', label: 'Dashboard', sub: 'Todo el negocio por canal', icon: ICON.gerencia },
-      { to: '/datos',     label: 'Cargar datos', sub: 'Ventas · precios · stock · maestra', icon: ICON.stock },
+      // Dashboard y "Cargar datos" eran dos entradas a la MISMA
+      // pantalla: /datos es sólo /dashboard con una pestaña abierta.
+      // Dos accesos al mismo lugar confunden.
+      { to: '/dashboard', label: 'Dashboard', sub: 'Negocio · datos · precios · metas', icon: ICON.gerencia },
     )
   }
 

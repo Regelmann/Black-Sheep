@@ -1395,7 +1395,10 @@ button[data-copy] {
 .cli-bloqueo {
   display: flex;
   align-items: center;
+  justify-content: center;   /* estaba descentrado en el móvil */
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
   gap: 8px;
   padding: 10px 12px;
   border-radius: 12px;
@@ -1403,13 +1406,16 @@ button[data-copy] {
   border: 1px solid var(--line, #ebe5dc);
 }
 .blq-label {
-  flex: 0 0 auto;
+  flex: 1 1 100%;            /* en su propia línea: el rótulo manda */
+  text-align: center;
   font-size: 12px;
   font-weight: 700;
   color: var(--ink-3, #78716c);
 }
 .blq-btn {
-  min-height: 40px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;          /* táctil */
   padding: 0 14px;
   border-radius: 10px;
   font-family: inherit;
@@ -1519,3 +1525,14 @@ button[data-copy] {
 @media (min-width: 480px) {
   .bs-seg-btn { font-size: 13px; }
 }
+
+/* --- Hoy · sin vacío al final ------------------------------------
+   `.bs-shell` tiene `min-height: 100%` y `flex-direction: column`.
+   Cuando el contenido no llena la pantalla, el hueco queda abajo
+   como una franja vacía enorme.
+
+   `justify-content: flex-start` lo empuja todo arriba, y el padding
+   inferior queda sólo el necesario para que la barra no tape nada. */
+.bs-shell { justify-content: flex-start; }
+.bs-hoy-body { padding-bottom: 12px; }
+.bs-hoy-body > *:last-child { margin-bottom: 0; }

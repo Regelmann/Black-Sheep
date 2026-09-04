@@ -65,7 +65,10 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
       // `ok:false` lo dice — no se confunde "falló" con "no hay oferta".
       const [rs, ro] = await Promise.all([
         safeSelect(
-          supabase.from('stock').select('*').order('producto_nombre').limit(800),
+          // traerTodo pagina: `.limit(800)` NO sube el techo de 1000 del
+          // servidor, sólo lo baja. Con la lista completa hacen falta
+          // todas las filas.
+          supabase.from('stock').select('*').order('producto_nombre').limit(1000),
           { label: 'oferta_stock' }
         ),
         safeSelect(
@@ -96,9 +99,34 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
         )
         const oi = ri.rows
         if (!ri.ok) console.error('[oferta] no se pudieron leer los items de la oferta', ri.error)
+        // 🔴 EL EDITOR MOSTRABA SÓLO LOS ITEMS YA GUARDADOS.
+        // `oi.map(...)` recorre `oferta_cliente_items`: si el vendedor
+        // había cargado 19, veía 19 — y no tenía forma de agregar el
+        // resto ni de corregirles el precio. Por eso correr el SQL 26
+        // no cambiaba nada acá: el 26 arregla el catálogo PÚBLICO, no
+        // esta pantalla.
+        //
+        // Ahora la base es la LISTA DE PRECIOS completa, y lo guardado
+        // se superpone encima. El vendedor ve todo y elige qué marcar
+        // como visible.
+        const guardados = new Map(oi.map(x => [String(x.sku_canon), x]))
         const stockMap = new Map(s.map(x => [String(x.sku_canon), x]))
-        const enriched = oi.map(it => {
-          const st = stockMap.get(String(it.sku_canon)) || {
+        const base = (s || []).filter(x => {
+          // Sin precio no se puede vender: no entra al editor.
+          const p = Number(x.precio_unidad) || Number(x.precio_caja) || 0
+          return p > 0 || guardados.has(String(x.sku_canon))
+        })
+        const enriched = base.map(st0 => {
+          const sku = String(st0.sku_canon)
+          const it = guardados.get(sku) || {
+            sku_canon: st0.sku_canon,
+            producto_nombre: st0.producto_nombre,
+            // Lo que no estaba guardado entra NO visible: el vendedor
+            // decide qué sumar, no se le llena el catálogo del cliente.
+            visible: false,
+            destacado: false,
+          }
+          const st = stockMap.get(sku) || {
             sku_canon: it.sku_canon,
             producto_nombre: it.producto_nombre,
           }

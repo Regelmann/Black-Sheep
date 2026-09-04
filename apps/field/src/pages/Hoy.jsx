@@ -324,6 +324,46 @@ export default function Hoy() {
           clientes={cartera?.length}
         />
 
+        {/* ORDEN DE LA PANTALLA, de arriba abajo:
+              1 · Venta del mes    → dónde estás
+              2 · Proyección       → a dónde llegás si el ritmo sigue
+              3 · Reponer/riesgo   → cuántos clientes hay que tocar
+              4 · Focos del mes    → qué producto empuja la empresa
+              5 · Siguiente acción → qué hacer AHORA
+            Va de lo general a lo concreto: cada bloque da el contexto
+            del siguiente. */}
+
+        {/* La venta dice DÓNDE ESTÁS. La proyección dice A DÓNDE LLEGÁS
+            si el ritmo no cambia — que es lo que genera la acción.
+            Un 56% el día 24 y un 56% el día 8 son el mismo número y
+            problemas opuestos. */}
+        <ProyeccionMes
+          ventaMtd={m.ventaMtd}
+          meta={m.metaMensual}
+          onActuar={() => nav('/mapa')}
+        />
+
+        <section className="bs-hoy-pace">
+          <div className="bs-hoy-kpis">
+            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=ReponerHoy')}>
+              <strong>{m.reponerHoy ?? '—'}</strong>
+              <span>Reponer</span>
+            </button>
+            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=RIESGO')}>
+              <strong>{m.nRiesgo ?? '—'}</strong>
+              <span>Riesgo</span>
+            </button>
+            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=Nuevos')}>
+              <strong>{m.nNuevos ?? '—'}</strong>
+              <span>Nuevos</span>
+            </button>
+            <button type="button" className="bs-hoy-kpi ghost" onClick={() => setShowHistorial(v => !v)}>
+              <strong>{actividadHoy.visitas || 0}</strong>
+              <span>Visitas</span>
+            </button>
+          </div>
+        </section>
+
         {/* 🔴 LOS FOCOS ESTABAN DENTRO DE UN <details>: había que
             desplegarlos para verlos. Un foco del mes que no se ve no
             cumple su función — el vendedor tiene que saber qué está
@@ -332,7 +372,7 @@ export default function Hoy() {
             cómo viene el mes, y con qué producto. */}
         {focos?.length > 0 && (
           <section className="bs-hoy-focos">
-            <p className="bs-hoy-nba-label">Focos del mes</p>
+            {/* El título lo pone FocosMes: acá salía dos veces. */}
             <FocosMes focos={focos} />
           </section>
         )}
@@ -373,16 +413,6 @@ export default function Hoy() {
           </button>
         </section>
 
-        {/* La venta dice DÓNDE ESTÁS. La proyección dice A DÓNDE LLEGÁS
-            si el ritmo no cambia — que es lo que genera la acción.
-            Un 56% el día 24 y un 56% el día 8 son el mismo número y
-            problemas opuestos. */}
-        <ProyeccionMes
-          ventaMtd={m.ventaMtd}
-          meta={m.metaMensual}
-          onActuar={() => nav('/mapa')}
-        />
-
         {/* "¿Cómo viene mi día?" a las 3 de la tarde, cuando todavía
             se puede corregir. El resto de la pantalla habla del mes. */}
         <HoyEnTerreno
@@ -391,27 +421,6 @@ export default function Hoy() {
           capturado={actividadHoy.totalPedidos}
           onHistorial={() => setShowHistorial(true)}
         />
-
-        <section className="bs-hoy-pace">
-          <div className="bs-hoy-kpis">
-            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=ReponerHoy')}>
-              <strong>{m.reponerHoy ?? '—'}</strong>
-              <span>Reponer</span>
-            </button>
-            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=RIESGO')}>
-              <strong>{m.nRiesgo ?? '—'}</strong>
-              <span>Riesgo</span>
-            </button>
-            <button type="button" className="bs-hoy-kpi" onClick={() => nav('/cartera?filtro=Nuevos')}>
-              <strong>{m.nNuevos ?? '—'}</strong>
-              <span>Nuevos</span>
-            </button>
-            <button type="button" className="bs-hoy-kpi ghost" onClick={() => setShowHistorial(v => !v)}>
-              <strong>{actividadHoy.visitas || 0}</strong>
-              <span>Visitas</span>
-            </button>
-          </div>
-        </section>
 
         {dataAsOf && <DataAsOfBanner fecha={dataAsOf} extra={`${m.totalClientes} clientes`} />}
 
