@@ -24,6 +24,7 @@
  * dos versiones de la misma lógica desincronizándose.
  */
 import { useState, useCallback, useRef } from 'react'
+import { validarArchivo } from '../lib/contrato/validarContrato.js'
 import { supabase } from '../lib/supabase.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 
@@ -92,24 +93,75 @@ export async function revisarArchivo(file, def) {
     return { ok: false, error: 'El archivo está vacío.' }
   }
 
-  // Sólo se puede leer la cabecera de un CSV sin librería. Para .xlsx
-  // se confía en el ciclo, que sí sabe abrirlo — pero se avisa.
-  if (ext === '.csv') {
-    try {
-      const cabecera = normalizar(await file.slice(0, 4096).text()).split('\n')[0]
-      const faltan = def.columnas.filter((c) => !cabecera.includes(c))
-      if (faltan.length) {
-        return {
-          ok: false,
-          error: `No encuentro la columna "${faltan[0]}". ¿Es el archivo de ${def.titulo.toLowerCase()}?`,
-        }
+  // ── VALIDACIÓN CONTRA EL CONTRATO ────────────────────────────
+  //
+  // 🔴 ANTES SÓLO SE VALIDABA EL CSV, y con un `includes()` sobre el
+  // texto crudo. El .xlsx —que es el formato que usan todos— subía sin
+  // revisar: "se confía en el ciclo". Y el ciclo corre en Colab horas
+  // después, así que el error aparecía cuando ya nadie recordaba qué
+  // archivo se había subido.
+  //
+  // Ahora los dos formatos se validan ACÁ, contra el contrato, con las
+  // tres capas: esquema → tipos → negocio.
+  try {
+    const { filas, encabezados } = await leerCabecera(file, ext)
+    if (!encabezados.length) {
+      return { ok: false, error: 'No se pudieron leer los encabezados. ¿La primera fila tiene los nombres de las columnas?' }
+    }
+
+    const r = validarArchivo(def.id, encabezados, filas)
+
+    if (!r.ok) {
+      return {
+        ok: false,
+        error: r.errores[0],
+        // Los demás errores se muestran juntos: si faltan tres columnas,
+        // que el cliente las corrija todas de una vez y no de a una.
+        detalles: r.errores.slice(1),
+        capa: r.capa,
       }
-    } catch {
-      return { ok: true, aviso: 'No se pudo leer la cabecera; se sube igual.' }
+    }
+
+    return {
+      ok: true,
+      aviso: r.avisos.length ? r.avisos[0] : null,
+      detalles: r.avisos.slice(1),
+      filas: r.filas,
+      columnas: Object.keys(r.mapeo).length,
+    }
+  } catch (e) {
+    // Un archivo que no se puede leer NO se sube: subirlo a ciegas es
+    // lo que hacía que el error apareciera horas después.
+    return {
+      ok: false,
+      error: `No se pudo leer el archivo: ${e?.message || 'formato no reconocido'}`,
     }
   }
+}
 
-  return { ok: true }
+/**
+ * Lee encabezados y una muestra de filas, de Excel o CSV.
+ *
+ * Sólo las primeras 200 filas: validar 500.000 en el navegador congela
+ * la pestaña, y con 200 alcanza para detectar una columna de texto
+ * donde debería haber números.
+ */
+async function leerCabecera(file, ext) {
+  const XLSX = await import('xlsx')
+  const buf = await file.arrayBuffer()
+  // `sheetRows` corta la lectura: no se carga el archivo entero.
+  const wb = XLSX.read(buf, {
+    type: 'array',
+    sheetRows: 201,
+    cellDates: true,
+    raw: false,
+  })
+  const hoja = wb.Sheets[wb.SheetNames[0]]
+  if (!hoja) return { filas: [], encabezados: [] }
+
+  const filas = XLSX.utils.sheet_to_json(hoja, { defval: null })
+  const encabezados = XLSX.utils.sheet_to_json(hoja, { header: 1, range: 0 })[0] || []
+  return { filas, encabezados: encabezados.filter(Boolean).map(String) }
 }
 
 export default function CargaArchivos({ tenantId, onListo }) {
@@ -122,7 +174,12 @@ export default function CargaArchivos({ tenantId, onListo }) {
 
     const chequeo = await revisarArchivo(file, def)
     if (!chequeo.ok) {
-      setEstado((p) => ({ ...p, [def.id]: { archivo: file, error: chequeo.error } }))
+      setEstado((p) => ({ ...p, [def.id]: {
+        archivo: file,
+        error: chequeo.error,
+        detalles: chequeo.detalles || [],
+        capa: chequeo.capa,
+      } }))
       return
     }
 
@@ -146,7 +203,13 @@ export default function CargaArchivos({ tenantId, onListo }) {
 
     setEstado((p) => ({
       ...p,
-      [def.id]: { archivo: file, ok: true, aviso: chequeo.aviso, ruta },
+      [def.id]: {
+        archivo: file, ok: true, ruta,
+        aviso: chequeo.aviso,
+        detalles: chequeo.detalles || [],
+        filas: chequeo.filas,
+        columnas: chequeo.columnas,
+      },
     }))
   }, [tenantId])
 
@@ -194,8 +257,34 @@ export default function CargaArchivos({ tenantId, onListo }) {
                     {e.archivo.name} · {(e.archivo.size / 1024 / 1024).toFixed(1)} MB
                   </span>
                 )}
-                {e.error && <span className="bs-carga-err">{e.error}</span>}
-                {e.aviso && <span className="bs-carga-aviso">{e.aviso}</span>}
+                {e.error && (
+                  <span className="bs-carga-err">
+                    {e.error}
+                    {/* Los demás problemas se listan juntos: si faltan
+                        tres columnas, que se corrijan todas de una vez
+                        y no de a una por intento. */}
+                    {e.detalles?.length > 0 && (
+                      <ul className="bs-carga-detalles">
+                        {e.detalles.map((d, i) => <li key={i}>{d}</li>)}
+                      </ul>
+                    )}
+                  </span>
+                )}
+                {e.ok && e.filas != null && (
+                  <span className="bs-carga-ok-meta">
+                    {e.columnas} columnas reconocidas · muestra de {e.filas} filas
+                  </span>
+                )}
+                {e.aviso && (
+                  <span className="bs-carga-aviso">
+                    {e.aviso}
+                    {e.detalles?.length > 0 && (
+                      <ul className="bs-carga-detalles">
+                        {e.detalles.map((d, i) => <li key={i}>{d}</li>)}
+                      </ul>
+                    )}
+                  </span>
+                )}
                 {!e.archivo && (
                   <span className="bs-carga-ej">Ej: {a.ejemplo}</span>
                 )}

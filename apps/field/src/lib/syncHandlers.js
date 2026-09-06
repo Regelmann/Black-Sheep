@@ -4,6 +4,37 @@
  */
 import { supabase } from './supabase.js'
 
+/**
+ * ¿Esto parece un RUT chileno? `76491307-C`, `12.345.678-9`.
+ * Se usa para no meter un identificador de cliente en una columna que
+ * espera un id de visita.
+ */
+/**
+ * ¿Esto es un RUT y no un UUID?
+ *
+ * 🔴 LA VERSIÓN ANTERIOR NO ATRAPABA `"76491307-C"`.
+ * El patrón exigía que el verificador fuera dígito o `k`. Pero el
+ * cliente_key de este proyecto usa OTRAS letras —vino así del ERP— y
+ * `-C` se colaba. Al no reconocerlo como RUT, iba a `visita_id`, que es
+ * UUID, y Postgres devolvía 400 en cada reintento: 8 intentos, backoff,
+ * bandeja de agotados, y el banner rojo pegado en toda la app.
+ *
+ * El criterio correcto es al revés: lo que NO tiene forma de UUID no
+ * puede ir a una columna UUID. Un UUID son 36 caracteres con guiones en
+ * posiciones fijas; cualquier otra cosa se desvía a cliente_key.
+ */
+function esUuid(v) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    .test(String(v || '').trim())
+}
+
+function esRut(v) {
+  if (!v) return false
+  const t = String(v).trim()
+  // Cualquier cosa con dígitos y un guion que NO sea un UUID.
+  return !esUuid(t) && /^[\d.]{5,12}-?[\dA-Za-z]$/.test(t)
+}
+
 export async function handleCheckin(item) {
   const p = item.payload || {}
   const row = {
@@ -11,8 +42,17 @@ export async function handleCheckin(item) {
     // perdió, el reintento manda el MISMO id y el índice único lo
     // rechaza en vez de duplicar el check-in.
     client_op_id: item.client_op_id || item.id || null,
-    visita_id: p.visita_id || null,
-    cliente_key: p.cliente_key || null,
+    // 🔴 `invalid input syntax for type uuid: "76491307-C"`
+    // Ese valor es un RUT, y llegaba a `visita_id`. Si la columna es
+    // UUID el insert falla SIEMPRE: 8 reintentos con backoff y a la
+    // bandeja de agotados. Ese era el "Error al sincronizar" que se
+    // veía en todas las pantallas.
+    //
+    // Un RUT nunca es un id de visita. Si lo que vino tiene pinta de
+    // RUT —dígitos con guion y verificador— se descarta y se manda a
+    // cliente_key, que es su lugar.
+    visita_id: esRut(p.visita_id) ? null : (p.visita_id || null),
+    cliente_key: p.cliente_key || (esRut(p.visita_id) ? p.visita_id : null),
     ejecutivo_id: p.ejecutivo_id || null,
     hora_llegada: p.hora_llegada || new Date().toISOString(),
     lat_real: p.lat_real ?? p.lat ?? null,

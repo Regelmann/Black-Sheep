@@ -1536,3 +1536,23 @@ button[data-copy] {
 .bs-shell { justify-content: flex-start; }
 .bs-hoy-body { padding-bottom: 12px; }
 .bs-hoy-body > *:last-child { margin-bottom: 0; }
+
+/* --- Carga de archivos · el detalle de la validación --------------
+   Cuando faltan tres columnas hay que listarlas TODAS: si se muestra
+   sólo la primera, el cliente corrige una, vuelve a subir, y descubre
+   la siguiente. Tres viajes en vez de uno. */
+.bs-carga-detalles {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  opacity: .88;
+}
+.bs-carga-detalles li { margin-bottom: 3px; }
+.bs-carga-ok-meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--ink-3, #78716c);
+}
