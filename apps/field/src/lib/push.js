@@ -22,6 +22,10 @@
 const VAPID_PUBLIC = ((import.meta.env?.VITE_VAPID_PUBLIC_KEY) || '').trim()
 const SUB_KEY = 'bs_push_sub_id'
 
+// Import estático: seguridad.js es puro y no toca supabase, así que no
+// hay riesgo de ciclo (lo que motivó el import dinámico de abajo).
+import { esTokenCatalogo } from './seguridad.js'
+
 /** ¿El navegador puede y vale la pena ofrecer push? (guardas, no supuestos) */
 export function pushDisponible() {
   if (typeof window === 'undefined') return false
@@ -71,6 +75,12 @@ function subId() {
 export async function suscribirPush(token) {
   if (!pushDisponible()) {
     return { ok: false, error: 'Este navegador no soporta notificaciones en este dispositivo.' }
+  }
+  // El token viene de la URL del catálogo: es entrada del usuario. Sin
+  // este filtro, cualquier string llegaba al RPC `guardar_push_suscripcion`
+  // y se guardaba una suscripción basura asociada a nada.
+  if (!esTokenCatalogo(token)) {
+    return { ok: false, error: 'Catálogo no disponible.' }
   }
   try {
     const perm = await Notification.requestPermission()

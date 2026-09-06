@@ -75,10 +75,22 @@
               '<button onclick="if(window.caches){caches.keys().then(function(k){return Promise.all(k.map(function(n){return caches.delete(n)}))}).then(function(){location.reload(true)})}else{location.reload(true)}" ' +
                 'style="width:100%;min-height:48px;margin-top:8px;border:1.5px solid #d6cfc4;border-radius:12px;background:transparent;color:#44403c;font-size:14px;font-weight:700;cursor:pointer">' +
                 'Limpiar caché y recargar</button>' +
-              (fallo
-                ? '<p style="margin-top:20px;font-size:11px;color:#b91c1c;word-break:break-word;text-align:left;background:#fef2f2;padding:10px;border-radius:10px">' + fallo + '</p>'
-                : '') +
+              '<p id="bs-boot-error" style="display:none;margin-top:20px;font-size:11px;color:#b91c1c;word-break:break-word;text-align:left;background:#fef2f2;padding:10px;border-radius:10px"></p>' +
             '</div>'
+
+          // El detalle del error va con textContent, NUNCA interpolado en
+          // el HTML. `fallo` se arma con e.message o con el reason de una
+          // promesa rechazada, y eso puede traer texto del servidor (un
+          // mensaje de error de Supabase con un valor de fila). Puesto con
+          // innerHTML sería XSS: corre en el origen de la app, con la
+          // sesión ya iniciada.
+          if (fallo) {
+            var p = document.getElementById('bs-boot-error')
+            if (p) {
+              p.textContent = String(fallo).slice(0, 500)
+              p.style.display = 'block'
+            }
+          }
         }, 8000)
       })()
     </script>

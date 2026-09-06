@@ -27,3 +27,7 @@ _bs_tmp/
 # Build de Next.js — NO va al repo
 .next/
 apps/web/.next/
+
+# Python (ETL)
+__pycache__/
+*.py[cod]

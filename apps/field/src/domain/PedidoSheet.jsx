@@ -240,14 +240,18 @@ export default function PedidoSheet({ initialPedido,
     }
     if (waCliente) {
       const { url } = buildWhatsAppPedido({ cliente, lineas, ejecutivoNombre })
-      if (url) window.open(url, '_blank')
+      // 'noopener,noreferrer': sin esto la pestaña abierta recibe
+      // `window.opener` y puede redirigir ESTA página a otra URL
+      // (reverse tabnabbing). En los <a target="_blank"> ya estaba el
+      // rel="noreferrer"; faltaba en los window.open.
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
       else setMsg('Sin teléfono del cliente para WhatsApp')
     }
     if (waBodega) {
       const text = buildWhatsAppBodega({ cliente, lineas, ejecutivoNombre, nota })
       // Abre WhatsApp genérico con texto listo (el usuario elige contacto bodega)
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`
-      window.open(url, '_blank')
+      window.open(url, '_blank', 'noopener,noreferrer')
     }
     if (pedidoId && estado === 'enviado') {
       await marcarPedidoEstado(pedidoId, 'enviado')

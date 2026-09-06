@@ -82,6 +82,17 @@ EXCEPTION WHEN undefined_column THEN
   RETURN NULL;
 END $$;
 
+-- 🔴 Postgres concede EXECUTE a PUBLIC en TODA función nueva. Sin este
+-- REVOKE, el visitante anónimo de un catálogo público podía llamar
+-- `mi_rol()` y `soy_admin()` — funciones SECURITY DEFINER que corren como
+-- owner. No le daba privilegios (sólo devuelven su propio rol, vacío),
+-- pero regala superficie de ataque y expone la existencia del esquema de
+-- identidad. El guard lo detecta con la regla R23.
+REVOKE ALL ON FUNCTION public.mi_ejecutivo_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mi_rol()          FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.soy_admin()       FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mi_tenant()       FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.mi_ejecutivo_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mi_rol()          TO authenticated;
 GRANT EXECUTE ON FUNCTION public.soy_admin()       TO authenticated;

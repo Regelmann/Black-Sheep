@@ -3,7 +3,7 @@
 PWA de ventas en terreno para distribución de alimentos.
 Multi-tenant. Cliente principal: **KeyFoods** (Santiago, Chile).
 
-> **`v-BS-PLATFORM-V14.6`** · guard ✅ · 24/24 tests · build ✓
+> **`v-BS-PLATFORM-V14.7`** · guard ✅ · 576/576 tests · build ✓
 
 ---
 
@@ -127,8 +127,15 @@ varios archivos deja las versiones viejas vivas en la base.
 | R8 | Función SQL en varios archivos | 4 definiciones de `get_public_catalogo` |
 | R9 | `README`/`DEPLOY` sin el stamp actual | `DEPLOY.md` decía "V68", el README "v2.4" |
 | R10 | Archivo `.sql` no listado en `DEPLOY.md` | SQL nuevo que nadie corría |
+| R21 | `SECURITY DEFINER` sin `SET search_path` | Escalada de privilegios (CWE-426) |
+| R22 | Credencial escrita en el repositorio | ETL con la URL de producción como default |
+| R23 | `SECURITY DEFINER` accesible a `PUBLIC` | funciones invocables por `anon` |
+| R24 | `_blank` sin `noopener` | reverse tabnabbing |
 
-R1, R2, R3, R5, R8, R9 y R10 **bloquean**. R4, R6 y R7 avisan (deuda conocida).
+R1, R2, R3, R5, R8, R9, R10 y R21–R24 **bloquean**. R4, R6, R7 y R11 avisan (deuda conocida).
+
+R21 a R24 nacieron de la auditoría de seguridad de V14.7 (`SEGURIDAD.md`).
+Cada una encontró un caso real en el repo el día que se escribió.
 
 ---
 

@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { resolverPrecio, precioPublicoItem, estiloOrigenPrecio, formatPrecioClp } from '../lib/precios'
 import { productTitle } from '../lib/productDisplay'
+import { tokenCatalogoSeguro, textoSeguro } from '../lib/seguridad.js'
 
 const money = n => {
   const v = Number(n)
@@ -59,7 +60,19 @@ export default function CatalogoCliente() {
       setLoading(true)
       setErr('')
       try {
-        const { data, error } = await supabase.rpc('get_public_catalogo', { p_token: token })
+        // El token viene de la URL: es ENTRADA DEL USUARIO. Se valida el
+        // formato acá y la existencia la valida la base (RPC). Las dos
+        // barreras cumplen funciones distintas: ésta evita mandar por la
+        // red algo que no es un token (path traversal, inyección, basura)
+        // y evita que un enlace armado a mano consuma una consulta.
+        const tokenSeguro = tokenCatalogoSeguro(token)
+        if (!tokenSeguro) {
+          if (dead) return
+          setCatalogo(null)
+          setErr('Link inválido o catálogo no disponible')
+          return
+        }
+        const { data, error } = await supabase.rpc('get_public_catalogo', { p_token: tokenSeguro })
         if (dead) return
         if (error) {
           setCatalogo(null)
@@ -183,15 +196,23 @@ export default function CatalogoCliente() {
     setSending(true)
     setErr('')
     try {
+      // Mismo token de la URL, misma validación: acá escribe en la base.
+      const tokenSeguro = tokenCatalogoSeguro(token)
+      if (!tokenSeguro) {
+        setErr('Link inválido o catálogo no disponible')
+        return
+      }
       const { data, error } = await supabase.rpc('crear_pedido_publico', {
-        p_token: token,
+        p_token: tokenSeguro,
         p_lineas: cart.map(i => ({
           sku: i.sku_canon,
           nombre: i.producto_nombre,
           cantidad: i.cantidad,
           precio: i.precio,
         })),
-        p_nota: nota || null,
+        // La nota la escribe el cliente y después la lee bodega: se
+        // recorta y se limpia antes de salir.
+        p_nota: nota ? textoSeguro(nota, 500) : null,
       })
       if (error) throw error
       setPedidoId(data?.id || data?.pedido_id || null)

@@ -57,6 +57,8 @@ import { syncHandlers } from './lib/syncHandlers.js'
 import { SyncBanner } from './chrome/SyncBanner.jsx'
 import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
 import { runSyncFlush } from './lib/sync/engine.js'
+// Autorización y vigencia de sesión: fuente ÚNICA (ver lib/seguridad.js).
+import { esAdmin, sesionExpirada } from './lib/seguridad.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
 
@@ -90,9 +92,37 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
+    let vivo = true
+
+    // El teléfono de un vendedor se presta y se pierde. Una sesión vencida
+    // no se debe seguir usando: se cierra y se vuelve a pedir la clave.
+    // Supabase refresca solo (autoRefreshToken), así que en condiciones
+    // normales esto nunca dispara — por eso mismo es la señal de alarma.
+    const cerrarSiVencio = async (s) => {
+      if (!s || !sesionExpirada(s)) return false
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        /* si el cierre falla, igual no hay que seguir con esa sesión */
+      }
+      return true
+    }
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!vivo) return
+      if (await cerrarSiVencio(data?.session)) setSession(null)
+      else setSession(data?.session ?? null)
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+      if (!vivo) return
+      if (await cerrarSiVencio(s)) setSession(null)
+      else setSession(s)
+    })
+    return () => {
+      vivo = false
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -117,14 +147,18 @@ export default function App() {
           })
           return
         }
-        const rol = (data.rol || 'ejecutivo').toLowerCase()
-        setEjecutivo({
+        const rol = String(data.rol || 'ejecutivo').trim().toLowerCase()
+        const perfil = {
           id: data.id,
           nombre: data.nombre || '',
           zona: data.zona || '',
           rol,
-          esSuperAdmin: rol === 'superadmin' || rol === 'gerente' || rol === 'admin',
-        })
+        }
+        // `esAdmin` vive en lib/seguridad.js: UNA sola definición de qué
+        // es un administrador. Antes la comparación estaba escrita acá y
+        // se repetía en Gerencia, Admin y NavBar — cuatro lugares que
+        // podían discrepar sobre quién ve qué.
+        setEjecutivo({ ...perfil, esSuperAdmin: esAdmin(perfil) })
       })
   }, [session])
 

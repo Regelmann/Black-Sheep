@@ -22,6 +22,7 @@ esos archivos se eliminaron por estar obsoletos.
 | `19_CATALOGO_OFERTA_CLIENTE.sql` | Tablas `ofertas_cliente` / `oferta_cliente_items` | vigente |
 | `20_CATALOGO_CANONICO.sql` | **`get_public_catalogo()` — CANÓNICA** | vigente |
 | `21_PEDIDO_PUBLICO_CANONICO.sql` | **`crear_pedido_publico()` — CANÓNICA** | vigente |
+| `48_SEGURIDAD_CATALOGO.sql` | Vencimiento y rotación de tokens · auditoría · anti-abuso | 🔴 nuevo V14.7 |
 
 ## Eliminados en V9.3
 

@@ -155,6 +155,13 @@ CREATE OR REPLACE FUNCTION public.renombrar_zona(
   p_color      TEXT DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER
+-- 🔴 Sin `SET search_path`, una función SECURITY DEFINER resuelve los
+-- nombres con el search_path de QUIEN LA LLAMA. Cualquier usuario puede
+-- crear un esquema y una tabla que se llame como la real, y la función —
+-- que corre como owner— la usa. Es el vector clásico de escalada de
+-- privilegios en Postgres (CWE-426 / CVE-2018-1058).
+-- El guard lo detecta con la regla R21.
+SET search_path = public
 AS $$
 DECLARE
   v_cartera    INT := 0;
@@ -203,6 +210,14 @@ BEGIN
   );
 END;
 $$;
+
+-- 🔴 Postgres concede EXECUTE a PUBLIC por defecto en TODA función nueva.
+-- Sin este par, `renombrar_zona` quedaba al alcance de `anon`: el visitante
+-- de un catálogo público podía invocarla. No escalaba privilegios (la
+-- función valida el rol adentro), pero era superficie de ataque gratis:
+-- es una función SECURITY DEFINER que escribe en cuatro tablas.
+REVOKE ALL ON FUNCTION public.renombrar_zona(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.renombrar_zona(TEXT, TEXT, TEXT, TEXT) TO authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════
 -- DIAGNÓSTICO

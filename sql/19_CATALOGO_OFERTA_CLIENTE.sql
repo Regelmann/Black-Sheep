@@ -54,6 +54,11 @@ CREATE POLICY "oci_public_read" ON public.oferta_cliente_items
 
 
 -- Permisos públicos al RPC
+-- 🔴 Postgres concede EXECUTE a PUBLIC en toda función nueva. Acá el
+-- GRANT a `anon` es INTENCIONAL (el catálogo se abre por link, sin
+-- login), pero tiene que ser explícito y no un efecto secundario del
+-- default: primero se quita PUBLIC, después se otorga lo que corresponde.
+REVOKE ALL ON FUNCTION public.get_public_catalogo(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_public_catalogo(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_public_catalogo(TEXT) TO authenticated;
 

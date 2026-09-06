@@ -6,6 +6,17 @@ import { precioDesdeHistSku } from './precios.js'
 
 import { supabase } from './supabase.js'
 import { parseSkuDetalle, cantidadSugerida as cantidadSugeridaCoach } from './coach.js'
+/**
+ * Escapado HTML del documento imprimible — UNA sola definición.
+ *
+ * Antes había una copia local acá y otra en lib/seguridad.js. Dos
+ * implementaciones del mismo escape divergen: la de acá no cubría la
+ * comilla simple. Y el riesgo es concreto: este HTML se abre como
+ * blob: URL, que HEREDA EL ORIGEN de la app. Un nombre de cliente que
+ * venga con `<script>` desde un Excel del ETL se ejecutaría con acceso
+ * al localStorage —donde vive la sesión—.
+ */
+import { escaparHtml as escapeHtml } from './seguridad.js'
 
 /** Quita pipes/basura de nombres de producto (sku_detalle crudo) */
 export function sanitizeNombreProducto(n) {
@@ -438,13 +449,7 @@ export function buildPedidoFormalHtml({
   </body></html>`
 }
 
-function escapeHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
+
 
 /** Número de pedido legible: P-YYYYMM-XXXX desde UUID */
 export function folioPedido(uuid) {
@@ -478,7 +483,9 @@ export function imprimirPedidoPdf(opts) {
     // Fallback: data URI
     try {
       const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(html)
-      const w = window.open(dataUri, '_blank')
+      // 'noopener,noreferrer': sin esto, el documento abierto recibe
+      // window.opener y puede navegar ESTA pestaña a otra URL.
+      const w = window.open(dataUri, '_blank', 'noopener,noreferrer')
       if (!w) throw new Error('popup bloqueado')
       return { ok: true }
     } catch (e2) {

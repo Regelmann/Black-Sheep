@@ -843,17 +843,35 @@ def get_secret(name: str, alt: Optional[str] = None) -> Optional[str]:
 
 
 def sb_client():
-    DEFAULT_URL = "https://ihhnfouwviuyycltgafc.supabase.co"
-    url = (get_secret("SUPABASE_URL") or DEFAULT_URL).strip().strip('"').strip("'")
-    # Secret vacío, JWT pegado por error, o sin https → default
+    # 🔴 🔴 ANTES ESTO TENÍA UN DEFAULT HARDCODEADO 🔴 🔴
+    #
+    #   DEFAULT_URL = "https://<project-ref>.supabase.co"
+    #
+    # Dos problemas, ninguno hipotético:
+    #   1) El identificador del proyecto de PRODUCCIÓN quedaba versionado
+    #      en un repo público. Es la mitad de las coordenadas: la otra
+    #      mitad es la service key.
+    #   2) Si el secret venía mal escrito, vacío o con un JWT pegado por
+    #      error, el script CAÍA EN SILENCIO al default — es decir, en
+    #      producción. Un default que apunta a la base real convierte un
+    #      error de tipeo en una escritura sobre datos de clientes.
+    #
+    # Ahora falta el secret → el ciclo se detiene. Fallar fuerte acá es
+    # infinitamente más barato que reconstruir una cartera pisada.
+    url = (get_secret("SUPABASE_URL") or get_secret("SUPABASE_PROJECT_URL") or "").strip().strip('"').strip("'")
     if (
         not url
         or url.lower() in ("none", "null")
-        or not re.match(r"^https?://", url)
+        or not re.match(r"^https://[a-z0-9][a-z0-9.-]*\.(supabase\.(co|in|net)|[a-z0-9.-]+)$", url, re.I)
         or url.startswith("eyJ")
     ):
-        print(f"  SUPABASE_URL inválida (parece key/JWT o vacía) → default {DEFAULT_URL}")
-        url = DEFAULT_URL
+        raise SystemExit(
+            "Falta SUPABASE_URL o no es una URL válida.\n"
+            "  · En Colab: icono llave → SUPABASE_URL = https://<project-ref>.supabase.co\n"
+            "  · En GitHub Actions: secret SUPABASE_URL\n"
+            "Ya NO hay un default hardcodeado: prefiero que el ciclo pare "
+            "a que escriba en una base que no era."
+        )
     key = get_secret("SUPABASE_SERVICE_KEY") or get_secret("SUPABASE_SERVICE_ROLE_KEY")
     if not key:
         raise SystemExit(

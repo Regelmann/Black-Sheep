@@ -428,6 +428,154 @@ if (fs.existsSync(SQL)) {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   REGLAS DE SEGURIDAD · R21 · R22 · R23 · R24
+   ──────────────────────────────────────────────────────────────────
+   Las once primeras reglas nacieron de bugs de CALIDAD. Éstas nacen
+   de la auditoría de seguridad de V14.7 y siguen la misma idea: cada
+   una existe porque el problema ya estaba en el repo cuando se
+   escribió la regla.
+
+   A diferencia de las otras, éstas miran archivos de todo el repo
+   (sql/, scripts/, apps/web), no sólo src/.
+   ══════════════════════════════════════════════════════════════════ */
+const RAIZ = path.resolve(SRC, '..', '..', '..')
+
+function walkExt(dir, exts) {
+  const out = []
+  let entries = []
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return out
+  }
+  for (const e of entries) {
+    if (e.name === 'node_modules' || e.name === '.git' || e.name === 'dist') continue
+    const p = path.join(dir, e.name)
+    if (e.isDirectory()) out.push(...walkExt(p, exts))
+    else if (exts.some((x) => e.name.endsWith(x))) out.push(p)
+  }
+  return out
+}
+
+// ── R21 · SECURITY DEFINER exige SET search_path ───────────────────
+// Una función SECURITY DEFINER corre como owner. Si no fija el
+// search_path, resuelve los nombres con el search_path de QUIEN LA
+// LLAMA: cualquier usuario puede crear un esquema y una tabla que se
+// llame como la real y la función —con privilegios de owner— la usa.
+// Es escalada de privilegios (CWE-426 / CVE-2018-1058), el vector
+// clásico de Postgres.
+// Encontró `renombrar_zona()` en sql/42 la primera vez que corrió.
+if (fs.existsSync(SQL)) {
+  for (const f of fs.readdirSync(SQL).filter((x) => x.endsWith('.sql'))) {
+    const txt = fs.readFileSync(path.join(SQL, f), 'utf8')
+    const re = /create\s+(?:or\s+replace\s+)?function[\s\S]*?(?=\$\$|AS\s+'|\bas\s+')/gi
+    for (const m of txt.matchAll(re)) {
+      if (!/security\s+definer/i.test(m[0])) continue
+      if (/search_path/i.test(m[0])) continue
+      const linea = txt.slice(0, m.index).split('\n').length
+      problemas.push(
+        `[R21 SECURITY DEFINER sin search_path]  sql/${f}:${linea} — ` +
+          `agregar SET search_path = public (escalada de privilegios)`
+      )
+    }
+  }
+}
+
+// ── R22 · Ninguna credencial en el repositorio ─────────────────────
+// El ETL tenía la URL del proyecto de producción hardcodeada como
+// default: si el secret venía mal, el script caía EN SILENCIO sobre la
+// base real. Un default que apunta a producción es un accidente
+// esperando ocurrir.
+// Cubre: JWT, URIs de Postgres con contraseña, project-ref de Supabase
+// y claves service_role pegadas como literal.
+{
+  const PATRONES = [
+    { re: /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/, q: 'un JWT' },
+    { re: /postgres(?:ql)?:\/\/[^\s:'"@]+:[^\s@'"]+@/, q: 'una URI con contraseña' },
+    { re: /https?:\/\/[a-z0-9]{20}\.supabase\.(?:co|in|net)/i, q: 'un project-ref de Supabase' },
+    { re: /(?:service_role|service_key|SERVICE_KEY)\s*[:=]\s*['"][A-Za-z0-9_.-]{20,}['"]/, q: 'una service key' },
+  ]
+  const dirs = ['sql', 'scripts', path.join('apps', 'field', 'src'), path.join('apps', 'web', 'src')]
+  const vistos = new Set()
+  for (const d of dirs) {
+    const abs = path.join(RAIZ, d)
+    if (!fs.existsSync(abs)) continue
+    for (const f of walkExt(abs, ['.sql', '.py', '.js', '.jsx', '.ts', '.tsx'])) {
+      if (/\.test\.(js|jsx|ts|tsx)$/.test(f)) continue      // fixtures de tests
+      if (/\.example$/.test(f)) continue                     // plantillas de .env
+      if (vistos.has(f)) continue
+      vistos.add(f)
+      const lineas = fs.readFileSync(f, 'utf8').split('\n')
+      lineas.forEach((l, i) => {
+        // Un comentario que documenta el riesgo no es una credencial.
+        if (/^\s*(--|\/\/|#|\*)/.test(l)) return
+        for (const p of PATRONES) {
+          if (p.re.test(l)) {
+            problemas.push(
+              `[R22 credencial en el repo]  ${path.relative(RAIZ, f).replace(/\\/g, '/')}:${i + 1} — ` +
+                `parece ${p.q}. Va en variables de entorno / secrets, nunca en git.`
+            )
+            break
+          }
+        }
+      })
+    }
+  }
+}
+
+// ── R23 · Toda función SECURITY DEFINER debe revocar PUBLIC ─────────
+// Postgres concede EXECUTE a PUBLIC en cada función nueva. Sin un
+// REVOKE explícito, `anon` —el visitante de un catálogo público— puede
+// invocar funciones que corren como owner. Encontró tres casos:
+// `renombrar_zona` (sql/42), las de identidad (sql/28) y
+// `marcar_pedido_externo` (sql/01).
+if (fs.existsSync(SQL)) {
+  // Sólo cuenta cuando el archivo CREA una función SECURITY DEFINER.
+  // Mencionarlo en un comentario o en un SELECT de diagnóstico
+  // (00_VERIFICAR_ESTADO, 35_RLS_CATALOGO) no es un problema de permisos.
+  const CREA = /create\s+(?:or\s+replace\s+)?function[\s\S]*?security\s+definer/i
+  for (const f of fs.readdirSync(SQL).filter((x) => x.endsWith('.sql'))) {
+    const txt = fs.readFileSync(path.join(SQL, f), 'utf8')
+    const m = txt.match(CREA)
+    if (!m) continue
+    if (/revoke\s+(all\s+on\s+function|execute\s+on\s+function)/i.test(txt)) continue
+    const linea = txt.slice(0, m.index).split('\n').length
+    problemas.push(
+      `[R23 función sin REVOKE]  sql/${f}:${linea} — SECURITY DEFINER accesible a PUBLIC. ` +
+        `Agregar REVOKE ALL ON FUNCTION ... FROM PUBLIC; antes del GRANT.`
+    )
+  }
+}
+
+// ── R24 · target="_blank" / window.open sin noopener ───────────────
+// Sin `rel="noopener"` (o el tercer argumento), la pestaña abierta
+// recibe `window.opener` y puede redirigir ESTA página a otra URL:
+// reverse tabnabbing. Estaba en dos `window.open` de PedidoSheet.
+for (const f of archivos) {
+  if (!/\.jsx?$/.test(f)) continue
+  if (/\.test\.js$/.test(f)) continue
+  const lineas = fs.readFileSync(f, 'utf8').split('\n')
+  lineas.forEach((l, i) => {
+    // Un comentario que menciona window.open no abre ninguna ventana.
+    if (/^\s*(\/\/|\*|\/\*|#)/.test(l)) return
+    if (/window\.open\s*\(/.test(l) && /_blank/.test(l) && !/noopener|noreferrer/.test(l)) {
+      problemas.push(
+        `[R24 ventana sin noopener]  ${rel(f)}:${i + 1} — agregar 'noopener,noreferrer'`
+      )
+    }
+    if (/target\s*=\s*["']_blank["']/.test(l)) {
+      // El rel puede estar en las líneas siguientes del mismo tag.
+      const ctx = lineas.slice(i, i + 4).join(' ')
+      if (!/rel\s*=\s*["'][^"']*(noopener|noreferrer)/.test(ctx)) {
+        problemas.push(
+          `[R24 enlace sin noopener]  ${rel(f)}:${i + 1} — agregar rel="noopener noreferrer"`
+        )
+      }
+    }
+  })
+}
+
 // ── Reporte ────────────────────────────────────────────────────────
 const линия = '─'.repeat(60)
 console.log(линия)

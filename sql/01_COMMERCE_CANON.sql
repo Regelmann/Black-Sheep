@@ -78,4 +78,9 @@ begin
 end;
 $$;
 
+-- 🔴 Sin este REVOKE, la función queda ejecutable por `anon`: Postgres
+-- concede EXECUTE a PUBLIC por defecto y `marcar_pedido_externo` es
+-- SECURITY DEFINER — corre como owner y escribe en public.pedidos. El
+-- guard lo detecta con la regla R23.
+revoke all on function public.marcar_pedido_externo(uuid, text, text) from public;
 grant execute on function public.marcar_pedido_externo(uuid, text, text) to authenticated;
