@@ -444,8 +444,18 @@ function TabMedia({ onFlash }) {
   async function save(r, patch) {
     setSaving(r.sku_canon)
     try {
-      const { error } = await supabase.from('stock').update(patch).eq('sku_canon', r.sku_canon)
-      if (error) throw error
+      const result = await callOperation('guardar_producto', {
+        p_sku: r.sku_canon,
+        p_nombre: patch.producto_nombre ?? r.producto_nombre ?? null,
+        p_categoria: patch.categoria ?? r.categoria ?? null,
+        p_marca: patch.marca ?? r.marca ?? null,
+        p_unidad_venta: patch.unidad_venta ?? r.unidad_venta ?? null,
+        p_unidades_caja: patch.unidades_caja ?? r.unidades_caja ?? null,
+        p_kg_unidad: patch.kg_unidad ?? r.kg_unidad ?? null,
+        p_imagen_url: patch.imagen_url ?? r.imagen_url ?? null,
+        p_activo: patch.activo ?? r.activo ?? true,
+      })
+      if (result.error) throw result.error
       setRows(prev => prev.map(x => (x.sku_canon === r.sku_canon ? { ...x, ...patch } : x)))
       onFlash(true, 'Media guardada')
     } catch (e) {
