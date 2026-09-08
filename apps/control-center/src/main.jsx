@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { createClient } from '@supabase/supabase-js'
 import './styles.css'
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, { db: { schema: 'platform' } })
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+if (!supabaseUrl || !supabaseKey) throw new Error('Faltan las variables públicas de Supabase para Control Center.')
+const supabase = createClient(supabaseUrl, supabaseKey, { db: { schema: 'platform' } })
 const statusLabels = { active: 'Activo', trialing: 'Prueba', past_due: 'Vencido', canceled: 'Cancelado' }
 const statusClasses = { active: 'is-active', trialing: 'is-trial', past_due: 'is-due', canceled: 'is-canceled' }
 
