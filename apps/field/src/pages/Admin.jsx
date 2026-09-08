@@ -4,6 +4,7 @@ import { PageShell } from '../shells/PageShell.jsx'
 import { TabProspectos } from '../domain/TabProspectos.jsx'
 import { FilterBar } from '../domain/FilterBar.jsx'
 import { ZONAS_COMUNAS, normComuna, zonaFromComuna } from '../lib/zonas.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 
 const ZONAS = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
 
@@ -92,8 +93,10 @@ function TabClientes({ onFlash }) {
   const [saving, setSaving] = useState(null)
 
   useEffect(() => {
-    supabase.from('ejecutivos').select('id, nombre, zona, rol').order('zona')
-      .then(({ data }) => setEjecutivos(data || []))
+    selectResource('ejecutivos', 'id, nombre, zona, rol', {
+      label: 'admin_ejecutivos',
+      transform: query => query.order('zona'),
+    }).then(result => setEjecutivos(result.ok ? result.rows : []))
   }, [])
 
   const load = useCallback(async () => {
@@ -112,9 +115,17 @@ function TabClientes({ onFlash }) {
       }
       // zona no existe como columna directa en cartera - filtrar en JS después de cargar
       // if (zonaFiltro !== 'Todas') query = query.eq('zona', zonaFiltro)
-      const { data, error } = await query
-      if (error) throw error
-      setRows(data || [])
+      const result = await selectResource('cartera', 'cliente_key,nombre_cliente,comuna,ejecutivo_id,venta_mtd', {
+        label: 'admin_clientes',
+        transform: builder => {
+          const filtered = term
+            ? builder.or(`nombre_cliente.ilike.%${term}%,cliente_key.ilike.%${term}%,comuna.ilike.%${term}%`)
+            : builder
+          return filtered.order('nombre_cliente').limit(200)
+        },
+      })
+      if (!result.ok) throw result.error
+      setRows(result.rows)
     } catch (e) {
       onFlash(false, e.message)
       setRows([])
