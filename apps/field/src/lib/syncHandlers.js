@@ -3,6 +3,7 @@
  * Tipos: checkin | completar | nota | pedido | no_venta
  */
 import { supabase } from './supabase.js'
+import { callOperation } from './bs2Api.js'
 
 /**
  * ¿Esto parece un RUT chileno? `76491307-C`, `12.345.678-9`.
@@ -137,37 +138,21 @@ export async function handlePedido(item) {
     return { ok: true, id: data[0].id }
   }
   // Insert directo (nunca reencolar desde acá: lo maneja flushActionQueue).
-  const row = {
-    ejecutivo_id: p.ejecutivoId,
-    cliente_key: p.clienteKey || null,
-    nombre_cliente: p.nombreCliente || null,
-    lineas: p.lineas || [],
-    nota: p.nota || null,
-    estado: p.estado || 'borrador',
-    fuente: p.fuente || 'field_app_offline',
-    creado_en: p.creado_en || item.enqueuedAt || new Date().toISOString(),
-  }
-  try {
-    row.total_estimado = (p.lineas || []).reduce(
-      (a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0),
-      0
-    )
-  } catch (_) { void _ }
-  const { error } = await supabase.from('pedidos').insert(row)
-  if (error) {
-    const minimal = {
-      ejecutivo_id: row.ejecutivo_id,
-      cliente_key: row.cliente_key,
-      nombre_cliente: row.nombre_cliente,
-      lineas: row.lineas,
-      nota: row.nota,
-      estado: row.estado,
-      fuente: row.fuente,
-    }
-    const r2 = await supabase.from('pedidos').insert(minimal)
-    return r2.error ? { ok: false, error: r2.error.message } : { ok: true }
-  }
-  return { ok: true }
+  const total = (p.lineas || []).reduce(
+    (a, l) => a + (Number(l.precio) || 0) * (Number(l.cantidad) || 0),
+    0
+  )
+  const result = await callOperation('guardar_pedido', {
+    p_ejecutivo_id: p.ejecutivoId || null,
+    p_cliente_key: p.clienteKey || null,
+    p_nombre_cliente: p.nombreCliente || null,
+    p_lineas: p.lineas || [],
+    p_nota: p.nota || null,
+    p_estado: p.estado || 'borrador',
+    p_fuente: p.fuente || 'field_app_offline',
+    p_total_estimado: total > 0 ? Math.round(total) : null,
+  })
+  return result.error ? { ok: false, error: result.error.message } : { ok: true }
 }
 
 export async function handleNoVenta(item) {
