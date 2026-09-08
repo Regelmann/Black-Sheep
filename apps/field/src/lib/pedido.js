@@ -5,7 +5,7 @@ import { precioDesdeHistSku } from './precios.js'
  */
 
 import { supabase } from './supabase.js'
-import { selectResource } from './bs2Api.js'
+import { callOperation, selectResource } from './bs2Api.js'
 import { parseSkuDetalle, cantidadSugerida as cantidadSugeridaCoach } from './coach.js'
 
 /** Quita pipes/basura de nombres de producto (sku_detalle crudo) */
@@ -84,49 +84,18 @@ export async function guardarPedido({
 
   const total = items.reduce((a, l) => a + (Number(l.precio) || 0) * Number(l.cantidad), 0)
 
-  const row = {
-    ejecutivo_id: ejecutivoId,
-    cliente_key: clienteKey || null,
-    nombre_cliente: nombreCliente || null,
-    lineas: items,
-    nota: nota || null,
-    estado: estado || 'borrador',
-    fuente,
-    creado_en: new Date().toISOString(),
-  }
-
-  // total_estimado si la columna existe (ignore error)
-  try {
-    row.total_estimado = total > 0 ? Math.round(total) : null
-  } catch (_) { void _ }
-
-  const { data, error } = await supabase.from('pedidos').insert(row).select().maybeSingle()
-  if (error) {
-    const msg = error.message || String(error)
-    if (/cliente_key|schema cache|column|creado_en/i.test(msg)) {
-      // reintento mínimo sin campos opcionales
-      const minimal = {
-        ejecutivo_id: ejecutivoId,
-        cliente_key: clienteKey || null,
-        nombre_cliente: nombreCliente || null,
-        lineas: items,
-        nota: nota || null,
-        estado: estado || 'borrador',
-        fuente,
-      }
-      const r2 = await supabase.from('pedidos').insert(minimal).select().maybeSingle()
-      if (!r2.error) return r2
-      return {
-        data: null,
-        error: {
-          ...error,
-          message:
-            'Tabla pedidos incompleta. Corré SUPABASE_FIX_GERENCIA_Y_PEDIDOS.sql en Supabase y hard refresh.',
-        },
-      }
-    }
-  }
-  return { data, error }
+  const result = await callOperation('guardar_pedido', {
+    p_ejecutivo_id: ejecutivoId,
+    p_cliente_key: clienteKey || null,
+    p_nombre_cliente: nombreCliente || null,
+    p_lineas: items,
+    p_nota: nota || null,
+    p_estado: estado || 'borrador',
+    p_fuente: fuente,
+    p_total_estimado: total > 0 ? Math.round(total) : null,
+  })
+  if (result.ok) return { data: result.data, error: null }
+  return { data: null, error: result.error }
 }
 
 export async function listarPedidosHoy(ejecutivoId) {

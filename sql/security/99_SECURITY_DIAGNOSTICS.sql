@@ -55,3 +55,35 @@ SELECT e.id, e.tenant_id
 FROM public.ejecutivos e
 LEFT JOIN public.tenants t ON t.id = e.tenant_id
 WHERE t.id IS NULL;
+
+-- 7. Security Gate: políticas de escritura demasiado amplias.
+-- Debe devolver cero filas para entidades con ejecutivo_id.
+SELECT schemaname, tablename, policyname, cmd, qual, with_check
+FROM pg_policies p
+WHERE schemaname = 'public'
+  AND cmd IN ('UPDATE','DELETE','ALL')
+  AND EXISTS (
+    SELECT 1 FROM information_schema.columns c
+    WHERE c.table_schema = 'public'
+      AND c.table_name = p.tablename
+      AND c.column_name = 'ejecutivo_id'
+  )
+  AND (
+    lower(COALESCE(qual,'')) NOT LIKE '%ejecutivo_id%'
+    OR (cmd IN ('UPDATE','ALL') AND lower(COALESCE(with_check,'')) NOT LIKE '%ejecutivo_id%')
+  )
+ORDER BY tablename, policyname;
+
+-- 8. Security Gate: pedidos no deben depender de inserts directos.
+-- Revisión estática del repositorio: el resultado esperado es cero
+-- referencias a .from('pedidos').insert fuera de una migración SQL.
+-- La aplicación debe llamar api.guardar_pedido con idempotencia.
+
+-- 9. Security Gate: hook único y fail-closed.
+SELECT proname, COUNT(*) AS overloads
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND proname IN ('custom_access_token_hook','current_tenant_id','tenant_actual')
+GROUP BY proname
+ORDER BY proname;

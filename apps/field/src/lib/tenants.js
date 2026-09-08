@@ -44,7 +44,7 @@ export const TENANTS = [
     slug: 'keyfoods',
     domains: ['keyfoods.cl', 'keyfoods.com', 'app.black-sheep.cl'],
     emailHints: ['keyfoods'],
-    supabaseUrl:  env('VITE_TENANT_KEYFOODS_URL',  env('VITE_SUPABASE_URL')),
+    supabaseUrl:  'https://jtepzvcrtfkjxhtsmlqm.supabase.co',
     supabaseAnon: env('VITE_TENANT_KEYFOODS_ANON_KEY', env('VITE_SUPABASE_ANON_KEY')),
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {
@@ -62,7 +62,7 @@ export const TENANTS = [
     slug: 'demo',
     domains: ['demo.black-sheep.cl'],
     emailHints: ['demo', 'blacksheep', 'black-sheep'],
-    supabaseUrl:  env('VITE_TENANT_DEMO_URL',  env('VITE_SUPABASE_URL')),
+    supabaseUrl:  env('VITE_TENANT_DEMO_URL',  'https://jtepzvcrtfkjxhtsmlqm.supabase.co'),
     supabaseAnon: env('VITE_TENANT_DEMO_ANON_KEY', env('VITE_SUPABASE_ANON_KEY')),
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {

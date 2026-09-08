@@ -103,11 +103,6 @@ function TabClientes({ onFlash }) {
     setLoading(true)
     try {
       const term = q.trim()
-      if (term) {
-        query = query.or(
-          `nombre_cliente.ilike.%${term}%,cliente_key.ilike.%${term}%,comuna.ilike.%${term}%`
-        )
-      }
       // zona no existe como columna directa en cartera - filtrar en JS después de cargar
       // if (zonaFiltro !== 'Todas') query = query.eq('zona', zonaFiltro)
       const result = await selectResource('cartera', 'cliente_key,nombre_cliente,comuna,ejecutivo_id,venta_mtd', {

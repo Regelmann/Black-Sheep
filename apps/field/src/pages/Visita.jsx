@@ -197,12 +197,12 @@ export default function Visita({ session }) {
 
       // 1) Visita planificada (solo UUID)
       if (looksUuid) {
-        const { data: v, error: ve } = await supabase
-          .from('visitas')
-          .select('*')
-          .eq('id', decodedId)
-          .maybeSingle()
-        if (ve) console.warn('Visita.visitas', ve.message)
+        const rV = await selectResource('visitas', '*', {
+          label: 'visita_planificada',
+          transform: builder => builder.eq('id', decodedId).limit(1),
+        })
+        if (!rV.ok) console.warn('Visita.visitas', rV.error?.message)
+        const v = rV.rows[0]
         if (v) {
           let cli = null
           if (v.cliente_key) cli = (await buscarCarteraPorKey(v.cliente_key)).cliente
@@ -240,12 +240,11 @@ export default function Visita({ session }) {
           }
           // check-in de esta visita
           try {
-            const rCk = await safeSelect(
-              supabase.from('checkins').select('*')
-                .eq('visita_id', decodedId)
+            const rCk = await selectResource('checkins', '*', {
+              label: 'checkin_previo',
+              transform: builder => builder.eq('visita_id', decodedId)
                 .order('creado_en', { ascending: false }).limit(1),
-              { label: 'checkin_previo' }
-            )
+            })
             // Si la lectura falla NO se asume "sin check-in": eso haría
             // que el vendedor marque llegada dos veces sobre la misma visita.
             if (rCk.ok) setCheckin(rCk.rows[0] || null)
@@ -266,6 +265,7 @@ export default function Visita({ session }) {
         try {
           const rP = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono,place_id', {
             label: 'prospecto',
+            fallbackOnEmpty: true,
             transform: builder => builder.or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`).limit(1),
           })
           const p = rP.rows[0]

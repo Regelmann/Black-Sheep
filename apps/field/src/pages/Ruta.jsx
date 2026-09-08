@@ -322,10 +322,10 @@ export default function Ruta({ session }) {
       if (er) console.warn('rutas', er.message)
       let r = rutas?.[0] || null
       if (!r) {
-        const rr = await safeSelect(
-          supabase.from('rutas').select('*').eq('fecha', fecha).limit(5),
-          { label: 'rutas_fecha' }
-        )
+  const rr = await selectResource('rutas', '*', {
+    label: 'rutas_fecha',
+    transform: builder => builder.eq('fecha', fecha).limit(5),
+  })
         r = rr.rows.find(x => !x.ejecutivo_id || x.ejecutivo_id === uid) || null
       }
       setRuta(r)
@@ -395,6 +395,7 @@ export default function Ruta({ session }) {
         // app mostraba 1.000 prospectos de 3.627 sin ningún aviso.
         const r2 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
           label: 'prospectos_zona',
+          fallbackOnEmpty: true,
           transform: builder => builder.eq('zona', zonaNom).order('score', { ascending: false, nullsFirst: false }).limit(5000),
         })
         if (r2.ok && r2.rows.length) {
@@ -647,10 +648,10 @@ const r3 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna
       // Re-optimizar todo el itinerario junto
       // Esta lectura alimenta una ESCRITURA (reordenar). Si falla en
       // silencio, el vendedor toca "optimizar" y no pasa nada sin aviso.
-      const rTodas = await safeSelect(
-        supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
-        { label: 'visitas_reorden' }
-      )
+      const rTodas = await selectResource('visitas', '*', {
+        label: 'visitas_reorden',
+        transform: builder => builder.eq('ruta_id', rid).order('orden'),
+      })
       if (!rTodas.ok) {
         setToast('No se pudo leer la ruta para reordenar. Reintentá.')
         return
@@ -895,10 +896,10 @@ const r3 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna
   const recargarVisitas = useCallback(async (rutaId) => {
     const rid = rutaId || ruta?.id
     if (!rid) return
-    const rV = await safeSelect(
-      supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
-      { label: 'visitas_ruta' }
-    )
+    const rV = await selectResource('visitas', '*', {
+      label: 'visitas_ruta',
+      transform: builder => builder.eq('ruta_id', rid).order('orden'),
+    })
     const vis = rV.rows
     setVisitas(vis)
 
