@@ -64,7 +64,7 @@ export function NavBar({ esGerente, onLogout }) {
   // Estaba construido, con ruta y con la carga de los 4 archivos, pero
   // ningún botón llevaba ahí: sólo se llegaba escribiendo la URL. Es el
   // mismo patrón que ya vimos con GoalCard y con Ventas.
-  const morePaths = ['/gerencia', '/dashboard', '/datos', '/admin']
+  const morePaths = ['/gerencia', '/dashboard', '/datos', '/admin', '/platform']
   const moreActive = morePaths.some(p => loc.pathname.startsWith(p))
 
   const moreItems = []
@@ -75,6 +75,8 @@ export function NavBar({ esGerente, onLogout }) {
       // pantalla: /datos es sólo /dashboard con una pestaña abierta.
       // Dos accesos al mismo lugar confunden.
       { to: '/dashboard', label: 'Dashboard', sub: 'Negocio · datos · precios · metas', icon: ICON.gerencia },
+      { to: '/admin', label: 'Administración', sub: 'Usuarios · configuración · control', icon: ICON.admin },
+      { to: '/platform', label: 'Control Center', sub: 'Todos los tenants · pagos · planes', icon: ICON.admin },
     )
   }
 

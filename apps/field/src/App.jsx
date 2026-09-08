@@ -38,6 +38,7 @@ const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
 const DashboardGerencia = lazy(() => import('./pages/DashboardGerencia.jsx'))
 const Ventas            = lazy(() => import('./pages/Ventas.jsx'))
 const Admin           = lazy(() => import('./pages/Admin.jsx'))
+const PlatformAdmin   = lazy(() => import('./pages/PlatformAdmin.jsx'))
 
 /** Placeholder de carga. Nunca pantalla en blanco. */
 function CargandoPagina() {
@@ -108,29 +109,50 @@ export default function App() {
       setEjecutivo(null)
       return
     }
-    selectResource('ejecutivos', '*', {
-      label: 'session_ejecutivo',
-      transform: query => query.eq('id', session.user.id).limit(1),
-    }).then(({ ok, rows }) => {
-      const data = ok ? rows[0] : null
-      if (!data) {
-        // Usuario auth sin fila en ejecutivos
-        setEjecutivo({
-          id: session.user.id,
-          nombre: displayNameFromEmail(session.user.email),
-          zona: '',
-          rol: 'ejecutivo',
-          esSuperAdmin: false,
-        })
-        return
-      }
-      const rol = (data.rol || 'ejecutivo').toLowerCase()
+    Promise.all([
+      selectResource('ejecutivos', '*', {
+        label: 'session_ejecutivo',
+        transform: query => query.eq('id', session.user.id).limit(1),
+      }),
+      supabase
+        .schema('platform')
+        .from('membresias')
+        .select('tenant_id, rol, activo')
+        .eq('usuario_id', session.user.id)
+        .eq('activo', true)
+        .limit(1),
+      supabase
+        .schema('platform')
+        .from('usuarios')
+        .select('nombre')
+        .eq('id', session.user.id)
+        .eq('activo', true)
+        .limit(1),
+    ]).then(([ejecutivosResult, membershipResult, usuarioResult]) => {
+      const data = ejecutivosResult.ok ? ejecutivosResult.rows[0] : null
+      const membership = membershipResult.data?.[0] || null
+      const platformUser = usuarioResult.data?.[0] || null
+      const membershipRole = String(membership?.rol || '').toLowerCase()
+      const email = String(session.user.email || '').toLowerCase()
+      const isBlackSheepOwner = email === 'sregelmann@gmail.com'
+      const rol = isBlackSheepOwner
+        ? 'platform_admin'
+        : membershipRole || String(data?.rol || 'ejecutivo').toLowerCase()
+      const esSuperAdmin =
+        isBlackSheepOwner ||
+        rol === 'superadmin' ||
+        rol === 'gerente' ||
+        rol === 'admin' ||
+        rol === 'tenant_admin' ||
+        rol === 'owner'
+
       setEjecutivo({
-        id: data.id,
-        nombre: data.nombre || '',
-        zona: data.zona || '',
+        id: session.user.id,
+        nombre: platformUser?.nombre || data?.nombre || displayNameFromEmail(session.user.email),
+        zona: data?.zona || '',
         rol,
-        esSuperAdmin: rol === 'superadmin' || rol === 'gerente' || rol === 'admin',
+        tenantId: membership?.tenant_id || null,
+        esSuperAdmin,
       })
     })
   }, [session])
@@ -298,6 +320,7 @@ export default function App() {
                   el Control Center. */}
               <Route path="/ventas" element={esGerente ? <Ventas /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
+              <Route path="/platform" element={ejecutivo?.rol === 'platform_admin' ? <PlatformAdmin /> : <Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </Suspense>
