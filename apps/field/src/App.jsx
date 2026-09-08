@@ -25,6 +25,13 @@ import Ruta from './pages/Ruta.jsx'
 import Visita from './pages/Visita.jsx'
 import Cartera from './pages/Cartera.jsx'
 
+const displayNameFromEmail = (email = '') => {
+  const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim()
+  return localPart
+    ? localPart.replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : 'Equipo'
+}
+
 const CatalogoCliente = lazy(() => import('./pages/CatalogoCliente.jsx'))
 const Stock           = lazy(() => import('./pages/Stock.jsx'))
 const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
@@ -110,7 +117,7 @@ export default function App() {
         // Usuario auth sin fila en ejecutivos
         setEjecutivo({
           id: session.user.id,
-          nombre: session.user.email || '',
+          nombre: displayNameFromEmail(session.user.email),
           zona: '',
           rol: 'ejecutivo',
           esSuperAdmin: false,
