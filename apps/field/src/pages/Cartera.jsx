@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
+import { selectResource } from '../lib/bs2Api.js'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
 import HistorialPedidos from '../domain/HistorialPedidos.jsx'
 import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
@@ -148,12 +149,14 @@ export default function Cartera({ session }) {
   async function cargar() {
     setLoading(true)
     const eid = eje?.eidVista || session.user.id
-    let q = supabase
-      .from('cartera')
-      .select('*')
-      .eq('ejecutivo_id', eid)
-      .order('venta_mtd', { ascending: false, nullsFirst: false })
-    const { data, error } = await q
+    const result = await selectResource('cartera', '*', {
+      label: 'cartera',
+      transform: builder => builder
+        .eq('ejecutivo_id', eid)
+        .order('venta_mtd', { ascending: false, nullsFirst: false }),
+    })
+    const data = result.rows
+    const error = result.error
 
     // 🔴 SIN SEÑAL LA CARTERA NO PUEDE QUEDAR VACÍA.
     // Antes: setClientes(data || []) — con la red caída `data` es
