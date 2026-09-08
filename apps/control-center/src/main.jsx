@@ -35,7 +35,7 @@ function TenantModal({ onClose, onSaved }) {
 }
 
 function App() {
-  const [session, setSession] = useState(null); const [loading, setLoading] = useState(true); const [authorized, setAuthorized] = useState(false); const [tenants, setTenants] = useState([]); const [query, setQuery] = useState(''); const [filter, setFilter] = useState('all'); const [error, setError] = useState(''); const [showModal, setShowModal] = useState(false)
+  const [session, setSession] = useState(null); const [loading, setLoading] = useState(true); const [authorized, setAuthorized] = useState(false); const [tenants, setTenants] = useState([]); const [auditLog, setAuditLog] = useState([]); const [query, setQuery] = useState(''); const [filter, setFilter] = useState('all'); const [error, setError] = useState(''); const [showModal, setShowModal] = useState(false)
   useEffect(() => { supabase.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false) }); const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => setSession(next)); return () => listener.subscription.unsubscribe() }, [])
   async function startCheckout(tenantId, plan = 'starter') {
     const { data } = await supabase.auth.getSession()
@@ -52,7 +52,7 @@ function App() {
     const { data: admin, error: adminError } = await supabase.from('platform_admins').select('usuario_id').eq('usuario_id', session.user.id).eq('activo', true).maybeSingle()
     if (adminError || !admin) { setAuthorized(false); setError('Esta cuenta no tiene permisos de plataforma.'); return }
     const { data, error: loadError } = await supabase.from('tenants').select('id, nombre, slug, activo, suscripciones(plan, estado, importe_mensual, vence_en), membresias(count)').order('nombre')
-    if (loadError) { setError(loadError.message); return }; setAuthorized(true); setTenants(data || [])
+    if (loadError) { setError(loadError.message); return }; const { data: audit } = await supabase.from('audit_log').select('id, action, resource_type, details, created_at, tenant_id').order('created_at', { ascending: false }).limit(8); setAuthorized(true); setTenants(data || []); setAuditLog(audit || [])
   }
   useEffect(() => { loadTenants() }, [session])
   const visible = useMemo(() => tenants.filter(t => { const sub = t.suscripciones?.[0]; return `${t.nombre} ${t.slug}`.toLowerCase().includes(query.toLowerCase()) && (filter === 'all' || sub?.estado === filter) }), [tenants, query, filter])
