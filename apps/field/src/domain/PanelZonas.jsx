@@ -22,7 +22,6 @@
  */
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { safeSelect } from '../lib/query.js'
 import { selectResource } from '../lib/bs2Api.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 
