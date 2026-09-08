@@ -13,13 +13,13 @@ import { predict7Days } from '../lib/predictor.js'
 /** Fuente de verdad del mix: líneas de venta del cliente (mes + histórico reciente) */
 async function mixDesdeVentasLineas(clienteKey) {
   if (!clienteKey) return []
-  const { data, error } = await supabase
-    .from('ventas_lineas')
-    .select('sku_canon,producto_nombre,cantidad,venta_neta_clp,fecha')
-    .eq('cliente_key', String(clienteKey))
-    .order('fecha', { ascending: false })
-    .limit(800)
-  if (error || !data?.length) return []
+  const result = await selectResource('ventasLineas', 'sku_canon,producto_nombre,cantidad,venta_neta_clp,fecha', {
+    label: 'gerencia_mix_ventas',
+    transform: query => query.eq('cliente_key', String(clienteKey))
+      .order('fecha', { ascending: false }).limit(800),
+  })
+  const data = result.ok ? result.rows : []
+  if (!data.length) return []
   // Mes de referencia = mes de la venta más reciente del cliente (no reloj del celular)
   let mesRef = new Date().toISOString().slice(0, 7)
   for (const r of data) {
