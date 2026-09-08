@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { safeSelect } from '../lib/query.js'
+import { selectResource } from '../lib/bs2Api.js'
 import { traerTodo } from '../lib/traerTodo.js'
 import { useEjecutivo } from '../App.jsx'
 import { watchPosition, getPositionPrecise, haversineM, geoErrorMessage } from '../lib/geo.js'
@@ -360,12 +361,11 @@ export default function Ruta({ session }) {
       })
 
       // Solo columnas necesarias (más rápido + menos payload)
-      const { data: cart, error: ec } = await supabase
-        .from('cartera')
-        .select(
-          'cliente_key,nombre_cliente,comuna,direccion,lat,lng,estado_fuga,estado_texto,oferta_real,productos_top,telefono,link_whatsapp,venta_mensual,venta_mtd,dias_sin_comprar,sku_detalle,fecha_snapshot'
-        )
-        .eq('ejecutivo_id', uid)
+      const cartResult = await selectResource('cartera',
+        'cliente_key,nombre_cliente,comuna,direccion,lat,lng,estado_fuga,estado_texto,oferta_real,productos_top,telefono,link_whatsapp,venta_mensual,venta_mtd,dias_sin_comprar,sku_detalle,fecha_snapshot',
+        { label: 'cartera_ruta', transform: builder => builder.eq('ejecutivo_id', uid) })
+      const cart = cartResult.rows
+      const ec = cartResult.error
       if (ec) {
         console.warn('cartera', ec.message)
         setLoadError('Cartera: ' + ec.message)
@@ -393,23 +393,10 @@ export default function Ruta({ session }) {
         // 🔴 .limit() NO sube el techo de 1.000 filas de PostgREST:
         // sólo puede BAJARLO. Se paginaba de hecho sin saberlo, y la
         // app mostraba 1.000 prospectos de 3.627 sin ningún aviso.
-        const r2 = await traerTodo((d, h) => supabase
-          .from('prospectos')
-          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
-          .eq('zona', zonaNom)
-          // 🔴 SIN ORDER, el limit corta por el orden interno de la
-          // tabla: si hay más de 5.000 se pierden prospectos al azar,
-          // no los peores.
-          //
-          // Se ordena por `score` —no por `potencial`— porque es el
-          // mismo campo con el que planDia.js rankea después. Cortar
-          // por un criterio y priorizar por otro pierde justo a los
-          // que iban a quedar arriba.
-          //
-          // nullsFirst:false: los que no tienen score cargado quedan
-          // al final y no se comen el cupo.
-          .order('score', { ascending: false, nullsFirst: false })
-          .range(d, h), { label: 'prospectos_zona' })
+        const r2 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
+          label: 'prospectos_zona',
+          transform: builder => builder.eq('zona', zonaNom).order('score', { ascending: false, nullsFirst: false }).limit(5000),
+        })
         if (r2.ok && r2.rows.length) {
           pros = r2.rows
           console.log('prospectos por zona', zonaNom, pros.length)
@@ -420,12 +407,10 @@ export default function Ruta({ session }) {
       }
       // 2) por ejecutivo_id
       if (uid) {
-        const r1 = await traerTodo((d, h) => supabase
-          .from('prospectos')
-          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
-          .eq('ejecutivo_id', uid)
-          .order('score', { ascending: false, nullsFirst: false })
-          .range(d, h), { label: 'prospectos_ejecutivo' })
+        const r1 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
+          label: 'prospectos_ejecutivo',
+          transform: builder => builder.eq('ejecutivo_id', uid).order('score', { ascending: false, nullsFirst: false }).limit(5000),
+        })
         if (r1.ok && r1.rows.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
           for (const p of r1.rows) {
@@ -436,21 +421,10 @@ export default function Ruta({ session }) {
       }
       // 3) sin zona en DB: traer lote amplio y filtrar por comuna de la zona (cubre Providencia en Nor-Poniente)
       if (comunaSet.size && pros.length < 200) {
-        const r3 = await traerTodo((d, h) => supabase
-          .from('prospectos')
-          .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona')
-          .not('lat', 'is', null)
-          // 🔴 HAY 9.886 PROSPECTOS EN LA BASE. Con limit 8.000 quedan
-          // 1.886 fuera SIEMPRE — no es un riesgo teórico, pasa hoy.
-          //
-          // Sin `order` el corte lo decidía el orden interno de Postgres:
-          // se perdían 1.886 al azar. Ordenando por potencial, lo que
-          // queda fuera es lo de menos valor.
-          //
-          // El arreglo de fondo es paginar o filtrar por zona en la
-          // consulta. Mientras tanto, al menos se pierde lo correcto.
-          .order('score', { ascending: false, nullsFirst: false })
-          .range(d, h), { label: 'prospectos_barrido' })
+const r3 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
+          label: 'prospectos_barrido',
+          transform: builder => builder.not('lat', 'is', null).order('score', { ascending: false, nullsFirst: false }).limit(8000),
+        })
         if (r3.ok && r3.rows.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
           let added = 0

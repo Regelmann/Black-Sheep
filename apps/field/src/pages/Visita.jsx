@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase.js'
 // cada uno un poco distinto.
 import { guardarNotaTerreno } from '../lib/nota.js'
 import { safeSelect } from '../lib/query.js'
+import { selectResource } from '../lib/bs2Api.js'
 import { getPositionPrecise, haversineM, formatDist } from '../lib/geo.js'
 import { skusAReponer } from '../lib/coach.js'
 import { decideClient, calcCommercialValue } from '../lib/decisionEngine.js'
@@ -155,10 +156,10 @@ export default function Visita({ session }) {
     for (const clave of claves) {
       // 1) lista específica  2) '*' si la vista cambió
       for (const cols of [CARTERA_SEL, '*']) {
-        const r = await safeSelect(
-          supabase.from('cartera').select(cols).eq('cliente_key', clave).limit(1),
-          { label: `cartera_key[${cols === '*' ? 'todo' : 'lista'}]` }
-        )
+        const r = await selectResource('cartera', cols, {
+          label: `cartera_key[${cols === '*' ? 'todo' : 'lista'}]`,
+          transform: builder => builder.eq('cliente_key', clave).limit(1),
+        })
         if (r.ok) {
           if (r.rows[0]) return { cliente: r.rows[0], error: null }
           break   // consultó bien y no está: probar la otra clave
@@ -206,11 +207,10 @@ export default function Visita({ session }) {
           let cli = null
           if (v.cliente_key) cli = (await buscarCarteraPorKey(v.cliente_key)).cliente
           if (!cli && v.nombre_local) {
-            const rC = await safeSelect(
-              supabase.from('cartera').select(CARTERA_SEL)
-                .ilike('nombre_cliente', `%${String(v.nombre_local).slice(0, 40)}%`).limit(3),
-              { label: 'cartera_por_nombre' }
-            )
+            const rC = await selectResource('cartera', CARTERA_SEL, {
+              label: 'cartera_por_nombre',
+              transform: builder => builder.ilike('nombre_cliente', `%${String(v.nombre_local).slice(0, 40)}%`).limit(3),
+            })
             cli = rC.rows[0] || null
           }
           if (cli) {
@@ -264,12 +264,10 @@ export default function Visita({ session }) {
       // 3) prospecto
       if (!cli) {
         try {
-          const rP = await safeSelect(
-            supabase.from('prospectos')
-              .select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono,place_id')
-              .or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`).limit(1),
-            { label: 'prospecto' }
-          )
+          const rP = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono,place_id', {
+            label: 'prospecto',
+            transform: builder => builder.or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`).limit(1),
+          })
           const p = rP.rows[0]
           if (p) {
             cli = {
@@ -348,12 +346,10 @@ export default function Visita({ session }) {
     if (loading) return
     ;(async () => {
       try {
-        const rS = await safeSelect(
-          supabase.from('stock')
-            .select('producto_nombre,sku_canon,precio_unidad,precio_kilo')
-            .not('precio_unidad', 'is', null).limit(500),
-          { label: 'precios_stock' }
-        )
+        const rS = await selectResource('stock', 'producto_nombre,sku_canon,precio_unidad,precio_kilo', {
+          label: 'precios_stock',
+          transform: builder => builder.not('precio_unidad', 'is', null).limit(500),
+        })
         const data = rS.rows
         if (!data.length) return
         const mapa = {}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { selectResource } from '../lib/bs2Api.js'
 import { money } from '../components.jsx'
 import PageShell from '../shells/PageShell.jsx'
 import { DataEmpty } from '../ui/DataState.jsx'
@@ -44,30 +44,29 @@ export default function Ventas() {
   async function load() {
     setLoading(true)
     setError(null)
-    const qs = [
-      supabase.from('v_ventas_resumen_mensual').select('*').order('mes', { ascending: false }).limit(24),
-      supabase.from('v_ventas_cliente').select('*').order('venta_neta_real', { ascending: false }).limit(200),
-      supabase.from('v_ventas_producto').select('*').order('venta_neta_real', { ascending: false }).limit(200),
-      supabase.from('v_ventas_pedido_factura').select('*').order('fecha_digitacion', { ascending: false }).limit(300),
-      supabase.from('v_ventas_pedidos_pendientes').select('*').order('fecha_entrega_solicitada', { ascending: true }).limit(300),
-      supabase.from('v_ventas_vendedor').select('*').order('venta_neta_real', { ascending: false }).limit(100),
-      supabase.from('v_ventas_calidad').select('*').maybeSingle(),
-    ]
-    const rs = await Promise.all(qs)
-    const bad = rs.find(r => r.error)
-    if (bad?.error) {
-      setError({ user: bad.error.message || 'No se pudo leer el modelo de ventas.' })
+    const rs = await Promise.all([
+      selectResource('ventasResumenMensual', '*', { label: 'ventas_resumen', transform: q => q.order('mes', { ascending: false }).limit(24) }),
+      selectResource('ventasCliente', '*', { label: 'ventas_cliente', transform: q => q.order('venta_neta_real', { ascending: false }).limit(200) }),
+      selectResource('ventasProducto', '*', { label: 'ventas_producto', transform: q => q.order('venta_neta_real', { ascending: false }).limit(200) }),
+      selectResource('ventasPedidoFactura', '*', { label: 'ventas_pedido_factura', transform: q => q.order('fecha_digitacion', { ascending: false }).limit(300) }),
+      selectResource('ventasPendientes', '*', { label: 'ventas_pendientes', transform: q => q.order('fecha_entrega_solicitada', { ascending: true }).limit(300) }),
+      selectResource('ventasVendedor', '*', { label: 'ventas_vendedor', transform: q => q.order('venta_neta_real', { ascending: false }).limit(100) }),
+      selectResource('ventasCalidad', '*', { label: 'ventas_calidad' }),
+    ])
+    const bad = rs.find(r => !r.ok)
+    if (bad) {
+      setError({ user: bad.error?.user || 'No se pudo leer el modelo de ventas.' })
       setLoading(false)
       return
     }
-    const m = rs[0].data || []
+    const m = rs[0].rows
     setMonths(m)
-    setClients(rs[1].data || [])
-    setProducts(rs[2].data || [])
-    setOrders(rs[3].data || [])
-    setPending(rs[4].data || [])
-    setSellers(rs[5].data || [])
-    setQuality(rs[6].data || null)
+    setClients(rs[1].rows)
+    setProducts(rs[2].rows)
+    setOrders(rs[3].rows)
+    setPending(rs[4].rows)
+    setSellers(rs[5].rows)
+    setQuality(rs[6].rows[0] || null)
     setSelectedMonth(prev => prev || m[0]?.mes || '')
     setLoading(false)
   }

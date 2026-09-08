@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { safeSelect } from '../lib/query.js'
+import { selectResource } from '../lib/bs2Api.js'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { DataError } from '../ui/DataState.jsx'
 import { useEjecutivo } from '../App.jsx'
@@ -194,41 +195,24 @@ export default function Gerencia({ esGerente }) {
         // IDs de terreno: todos los ejecutivos de zona (gerente) o el actual
         const eids = (todosEjecutivos.length ? todosEjecutivos.map(e => e.id) : [eidVista]).filter(Boolean)
 
+        const carteraSelect = 'cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
         const carPromises = eids.length
-          ? eids.map(id =>
-              supabase
-                .from('cartera')
-                .select(
-                  'cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
-                )
-                .eq('ejecutivo_id', id)
-                .limit(800)
-            )
-          : [
-              supabase
-                .from('cartera')
-                .select(
-                  'cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,venta_mtd,venta_mensual,dias_sin_comprar,estado_fuga,es_bloqueado,sku_detalle,oferta_real,productos_top'
-                )
-                .limit(2000),
-            ]
+          ? eids.map(id => selectResource('cartera', carteraSelect, {
+              label: `gerencia_cartera_${id}`,
+              transform: query => query.eq('ejecutivo_id', id).limit(800),
+            }))
+          : [selectResource('cartera', carteraSelect, {
+              label: 'gerencia_cartera',
+              transform: query => query.limit(2000),
+            })]
 
-        // allSettled, NO all: si falla una sola consulta con Promise.all
-        // revienta el bloque entero y TODOS los contadores quedan en "—".
-        // Cada bloque debe poder fallar solo y decirlo.
         const _settled = await Promise.allSettled([
-          supabase.from('gerencia').select('*'),
-          supabase.from('tendencia').select('*'),
-          // '*' en vez de 8 columnas fijas: si UNA cambió de nombre,
-          // PostgREST rechazaba la consulta entera y este bloque quedaba
-          // en "—". Ese era el "No cargó: stock" de la pantalla.
-          supabase.from('stock').select('*').limit(500),
-          supabase.from('gerencia_clientes').select('*').order('venta_mtd', { ascending: false }).limit(3000),
+          selectResource('gerencia', '*', { label: 'gerencia_resumen' }),
+          selectResource('tendencia', '*', { label: 'gerencia_tendencia' }),
+          selectResource('stock', '*', { label: 'gerencia_stock', transform: query => query.limit(500) }),
+          selectResource('gerenciaClientes', '*', { label: 'gerencia_clientes', transform: query => query.order('venta_mtd', { ascending: false }).limit(3000) }),
           Promise.all(carPromises),
-          // Igual que stock: '*' y el filtro por tipo se hace en JS.
-          // Un .or() sobre una columna renombrada rompe la consulta
-          // aunque el select esté bien.
-          supabase.from('notas_cliente').select('*').limit(300),
+          selectResource('notasCliente', '*', { label: 'gerencia_notas', transform: query => query.limit(300) }),
         ])
 
         const _NOMBRES = ['gerencia', 'tendencia', 'stock', 'clientes', 'cartera', 'notas']
@@ -240,8 +224,7 @@ export default function Gerencia({ esGerente }) {
             console.error(`[gerencia:${_NOMBRES[i]}]`, r.reason)
             return null
           }
-          // supabase resuelve con { data, error } incluso cuando falla
-          if (r.value && r.value.error) {
+          if (r.value && !r.value.ok) {
             _fallos.push(_NOMBRES[i])
             console.error(`[gerencia:${_NOMBRES[i]}]`, r.value.error)
             return null
@@ -249,10 +232,10 @@ export default function Gerencia({ esGerente }) {
           return r.value
         }
 
-        const g        = _pick(0)?.data || []
-        const t        = _pick(1)?.data || []
-        const stock    = _pick(2)?.data || []
-        const det      = _pick(3)?.data || []
+        const g        = _pick(0)?.rows || []
+        const t        = _pick(1)?.rows || []
+        const stock    = _pick(2)?.rows || []
+        const det      = _pick(3)?.rows || []
         const carResults = _settled[4].status === 'fulfilled' ? _settled[4].value : []
         if (_settled[4].status === 'rejected') {
           _fallos.push('cartera')
@@ -260,7 +243,7 @@ export default function Gerencia({ esGerente }) {
         }
         // El filtro por tipo se aplica acá, no en la consulta: así una
         // columna renombrada no tumba la lectura completa.
-        const notasBlq = (_pick(5)?.data || []).filter((n) => {
+        const notasBlq = (_pick(5)?.rows || []).filter((n) => {
           const t = String(n?.tipo ?? n?.tipo_nota ?? n?.categoria ?? '').toLowerCase()
           return t.includes('bloqueo')
         })
@@ -274,7 +257,7 @@ export default function Gerencia({ esGerente }) {
         const carAll = []
         const seenKey = new Set()
         for (const r of carResults || []) {
-          for (const row of r?.data || []) {
+          for (const row of r?.rows || []) {
             const k = row.cliente_key || row.nombre_cliente
             if (k && seenKey.has(k)) continue
             if (k) seenKey.add(k)

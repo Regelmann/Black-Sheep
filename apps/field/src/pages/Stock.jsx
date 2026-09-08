@@ -2,11 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { productTitle } from '../lib/productDisplay.js'
 import { findBuyersForSku } from '../lib/stockIntel.js'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
 import { selectResource } from '../lib/bs2Api.js'
 import { pick, auditar, columnasReales, CARTERA } from '../lib/columns.js'
-import { safeAll, safeSelect } from '../lib/query.js'
-import { traerTodo } from '../lib/traerTodo.js'
 import { DataError } from '../ui/DataState.jsx'
 import { PageShell } from '../shells/PageShell.jsx'
 import { DataAsOfBanner } from '../components.jsx'
@@ -47,38 +44,16 @@ export default function Stock() {
     // cuatro. No había respaldo final. Y el filtro .eq('ejecutivo_id')
     // rompe la consulta aunque el select esté bien, si esa columna
     // cambió de nombre. Por eso se veía "Esta vista está desactualizada".
-    const tries = [
-      'cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id',
-      'cliente_key,nombre_cliente,sku_detalle,venta_mtd,ejecutivo_id',
-      'cliente_key,nombre_cliente,sku_detalle',
-      '*',   // ÚLTIMO RECURSO: traer todo antes que no traer nada.
-    ]
-    let carteraRows = []
-    let cartErr = null
-    let degradado = false
-
-    for (let i = 0; i < tries.length; i++) {
-      const cols = tries[i]
-      // El techo real de PostgREST es 1.000: .limit(3000) no lo sube.
-      // Con 3.870 clientes en una zona se perdían dos tercios en
-      // silencio, y el cruce de compradores quedaba incompleto.
-      let q = supabase.from('cartera').select(cols)
-      // El filtro por ejecutivo sólo se aplica mientras el select sea
-      // específico. En el intento con '*' se filtra en JS, para que una
-      // columna renombrada no tumbe también el filtro.
-      if (eid && cols !== '*') q = q.eq('ejecutivo_id', eid)
-
-      const rCart = await traerTodo((d, h) => q.range(d, h), { label: `cartera[${i}]` })
-      if (rCart.ok) {
-        carteraRows = rCart.rows || []
-        cartErr = null
-        degradado = cols === '*'
-        break
-      }
-      cartErr = rCart.error
-      // RLS o red no se arreglan pidiendo otras columnas.
-      if (cartErr?.kind !== 'schema') break
-    }
+    const carteraResult = await selectResource('cartera', 'cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id', {
+      label: 'stock_cartera',
+      transform: query => {
+        if (eid) query = query.eq('ejecutivo_id', eid)
+        return query.limit(10000)
+      },
+    })
+    let carteraRows = carteraResult.ok ? carteraResult.rows : []
+    const cartErr = carteraResult.ok ? null : carteraResult.error
+    const degradado = false
 
     if (degradado) {
       // Filtrado en JS tolerando el nombre real de la columna.

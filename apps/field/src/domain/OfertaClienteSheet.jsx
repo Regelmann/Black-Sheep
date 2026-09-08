@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { safeSelect } from '../lib/query.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 import { parseSkuDetalle } from '../lib/coach.js'
 import { precioUnitarioDesdeSku } from '../lib/pedido.js'
 import { resolverPrecio, resolverPrecioCliente, estiloOrigenPrecio, formatPrecioClp, precioDesdeLista } from '../lib/precios.js'
@@ -64,13 +65,10 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
       // safeSelect: si la consulta FALLA, `rows` es el fallback (vacío) pero
       // `ok:false` lo dice — no se confunde "falló" con "no hay oferta".
       const [rs, ro] = await Promise.all([
-        safeSelect(
-          // traerTodo pagina: `.limit(800)` NO sube el techo de 1000 del
-          // servidor, sólo lo baja. Con la lista completa hacen falta
-          // todas las filas.
-          supabase.from('stock').select('*').order('producto_nombre').limit(1000),
-          { label: 'oferta_stock' }
-        ),
+        selectResource('stock', '*', {
+          label: 'oferta_stock',
+          transform: query => query.order('producto_nombre').limit(1000),
+        }),
         safeSelect(
           supabase
             .from('ofertas_cliente')

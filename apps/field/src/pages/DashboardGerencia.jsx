@@ -26,13 +26,12 @@ import '../styles/dashboard.css'
  * tenant: acá no va. El gerente ve la plataforma, no un tenant.
  */
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase.js'
-import { traerTodo } from '../lib/traerTodo.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 import { AccionesGerencia } from '../domain/AccionesGerencia.jsx'
 import CargaArchivos from '../domain/CargaArchivos.jsx'
 import { useParams, useNavigate } from 'react-router-dom'
 import { loadSavedTenantId } from '../lib/tenants.js'
+import { selectResource } from '../lib/bs2Api.js'
 
 const clp = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')
 const clpCorto = (n) => {
@@ -75,18 +74,14 @@ export default function DashboardGerencia({ seccion = null }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     const [rg, rm] = await Promise.all([
-      traerTodo(
-        (d, h) => supabase
-          .from('gerencia_clientes')
-          .select('ejecutivo,canal,cliente_key,nombre_cliente,comuna,venta_mtd,productos_top')
-          .order('venta_mtd', { ascending: false, nullsFirst: false })
-          .range(d, h),
-        { label: 'dashboard_gerencia' }
-      ),
-      traerTodo(
-        (d, h) => supabase.from('gerencia').select('*').range(d, h),
-        { label: 'metas_zona' }
-      ),
+      selectResource('gerenciaClientes', 'ejecutivo,canal,cliente_key,nombre_cliente,comuna,venta_mtd,productos_top', {
+        label: 'dashboard_gerencia',
+        transform: q => q.order('venta_mtd', { ascending: false, nullsFirst: false }).limit(10000),
+      }),
+      selectResource('gerencia', '*', {
+        label: 'metas_zona',
+        transform: q => q.limit(10000),
+      }),
     ])
 
     if (!rg.ok) { setErr(mensajeDeError(rg.error)); setRows([]) }

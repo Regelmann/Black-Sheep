@@ -12,6 +12,21 @@ export const BS2_RESOURCES = Object.freeze({
   pedidos: { v2: 'pedidos_field', legacy: 'pedidos' },
   prospectos: { v2: 'prospectos', legacy: 'prospectos' },
   conflictos: { v2: 'conflictos' },
+  ventasResumenMensual: { v2: 'v_ventas_resumen_mensual' },
+  ventasCliente: { v2: 'v_ventas_cliente' },
+  ventasProducto: { v2: 'v_ventas_producto' },
+  ventasPedidoFactura: { v2: 'v_ventas_pedido_factura' },
+  ventasPendientes: { v2: 'v_ventas_pedidos_pendientes' },
+  ventasVendedor: { v2: 'v_ventas_vendedor' },
+  ventasCalidad: { v2: 'v_ventas_calidad' },
+  gerencia: { v2: 'gerencia', legacy: 'gerencia' },
+  tendencia: { v2: 'tendencia', legacy: 'tendencia' },
+  gerenciaClientes: { v2: 'gerencia_clientes', legacy: 'gerencia_clientes' },
+  notasCliente: { v2: 'notas_cliente', legacy: 'notas_cliente' },
+  ejecutivos: { v2: 'ejecutivos', legacy: 'ejecutivos' },
+  zonasComunas: { v2: 'zonas_comunas', legacy: 'zonas_comunas' },
+  metas: { v2: 'metas', legacy: 'metas' },
+  focos: { v2: 'focos', legacy: 'focos' },
 })
 
 export const BS2_OPERATIONS = Object.freeze({

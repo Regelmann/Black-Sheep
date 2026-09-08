@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { traerTodo } from '../lib/traerTodo.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 import { normComuna, zonaFromComuna } from '../lib/zonas.js'
 
@@ -30,18 +31,11 @@ export function AsignarClientes({ onFlash }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     const [rc, re] = await Promise.all([
-      traerTodo(
-        (d, h) => supabase
-          .from('gerencia_clientes')
-          .select('cliente_key,nombre_cliente,comuna,canal,ejecutivo,venta_mtd')
-          .order('venta_mtd', { ascending: false, nullsFirst: false })
-          .range(d, h),
-        { label: 'clientes_sin_asignar' }
-      ),
-      traerTodo(
-        (d, h) => supabase.from('ejecutivos').select('id,nombre,zona').order('zona').range(d, h),
-        { label: 'ejecutivos' }
-      ),
+      selectResource('gerenciaClientes', 'cliente_key,nombre_cliente,comuna,canal,ejecutivo,venta_mtd', {
+        label: 'clientes_sin_asignar',
+        transform: query => query.order('venta_mtd', { ascending: false, nullsFirst: false }).limit(10000),
+      }),
+      selectResource('ejecutivos', 'id,nombre,zona', { label: 'ejecutivos', transform: query => query.order('zona') }),
     ])
     if (!rc.ok) { setErr(mensajeDeError(rc.error)); setRows([]) }
     else {
@@ -58,20 +52,26 @@ export function AsignarClientes({ onFlash }) {
 
   useEffect(() => { cargar() }, [cargar])
 
-  /** Asigna en `cartera`, que es donde el vendedor lee su lista. */
+    /** Asigna el cliente mediante el contrato App 2.0. */
   async function asignar(cliente, ejecutivoId) {
     if (!ejecutivoId) return
     setGuardando(cliente.cliente_key)
     const ej = ejecutivos.find((e) => String(e.id) === String(ejecutivoId))
 
-    const { error } = await supabase.from('cartera').upsert({
-      cliente_key: cliente.cliente_key,
-      nombre_cliente: cliente.nombre_cliente,
-      comuna: cliente.comuna,
-      ejecutivo_id: ejecutivoId,
-      zona: ej?.zona || null,
-      venta_mtd: Number(cliente.venta_mtd) || 0,
-    }, { onConflict: 'ejecutivo_id,cliente_key' })
+    const result = await callOperation('guardar_cliente', {
+      p_cliente_key: cliente.cliente_key,
+      p_nombre: cliente.nombre_cliente,
+      p_comuna: cliente.comuna || null,
+      p_ejecutivo: ejecutivoId,
+      p_zona: ej?.zona || null,
+      p_direccion: cliente.direccion || null,
+      p_lat: cliente.lat || null,
+      p_lng: cliente.lng || null,
+      p_rubro: cliente.rubro || null,
+      p_bloqueado: cliente.es_bloqueado ?? null,
+      p_persona_natural: cliente.persona_natural ?? null,
+    })
+    const error = result.error
 
     setGuardando(null)
     if (error) { onFlash?.(mensajeDeError(error), 'error'); return }
@@ -89,17 +89,17 @@ export function AsignarClientes({ onFlash }) {
 
     const lote = rows.filter((r) => normComuna(r.comuna) === normComuna(comuna))
     setGuardando(comuna)
-    const { error } = await supabase.from('cartera').upsert(
-      lote.map((c) => ({
-        cliente_key: c.cliente_key,
-        nombre_cliente: c.nombre_cliente,
-        comuna: c.comuna,
-        ejecutivo_id: ej.id,
-        zona,
-        venta_mtd: Number(c.venta_mtd) || 0,
-      })),
-      { onConflict: 'ejecutivo_id,cliente_key' }
-    )
+    let error = null
+    for (const cliente of lote) {
+      const result = await callOperation('guardar_cliente', {
+        p_cliente_key: cliente.cliente_key,
+        p_nombre: cliente.nombre_cliente,
+        p_comuna: cliente.comuna || null,
+        p_ejecutivo: ej.id,
+        p_zona: zona,
+      })
+      if (result.error) { error = result.error; break }
+    }
     setGuardando(null)
     if (error) { onFlash?.(mensajeDeError(error), 'error'); return }
 

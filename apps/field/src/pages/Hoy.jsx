@@ -91,8 +91,8 @@ export default function Hoy() {
             label: 'cartera_hoy',
             transform: builder => builder.eq('ejecutivo_id', eidVista),
           }),
-          supabase.from('metas').select('*').eq('ejecutivo_id', eidVista).order('mes', { ascending: false }).limit(1),
-          supabase.from('focos').select('*').eq('ejecutivo_id', eidVista),
+          selectResource('metas', '*', { label: 'metas_hoy', transform: builder => builder.eq('ejecutivo_id', eidVista).order('mes', { ascending: false }).limit(1) }),
+          selectResource('focos', '*', { label: 'focos_hoy', transform: builder => builder.eq('ejecutivo_id', eidVista) }),
           listarPedidosHoy(eidVista),
           supabase
             .from('checkins')
@@ -103,10 +103,10 @@ export default function Hoy() {
         if (cancelled) return
         const rows = cRes.ok ? cRes.rows : []
         setCartera(rows)
-        setMeta(mRes.data?.[0] || null)
-        setFocos(fRes.data || [])
+        setMeta(mRes.ok ? mRes.rows[0] || null : null)
+        setFocos(fRes.ok ? fRes.rows : [])
         const snap = rows.map(r => r.fecha_snapshot).filter(Boolean).sort().pop()
-        setDataAsOf(snap || mRes.data?.[0]?.fecha_snapshot || null)
+        setDataAsOf(snap || mRes.rows?.[0]?.fecha_snapshot || null)
 
         const pedidos = pRes?.data || []
         let totalPedidos = 0

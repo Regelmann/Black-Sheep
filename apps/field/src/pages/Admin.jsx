@@ -4,6 +4,7 @@ import { PageShell } from '../shells/PageShell.jsx'
 import { TabProspectos } from '../domain/TabProspectos.jsx'
 import { FilterBar } from '../domain/FilterBar.jsx'
 import { ZONAS_COMUNAS, normComuna, zonaFromComuna } from '../lib/zonas.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 
 const ZONAS = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
 
@@ -92,8 +93,10 @@ function TabClientes({ onFlash }) {
   const [saving, setSaving] = useState(null)
 
   useEffect(() => {
-    supabase.from('ejecutivos').select('id, nombre, zona, rol').order('zona')
-      .then(({ data }) => setEjecutivos(data || []))
+    selectResource('ejecutivos', 'id, nombre, zona, rol', {
+      label: 'admin_ejecutivos',
+      transform: query => query.order('zona'),
+    }).then(result => setEjecutivos(result.ok ? result.rows : []))
   }, [])
 
   const load = useCallback(async () => {
@@ -112,9 +115,17 @@ function TabClientes({ onFlash }) {
       }
       // zona no existe como columna directa en cartera - filtrar en JS después de cargar
       // if (zonaFiltro !== 'Todas') query = query.eq('zona', zonaFiltro)
-      const { data, error } = await query
-      if (error) throw error
-      setRows(data || [])
+      const result = await selectResource('cartera', 'cliente_key,nombre_cliente,comuna,ejecutivo_id,venta_mtd', {
+        label: 'admin_clientes',
+        transform: builder => {
+          const filtered = term
+            ? builder.or(`nombre_cliente.ilike.%${term}%,cliente_key.ilike.%${term}%,comuna.ilike.%${term}%`)
+            : builder
+          return filtered.order('nombre_cliente').limit(200)
+        },
+      })
+      if (!result.ok) throw result.error
+      setRows(result.rows)
     } catch (e) {
       onFlash(false, e.message)
       setRows([])
@@ -140,8 +151,14 @@ function TabClientes({ onFlash }) {
         const ej = ejecutivos.find(e => String(e.zona || '').toUpperCase() === String(patch.zona).toUpperCase())
         if (ej) body.ejecutivo_id = ej.id
       }
-      const { error } = await supabase.from('cartera').update(body).eq('cliente_key', c.cliente_key)
-      if (error) throw error
+      const result = await callOperation('guardar_cliente', {
+        p_cliente_key: c.cliente_key,
+        p_nombre: body.nombre_cliente,
+        p_zona: body.zona,
+        p_ejecutivo: body.ejecutivo_id,
+        p_comuna: body.comuna,
+      })
+      if (result.error) throw result.error
       try {
         await supabase.from('gerencia_clientes').update({
           ejecutivo: body.zona,
@@ -214,8 +231,11 @@ function TabZonas({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.from('zonas_comunas').select('comuna,zona').order('zona').order('comuna')
-      if (error) {
+      const result = await selectResource('zonasComunas', 'comuna,zona', {
+        label: 'admin_zonas',
+        transform: query => query.order('zona').order('comuna'),
+      })
+      if (!result.ok) {
         const seed = []
         for (const [zona, comunas] of Object.entries(ZONAS_COMUNAS)) {
           for (const c of comunas) seed.push({ comuna: normComuna(c), zona })
@@ -223,7 +243,7 @@ function TabZonas({ onFlash }) {
         const seen = new Set()
         setRows(seed.filter(r => (seen.has(r.comuna) ? false : (seen.add(r.comuna), true))))
         onFlash(false, 'Sin tabla zonas_comunas — corré sql/13. Mostrando defaults.')
-      } else setRows(data || [])
+      } else setRows(result.rows)
     } finally {
       setLoading(false)
     }
@@ -322,15 +342,15 @@ function TabPrecios({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase.from('stock')
-        .select('sku_canon,producto_nombre,precio_unidad,precio_caja,precio_kilo,stock_operativo,estado_stock')
-        .order('producto_nombre').limit(150)
-      if (q.trim()) {
-        query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
-      }
-      const { data, error } = await query
-      if (error) throw error
-      let list = data || []
+      const result = await selectResource('stock', 'sku_canon,producto_nombre,precio_unidad,precio_caja,precio_kilo,stock_operativo,estado_stock', {
+        label: 'admin_precios',
+        transform: query => {
+          if (q.trim()) query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
+          return query.order('producto_nombre').limit(150)
+        },
+      })
+      if (!result.ok) throw result.error
+      let list = result.rows
       if (soloSin) list = list.filter(r => !(Number(r.precio_unidad) > 0 || Number(r.precio_caja) > 0))
       setRows(list)
     } catch (e) {
@@ -346,8 +366,15 @@ function TabPrecios({ onFlash }) {
     const n = Number(String(value).replace(/[^\d.]/g, ''))
     setSaving(r.sku_canon)
     try {
-      const { error } = await supabase.from('stock').update({ [field]: n > 0 ? n : null }).eq('sku_canon', r.sku_canon)
-      if (error) throw error
+      const result = await callOperation('guardar_precio', {
+        p_sku: r.sku_canon,
+        p_precio_unidad: field === 'precio_unidad' ? (n > 0 ? n : null) : (r.precio_unidad || null),
+        p_precio_caja: field === 'precio_caja' ? (n > 0 ? n : null) : (r.precio_caja || null),
+        p_precio_kilo: r.precio_kilo || null,
+        p_vigente_desde: new Date().toISOString().slice(0, 10),
+        p_lista: r.lista || null,
+      })
+      if (result.error) throw result.error
       setRows(prev => prev.map(x => (x.sku_canon === r.sku_canon ? { ...x, [field]: n > 0 ? n : null } : x)))
       onFlash(true, 'Precio guardado')
     } catch (e) {
@@ -400,15 +427,15 @@ function TabMedia({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase.from('stock')
-        .select('sku_canon,producto_nombre,imagen_url,ficha_url,resena,marca,precio_unidad')
-        .order('producto_nombre').limit(120)
-      if (q.trim()) {
-        query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
-      }
-      const { data, error } = await query
-      if (error) throw error
-      let list = data || []
+      const result = await selectResource('stock', 'sku_canon,producto_nombre,imagen_url,ficha_url,resena,marca,precio_unidad', {
+        label: 'admin_media',
+        transform: query => {
+          if (q.trim()) query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
+          return query.order('producto_nombre').limit(120)
+        },
+      })
+      if (!result.ok) throw result.error
+      let list = result.rows
       if (soloSinFoto) list = list.filter(r => !r.imagen_url)
       setRows(list)
     } catch (e) {
@@ -549,13 +576,14 @@ function TabMetas({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [{ data: ej }, { data: m, error }] = await Promise.all([
-        supabase.from('ejecutivos').select('id, nombre, zona').order('zona'),
-        supabase.from('metas').select('*').eq('mes', mes).order('ejecutivo_id'),
+      const [ej, m] = await Promise.all([
+        selectResource('ejecutivos', 'id, nombre, zona', { label: 'admin_metas_ejecutivos', transform: query => query.order('zona') }),
+        selectResource('metas', '*', { label: 'admin_metas', transform: query => query.eq('mes', mes).order('ejecutivo_id') }),
       ])
-      if (error) throw error
-      setEjecutivos(ej || [])
-      setRows(m || [])
+      if (!ej.ok) throw ej.error
+      if (!m.ok) throw m.error
+      setEjecutivos(ej.rows)
+      setRows(m.rows)
     } catch (e) {
       onFlash(false, e.message)
     } finally {
@@ -675,14 +703,17 @@ function TabFocos({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [{ data: f }, { data: ej }, { data: sk }] = await Promise.all([
-        supabase.from('focos').select('*').order('foco').limit(100),
-        supabase.from('ejecutivos').select('id, nombre, zona').order('zona'),
-        supabase.from('stock').select('sku_canon,producto_nombre,es_foco_mes,precio_unidad,stock_operativo').order('producto_nombre').limit(300),
+      const [f, ej, sk] = await Promise.all([
+        selectResource('focos', '*', { label: 'admin_focos', transform: query => query.order('foco').limit(100) }),
+        selectResource('ejecutivos', 'id, nombre, zona', { label: 'admin_focos_ejecutivos', transform: query => query.order('zona') }),
+        selectResource('stock', 'sku_canon,producto_nombre,es_foco_mes,precio_unidad,stock_operativo', { label: 'admin_focos_stock', transform: query => query.order('producto_nombre').limit(300) }),
       ])
-      setFocos(f || [])
-      setEjecutivos(ej || [])
-      setStock(sk || [])
+      if (!f.ok) throw f.error
+      if (!ej.ok) throw ej.error
+      if (!sk.ok) throw sk.error
+      setFocos(f.rows)
+      setEjecutivos(ej.rows)
+      setStock(sk.rows)
     } catch (e) {
       onFlash(false, e.message)
     } finally {

@@ -20,6 +20,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 import { exportCsv, stampDate } from '../lib/exportCsv.js'
 import { parseCsv } from '../lib/csv.js'
 import {
@@ -118,10 +119,11 @@ function PanelExportar({ rows, onFlash }) {
 
   const bajarTabla = useCallback(async (tabla, nombre) => {
     setBajando(tabla)
-    const r = await traerTodo(
-      (d, h) => supabase.from(tabla).select('*').range(d, h),
-      { label: `export_${tabla}` }
-    )
+    const resourceName = tabla === 'stock' ? 'stock' : tabla === 'pedidos' ? 'pedidos' : tabla === 'cartera' ? 'cartera' : 'prospectos'
+    const r = await selectResource(resourceName, '*', {
+      label: `export_${tabla}`,
+      transform: query => query.limit(10000),
+    })
     setBajando(null)
     if (!r.ok) { onFlash?.(mensajeDeError(r.error), 'error'); return }
     if (!r.rows.length) { onFlash?.(`${nombre} está vacía`, 'error'); return }
@@ -174,8 +176,10 @@ function PanelAsignar({ rows, onFlash }) {
   const [asignados, setAsignados] = useState({})
 
   useEffect(() => {
-    supabase.from('ejecutivos').select('id, nombre, zona').order('zona')
-      .then(({ data }) => setEjecutivos(data || []))
+    selectResource('ejecutivos', 'id, nombre, zona', {
+      label: 'acciones_ejecutivos',
+      transform: query => query.order('zona'),
+    }).then(result => setEjecutivos(result.ok ? result.rows : []))
   }, [])
 
   // Sin canal en la maestra = nadie los trabaja. Los de más venta
@@ -294,12 +298,10 @@ function PanelPrecios({ onFlash }) {
     const filas = parseCsv(texto).map(normalizeRow)
 
     // Lo que hay hoy, para poder comparar.
-    const actual = await traerTodo(
-      (d, h) => supabase.from('stock')
-        .select('sku_canon,producto_nombre,precio_unidad,precio_caja')
-        .range(d, h),
-      { label: 'stock_actual' }
-    )
+    const actual = await selectResource('stock', 'sku_canon,producto_nombre,precio_unidad,precio_caja', {
+      label: 'stock_actual',
+      transform: query => query.limit(10000),
+    })
     if (!actual.ok) { onFlash?.(mensajeDeError(actual.error), 'error'); return }
 
     const skus = new Set(actual.rows.map((r) => String(r.sku_canon || '')))
