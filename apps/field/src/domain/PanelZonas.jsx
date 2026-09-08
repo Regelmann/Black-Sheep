@@ -23,6 +23,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { safeSelect } from '../lib/query.js'
+import { selectResource } from '../lib/bs2Api.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 
 const clp = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CL')
@@ -44,15 +45,9 @@ export function PanelZonas({ onFlash }) {
   const cargar = useCallback(async () => {
     setCargando(true)
     const [rz, re, rm] = await Promise.all([
-      safeSelect(supabase.from('zonas').select('*').order('orden'), { label: 'zonas' }),
-      safeSelect(
-        supabase.from('ejecutivos').select('id,nombre,email,zona,rol,activo').order('zona'),
-        { label: 'ejecutivos' }
-      ),
-      safeSelect(
-        supabase.from('metas_zona').select('*').eq('periodo', periodoActual()),
-        { label: 'metas' }
-      ),
+      selectResource('zonas', '*', { label: 'zonas', transform: query => query.order('orden') }),
+      selectResource('ejecutivos', 'id,nombre,email,zona,rol,activo', { label: 'ejecutivos', transform: query => query.order('zona') }),
+      selectResource('metas_zona', '*', { label: 'metas', transform: query => query.eq('periodo', periodoActual()) }),
     ])
 
     if (!rz.ok) {

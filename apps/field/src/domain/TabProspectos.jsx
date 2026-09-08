@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { safeSelect } from '../lib/query.js'
 import { traerTodo } from '../lib/traerTodo.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 import { normComuna, zonaFromComuna, zonaContradiceComuna } from '../lib/zonas.js'
 import { mensajeDeError } from '../lib/erroresUsuario.js'
 
@@ -30,18 +31,14 @@ export function TabProspectos({ onFlash }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     const [rp, re] = await Promise.all([
-      traerTodo(
-        (d, h) => supabase
-          .from('prospectos')
-          .select('cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,score,potencial,estado')
-          .order('score', { ascending: false, nullsFirst: false })
-          .range(d, h),
-        { label: 'prospectos_admin' }
-      ),
-      safeSelect(
-        supabase.from('ejecutivos').select('id, nombre, zona').order('zona'),
-        { label: 'ejecutivos' }
-      ),
+      selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,score,potencial,estado', {
+        label: 'prospectos_admin',
+        transform: query => query.order('score', { ascending: false, nullsFirst: false }).limit(10000),
+      }),
+      selectResource('ejecutivos', 'id, nombre, zona', {
+        label: 'ejecutivos',
+        transform: query => query.order('zona'),
+      }),
     ])
 
     if (!rp.ok) {
@@ -68,13 +65,16 @@ export function TabProspectos({ onFlash }) {
     // "prospecto que no ve nadie".
     if (ej?.zona) parche.zona = ej.zona
 
-    const { error } = await supabase
-      .from('prospectos')
-      .update(parche)
-      .eq('cliente_key', p.cliente_key)
+    const result = await callOperation('guardar_prospecto', {
+      p_cliente_key: p.cliente_key,
+      p_nombre: p.nombre_cliente,
+      p_ejecutivo: ejecutivoId,
+      p_zona: ej?.zona || null,
+      p_comuna: p.comuna || null,
+    })
 
     setGuardando(null)
-    if (error) { onFlash?.(mensajeDeError(error), 'error'); return }
+    if (result.error) { onFlash?.(mensajeDeError(result.error), 'error'); return }
 
     setRows((prev) => prev.map((x) =>
       x.cliente_key === p.cliente_key ? { ...x, ...parche } : x
@@ -87,10 +87,15 @@ export function TabProspectos({ onFlash }) {
     const zona = zonaFromComuna(normComuna(p.comuna))
     if (!zona) { onFlash?.(`${p.comuna} no está en el catálogo de comunas`, 'error'); return }
     setGuardando(p.cliente_key)
-    const { error } = await supabase
-      .from('prospectos').update({ zona }).eq('cliente_key', p.cliente_key)
+    const result = await callOperation('guardar_prospecto', {
+      p_cliente_key: p.cliente_key,
+      p_nombre: p.nombre_cliente,
+      p_ejecutivo: p.ejecutivo_id,
+      p_zona: zona,
+      p_comuna: p.comuna || null,
+    })
     setGuardando(null)
-    if (error) { onFlash?.(mensajeDeError(error), 'error'); return }
+    if (result.error) { onFlash?.(mensajeDeError(result.error), 'error'); return }
     setRows((prev) => prev.map((x) =>
       x.cliente_key === p.cliente_key ? { ...x, zona } : x
     ))
