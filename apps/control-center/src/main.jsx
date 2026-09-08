@@ -52,7 +52,7 @@ function App() {
 
   async function loadTenants() {
     if (!session) return
-    const { data: admins, error: adminError } = await supabase.from('platform_admins').select('usuario_id, activo').eq('activo', true)
+    const { data: admins, error: adminError } = await supabase.from('platform_admins').select('usuario_id, activo').eq('usuario_id', session.user.id).eq('activo', true).limit(1)
     const admin = admins?.[0]
     if (adminError || !admin) { setAuthorized(false); setError('Esta cuenta no tiene permisos de plataforma.'); return }
     const { data, error: loadError } = await supabase.from('tenants').select('id, nombre, slug, activo, suscripciones(plan, estado, importe_mensual, vence_en), membresias(count)').order('nombre')
