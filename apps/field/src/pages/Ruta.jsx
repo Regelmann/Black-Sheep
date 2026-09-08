@@ -648,10 +648,10 @@ const r3 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna
       // Re-optimizar todo el itinerario junto
       // Esta lectura alimenta una ESCRITURA (reordenar). Si falla en
       // silencio, el vendedor toca "optimizar" y no pasa nada sin aviso.
-      const rTodas = await safeSelect(
-        supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
-        { label: 'visitas_reorden' }
-      )
+      const rTodas = await selectResource('visitas', '*', {
+        label: 'visitas_reorden',
+        transform: builder => builder.eq('ruta_id', rid).order('orden'),
+      })
       if (!rTodas.ok) {
         setToast('No se pudo leer la ruta para reordenar. Reintentá.')
         return
@@ -896,10 +896,10 @@ const r3 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna
   const recargarVisitas = useCallback(async (rutaId) => {
     const rid = rutaId || ruta?.id
     if (!rid) return
-    const rV = await safeSelect(
-      supabase.from('visitas').select('*').eq('ruta_id', rid).order('orden'),
-      { label: 'visitas_ruta' }
-    )
+    const rV = await selectResource('visitas', '*', {
+      label: 'visitas_ruta',
+      transform: builder => builder.eq('ruta_id', rid).order('orden'),
+    })
     const vis = rV.rows
     setVisitas(vis)
 
