@@ -240,12 +240,11 @@ export default function Visita({ session }) {
           }
           // check-in de esta visita
           try {
-            const rCk = await safeSelect(
-              supabase.from('checkins').select('*')
-                .eq('visita_id', decodedId)
+            const rCk = await selectResource('checkins', '*', {
+              label: 'checkin_previo',
+              transform: builder => builder.eq('visita_id', decodedId)
                 .order('creado_en', { ascending: false }).limit(1),
-              { label: 'checkin_previo' }
-            )
+            })
             // Si la lectura falla NO se asume "sin check-in": eso haría
             // que el vendedor marque llegada dos veces sobre la misma visita.
             if (rCk.ok) setCheckin(rCk.rows[0] || null)

@@ -322,10 +322,10 @@ export default function Ruta({ session }) {
       if (er) console.warn('rutas', er.message)
       let r = rutas?.[0] || null
       if (!r) {
-        const rr = await safeSelect(
-          supabase.from('rutas').select('*').eq('fecha', fecha).limit(5),
-          { label: 'rutas_fecha' }
-        )
+  const rr = await selectResource('rutas', '*', {
+    label: 'rutas_fecha',
+    transform: builder => builder.eq('fecha', fecha).limit(5),
+  })
         r = rr.rows.find(x => !x.ejecutivo_id || x.ejecutivo_id === uid) || null
       }
       setRuta(r)
