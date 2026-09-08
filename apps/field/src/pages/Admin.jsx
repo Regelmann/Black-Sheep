@@ -159,12 +159,6 @@ function TabClientes({ onFlash }) {
         p_comuna: body.comuna,
       })
       if (result.error) throw result.error
-      try {
-        await supabase.from('gerencia_clientes').update({
-          ejecutivo: body.zona,
-          comuna: body.comuna || c.comuna,
-        }).eq('cliente_key', c.cliente_key)
-      } catch { /* */ }
       setRows(prev => prev.map(r => (r.cliente_key === c.cliente_key ? { ...r, ...body } : r)))
       onFlash(true, `Cliente actualizado`)
     } catch (e) {
@@ -897,9 +891,12 @@ function TabUsuarios({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.from('ejecutivos').select('id,nombre,zona,rol,email').order('zona')
-      if (error) throw error
-      setRows(data || [])
+      const result = await selectResource('ejecutivos', 'id,nombre,zona,rol,email', {
+        label: 'admin_ejecutivos',
+        transform: query => query.order('zona'),
+      })
+      if (!result.ok) throw result.error
+      setRows(result.rows)
     } catch (e) {
       onFlash(false, e.message)
     } finally {
