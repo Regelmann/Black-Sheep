@@ -94,11 +94,10 @@ export default function Hoy() {
           selectResource('metas', '*', { label: 'metas_hoy', transform: builder => builder.eq('ejecutivo_id', eidVista).order('mes', { ascending: false }).limit(1) }),
           selectResource('focos', '*', { label: 'focos_hoy', transform: builder => builder.eq('ejecutivo_id', eidVista) }),
           listarPedidosHoy(eidVista),
-          supabase
-            .from('checkins')
-            .select('id,resultado,hora_llegada')
-            .gte('hora_llegada', start.toISOString())
-            .limit(100),
+          selectResource('checkins', 'id,resultado,hora_llegada', {
+            label: 'checkins_hoy',
+            transform: builder => builder.gte('hora_llegada', start.toISOString()).limit(100),
+          }),
         ])
         if (cancelled) return
         const rows = cRes.ok ? cRes.rows : []
@@ -116,7 +115,7 @@ export default function Hoy() {
             totalPedidos += (Number(l.precio) || 0) * (Number(l.cantidad) || 0)
           }
         }
-        const checkins = chRes?.data || []
+        const checkins = chRes?.ok ? chRes.rows : []
         setActividadHoy({
           visitas: checkins.length,
           pedidos: pedidos.length,
