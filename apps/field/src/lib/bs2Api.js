@@ -37,7 +37,6 @@ export const BS2_OPERATIONS = Object.freeze({
   guardarPrecio: 'guardar_precio',
   guardarCosto: 'guardar_costo',
   guardarStock: 'guardar_stock',
-  guardarOfertaCliente: 'guardar_oferta_cliente',
   liberarCampo: 'liberar_campo',
   resolverConflicto: 'resolver_conflicto',
   publicarLote: 'publicar_lote',

@@ -224,7 +224,16 @@ export default function Cartera({ session }) {
     if (!key) return
     const { error } = await callOperation('guardar_cliente', {
       p_cliente_key: key,
+      p_nombre: cliente.nombre_cliente || cliente.razon_social || null,
+      p_zona: cliente.zona || null,
+      p_ejecutivo: cliente.ejecutivo_id || null,
+      p_comuna: cliente.comuna || null,
+      p_direccion: cliente.direccion || null,
+      p_lat: cliente.lat || null,
+      p_lng: cliente.lng || null,
+      p_rubro: cliente.rubro || null,
       p_bloqueado: true,
+      p_persona_natural: cliente.persona_natural ?? null,
     })
     if (error) {
       // Rollback
@@ -264,7 +273,16 @@ export default function Cartera({ session }) {
     if (!key) return
     const { error } = await callOperation('guardar_cliente', {
       p_cliente_key: key,
+      p_nombre: cliente.nombre_cliente || cliente.razon_social || null,
+      p_zona: cliente.zona || null,
+      p_ejecutivo: cliente.ejecutivo_id || null,
+      p_comuna: cliente.comuna || null,
+      p_direccion: cliente.direccion || null,
+      p_lat: cliente.lat || null,
+      p_lng: cliente.lng || null,
+      p_rubro: cliente.rubro || null,
       p_bloqueado: false,
+      p_persona_natural: cliente.persona_natural ?? null,
     })
     if (error) {
       setClientes(prev =>

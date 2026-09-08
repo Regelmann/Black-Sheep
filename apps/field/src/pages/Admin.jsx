@@ -370,6 +370,9 @@ function TabPrecios({ onFlash }) {
         p_sku: r.sku_canon,
         p_precio_unidad: field === 'precio_unidad' ? (n > 0 ? n : null) : (r.precio_unidad || null),
         p_precio_caja: field === 'precio_caja' ? (n > 0 ? n : null) : (r.precio_caja || null),
+        p_precio_kilo: r.precio_kilo || null,
+        p_vigente_desde: new Date().toISOString().slice(0, 10),
+        p_lista: r.lista || null,
       })
       if (result.error) throw result.error
       setRows(prev => prev.map(x => (x.sku_canon === r.sku_canon ? { ...x, [field]: n > 0 ? n : null } : x)))

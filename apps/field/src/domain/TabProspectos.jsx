@@ -71,6 +71,10 @@ export function TabProspectos({ onFlash }) {
       p_ejecutivo: ejecutivoId,
       p_zona: ej?.zona || null,
       p_comuna: p.comuna || null,
+      p_direccion: p.direccion || null,
+      p_rubro: p.rubro || null,
+      p_lat: p.lat || null,
+      p_lng: p.lng || null,
     })
 
     setGuardando(null)
@@ -93,6 +97,10 @@ export function TabProspectos({ onFlash }) {
       p_ejecutivo: p.ejecutivo_id,
       p_zona: zona,
       p_comuna: p.comuna || null,
+      p_direccion: p.direccion || null,
+      p_rubro: p.rubro || null,
+      p_lat: p.lat || null,
+      p_lng: p.lng || null,
     })
     setGuardando(null)
     if (result.error) { onFlash?.(mensajeDeError(result.error), 'error'); return }

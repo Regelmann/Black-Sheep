@@ -64,6 +64,12 @@ export function AsignarClientes({ onFlash }) {
       p_comuna: cliente.comuna || null,
       p_ejecutivo: ejecutivoId,
       p_zona: ej?.zona || null,
+      p_direccion: cliente.direccion || null,
+      p_lat: cliente.lat || null,
+      p_lng: cliente.lng || null,
+      p_rubro: cliente.rubro || null,
+      p_bloqueado: cliente.es_bloqueado ?? null,
+      p_persona_natural: cliente.persona_natural ?? null,
     })
     const error = result.error
 
