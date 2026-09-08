@@ -57,6 +57,7 @@ import { syncHandlers } from './lib/syncHandlers.js'
 import { SyncBanner } from './chrome/SyncBanner.jsx'
 import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
 import { runSyncFlush } from './lib/sync/engine.js'
+import { selectResource } from './lib/bs2Api.js'
 
 // Visible en UI — si no lo ves en el teléfono, el deploy NO subió
 
@@ -100,32 +101,31 @@ export default function App() {
       setEjecutivo(null)
       return
     }
-    supabase
-      .from('ejecutivos')
-      .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) {
-          // Usuario auth sin fila en ejecutivos
-          setEjecutivo({
-            id: session.user.id,
-            nombre: session.user.email || '',
-            zona: '',
-            rol: 'ejecutivo',
-            esSuperAdmin: false,
-          })
-          return
-        }
-        const rol = (data.rol || 'ejecutivo').toLowerCase()
+    selectResource('ejecutivos', '*', {
+      label: 'session_ejecutivo',
+      transform: query => query.eq('id', session.user.id).limit(1),
+    }).then(({ ok, rows }) => {
+      const data = ok ? rows[0] : null
+      if (!data) {
+        // Usuario auth sin fila en ejecutivos
         setEjecutivo({
-          id: data.id,
-          nombre: data.nombre || '',
-          zona: data.zona || '',
-          rol,
-          esSuperAdmin: rol === 'superadmin' || rol === 'gerente' || rol === 'admin',
+          id: session.user.id,
+          nombre: session.user.email || '',
+          zona: '',
+          rol: 'ejecutivo',
+          esSuperAdmin: false,
         })
+        return
+      }
+      const rol = (data.rol || 'ejecutivo').toLowerCase()
+      setEjecutivo({
+        id: data.id,
+        nombre: data.nombre || '',
+        zona: data.zona || '',
+        rol,
+        esSuperAdmin: rol === 'superadmin' || rol === 'gerente' || rol === 'admin',
       })
+    })
   }, [session])
 
   // Cargar lista de zonas de campo + setear vista inicial
@@ -133,12 +133,11 @@ export default function App() {
     if (!ejecutivo) return
 
     if (ejecutivo.esSuperAdmin) {
-      supabase
-        .from('ejecutivos')
-        .select('id, nombre, zona, rol')
-        .not('zona', 'is', null)
-        .then(({ data }) => {
-          const lista = (data || []).filter((e) => e.zona && String(e.zona).trim())
+      selectResource('ejecutivos', 'id, nombre, zona, rol', {
+        label: 'session_zonas',
+        transform: query => query.not('zona', 'is', null),
+      }).then(({ ok, rows }) => {
+          const lista = (ok ? rows : []).filter((e) => e.zona && String(e.zona).trim())
           // Preferir las 3 zonas de terreno si existen
           const orden = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
           lista.sort((a, b) => {
