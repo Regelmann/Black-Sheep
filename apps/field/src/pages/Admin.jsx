@@ -151,8 +151,14 @@ function TabClientes({ onFlash }) {
         const ej = ejecutivos.find(e => String(e.zona || '').toUpperCase() === String(patch.zona).toUpperCase())
         if (ej) body.ejecutivo_id = ej.id
       }
-      const { error } = await supabase.from('cartera').update(body).eq('cliente_key', c.cliente_key)
-      if (error) throw error
+      const result = await callOperation('guardar_cliente', {
+        p_cliente_key: c.cliente_key,
+        p_nombre: body.nombre_cliente,
+        p_zona: body.zona,
+        p_ejecutivo: body.ejecutivo_id,
+        p_comuna: body.comuna,
+      })
+      if (result.error) throw result.error
       try {
         await supabase.from('gerencia_clientes').update({
           ejecutivo: body.zona,
@@ -360,8 +366,12 @@ function TabPrecios({ onFlash }) {
     const n = Number(String(value).replace(/[^\d.]/g, ''))
     setSaving(r.sku_canon)
     try {
-      const { error } = await supabase.from('stock').update({ [field]: n > 0 ? n : null }).eq('sku_canon', r.sku_canon)
-      if (error) throw error
+      const result = await callOperation('guardar_precio', {
+        p_sku: r.sku_canon,
+        p_precio_unidad: field === 'precio_unidad' ? (n > 0 ? n : null) : (r.precio_unidad || null),
+        p_precio_caja: field === 'precio_caja' ? (n > 0 ? n : null) : (r.precio_caja || null),
+      })
+      if (result.error) throw result.error
       setRows(prev => prev.map(x => (x.sku_canon === r.sku_canon ? { ...x, [field]: n > 0 ? n : null } : x)))
       onFlash(true, 'Precio guardado')
     } catch (e) {
