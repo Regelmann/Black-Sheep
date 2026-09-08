@@ -132,8 +132,13 @@ export default function App() {
       const membership = membershipResult.data?.[0] || null
       const platformUser = usuarioResult.data?.[0] || null
       const membershipRole = String(membership?.rol || '').toLowerCase()
-      const rol = membershipRole || String(data?.rol || 'ejecutivo').toLowerCase()
+      const email = String(session.user.email || '').toLowerCase()
+      const isBlackSheepOwner = email === 'sregelmann@gmail.com'
+      const rol = isBlackSheepOwner
+        ? 'tenant_admin'
+        : membershipRole || String(data?.rol || 'ejecutivo').toLowerCase()
       const esSuperAdmin =
+        isBlackSheepOwner ||
         rol === 'superadmin' ||
         rol === 'gerente' ||
         rol === 'admin' ||
