@@ -266,6 +266,7 @@ export default function Visita({ session }) {
         try {
           const rP = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,oferta,telefono,place_id', {
             label: 'prospecto',
+            fallbackOnEmpty: true,
             transform: builder => builder.or(`cliente_key.eq.${decodedId},place_id.eq.${decodedId}`).limit(1),
           })
           const p = rP.rows[0]

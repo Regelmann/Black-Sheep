@@ -59,8 +59,15 @@ export async function selectResource(name, columns = '*', options = {}) {
   const resource = BS2_RESOURCES[name] || { v2: name, legacy: name }
   const label = options.label || name
   const first = await safeSelect(builderFor('api', resource.v2, columns, options.transform), { label: `${label}:api` })
-  if (first.ok || !resource.legacy || !isSchemaError(first.error)) return first
-  return safeSelect(builderFor(null, resource.legacy, columns, options.transform), { label: `${label}:legacy` })
+  const shouldTryLegacy = resource.legacy && (
+    isSchemaError(first.error) || (options.fallbackOnEmpty && first.ok && first.rows.length === 0)
+  )
+  if (!shouldTryLegacy) return first
+  const legacy = await safeSelect(builderFor(null, resource.legacy, columns, options.transform), { label: `${label}:legacy` })
+  if (first.ok && first.rows.length === 0 && legacy.ok && legacy.rows.length > 0) {
+    return { ...legacy, fallbackFrom: 'api-empty' }
+  }
+  return legacy.ok || !first.ok ? legacy : first
 }
 
 /** Ejecuta una mutación idempotente del contrato v2 y preserva el error. */

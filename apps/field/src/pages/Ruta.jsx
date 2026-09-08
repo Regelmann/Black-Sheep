@@ -395,6 +395,7 @@ export default function Ruta({ session }) {
         // app mostraba 1.000 prospectos de 3.627 sin ningún aviso.
         const r2 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
           label: 'prospectos_zona',
+          fallbackOnEmpty: true,
           transform: builder => builder.eq('zona', zonaNom).order('score', { ascending: false, nullsFirst: false }).limit(5000),
         })
         if (r2.ok && r2.rows.length) {
