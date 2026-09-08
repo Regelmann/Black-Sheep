@@ -44,8 +44,8 @@ export const TENANTS = [
     slug: 'keyfoods',
     domains: ['keyfoods.cl', 'keyfoods.com', 'app.black-sheep.cl'],
     emailHints: ['keyfoods'],
-    supabaseUrl:  env('VITE_TENANT_KEYFOODS_URL',  env('VITE_SUPABASE_URL')),
-    supabaseAnon: env('VITE_TENANT_KEYFOODS_ANON_KEY', env('VITE_SUPABASE_ANON_KEY')),
+    supabaseUrl:  env('VITE_TENANT_KEYFOODS_URL',  env('VITE_SUPABASE_URL', env('NEXT_PUBLIC_SUPABASE_URL'))),
+    supabaseAnon: env('VITE_TENANT_KEYFOODS_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', env('NEXT_PUBLIC_SUPABASE_ANON_KEY'))),
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {
       name:        'KeyFoods',
@@ -62,8 +62,8 @@ export const TENANTS = [
     slug: 'demo',
     domains: ['demo.black-sheep.cl'],
     emailHints: ['demo', 'blacksheep', 'black-sheep'],
-    supabaseUrl:  env('VITE_TENANT_DEMO_URL',  env('VITE_SUPABASE_URL')),
-    supabaseAnon: env('VITE_TENANT_DEMO_ANON_KEY', env('VITE_SUPABASE_ANON_KEY')),
+    supabaseUrl:  env('VITE_TENANT_DEMO_URL',  env('VITE_SUPABASE_URL', env('NEXT_PUBLIC_SUPABASE_URL'))),
+    supabaseAnon: env('VITE_TENANT_DEMO_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', env('NEXT_PUBLIC_SUPABASE_ANON_KEY'))),
     features: { gerencia: true, catalogo: true, mapa: true, commerce: true },
     brand: {
       name:        'Demo',
