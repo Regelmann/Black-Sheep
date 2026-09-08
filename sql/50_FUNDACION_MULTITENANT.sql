@@ -94,69 +94,11 @@ BEGIN
   END LOOP;
 END $$;
 
--- ═══ 3 · EL CLAIM EN EL JWT ════════════════════════════════════════
--- Un hook que Supabase Auth ejecuta al emitir el token: agrega
--- `tenant_id` y `rol` a los claims, para que las políticas los lean
--- sin tocar la base.
-CREATE OR REPLACE FUNCTION public.custom_access_token_hook(event JSONB)
-RETURNS JSONB
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-  v_claims JSONB;
-  v_tenant TEXT;
-  v_rol    TEXT;
-BEGIN
-  SELECT COALESCE(e.tenant_id, 'keyfoods'), COALESCE(e.rol, 'vendedor')
-    INTO v_tenant, v_rol
-    FROM public.ejecutivos e
-   WHERE e.id = (event->>'user_id')::uuid;
-
-  v_claims := COALESCE(event->'claims', '{}'::jsonb);
-  v_claims := jsonb_set(v_claims, '{tenant_id}',
-                        to_jsonb(COALESCE(v_tenant, 'keyfoods')));
-  v_claims := jsonb_set(v_claims, '{rol}',
-                        to_jsonb(COALESCE(v_rol, 'vendedor')));
-
-  RETURN jsonb_set(event, '{claims}', v_claims);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.custom_access_token_hook TO supabase_auth_admin;
-
--- ⚠️ ESTE FALLBACK ES PERMISIVO A PROPÓSITO, PARA LA MIGRACIÓN.
---
--- Devuelve keyfoods cuando no hay claim, para que la instalación
--- actual siga funcionando mientras se activa el hook. Pero para el
--- multi-tenant definitivo eso está MAL: si el claim falta, lo correcto
--- es devolver NULL y que RLS deniegue —fail-closed— en vez de asumir
--- una empresa.
---
---  trae la versión sin fallback.
--- Correr ESE después de verificar que el hook emite el claim.
-CREATE OR REPLACE FUNCTION public.tenant_actual()
-RETURNS TEXT
-LANGUAGE sql STABLE
-AS $$
-  SELECT COALESCE(
-    NULLIF(auth.jwt() ->> 'tenant_id', ''),
-    (SELECT e.tenant_id FROM public.ejecutivos e WHERE e.id = auth.uid()),
-    'keyfoods'
-  );
-$$;
-
-CREATE OR REPLACE FUNCTION public.es_gerencia()
-RETURNS BOOLEAN
-LANGUAGE sql STABLE
-AS $$
-  SELECT COALESCE(
-    UPPER(auth.jwt() ->> 'rol') IN ('GERENTE','ADMIN','SUPERADMIN'),
-    EXISTS (SELECT 1 FROM public.ejecutivos e
-             WHERE e.id = auth.uid()
-               AND UPPER(COALESCE(e.rol,'')) IN ('GERENTE','ADMIN','SUPERADMIN')),
-    FALSE
-  );
-$$;
+-- ═══ 3 · CLAIMS Y HELPERS ═════════════════════════════════════════
+-- Las funciones canónicas viven en 51_MULTITENANT_RBAC.sql y se
+-- ejecutan después de esta fundación. Este archivo no redefine hooks ni
+-- helpers alternativos: evita que el orden de ejecución deje un fallback
+-- permisivo activo.
 
 -- ═══ 4 · LAS POLÍTICAS ═════════════════════════════════════════════
 -- Una sola por tabla, sin subconsultas por fila.

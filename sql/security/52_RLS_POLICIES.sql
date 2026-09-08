@@ -74,9 +74,40 @@ BEGIN
       WHERE table_schema='public' AND table_name=t AND column_name='ejecutivo_id'
     ) THEN
       EXECUTE format('DROP POLICY IF EXISTS bs_owner_select ON public.%I', t);
+      EXECUTE format('DROP POLICY IF EXISTS bs_tenant_update ON public.%I', t);
+      EXECUTE format('DROP POLICY IF EXISTS bs_tenant_delete ON public.%I', t);
       EXECUTE format($p$
         CREATE POLICY bs_owner_select ON public.%I
         FOR SELECT TO authenticated
+        USING (
+          tenant_id = (SELECT public.current_tenant_id())
+          AND (
+            (SELECT public.is_tenant_admin())
+            OR ejecutivo_id::text = auth.uid()::text
+          )
+        )
+      $p$, t);
+      EXECUTE format($p$
+        CREATE POLICY bs_owner_update ON public.%I
+        FOR UPDATE TO authenticated
+        USING (
+          tenant_id = (SELECT public.current_tenant_id())
+          AND (
+            (SELECT public.is_tenant_admin())
+            OR ejecutivo_id::text = auth.uid()::text
+          )
+        )
+        WITH CHECK (
+          tenant_id = (SELECT public.current_tenant_id())
+          AND (
+            (SELECT public.is_tenant_admin())
+            OR ejecutivo_id::text = auth.uid()::text
+          )
+        )
+      $p$, t);
+      EXECUTE format($p$
+        CREATE POLICY bs_owner_delete ON public.%I
+        FOR DELETE TO authenticated
         USING (
           tenant_id = (SELECT public.current_tenant_id())
           AND (
