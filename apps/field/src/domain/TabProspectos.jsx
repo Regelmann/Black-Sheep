@@ -31,11 +31,10 @@ export function TabProspectos({ onFlash }) {
   const cargar = useCallback(async () => {
     setLoading(true)
     const [rp, re] = await Promise.all([
-      selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,score,potencial,estado', {
-        label: 'prospectos_admin',
-        fallbackOnEmpty: true,
-        transform: query => query.order('score', { ascending: false, nullsFirst: false }).limit(10000),
-      }),
+      traerTodo(
+        (desde, hasta) => supabase.from('prospectos').select('cliente_key,nombre_cliente,comuna,zona,ejecutivo_id,score,potencial,estado').order('score', { ascending: false, nullsFirst: false }).range(desde, hasta),
+        { label: 'prospectos_admin' }
+      ),
       selectResource('ejecutivos', 'id, nombre, zona', {
         label: 'ejecutivos',
         transform: query => query.order('zona'),
