@@ -225,8 +225,11 @@ function TabZonas({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.from('zonas_comunas').select('comuna,zona').order('zona').order('comuna')
-      if (error) {
+      const result = await selectResource('zonasComunas', 'comuna,zona', {
+        label: 'admin_zonas',
+        transform: query => query.order('zona').order('comuna'),
+      })
+      if (!result.ok) {
         const seed = []
         for (const [zona, comunas] of Object.entries(ZONAS_COMUNAS)) {
           for (const c of comunas) seed.push({ comuna: normComuna(c), zona })
@@ -234,7 +237,7 @@ function TabZonas({ onFlash }) {
         const seen = new Set()
         setRows(seed.filter(r => (seen.has(r.comuna) ? false : (seen.add(r.comuna), true))))
         onFlash(false, 'Sin tabla zonas_comunas — corré sql/13. Mostrando defaults.')
-      } else setRows(data || [])
+      } else setRows(result.rows)
     } finally {
       setLoading(false)
     }
@@ -333,15 +336,15 @@ function TabPrecios({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase.from('stock')
-        .select('sku_canon,producto_nombre,precio_unidad,precio_caja,precio_kilo,stock_operativo,estado_stock')
-        .order('producto_nombre').limit(150)
-      if (q.trim()) {
-        query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
-      }
-      const { data, error } = await query
-      if (error) throw error
-      let list = data || []
+      const result = await selectResource('stock', 'sku_canon,producto_nombre,precio_unidad,precio_caja,precio_kilo,stock_operativo,estado_stock', {
+        label: 'admin_precios',
+        transform: query => {
+          if (q.trim()) query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
+          return query.order('producto_nombre').limit(150)
+        },
+      })
+      if (!result.ok) throw result.error
+      let list = result.rows
       if (soloSin) list = list.filter(r => !(Number(r.precio_unidad) > 0 || Number(r.precio_caja) > 0))
       setRows(list)
     } catch (e) {
@@ -411,15 +414,15 @@ function TabMedia({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase.from('stock')
-        .select('sku_canon,producto_nombre,imagen_url,ficha_url,resena,marca,precio_unidad')
-        .order('producto_nombre').limit(120)
-      if (q.trim()) {
-        query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
-      }
-      const { data, error } = await query
-      if (error) throw error
-      let list = data || []
+      const result = await selectResource('stock', 'sku_canon,producto_nombre,imagen_url,ficha_url,resena,marca,precio_unidad', {
+        label: 'admin_media',
+        transform: query => {
+          if (q.trim()) query = query.or(`producto_nombre.ilike.%${q.trim()}%,sku_canon.ilike.%${q.trim()}%`)
+          return query.order('producto_nombre').limit(120)
+        },
+      })
+      if (!result.ok) throw result.error
+      let list = result.rows
       if (soloSinFoto) list = list.filter(r => !r.imagen_url)
       setRows(list)
     } catch (e) {
@@ -560,13 +563,14 @@ function TabMetas({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [{ data: ej }, { data: m, error }] = await Promise.all([
-        supabase.from('ejecutivos').select('id, nombre, zona').order('zona'),
-        supabase.from('metas').select('*').eq('mes', mes).order('ejecutivo_id'),
+      const [ej, m] = await Promise.all([
+        selectResource('ejecutivos', 'id, nombre, zona', { label: 'admin_metas_ejecutivos', transform: query => query.order('zona') }),
+        selectResource('metas', '*', { label: 'admin_metas', transform: query => query.eq('mes', mes).order('ejecutivo_id') }),
       ])
-      if (error) throw error
-      setEjecutivos(ej || [])
-      setRows(m || [])
+      if (!ej.ok) throw ej.error
+      if (!m.ok) throw m.error
+      setEjecutivos(ej.rows)
+      setRows(m.rows)
     } catch (e) {
       onFlash(false, e.message)
     } finally {
