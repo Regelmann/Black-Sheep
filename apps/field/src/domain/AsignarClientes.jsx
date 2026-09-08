@@ -52,7 +52,7 @@ export function AsignarClientes({ onFlash }) {
 
   useEffect(() => { cargar() }, [cargar])
 
-  /** Asigna en `cartera`, que es donde el vendedor lee su lista. */
+    /** Asigna el cliente mediante el contrato App 2.0. */
   async function asignar(cliente, ejecutivoId) {
     if (!ejecutivoId) return
     setGuardando(cliente.cliente_key)

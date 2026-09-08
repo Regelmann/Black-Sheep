@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { safeSelect } from '../lib/query.js'
-import { selectResource } from '../lib/bs2Api.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 import { parseSkuDetalle } from '../lib/coach.js'
 import { precioUnitarioDesdeSku } from '../lib/pedido.js'
 import { resolverPrecio, resolverPrecioCliente, estiloOrigenPrecio, formatPrecioClp, precioDesdeLista } from '../lib/precios.js'
@@ -273,10 +273,11 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
           .eq('id', current.id)
       }
 
-      await supabase.from('oferta_cliente_items').delete().eq('oferta_id', current.id)
-      if (items.length) {
-        const rows = items.map((i, idx) => ({
-          oferta_id: current.id,
+      const result = await callOperation('guardar_oferta_cliente', {
+        p_oferta_id: current.id,
+        p_cliente_key: cliente.cliente_key,
+        p_ejecutivo_id: ejecutivoId || current.ejecutivo_id,
+        p_items: items.map((i, idx) => ({
           sku_canon: i.sku_canon,
           producto_nombre: i.producto_nombre,
           precio_lista: i.precio_lista != null ? Number(i.precio_lista) : null,
@@ -284,10 +285,9 @@ export default function OfertaClienteSheet({ cliente, ejecutivoId, onClose }) {
           visible: i.visible !== false,
           destacado: Boolean(i.destacado),
           prioridad: idx,
-        }))
-        const { error: e2 } = await supabase.from('oferta_cliente_items').insert(rows)
-        if (e2) throw e2
-      }
+        })),
+      })
+      if (result.error) throw result.error
       setMsg('Oferta guardada · link listo para el cliente')
     } catch (e) {
       setMsg(e.message || 'No se pudo guardar')
