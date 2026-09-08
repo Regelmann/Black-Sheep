@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    allowedHosts: ['.vercel.run'],
+  },
 
   build: {
     // El objetivo del roadmap es <250 kB en la carga inicial.
