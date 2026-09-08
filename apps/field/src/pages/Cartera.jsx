@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
-import { selectResource } from '../lib/bs2Api.js'
+import { selectResource, callOperation } from '../lib/bs2Api.js'
 import PedidoSheet from '../domain/PedidoSheet.jsx'
 import HistorialPedidos from '../domain/HistorialPedidos.jsx'
 import OfertaClienteSheet from '../domain/OfertaClienteSheet.jsx'
@@ -222,11 +221,11 @@ export default function Cartera({ session }) {
           : c
       )
     )
-    let q = supabase.from('cartera').update({ es_bloqueado: true })
-    if (id) q = q.eq('id', id)
-    else if (key) q = q.eq('cliente_key', key)
-    else return
-    const { error } = await q
+    if (!key) return
+    const { error } = await callOperation('guardar_cliente', {
+      p_cliente_key: key,
+      p_bloqueado: true,
+    })
     if (error) {
       // Rollback
       setClientes(prev =>
@@ -262,11 +261,11 @@ export default function Cartera({ session }) {
           : c
       )
     )
-    let q = supabase.from('cartera').update({ es_bloqueado: false })
-    if (id) q = q.eq('id', id)
-    else if (key) q = q.eq('cliente_key', key)
-    else return
-    const { error } = await q
+    if (!key) return
+    const { error } = await callOperation('guardar_cliente', {
+      p_cliente_key: key,
+      p_bloqueado: false,
+    })
     if (error) {
       setClientes(prev =>
         prev.map(c =>

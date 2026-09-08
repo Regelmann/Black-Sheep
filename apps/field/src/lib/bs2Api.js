@@ -7,9 +7,9 @@ import { safeSelect, explainError } from './query.js'
  * sirven las vistas legacy del esquema public.
  */
 export const BS2_RESOURCES = Object.freeze({
-  cartera: { v2: 'cartera_vendible', legacy: 'cartera' },
-  stock: { v2: 'stock_vendible', legacy: 'stock' },
-  pedidos: { v2: 'pedidos_field', legacy: 'pedidos' },
+  cartera: { v2: 'cartera' },
+  stock: { v2: 'stock_vendible' },
+  pedidos: { v2: 'pedidos_field' },
 })
 
 function isSchemaError(error) {
