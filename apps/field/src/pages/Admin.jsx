@@ -102,11 +102,6 @@ function TabClientes({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase
-        .from('cartera')
-        .select('cliente_key,nombre_cliente,comuna,ejecutivo_id,venta_mtd')
-        .order('nombre_cliente')
-        .limit(200)
       const term = q.trim()
       if (term) {
         query = query.or(
