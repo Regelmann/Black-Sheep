@@ -102,11 +102,6 @@ function TabClientes({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase
-        .from('cartera')
-        .select('cliente_key,nombre_cliente,comuna,ejecutivo_id,venta_mtd')
-        .order('nombre_cliente')
-        .limit(200)
       const term = q.trim()
       if (term) {
         query = query.or(
@@ -159,12 +154,6 @@ function TabClientes({ onFlash }) {
         p_comuna: body.comuna,
       })
       if (result.error) throw result.error
-      try {
-        await supabase.from('gerencia_clientes').update({
-          ejecutivo: body.zona,
-          comuna: body.comuna || c.comuna,
-        }).eq('cliente_key', c.cliente_key)
-      } catch { /* */ }
       setRows(prev => prev.map(r => (r.cliente_key === c.cliente_key ? { ...r, ...body } : r)))
       onFlash(true, `Cliente actualizado`)
     } catch (e) {
@@ -450,8 +439,18 @@ function TabMedia({ onFlash }) {
   async function save(r, patch) {
     setSaving(r.sku_canon)
     try {
-      const { error } = await supabase.from('stock').update(patch).eq('sku_canon', r.sku_canon)
-      if (error) throw error
+      const result = await callOperation('guardar_producto', {
+        p_sku: r.sku_canon,
+        p_nombre: patch.producto_nombre ?? r.producto_nombre ?? null,
+        p_categoria: patch.categoria ?? r.categoria ?? null,
+        p_marca: patch.marca ?? r.marca ?? null,
+        p_unidad_venta: patch.unidad_venta ?? r.unidad_venta ?? null,
+        p_unidades_caja: patch.unidades_caja ?? r.unidades_caja ?? null,
+        p_kg_unidad: patch.kg_unidad ?? r.kg_unidad ?? null,
+        p_imagen_url: patch.imagen_url ?? r.imagen_url ?? null,
+        p_activo: patch.activo ?? r.activo ?? true,
+      })
+      if (result.error) throw result.error
       setRows(prev => prev.map(x => (x.sku_canon === r.sku_canon ? { ...x, ...patch } : x)))
       onFlash(true, 'Media guardada')
     } catch (e) {
@@ -897,9 +896,12 @@ function TabUsuarios({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.from('ejecutivos').select('id,nombre,zona,rol,email').order('zona')
-      if (error) throw error
-      setRows(data || [])
+      const result = await selectResource('ejecutivos', 'id,nombre,zona,rol,email', {
+        label: 'admin_ejecutivos',
+        transform: query => query.order('zona'),
+      })
+      if (!result.ok) throw result.error
+      setRows(result.rows)
     } catch (e) {
       onFlash(false, e.message)
     } finally {
