@@ -4,6 +4,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 @import url('./styles/tokens.css');
+@import url('./styles/platform-admin.css');
 
 /* La fuente DM Sans ya se carga desde index.html con <link> + preconnect:
    cargarla además por @import es un request render-blocking redundante. */
@@ -248,7 +249,7 @@ input, textarea, select { font-family: inherit; }
 .empty-state-title { font-size: 16px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
 .empty-state-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-/* ── PROGRESS ────────────────────────────────────────────────── */
+/* ���─ PROGRESS ────────────────────────────────────────────────── */
 .progress-track {
   height: 5px; background: var(--line); border-radius: var(--r-pill); overflow: hidden;
 }
@@ -1247,7 +1248,7 @@ input, textarea, select { font-family: inherit; }
 .bs-visit-done { text-align: center; color: var(--ok); font-weight: 700; font-size: 14px; padding: 12px 0; }
 
 
-/* ── CATÁLOGO PÚBLICO (shop) — grid visible ───────────────────── */
+/* ── CATÁLOGO PÚBLICO (shop) — grid visible ─────────────��─────── */
 .bs-page.bs-shop { background: #faf8f5; color: #1c1917; padding-bottom: 100px; }
 .bs-shop-main { padding: 12px 14px 24px; min-height: 40vh; background: #faf8f5; }
 .bs-shop-grid {

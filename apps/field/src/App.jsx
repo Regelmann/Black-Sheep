@@ -38,6 +38,7 @@ const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
 const DashboardGerencia = lazy(() => import('./pages/DashboardGerencia.jsx'))
 const Ventas            = lazy(() => import('./pages/Ventas.jsx'))
 const Admin           = lazy(() => import('./pages/Admin.jsx'))
+const PlatformAdmin   = lazy(() => import('./pages/PlatformAdmin.jsx'))
 
 /** Placeholder de carga. Nunca pantalla en blanco. */
 function CargandoPagina() {
@@ -135,7 +136,7 @@ export default function App() {
       const email = String(session.user.email || '').toLowerCase()
       const isBlackSheepOwner = email === 'sregelmann@gmail.com'
       const rol = isBlackSheepOwner
-        ? 'tenant_admin'
+        ? 'platform_admin'
         : membershipRole || String(data?.rol || 'ejecutivo').toLowerCase()
       const esSuperAdmin =
         isBlackSheepOwner ||
@@ -319,6 +320,7 @@ export default function App() {
                   el Control Center. */}
               <Route path="/ventas" element={esGerente ? <Ventas /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
+              <Route path="/platform" element={ejecutivo?.rol === 'platform_admin' ? <PlatformAdmin /> : <Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </Suspense>
