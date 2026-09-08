@@ -41,7 +41,7 @@ function App() {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
     if (!token) return setError('Tu sesión expiró. Vuelve a iniciar sesión.')
-    const response = await fetch('/api/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ tenantId, plan }) })
+    const response = await fetch('/api/create-mercadopago-subscription', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ tenantId, plan }) })
     const payload = await response.json()
     if (!response.ok) return setError(payload.error || 'No se pudo iniciar el checkout.')
     window.location.assign(payload.url)
