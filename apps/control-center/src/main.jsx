@@ -52,7 +52,8 @@ function App() {
 
   async function loadTenants() {
     if (!session) return
-    const { data: admin, error: adminError } = await supabase.from('platform_admins').select('usuario_id').eq('usuario_id', session.user.id).eq('activo', true).maybeSingle()
+    const { data: admins, error: adminError } = await supabase.from('platform_admins').select('usuario_id, activo').eq('activo', true)
+    const admin = admins?.[0]
     if (adminError || !admin) { setAuthorized(false); setError('Esta cuenta no tiene permisos de plataforma.'); return }
     const { data, error: loadError } = await supabase.from('tenants').select('id, nombre, slug, activo, suscripciones(plan, estado, importe_mensual, vence_en), membresias(count)').order('nombre')
     if (loadError) { setError(loadError.message); return }; const { data: audit } = await supabase.from('audit_log').select('id, action, resource_type, details, created_at, tenant_id').order('created_at', { ascending: false }).limit(8); setAuthorized(true); setTenants(data || []); setAuditLog(audit || [])
