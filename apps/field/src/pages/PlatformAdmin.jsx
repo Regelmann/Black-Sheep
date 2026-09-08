@@ -21,7 +21,7 @@ export default function PlatformAdmin() {
       supabase.schema('platform').from('suscripciones').select('tenant_id,plan,estado,vence_en,importe_mensual').order('vence_en'),
       supabase.schema('platform').from('membresias').select('tenant_id,rol,activo'),
     ])
-    if (tenantError || subError || memberError) setError('No se pudo cargar el control global. Verifica el acceso del administrador de plataforma.')
+    if (tenantError || subError || memberError) setError(tenantError?.message || subError?.message || memberError?.message || 'No se pudo cargar el control global. Verifica el acceso del administrador de plataforma.')
     setTenants(tenantRows || [])
     setSubscriptions(subRows || [])
     setMemberships(memberRows || [])

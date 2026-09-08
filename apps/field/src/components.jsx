@@ -76,7 +76,7 @@ export function NavBar({ esGerente, onLogout }) {
       // Dos accesos al mismo lugar confunden.
       { to: '/dashboard', label: 'Dashboard', sub: 'Negocio · datos · precios · metas', icon: ICON.gerencia },
       { to: '/admin', label: 'Administración', sub: 'Usuarios · configuración · control', icon: ICON.admin },
-      ...(window.location.pathname.startsWith('/platform') ? [{ to: '/platform', label: 'Control Center', sub: 'Todos los tenants · pagos · planes', icon: ICON.admin }] : []),
+      { to: '/platform', label: 'Control Center', sub: 'Todos los tenants · pagos · planes', icon: ICON.admin },
     )
   }
 
