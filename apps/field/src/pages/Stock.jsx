@@ -3,6 +3,7 @@ import { productTitle } from '../lib/productDisplay.js'
 import { findBuyersForSku } from '../lib/stockIntel.js'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
+import { selectResource } from '../lib/bs2Api.js'
 import { pick, auditar, columnasReales, CARTERA } from '../lib/columns.js'
 import { safeAll, safeSelect } from '../lib/query.js'
 import { traerTodo } from '../lib/traerTodo.js'
@@ -90,7 +91,10 @@ export default function Stock() {
       columnasReales(carteraRows, 'cartera')
       console.warn('[stock] cartera leída en modo tolerante — revisar nombres de columnas')
     }
-    const rStock = await safeSelect(supabase.from('stock').select('*').order('es_foco_mes', { ascending: false }))
+    const rStock = await selectResource('stock', '*', {
+      label: 'stock',
+      transform: builder => builder.order('es_foco_mes', { ascending: false }),
+    })
     const r = { stock: rStock.ok ? rStock.rows : [], errors: { stock: rStock.ok ? null : rStock.error, cartera: cartErr } }
     // Doble filtro client-side por si RLS devuelve de más
     if (eid) {

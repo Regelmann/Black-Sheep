@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
+import { selectResource } from '../lib/bs2Api.js'
 import { money, DataAsOfBanner } from '../components.jsx'
 import { useEjecutivo } from '../App.jsx'
 import { computeConsistentMetrics } from '../lib/metrics.js'
@@ -86,7 +87,10 @@ export default function Hoy() {
         const start = new Date()
         start.setHours(0, 0, 0, 0)
         const [cRes, mRes, fRes, pRes, chRes] = await Promise.all([
-          supabase.from('cartera').select('*').eq('ejecutivo_id', eidVista),
+          selectResource('cartera', '*', {
+            label: 'cartera_hoy',
+            transform: builder => builder.eq('ejecutivo_id', eidVista),
+          }),
           supabase.from('metas').select('*').eq('ejecutivo_id', eidVista).order('mes', { ascending: false }).limit(1),
           supabase.from('focos').select('*').eq('ejecutivo_id', eidVista),
           listarPedidosHoy(eidVista),
@@ -97,7 +101,7 @@ export default function Hoy() {
             .limit(100),
         ])
         if (cancelled) return
-        const rows = cRes.data || []
+        const rows = cRes.ok ? cRes.rows : []
         setCartera(rows)
         setMeta(mRes.data?.[0] || null)
         setFocos(fRes.data || [])
