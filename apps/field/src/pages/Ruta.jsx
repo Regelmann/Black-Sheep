@@ -393,11 +393,10 @@ export default function Ruta({ session }) {
         // 🔴 .limit() NO sube el techo de 1.000 filas de PostgREST:
         // sólo puede BAJARLO. Se paginaba de hecho sin saberlo, y la
         // app mostraba 1.000 prospectos de 3.627 sin ningún aviso.
-        const r2 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
-          label: 'prospectos_zona',
-          fallbackOnEmpty: true,
-          transform: builder => builder.eq('zona', zonaNom).order('score', { ascending: false, nullsFirst: false }).limit(5000),
-        })
+        const r2 = await traerTodo(
+          (d, h) => supabase.from('prospectos').select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona').eq('zona', zonaNom).order('score', { ascending: false, nullsFirst: false }).range(d, h),
+          { label: 'prospectos_zona' }
+        )
         if (r2.ok && r2.rows.length) {
           pros = r2.rows
           console.log('prospectos por zona', zonaNom, pros.length)
@@ -408,10 +407,10 @@ export default function Ruta({ session }) {
       }
       // 2) por ejecutivo_id
       if (uid) {
-        const r1 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
-          label: 'prospectos_ejecutivo',
-          transform: builder => builder.eq('ejecutivo_id', uid).order('score', { ascending: false, nullsFirst: false }).limit(5000),
-        })
+        const r1 = await traerTodo(
+          (d, h) => supabase.from('prospectos').select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona').eq('ejecutivo_id', uid).order('score', { ascending: false, nullsFirst: false }).range(d, h),
+          { label: 'prospectos_ejecutivo' }
+        )
         if (r1.ok && r1.rows.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
           for (const p of r1.rows) {
@@ -422,10 +421,10 @@ export default function Ruta({ session }) {
       }
       // 3) sin zona en DB: traer lote amplio y filtrar por comuna de la zona (cubre Providencia en Nor-Poniente)
       if (comunaSet.size && pros.length < 200) {
-const r3 = await selectResource('prospectos', 'cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona', {
-          label: 'prospectos_barrido',
-          transform: builder => builder.not('lat', 'is', null).order('score', { ascending: false, nullsFirst: false }).limit(8000),
-        })
+        const r3 = await traerTodo(
+          (d, h) => supabase.from('prospectos').select('cliente_key,nombre_cliente,comuna,direccion,lat,lng,score,potencial,oferta,segmento,estado,ejecutivo_id,zona').not('lat', 'is', null).order('score', { ascending: false, nullsFirst: false }).range(d, h),
+          { label: 'prospectos_barrido' }
+        )
         if (r3.ok && r3.rows.length) {
           const seen = new Set(pros.map(p => p.cliente_key || p.nombre_cliente))
           let added = 0
