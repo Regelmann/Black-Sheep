@@ -5,6 +5,7 @@ import { precioDesdeHistSku } from './precios.js'
  */
 
 import { supabase } from './supabase.js'
+import { selectResource } from './bs2Api.js'
 import { parseSkuDetalle, cantidadSugerida as cantidadSugeridaCoach } from './coach.js'
 
 /** Quita pipes/basura de nombres de producto (sku_detalle crudo) */
@@ -132,14 +133,11 @@ export async function listarPedidosHoy(ejecutivoId) {
   if (!ejecutivoId) return { data: [], error: null }
   const start = new Date()
   start.setHours(0, 0, 0, 0)
-  const { data, error } = await supabase
-    .from('pedidos')
-    .select('id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado')
-    .eq('ejecutivo_id', ejecutivoId)
-    .gte('creado_en', start.toISOString())
-    .order('creado_en', { ascending: false })
-    .limit(50)
-  return { data: data || [], error }
+  const result = await selectResource('pedidos', 'id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado,ejecutivo_id', {
+    label: 'pedidos_hoy',
+    transform: q => q.eq('ejecutivo_id', ejecutivoId).gte('creado_en', start.toISOString()).order('creado_en', { ascending: false }).limit(50),
+  })
+  return { data: result.rows, error: result.error }
 }
 
 /**
@@ -154,34 +152,31 @@ export async function listarPedidosHoy(ejecutivoId) {
  */
 export async function listarPedidosHistorial(opts = {}) {
   const { ejecutivoId, clienteKey, dias = 30, limit = 80, estado } = opts
-  let q = supabase
-    .from('pedidos')
-    .select('id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado,ejecutivo_id')
-    .order('creado_en', { ascending: false })
-    .limit(limit)
-
-  if (ejecutivoId) q = q.eq('ejecutivo_id', ejecutivoId)
-  if (clienteKey) q = q.eq('cliente_key', clienteKey)
-  if (estado) q = q.eq('estado', estado)
-  if (dias && dias > 0) {
-    const desde = new Date()
-    desde.setDate(desde.getDate() - dias)
-    desde.setHours(0, 0, 0, 0)
-    q = q.gte('creado_en', desde.toISOString())
-  }
-
-  const { data, error } = await q
-  return { data: data || [], error }
+  const result = await selectResource('pedidos', 'id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado,ejecutivo_id', {
+    label: 'pedidos_historial',
+    transform: q => {
+      if (ejecutivoId) q = q.eq('ejecutivo_id', ejecutivoId)
+      if (clienteKey) q = q.eq('cliente_key', clienteKey)
+      if (estado) q = q.eq('estado', estado)
+      if (dias && dias > 0) {
+        const desde = new Date()
+        desde.setDate(desde.getDate() - dias)
+        desde.setHours(0, 0, 0, 0)
+        q = q.gte('creado_en', desde.toISOString())
+      }
+      return q.order('creado_en', { ascending: false }).limit(limit)
+    },
+  })
+  return { data: result.rows, error: result.error }
 }
 
 export async function getPedidoById(id) {
   if (!id) return { data: null, error: null }
-  const { data, error } = await supabase
-    .from('pedidos')
-    .select('id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado,ejecutivo_id')
-    .eq('id', id)
-    .maybeSingle()
-  return { data, error }
+  const result = await selectResource('pedidos', 'id,cliente_key,nombre_cliente,lineas,nota,estado,creado_en,fuente,total_estimado,ejecutivo_id', {
+    label: 'pedido_detalle',
+    transform: q => q.eq('id', id).limit(1),
+  })
+  return { data: result.rows[0] || null, error: result.error }
 }
 
 export function totalPedido(p) {
