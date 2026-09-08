@@ -83,17 +83,17 @@ export function AsignarClientes({ onFlash }) {
 
     const lote = rows.filter((r) => normComuna(r.comuna) === normComuna(comuna))
     setGuardando(comuna)
-    const { error } = await supabase.from('cartera').upsert(
-      lote.map((c) => ({
-        cliente_key: c.cliente_key,
-        nombre_cliente: c.nombre_cliente,
-        comuna: c.comuna,
-        ejecutivo_id: ej.id,
-        zona,
-        venta_mtd: Number(c.venta_mtd) || 0,
-      })),
-      { onConflict: 'ejecutivo_id,cliente_key' }
-    )
+    let error = null
+    for (const cliente of lote) {
+      const result = await callOperation('guardar_cliente', {
+        p_cliente_key: cliente.cliente_key,
+        p_nombre: cliente.nombre_cliente,
+        p_comuna: cliente.comuna || null,
+        p_ejecutivo: ej.id,
+        p_zona: zona,
+      })
+      if (result.error) { error = result.error; break }
+    }
     setGuardando(null)
     if (error) { onFlash?.(mensajeDeError(error), 'error'); return }
 
