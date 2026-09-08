@@ -37,6 +37,16 @@ function TenantModal({ onClose, onSaved }) {
 function App() {
   const [session, setSession] = useState(null); const [loading, setLoading] = useState(true); const [authorized, setAuthorized] = useState(false); const [tenants, setTenants] = useState([]); const [query, setQuery] = useState(''); const [filter, setFilter] = useState('all'); const [error, setError] = useState(''); const [showModal, setShowModal] = useState(false)
   useEffect(() => { supabase.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false) }); const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => setSession(next)); return () => listener.subscription.unsubscribe() }, [])
+  async function startCheckout(tenantId, plan = 'starter') {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (!token) return setError('Tu sesión expiró. Vuelve a iniciar sesión.')
+    const response = await fetch('/api/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ tenantId, plan }) })
+    const payload = await response.json()
+    if (!response.ok) return setError(payload.error || 'No se pudo iniciar el checkout.')
+    window.location.assign(payload.url)
+  }
+
   async function loadTenants() {
     if (!session) return
     const { data: admin, error: adminError } = await supabase.from('platform_admins').select('usuario_id').eq('usuario_id', session.user.id).eq('activo', true).maybeSingle()
