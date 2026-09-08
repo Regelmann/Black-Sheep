@@ -3,7 +3,11 @@
 PWA de ventas en terreno para distribución de alimentos.
 Multi-tenant. Cliente principal: **KeyFoods** (Santiago, Chile).
 
-> **`v-BS-PLATFORM-V15.3`** · guard ✅ · 24/24 tests · build ✓
+> **`v-BS-PLATFORM-V15.3`** · guard ✅ · 559/559 tests · build ✓
+>
+> La única versión válida es el `BUILD_STAMP` de `lib/buildStamp.js`.
+> Los conteos de tests cambian en cada entrega: el número real es el que
+> devuelve `npm test`, no el que diga este archivo.
 
 ---
 
@@ -37,7 +41,7 @@ npm run dev
 npm run verify
 ```
 
-Un solo comando: **guard + tests + build**. Si falla, no se sube.
+Un solo comando: **lint + typecheck + guard + tests + smoke + build**. Si falla, no se sube.
 
 No es opcional. Tres entregas seguidas llegaron sin compilar porque nadie corrió
 el build. El CI ahora lo bloquea, pero conviene verificar antes de pushear.
@@ -58,24 +62,25 @@ el build. El CI ahora lo bloquea, pero conviene verificar antes de pushear.
 apps/field/            PWA del vendedor (React + Vite → Vercel)
   src/
     pages/             Hoy · Ruta · Cartera · Stock · Gerencia · Visita · Catálogo
-    components/
-      domain/          Componentes de negocio (ZonePicker, ClientActionBar…)
-      FilterBar.jsx    Filtros, buscador y grilla de stats — UNIFICADOS
-      DataState.jsx    Estados de carga / error / vacío
+    domain/            Componentes de negocio (ZonePicker, FilterBar, PedidoSheet…)
+    ui/                Primitivas de UI (DataState: carga / error / vacío)
     lib/
       query.js         safeSelect — ninguna consulta falla en silencio
-      offline.js       Cola offline (outbox)
+      traerTodo.js     Paginación contra el techo de 1.000 filas de PostgREST
+      outboxDb.js      Cola offline durable (IndexedDB + espejo + respaldo)
       syncHandlers.js  Handlers del outbox — fuente ÚNICA
-      planDia.js       Ranking del día: stock + foco + GPS
-      dataHealth.js    Semáforo de confiabilidad de la bajada
+      planDia.js       Ranking del día: stock + foco + GPS (⚠️ sin cablear — ROADMAP 2.1)
+      dataHealth.js    Semáforo de confiabilidad de la bajada (⚠️ sin cablear — ROADMAP 1.4)
       tenants.js       Branding por cliente
   scripts/guard.js     Reglas de regresión
 
-apps/web/              Landing y Control Center (HTML estático)
+apps/web/              Landing y portal (Next.js → black-sheep.cl)
+apps/control-center/   Panel de carga de datos + checkout Stripe (Vite)
 sql/                   Migraciones Supabase — orden numérico
+sql/security/          RLS canónico (50–54) + diagnóstico (99)
 scripts/               ETL en Python (Colab / GitHub Actions)
 docs/                  Documentación operativa
-ROADMAP.md             Hacia dónde va
+ROADMAP.md             Hacia dónde va — estado verificado por fase
 ```
 
 ---
