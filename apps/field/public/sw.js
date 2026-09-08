@@ -32,21 +32,21 @@ const HTML_CACHE  = 'bs-html-v2'
 const MAX_SHELL_ENTRIES = 40
 const MAX_HTML_ENTRIES  = 6
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
-  )
-self.addEventListener('activate', (e) => {
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((k) => k !== SHELL_CACHE && k !== HTML_CACHE)
-            .map((k) => caches.delete(k))
-        )
-      )
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting())
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key !== SHELL_CACHE && key !== HTML_CACHE)
+          .map((key) => caches.delete(key))
+      ))
       .then(() => self.clients.claim())
+  )
+})
 /* Guarda en una cache respetando un tope de entradas (evicta las más viejas). */
 async function cachePutBounded(cacheName, key, res, maxEntries) {
   const cache = await caches.open(cacheName)
@@ -157,3 +157,6 @@ self.addEventListener('notificationclick', (event) => {
           if ('focus' in cl) return cl.focus()
         }
         return self.clients.openWindow(url)
+      })
+  )
+})
