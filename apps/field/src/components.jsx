@@ -75,6 +75,7 @@ export function NavBar({ esGerente, onLogout }) {
       // pantalla: /datos es sólo /dashboard con una pestaña abierta.
       // Dos accesos al mismo lugar confunden.
       { to: '/dashboard', label: 'Dashboard', sub: 'Negocio · datos · precios · metas', icon: ICON.gerencia },
+      { to: '/admin', label: 'Administración', sub: 'Usuarios · configuración · control', icon: ICON.admin },
     )
   }
 

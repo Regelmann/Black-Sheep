@@ -108,29 +108,45 @@ export default function App() {
       setEjecutivo(null)
       return
     }
-    selectResource('ejecutivos', '*', {
-      label: 'session_ejecutivo',
-      transform: query => query.eq('id', session.user.id).limit(1),
-    }).then(({ ok, rows }) => {
-      const data = ok ? rows[0] : null
-      if (!data) {
-        // Usuario auth sin fila en ejecutivos
-        setEjecutivo({
-          id: session.user.id,
-          nombre: displayNameFromEmail(session.user.email),
-          zona: '',
-          rol: 'ejecutivo',
-          esSuperAdmin: false,
-        })
-        return
-      }
-      const rol = (data.rol || 'ejecutivo').toLowerCase()
+    Promise.all([
+      selectResource('ejecutivos', '*', {
+        label: 'session_ejecutivo',
+        transform: query => query.eq('id', session.user.id).limit(1),
+      }),
+      supabase
+        .schema('platform')
+        .from('membresias')
+        .select('tenant_id, rol, activo')
+        .eq('usuario_id', session.user.id)
+        .eq('activo', true)
+        .limit(1),
+      supabase
+        .schema('platform')
+        .from('usuarios')
+        .select('nombre')
+        .eq('id', session.user.id)
+        .eq('activo', true)
+        .limit(1),
+    ]).then(([ejecutivosResult, membershipResult, usuarioResult]) => {
+      const data = ejecutivosResult.ok ? ejecutivosResult.rows[0] : null
+      const membership = membershipResult.data?.[0] || null
+      const platformUser = usuarioResult.data?.[0] || null
+      const membershipRole = String(membership?.rol || '').toLowerCase()
+      const rol = membershipRole || String(data?.rol || 'ejecutivo').toLowerCase()
+      const esSuperAdmin =
+        rol === 'superadmin' ||
+        rol === 'gerente' ||
+        rol === 'admin' ||
+        rol === 'tenant_admin' ||
+        rol === 'owner'
+
       setEjecutivo({
-        id: data.id,
-        nombre: data.nombre || '',
-        zona: data.zona || '',
+        id: session.user.id,
+        nombre: platformUser?.nombre || data?.nombre || displayNameFromEmail(session.user.email),
+        zona: data?.zona || '',
         rol,
-        esSuperAdmin: rol === 'superadmin' || rol === 'gerente' || rol === 'admin',
+        tenantId: membership?.tenant_id || null,
+        esSuperAdmin,
       })
     })
   }, [session])
