@@ -7,9 +7,25 @@ import { safeSelect, explainError } from './query.js'
  * sirven las vistas legacy del esquema public.
  */
 export const BS2_RESOURCES = Object.freeze({
-  cartera: { v2: 'cartera' },
-  stock: { v2: 'stock_vendible' },
-  pedidos: { v2: 'pedidos_field' },
+  cartera: { v2: 'cartera', legacy: 'cartera' },
+  stock: { v2: 'stock_vendible', legacy: 'stock' },
+  pedidos: { v2: 'pedidos_field', legacy: 'pedidos' },
+  prospectos: { v2: 'prospectos', legacy: 'prospectos' },
+  conflictos: { v2: 'conflictos' },
+})
+
+export const BS2_OPERATIONS = Object.freeze({
+  guardarCliente: 'guardar_cliente',
+  guardarProspecto: 'guardar_prospecto',
+  convertirProspecto: 'convertir_prospecto',
+  guardarProducto: 'guardar_producto',
+  guardarPrecio: 'guardar_precio',
+  guardarCosto: 'guardar_costo',
+  guardarStock: 'guardar_stock',
+  liberarCampo: 'liberar_campo',
+  resolverConflicto: 'resolver_conflicto',
+  publicarLote: 'publicar_lote',
+  revertirLote: 'revertir_lote',
 })
 
 function isSchemaError(error) {
@@ -38,6 +54,10 @@ export async function callOperation(name, args = {}, options = {}) {
   if (!result.error) return result
   if (options.legacyRpc) return supabase.rpc(options.legacyRpc, args)
   return result
+}
+
+export async function selectIngest(name, columns = '*', options = {}) {
+  return selectResource(name, columns, { ...options, label: options.label || `ingest_${name}` })
 }
 
 export function isBs2SchemaError(error) {
