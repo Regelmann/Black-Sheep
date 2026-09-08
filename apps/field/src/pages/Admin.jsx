@@ -700,14 +700,17 @@ function TabFocos({ onFlash }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [{ data: f }, { data: ej }, { data: sk }] = await Promise.all([
-        supabase.from('focos').select('*').order('foco').limit(100),
-        supabase.from('ejecutivos').select('id, nombre, zona').order('zona'),
-        supabase.from('stock').select('sku_canon,producto_nombre,es_foco_mes,precio_unidad,stock_operativo').order('producto_nombre').limit(300),
+      const [f, ej, sk] = await Promise.all([
+        selectResource('focos', '*', { label: 'admin_focos', transform: query => query.order('foco').limit(100) }),
+        selectResource('ejecutivos', 'id, nombre, zona', { label: 'admin_focos_ejecutivos', transform: query => query.order('zona') }),
+        selectResource('stock', 'sku_canon,producto_nombre,es_foco_mes,precio_unidad,stock_operativo', { label: 'admin_focos_stock', transform: query => query.order('producto_nombre').limit(300) }),
       ])
-      setFocos(f || [])
-      setEjecutivos(ej || [])
-      setStock(sk || [])
+      if (!f.ok) throw f.error
+      if (!ej.ok) throw ej.error
+      if (!sk.ok) throw sk.error
+      setFocos(f.rows)
+      setEjecutivos(ej.rows)
+      setStock(sk.rows)
     } catch (e) {
       onFlash(false, e.message)
     } finally {
