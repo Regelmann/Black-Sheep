@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { productTitle } from '../lib/productDisplay.js'
 import { findBuyersForSku } from '../lib/stockIntel.js'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase.js'
+import { traerTodo } from '../lib/traerTodo.js'
 import { selectResource } from '../lib/bs2Api.js'
 import { pick, auditar, columnasReales, CARTERA } from '../lib/columns.js'
 import { DataError } from '../ui/DataState.jsx'
@@ -44,13 +46,14 @@ export default function Stock() {
     // cuatro. No había respaldo final. Y el filtro .eq('ejecutivo_id')
     // rompe la consulta aunque el select esté bien, si esa columna
     // cambió de nombre. Por eso se veía "Esta vista está desactualizada".
-    const carteraResult = await selectResource('cartera', 'cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id', {
-      label: 'stock_cartera',
-      transform: query => {
+    const carteraResult = await traerTodo(
+      (desde, hasta) => {
+        let query = supabase.from('cartera').select('cliente_key,nombre_cliente,sku_detalle,venta_mtd,dias_sin_comprar,zona,ejecutivo_id')
         if (eid) query = query.eq('ejecutivo_id', eid)
-        return query.limit(10000)
+        return query.range(desde, hasta)
       },
-    })
+      { label: 'stock_cartera' }
+    )
     let carteraRows = carteraResult.ok ? carteraResult.rows : []
     const cartErr = carteraResult.ok ? null : carteraResult.error
     const degradado = false
