@@ -1090,7 +1090,7 @@ export default function Visita({ session }) {
           ejecutivoId={eje?.eidVista || session?.user?.id}
           ejecutivoNombre={eje?.nombre || eje?.zona}
           onClose={() => setPedidoOpen(false)}
-          onSaved={() => {
+          onSaved={(r) => {
             setPedidoOk(true)
             {
               const ck = visita?.cliente_key || cliente?.cliente_key
@@ -1098,7 +1098,13 @@ export default function Visita({ session }) {
             }
             setResultado('pedido')
             setPedidoOpen(false)
-            setMsg('Pedido guardado · cerrá la visita cuando termines')
+            // Nunca decir "guardado" si sigue en el teléfono (ROADMAP 2.3):
+            // el vendedor cerraría convencido y bodega no vería el pedido.
+            setMsg(
+              r?.encolado
+                ? 'Pedido guardado en el teléfono · falta subir — se envía solo con señal'
+                : 'Pedido guardado · cerrá la visita cuando termines'
+            )
           }}
         />
       )}

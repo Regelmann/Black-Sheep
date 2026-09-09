@@ -3,9 +3,12 @@
 PWA de ventas en terreno para distribución de alimentos.
 Multi-tenant. Cliente principal: **KeyFoods** (Santiago, Chile).
 
-> **`v-BS-PLATFORM-V15.3`** · guard ✅ · 559/559 tests · build ✓
+> **`v-BS-PLATFORM-V15.4`** · guard ✅ · build ✓
 >
 > La única versión válida es el `BUILD_STAMP` de `lib/buildStamp.js`.
+> El conteo de tests no se escribe a mano acá — corré `npm test` antes de
+> publicar y confirmá el número real (esta línea no se actualizó sola en
+> el bump a V15.4, así que no confíes en un número viejo).
 > Los conteos de tests cambian en cada entrega: el número real es el que
 > devuelve `npm test`, no el que diga este archivo.
 

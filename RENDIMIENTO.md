@@ -1,6 +1,6 @@
 # Rendimiento
 
-**Versión:** `v-BS-PLATFORM-V15.3` · medido el 2026-09-08 (mismo pipeline que el CI)
+**Versión:** `v-BS-PLATFORM-V15.4` · medido el 2026-09-08 (mismo pipeline que el CI)
 
 ## Punto de partida
 

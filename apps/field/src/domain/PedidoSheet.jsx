@@ -5,7 +5,6 @@ import { productTitle, productLabel } from '../lib/productDisplay.js'
 import {
   buildWhatsAppPedido,
   buildWhatsAppBodega,
-  guardarPedido,
   sugerirLineasDesdeCliente,
   enriquecerPreciosDesdeVentas,
   unidadDesdeNombre,
@@ -13,6 +12,7 @@ import {
   imprimirPedidoPdf,
   marcarPedidoEstado,
 } from '../lib/pedido.js'
+import { guardarPedidoTerreno } from '../lib/pedidoOffline.js'
 import { precioDesdeLista, resolverPrecio } from '../lib/precios.js'
 
 const money = n => {
@@ -67,6 +67,9 @@ export default function PedidoSheet({ initialPedido,
   }, [initialPedido?.id])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  // op_id del pedido que quedó en la cola offline. Mientras exista, este
+  // sheet ya hizo su trabajo: re-confirmar duplicaría el pedido.
+  const [encolado, setEncolado] = useState(null)
   const [stock, setStock] = useState([])
   const [q, setQ] = useState('')
   const [showCatalog, setShowCatalog] = useState(false)
@@ -210,10 +213,13 @@ export default function PedidoSheet({ initialPedido,
   )
 
   async function confirmar({ waCliente = false, waBodega = false, pdf = false } = {}) {
+    // Ya quedó en la cola offline: re-confirmar crearía un duplicado con
+    // otro op_id. El botón queda deshabilitado, esto es defensa en profundidad.
+    if (encolado) return
     setBusy(true)
     setMsg('')
     const estado = waCliente || waBodega || pdf ? 'enviado' : 'borrador'
-    const { data, error } = await guardarPedido({
+    const res = await guardarPedidoTerreno({
       ejecutivoId,
       clienteKey: cliente?.cliente_key,
       nombreCliente: cliente?.nombre_cliente || cliente?.nombre,
@@ -221,12 +227,22 @@ export default function PedidoSheet({ initialPedido,
       nota,
       estado,
     })
-    if (error) {
-      setMsg(error.message || String(error))
+    if (!res.ok) {
+      setMsg(res.error?.message || String(res.error || 'No se pudo guardar el pedido'))
       setBusy(false)
       return
     }
-    const pedidoId = data?.id
+    // QUEDÓ EN EL TELÉFONO, NO EN EL SERVIDOR. Decir "guardado" sin más
+    // es la mentira que el ROADMAP 2.3 pide eliminar: el vendedor cierra
+    // convencido y el pedido no existe para bodega hasta que haya red.
+    if (res.encolado) {
+      setEncolado(res.client_op_id)
+      setMsg('Pedido guardado en el teléfono · falta subir — se envía solo al recuperar señal')
+      setBusy(false)
+      onSaved?.({ encolado: true, clientOpId: res.client_op_id })
+      return
+    }
+    const pedidoId = res.data?.id
     if (pdf) {
       const r = imprimirPedidoPdf({
         cliente,
@@ -540,8 +556,8 @@ export default function PedidoSheet({ initialPedido,
         {msg && (
           <div
             style={{
-              background: 'var(--danger-lt)',
-              color: 'var(--danger-dk)',
+              background: encolado ? 'var(--warn-lt)' : 'var(--danger-lt)',
+              color: encolado ? 'var(--warn-dk)' : 'var(--danger-dk)',
               padding: 10,
               borderRadius: 10,
               fontSize: 12,
@@ -573,7 +589,7 @@ export default function PedidoSheet({ initialPedido,
           </button>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !!encolado}
             onClick={() => confirmar({ waBodega: true })}
             className="bs-cta-primary"
             style={{
@@ -583,13 +599,13 @@ export default function PedidoSheet({ initialPedido,
               fontSize: 14,
             }}
           >
-            {busy ? 'Enviando…' : 'Enviar a bodega'}
+            {encolado ? 'En cola ✓ falta subir' : busy ? 'Enviando…' : 'Enviar a bodega'}
           </button>
         </div>
         <div className="bs-pedido-secondary">
-          <button type="button" disabled={busy} onClick={() => confirmar({})}>Guardar</button>
-          <button type="button" disabled={busy} onClick={() => confirmar({ pdf: true })}>PDF</button>
-          <button type="button" disabled={busy} onClick={() => confirmar({ waCliente: true })}>WhatsApp cliente</button>
+          <button type="button" disabled={busy || !!encolado} onClick={() => confirmar({})}>Guardar</button>
+          <button type="button" disabled={busy || !!encolado} onClick={() => confirmar({ pdf: true })}>PDF</button>
+          <button type="button" disabled={busy || !!encolado} onClick={() => confirmar({ waCliente: true })}>WhatsApp cliente</button>
         </div>
         <p className="muted" style={{ fontSize: 11, marginTop: 8, textAlign: 'center' }}>
           Primario: despacho · secundario: guardar / PDF / cliente

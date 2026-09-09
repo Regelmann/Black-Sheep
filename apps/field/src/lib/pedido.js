@@ -61,16 +61,15 @@ export function buildWhatsAppPedido({ cliente, lineas, ejecutivoNombre }) {
   return { url: `${wa}${sep}text=${encodeURIComponent(body)}`, text: body }
 }
 
-export async function guardarPedido({
-  ejecutivoId,
-  clienteKey,
-  nombreCliente,
-  lineas,
-  nota,
-  fuente = 'field_app',
-  estado = 'borrador',
-}) {
-  const items = (lineas || [])
+/**
+ * Mapea líneas de la UI a líneas de pedido. FUENTE ÚNICA: la usan el RPC
+ * (`guardarPedido`) y la cola offline (`pedidoOffline.js`) para que el
+ * item encolado tenga exactamente la forma que `handlePedido` espera.
+ * @param {Array<any>} lineas
+ * @returns {Array<{sku:string|null, nombre:string, cantidad:number, unidad:string, precio:number|null, motivo:string|null}>}
+ */
+export function mapearLineasPedido(lineas = []) {
+  return (lineas || [])
     .filter(l => Number(l.cantidad) > 0 && (l.nombre || l.sku))
     .map(l => ({
       sku: l.sku || null,
@@ -80,6 +79,18 @@ export async function guardarPedido({
       precio: Number(l.precio) > 0 ? Number(l.precio) : null,
       motivo: l.motivo || null,
     }))
+}
+
+export async function guardarPedido({
+  ejecutivoId,
+  clienteKey,
+  nombreCliente,
+  lineas,
+  nota,
+  fuente = 'field_app',
+  estado = 'borrador',
+}) {
+  const items = mapearLineasPedido(lineas)
   if (!items.length) return { error: 'Sin líneas' }
 
   const total = items.reduce((a, l) => a + (Number(l.precio) || 0) * Number(l.cantidad), 0)

@@ -1,6 +1,6 @@
 # Seguridad · RLS
 
-**Versión:** `v-BS-PLATFORM-V15.3` · revisado 2026-09-08
+**Versión:** `v-BS-PLATFORM-V15.4` · revisado 2026-09-08
 
 ## El problema
 

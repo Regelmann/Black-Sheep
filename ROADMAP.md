@@ -1,6 +1,6 @@
 # Black Sheep Field — Roadmap
 
-**Estado actual:** `v-BS-PLATFORM-V15.3` · verify ✅ (lint · typecheck · guard · tests · smoke · build) · 559/559 tests
+**Estado actual:** `v-BS-PLATFORM-V15.4` · verify ✅ (lint · typecheck · guard · tests · smoke · build) · 559/559 tests
 
 > Reconciliado contra el código el **2026-09-08**. Cada marca ✅/⬜ de este documento
 > se verificó en el repo, no se copió de la entrega anterior. La única versión válida
