@@ -1,6 +1,6 @@
 # Rendimiento
 
-**Versión:** `v-BS-PLATFORM-V9.9.6`
+**Versión:** `v-BS-PLATFORM-V15.3` · medido el 2026-09-08 (mismo pipeline que el CI)
 
 ## Punto de partida
 
@@ -18,15 +18,18 @@ El estándar es tajante: **el 70% de los usuarios espera menos de 2 segundos.**
 
 | Chunk | Tamaño | Cuándo se descarga |
 |---|---|---|
-| **app** | **236 kB** | siempre — es lo que cambia en cada deploy |
-| vendor-supabase | 209 kB | una vez, se cachea meses |
-| vendor-react | 154 kB | una vez, se cachea meses |
-| Gerencia | 58 kB | sólo si abre Gerencia |
+| **app** | **269 kB** (82 kB gzip) | siempre — es lo que cambia en cada deploy |
+| vendor-react | 190 kB | una vez, se cachea meses |
+| vendor-supabase | 214 kB | una vez, se cachea meses |
+| vendor (xlsx) | 435 kB | sólo al cargar datos — el vendedor nunca lo baja |
+| Gerencia | 61 kB | sólo si abre Gerencia |
 | Admin | 27 kB | sólo si abre Admin |
 | CatalogoCliente | 15 kB | sólo el cliente, por su link |
-| Stock | 14 kB | sólo si abre Stock |
+| Stock | 12 kB | sólo si abre Stock |
 
-**236 kB en el chunk de la app — bajo el objetivo de 250 kB del roadmap.**
+**269 kB en el chunk de la app — dentro del techo de 350 kB del CI, pero sobre
+el objetivo de 250 kB: el CI emite aviso.** Bajarlo de vuelta es trabajo pendiente
+del roadmap (3.1), no un logro cerrado.
 
 ## Las dos decisiones
 
@@ -74,8 +77,9 @@ el build.
 
 ## Pendiente
 
-- **CSS: 101 kB.** Conviven `index.css`, `v90-fixes`, `ds-2026`, `system` y
+- **CSS: 139 kB.** Conviven `index.css`, `v90-fixes`, `ds-2026`, `system` y
   `v99-ux`. Falta consolidar en un sistema único.
-- **IndexedDB** en vez de localStorage (Fase 3.2). localStorage escribe de
-  forma síncrona y bloquea el hilo al guardar snapshots grandes.
+- **Snapshot de cartera en localStorage.** La cola offline ya vive en IndexedDB
+  (`outboxDb.js`), pero el snapshot sigue en localStorage: escritura síncrona
+  que bloquea el hilo al guardarlo.
 - **Medición real**: LCP e INP en un teléfono de gama media, no en desktop.

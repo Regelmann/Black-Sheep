@@ -1,17 +1,25 @@
 # Black Sheep Field — Roadmap
 
-**Estado actual:** `v-BS-PLATFORM-V9.2` · build verde · 24/24 tests · 0 imports rotos
+**Estado actual:** `v-BS-PLATFORM-V15.3` · verify ✅ (lint · typecheck · guard · tests · smoke · build) · 559/559 tests
+
+> Reconciliado contra el código el **2026-09-08**. Cada marca ✅/⬜ de este documento
+> se verificó en el repo, no se copió de la entrega anterior. La única versión válida
+> es el `BUILD_STAMP` de `lib/buildStamp.js`: si un documento discrepa con él,
+> el documento está mal.
 
 ---
 
 ## Dónde estamos
 
-La app hace tres cosas bien: muestra la cartera, calcula qué ofrecer, y registra visitas.
-Lo que **todavía no** hace bien es garantizar que lo registrado llegue al servidor,
-y que los números que muestra sean confiables sin que alguien los audite a mano.
+La app muestra la cartera, calcula qué ofrecer y registra visitas. Y desde hace
+unas versiones, además **no miente en silencio** (safeSelect en todas las consultas,
+`traerTodo` contra el techo de 1.000 filas de PostgREST), **compila siempre**
+(CI con guard + tests + build en cada push) y **la cola offline es durable**
+(IndexedDB + espejo en memoria + respaldo).
 
-Las últimas tres versiones se fueron en reparar, no en construir. Eso tiene una causa
-concreta y está en la sección final.
+Lo que todavía no hace bien: garantizar **en terreno** que lo registrado llegue
+al servidor (falta la prueba con teléfono real), mostrar **un solo ranking**
+(hoy conviven tres) y que los números **sepan decir de cuándo son**.
 
 ---
 
@@ -24,36 +32,42 @@ Todo lo que sigue está ordenado por esa regla: **primero que no mienta, despué
 
 ---
 
-## FASE 1 — Que no mienta (0–3 semanas) 🔴
+## FASE 1 — Que no mienta 🔴 · 3 de 4 cerradas
 
-*Sin esto, lo demás no importa.*
+### 1.1 Validar el outbox en terreno real — ⬜ PENDIENTE
+El bug donde `{ok:false}` borraba items de la cola está corregido, y la cola es
+durable (`outboxDb.js`: IndexedDB + espejo síncrono + respaldo en localStorage).
+Los tests de integración e idempotencia pasan.
 
-### 1.1 Validar el outbox en terreno real
-Ya está corregido el bug donde `{ok:false}` borraba items de la cola.
-Falta **probarlo con un teléfono real en un sótano**, no en devtools.
+Falta **probarlo con un teléfono real en un sótano**, no en devtools. Es lo único
+que queda de esta fase y nadie más que el equipo en terreno puede hacerlo.
 
 - [ ] Modo avión → check-in → pedido → nota → volver a red → verificar las 3 filas en Supabase
 - [ ] Matar la app con cola pendiente → reabrir → debe drenar
 - [ ] Cola con 50 items → medir tiempo de drenaje
 - [ ] **Métrica de salida:** 0 pérdidas en 20 ciclos
 
-### 1.2 Migrar las ~20 queries restantes a `safeSelect`
-Quedan en `Visita`, `Metas`, `Ruta`, `Admin`, `components.jsx`.
-Cada una puede mostrar "0" cuando en realidad falló.
+### 1.2 Migrar las queries a `safeSelect` — ✅ CERRADA
+Métrica verificada el 2026-09-08: **0** ocurrencias de `const { data }` sin manejo
+de error en `src/`. Las únicas 4 coincidencias restantes son la suscripción de
+auth, un `getPublicUrl` (no es consulta) y dos ejemplos en comentarios.
 
-- [ ] Una página por PR, verificando en pantalla
-- [ ] **Métrica:** 0 ocurrencias de `const { data }` sin `error`
+### 1.3 RLS estricto antes de multi-tenant — ✅ en el repo · ⬜ falta aplicar en producción
+`sql/security/50–54` cierran las 13 políticas `using(true)` originales, incluida
+la trampa del OR (la política vieja con otro nombre sobrevivía junto a la nueva
+y la anulaba — ver `SEGURIDAD.md`). El guard (regla R11) detecta cualquier
+política abierta nueva.
 
-### 1.3 RLS estricto antes de multi-tenant
-Los SQL `13`/`14` tienen políticas abiertas. Hoy no duele porque hay un solo tenant.
-**El día que entre el segundo, es una fuga de datos entre clientes.**
+Falta del lado de producción:
 
-- [ ] Auditar toda política `USING (true)`
-- [ ] Aislar por `ejecutivo_id` / `tenant_id`
-- [ ] Test: con el JWT del tenant A, intentar leer datos del tenant B → debe fallar
+- [ ] Aplicar `50 → 54` en orden, con `00_VERIFICAR_ESTADO.sql` antes
+- [ ] `99_SECURITY_DIAGNOSTICS.sql` → el bloque 2 debe volver **vacío**
+- [ ] Test real: JWT del tenant A leyendo datos del tenant B → debe fallar
+- [ ] Verificar que el ETL siga escribiendo (service key / `FORCE ROW LEVEL SECURITY`)
 
-### 1.4 Data Health visible
-`dataHealth.js` y `dataIntegrity.js` ya existen y tienen tests. Falta mostrarlos.
+### 1.4 Data Health visible — ⬜ PENDIENTE
+`dataHealth.js` y `dataIntegrity.js` existen, tienen tests, y **ninguna pantalla
+los usa**. Lo único cableado hoy es `DataAsOfBanner` ("Datos al …") en Hoy.
 
 - [ ] Semáforo en Gerencia: verde / ámbar / rojo por bloque
 - [ ] Si la bajada es vieja o inconsistente, **decirlo antes** de mostrar números
@@ -61,19 +75,20 @@ Los SQL `13`/`14` tienen políticas abiertas. Hoy no duele porque hay un solo te
 
 ---
 
-## FASE 2 — Un solo cerebro (3–6 semanas) 🟠
+## FASE 2 — Un solo cerebro 🟠 · sin empezar (verificado)
 
-*Hoy hay tres rankings compitiendo. El vendedor no sabe cuál obedecer.*
+Hoy.jsx arma el día con `decisionEngine`, `recomendaciones` **y** `predictor` a la
+vez. `planDia.js` existe, tiene tests, y **ninguna página lo importa** — otra vez
+el patrón "construido sin cablear".
 
 ### 2.1 `planDia` como única lista del día
-Coexisten `decisionEngine`, `planDia`, `recomendaciones` y `predictor`.
 
 - [ ] `planDia` es la lista. `decisionEngine` sólo aporta señales, no una lista paralela
 - [ ] Retirar `recomendaciones` / `predictor` de la UI (quedan como librerías)
 - [ ] **Métrica:** un solo orden visible en toda la app
 
 ### 2.2 El mismo orden en Hoy y en Mapa
-Hoy el orden GPS existe en Hoy pero el mapa no lo respeta. Son dos verdades.
+Ruta hoy calcula su propio orden (`rutaStats`) — son dos verdades.
 
 - [ ] `planStore` comparte `planDia.stops` entre ambas
 - [ ] Mapa numerado 1→N desde la posición real
@@ -88,49 +103,48 @@ Data Health → planDia → Visita → Pedido → outbox → Supabase
 
 ---
 
-## FASE 3 — Que sea rápida (6–10 semanas) 🟡
+## FASE 3 — Que sea rápida 🟡 · 2 de 3 cerradas
 
-### 3.1 Code-splitting
-Bundle actual: **728 kB** (207 kB gzip). En 4G de terreno eso son varios segundos.
+### 3.1 Code-splitting — ✅ CERRADA
+`React.lazy` por ruta, vendors separados por frecuencia de cambio, xlsx sólo se
+descarga al cargar datos. El CI mide el chunk `index-*` y **falla** sobre 350 kB.
+**Hoy: 269 kB (82 kB gzip) — dentro del techo, pero sobre el objetivo de 250**:
+el CI emite aviso. Bajarlo de vuelta es deuda abierta, no trabajo terminado.
 
-- [ ] `React.lazy` por ruta: Gerencia y Admin no los carga un vendedor
-- [ ] Objetivo: **< 250 kB** en la carga inicial
+### 3.2 IndexedDB — 🟡 A MEDIAS
 
-### 3.2 IndexedDB en vez de localStorage
-La cola vive en localStorage (~5 MB, escritura síncrona que bloquea el hilo).
+- ✅ **Cola (outbox)** → `outboxDb.js`: IndexedDB durable + espejo síncrono en
+  memoria + respaldo en localStorage, con `navigator.storage.persist()`
+- ⬜ **Snapshot de cartera** → sigue en localStorage (escritura síncrona, ~5 MB)
 
-- [ ] Migrar outbox y snapshot a IndexedDB
-- [ ] Migración transparente: si hay cola vieja en localStorage, importarla
+### 3.3 Presupuesto de rendimiento — ⬜ PENDIENTE
 
-### 3.3 Presupuesto de rendimiento
 - [ ] Primera pintura útil < 1,5 s en 4G
 - [ ] Interacción < 100 ms
 - [ ] Medir en un teléfono real de gama media, no en desktop
 
 ---
 
-## FASE 4 — Que sea confiable sola (10–16 semanas) 🟢
+## FASE 4 — Que sea confiable sola 🟢 · 1 de 3 cerradas, 1 a medias
 
-### 4.1 CI que corra los tests
-Hoy los tests existen pero **nadie los corre antes de subir**. Por eso llegaron
-tres ZIPs consecutivos que no compilaban.
+### 4.1 CI que corra los tests — ✅ CERRADA
+`ci.yml`: lint + guard + tests + build + smoke + techo de bundle en **cada push**,
+y los avisos de "circular chunk" se tratan como error. Es la regla que habría
+evitado V9.0, V92 y el catálogo eliminado — ya está vigente.
 
-- [ ] GitHub Actions: `build` + `test` en cada push
-- [ ] Bloquear merge si el build falla
-- [ ] **Esto solo habría evitado V9.0, V92 y el catálogo eliminado**
+### 4.2 ETL automatizado — 🟡 A MEDIAS
+`etl.yml` existe, con la compuerta VALIDAR/PUBLICAR como jobs separados.
+Falta: cargar los 5 secrets y verificar una semana de corridas verdes sin
+intervención humana.
 
-### 4.2 ETL automatizado
-- [ ] Configurar los secrets pendientes (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `GOOGLE_MAPS_API_KEY`, `GDRIVE_SA_JSON`, `GDRIVE_FOLDER_ID`)
-- [ ] Ciclo por cron, no manual en Colab
-- [ ] La compuerta VALIDAR/PUBLICAR se mantiene
-
-### 4.3 Errores observables
-- [ ] Captura de errores en producción (Sentry o equivalente)
-- [ ] Saber que un vendedor tuvo un problema **sin que él avise**
+### 4.3 Errores observables — ⬜ PENDIENTE
+Sólo existe el gancho en `ErrorBoundary` ("para el tracker de errores, cuando
+exista"). Hoy no hay forma de saber que un vendedor tuvo un problema sin que
+él avise.
 
 ---
 
-## FASE 5 — Que sea inteligente (4–6 meses) 🔵
+## FASE 5 — Que sea inteligente 🔵 · igual, y en orden
 
 *Sólo cuando 1–4 estén sólidas.*
 
@@ -142,41 +156,53 @@ tres ZIPs consecutivos que no compilaban.
 
 ---
 
-## Deuda técnica pendiente (de tu lista y de mis hallazgos)
+## Deuda técnica (revisada contra el código el 2026-09-08)
 
-| # | Ítem | Severidad | Fase |
+| # | Ítem | Severidad | Estado |
 |---|---|---|---|
-| 1 | Match SKU stock↔mix por nombre, no por código | Media | 1.4 |
-| 2 | `mix%` inflado (`promClp` per-línea en vez de per-mes) | Media | 1.4 |
-| 3 | 57 SKUs sin precio de lista | Media | 1.4 |
-| 4 | Sur Capital sin filas en `ventas_lineas` | Media | 1.4 |
-| 5 | RLS abierto en SQL `13`/`14` | **Alta** | 1.3 |
-| 6 | `limit(2000)` fijo en cartera — se rompe al crecer | Media | 3.1 |
-| 7 | Bundle 728 kB | Media | 3.1 |
-| 8 | localStorage como cola | Media | 3.2 |
+| 1 | Match SKU stock↔mix por nombre, no por código | Media | ⬜ sin verificar — auditar en la próxima bajada |
+| 2 | `mix%` inflado (`promClp` per-línea en vez de per-mes) | Media | ⬜ sin verificar |
+| 3 | SKUs sin precio de lista | Media | ⬜ sin verificar |
+| 4 | Sur Capital sin filas en `ventas_lineas` | Media | ⬜ sin verificar |
+| 5 | RLS abierto en SQL 13/14 | **Alta** | ✅ cerrado en el repo (50–54) · ⬜ falta aplicar en producción |
+| 6 | Tope de filas fijo en cartera | Media | ✅ resuelto — `traerTodo.js` pagina con `.range()` contra el techo real de PostgREST |
+| 7 | Bundle 728 kB | Media | ✅ resuelto — app 269 kB; xlsx (435 kB) sólo al cargar datos · ⚠️ 269 > objetivo 250 |
+| 8 | localStorage como cola | Media | ✅ cola en IndexedDB · ⬜ snapshot sigue en localStorage |
+
+### Deuda nueva (encontrada al reconciliar este documento)
+
+| Ítem | Dónde |
+|---|---|
+| `push.js` completo y testeado, sin cablear | `lib/PENDIENTE_PUSH.md` — cablear o borrar, hay que decidir |
+| `apps/web` y `apps/control-center` sin un solo test | el control-center incluye un checkout de Stripe |
+| `xlsx@0.18.5` con CVEs conocidos | se carga a demanda (no pesa en el vendedor), pero SheetJS ya no publica en npm — definir política de actualización |
+| Versiones desperdigadas en los docs | resuelto el 2026-09-08: la única versión es el `BUILD_STAMP` |
 
 ---
 
 ## Lo más importante de todo este documento
 
-Ninguna de las fases se sostiene si sigue habiendo **ramas paralelas**.
+Ninguna de las fases se sostiene si vuelve el hábito de las **ramas paralelas**.
 
-En las últimas tres entregas:
+En las últimas tres entregas de aquella época:
 - **V9.0** llegó sin compilar (`Visita.jsx` con JSX inválido)
 - **V92.4** llegó sin compilar (importaba un `CatalogoCliente.jsx` que había sido borrado)
 - Ambas arrastraban el mismo `var(--brand)` circular que ya estaba reparado
 
-No es un problema de calidad — `planDia.js` está bien escrito. Es que **cada rama sale de una base vieja**, así que los bugs reparados reaparecen y el merge cuesta más que el trabajo nuevo.
+No es un problema de calidad — `planDia.js` está bien escrito. Es que **cada rama
+sale de una base vieja**, así que los bugs reparados reaparecen y el merge cuesta
+más que el trabajo nuevo.
 
 **Dos reglas que valen más que cualquier feature de este roadmap:**
 
-1. **Una sola rama.** V9.2 es la base. Todo sale de ahí.
-2. **Nada se sube sin `npm run build` verde y tests en verde.** La Fase 4.1 lo automatiza, pero puede empezar hoy a mano.
+1. **Una sola rama.** Todo sale de la última versión de `main`.
+2. **Nada se sube sin `npm run verify` verde.** El CI ya lo exige en cada push;
+   correrlo antes de pushear ahorra la vuelta.
 
 ---
 
 ## Los próximos 3 pasos concretos
 
-1. Desplegar V9.2 y verificar el stamp en pantalla
-2. Ejecutar `sql/20_CATALOGO_CANONICO.sql` y probar un link de catálogo real
-3. Probar el outbox con modo avión — **el punto 1.1 es el que decide si la app se usa o no**
+1. **Prueba offline con teléfono real** (1.1) — sigue siendo la que decide si la app se usa o no
+2. **Aplicar `sql/security/50–54` en producción** + diagnóstico 99 + test cross-tenant (1.3)
+3. **Cargar los 5 secrets del ETL** y ver una semana de corridas automáticas verdes (4.2)
