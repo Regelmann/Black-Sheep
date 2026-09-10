@@ -99,6 +99,28 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: npm run verify
 
+  web:
+    name: Landing comercial
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Tipos
+        working-directory: apps/web
+        run: npm run typecheck
+      - name: Build
+        working-directory: apps/web
+        # El sitio compila sin base de datos: DATABASE_URL sólo se usa
+        # para guardar los formularios de contacto, y está dentro de un
+        # if. Si algún día deja de estarlo, este paso se pone rojo antes
+        # de que el deploy falle en Vercel.
+        run: npm run build
+
   secretos:
     name: Sin credenciales en el repositorio
     runs-on: ubuntu-latest
