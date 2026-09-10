@@ -26,8 +26,8 @@ export default function Empresa() {
     } catch (e) { setError(e.message) }
   }
 
-  if (isPending) return <p className="cargando">Cargando…</p>
-  if (isError) return <p className="aviso-error">{err.message}</p>
+  if (isPending) return <p className="estado">Cargando…</p>
+  if (isError) return <p className="estado error">{err.message}</p>
 
   const e = data
   const s = e.suscripcion || {}
@@ -44,18 +44,18 @@ export default function Empresa() {
         <h1>{e.nombre}</h1>
         <p>
           {e.slug}.app.black-sheep.cl · creada el {fecha(e.creado_en)} ·{' '}
-          <span className={`marca-estado ${e.habilitado ? 'ok' : 'mal'}`}>
+          <span className={`insignia${e.habilitado ? 'ok' : 'mal'}`}>
             {e.habilitado ? 'operando' : 'sin acceso'}
           </span>
         </p>
       </header>
 
-      {error && <p className="aviso-error" style={{ marginBottom: 'var(--e4)' }}>{error}</p>}
-      {aviso && <p className="aviso-vacio" style={{ marginBottom: 'var(--e4)' }}>{aviso}</p>}
+      {error && <p className="estado error" style={{ marginBottom: 'var(--e4)' }}>{error}</p>}
+      {aviso && <p className="estado" style={{ marginBottom: 'var(--e4)' }}>{aviso}</p>}
 
-      <section className="bloque">
+      <section className="panel">
         <h2>Puesta en marcha</h2>
-        <p className="sub">Los cuatro pasos para que esta empresa opere.</p>
+        <p className="silencio">Los cuatro pasos para que esta empresa opere.</p>
         <Paso n="1" hecho={listo.documentos}
               titulo="Tipos de documento configurados"
               detalle={listo.documentos
@@ -77,7 +77,7 @@ export default function Empresa() {
       </section>
 
       <div className="rejilla">
-        <section className="bloque">
+        <section className="panel">
           <h2>Suscripción</h2>
           <table>
             <tbody>
@@ -89,7 +89,7 @@ export default function Empresa() {
             </tbody>
           </table>
           <p style={{ marginTop: 'var(--e4)', display: 'flex', gap: 'var(--e2)', flexWrap: 'wrap' }}>
-            <button className="btn"
+            <button className="boton"
                     onClick={() => {
                       const monto = prompt('Monto del pago:', s.monto_mensual || '')
                       if (monto) accion('admin_registrar_pago', {
@@ -100,7 +100,7 @@ export default function Empresa() {
               Registrar pago
             </button>
             {e.habilitado ? (
-              <button className="btn peligro"
+              <button className="boton peligro"
                       onClick={() => {
                         const nota = prompt(`Suspender ${e.nombre}. Motivo:`)
                         if (nota !== null) accion('admin_set_suscripcion',
@@ -110,13 +110,13 @@ export default function Empresa() {
                 Suspender
               </button>
             ) : (
-              <button className="btn"
+              <button className="boton"
                       onClick={() => accion('admin_set_suscripcion',
                         { p_tenant: id, p_estado: 'activa' }, 'Reactivada.')}>
                 Reactivar
               </button>
             )}
-            <button className="btn"
+            <button className="boton"
                     onClick={() => accion('admin_set_suscripcion',
                       { p_tenant: id, p_estado: 'morosa' },
                       `Marcada como morosa. Sigue operando ${s.dias_gracia ?? 5} días.`)}>
@@ -134,7 +134,7 @@ export default function Empresa() {
                     <tr key={p.periodo}>
                       <td>{fecha(p.periodo)}</td>
                       <td className="num">{clp(p.monto)}</td>
-                      <td className="tenue">{p.referencia || '—'}</td>
+                      <td className="silencio">{p.referencia || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -143,9 +143,9 @@ export default function Empresa() {
           )}
         </section>
 
-        <section className="bloque">
+        <section className="panel">
           <h2>Qué tiene contratado</h2>
-          <p className="sub">Lo que apagues aquí desaparece de su app, no queda en gris.</p>
+          <p className="silencio">Lo que apagues aquí desaparece de su app, no queda en gris.</p>
           <div className="lista-cap" style={{ marginTop: 'var(--e4)' }}>
             {e.capacidades?.map((c) => (
               <label key={c.codigo}>
@@ -163,9 +163,9 @@ export default function Empresa() {
         </section>
       </div>
 
-      <section className="bloque">
+      <section className="panel">
         <h2>Usuarios</h2>
-        <p className="sub">
+        <p className="silencio">
           Primero invítalos desde Supabase (Authentication → Invite user). Cuando acepten,
           asígnalos acá.
         </p>
@@ -175,7 +175,7 @@ export default function Empresa() {
             {e.usuarios?.map((u) => (
               <tr key={u.usuario_id}>
                 <td>{u.email}</td>
-                <td className="tenue">{u.nombre || '—'}</td>
+                <td className="silencio">{u.nombre || '—'}</td>
                 <td>
                   <select value={u.rol}
                           onChange={(ev) => accion('admin_asignar_usuario', {
@@ -186,10 +186,10 @@ export default function Empresa() {
                 </td>
                 <td>
                   {u.activo
-                    ? <button className="btn chico peligro"
+                    ? <button className="boton chico peligro"
                               onClick={() => accion('admin_quitar_usuario',
                                 { p_tenant: id, p_usuario: u.usuario_id })}>Quitar acceso</button>
-                    : <span className="marca-estado mal">sin acceso</span>}
+                    : <span className="insignia mal">sin acceso</span>}
                 </td>
               </tr>
             ))}
@@ -203,7 +203,7 @@ export default function Empresa() {
         accion('admin_configurar_documentos', { p_tenant: id, p_documentos: docs },
                'Tipos de documento configurados. Ya pueden cargar ventas.')} />
 
-      <section className="bloque">
+      <section className="panel">
         <h2>Últimas cargas</h2>
         {e.cargas?.length ? (
           <table>
@@ -212,26 +212,26 @@ export default function Empresa() {
               {e.cargas.map((c, i) => (
                 <tr key={i}>
                   <td>{c.archivo}</td>
-                  <td className="tenue">{c.tipo}</td>
-                  <td><span className="marca-estado">{c.estado}</span></td>
-                  <td className="tenue">{fechaHora(c.cuando)}</td>
+                  <td className="silencio">{c.tipo}</td>
+                  <td><span className="insignia">{c.estado}</span></td>
+                  <td className="silencio">{fechaHora(c.cuando)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        ) : <p className="sub">Todavía no han cargado ningún archivo.</p>}
+        ) : <p className="silencio">Todavía no han cargado ningún archivo.</p>}
       </section>
 
-      <p><Link className="btn" to="/">Volver a empresas</Link></p>
+      <p><Link className="boton" to="/">Volver a empresas</Link></p>
     </>
   )
 }
 
 function Paso({ n, hecho, titulo, detalle }) {
   return (
-    <div className={`paso-onboarding ${hecho ? 'hecho' : 'pendiente'}`}>
+    <div className={`paso-alta${hecho ? 'hecho' : 'pendiente'}`}>
       <span className="marcador">{hecho ? '✓' : n}</span>
-      <span className="t"><b>{titulo}</b><br /><span className="sub">{detalle}</span></span>
+      <span className="t"><b>{titulo}</b><br /><span className="silencio">{detalle}</span></span>
     </div>
   )
 }
@@ -240,7 +240,7 @@ function AgregarUsuario({ onAgregar }) {
   const [email, setEmail] = useState('')
   const [rol, setRol] = useState('gerencia')
   return (
-    <div className="fila" style={{ marginTop: 'var(--e4)' }}>
+    <div className="fila-campos" style={{ marginTop: 'var(--e4)' }}>
       <div className="campo">
         <label htmlFor="ue">Correo</label>
         <input id="ue" value={email} onChange={(e) => setEmail(e.target.value)}
@@ -252,7 +252,7 @@ function AgregarUsuario({ onAgregar }) {
           {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
-      <button className="btn principal" disabled={!email.includes('@')}
+      <button className="boton primario" disabled={!email.includes('@')}
               onClick={() => { onAgregar(email, rol); setEmail('') }}>
         Dar acceso
       </button>
@@ -281,9 +281,9 @@ function Documentos({ empresa, onGuardar }) {
     setDocs(docs.map((d, j) => (j === i ? { ...d, [campo]: valor } : d)))
 
   return (
-    <section className="bloque">
+    <section className="panel">
       <h2>Tipos de documento</h2>
-      <p className="sub">
+      <p className="silencio">
         Qué cuenta como venta y con qué signo. Una nota de crédito lleva signo −1:
         si suma como venta positiva, el reporte queda inflado.
       </p>
@@ -313,11 +313,11 @@ function Documentos({ empresa, onGuardar }) {
         </tbody>
       </table>
       <p style={{ marginTop: 'var(--e4)' }}>
-        <button className="btn"
+        <button className="boton"
                 onClick={() => setDocs([...docs, { codigo: '', descripcion: '', cuenta: true, signo: 1 }])}>
           Agregar tipo
         </button>{' '}
-        <button className="btn principal"
+        <button className="boton primario"
                 onClick={() => onGuardar(docs.filter((d) => d.codigo.trim()))}>
           Guardar tipos
         </button>

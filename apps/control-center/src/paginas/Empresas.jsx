@@ -7,8 +7,8 @@ export default function Empresas() {
   const resumen = useQuery({ queryKey: ['admin_resumen'], queryFn: () => llamar('admin_resumen') })
   const lista = useQuery({ queryKey: ['admin_empresas'], queryFn: () => llamar('admin_empresas') })
 
-  if (lista.isPending) return <p className="cargando">Cargando empresas…</p>
-  if (lista.isError) return <p className="aviso-error">{lista.error.message}</p>
+  if (lista.isPending) return <p className="estado">Cargando empresas…</p>
+  if (lista.isError) return <p className="estado error">{lista.error.message}</p>
 
   const r = resumen.data?.[0]
   const empresas = lista.data || []
@@ -32,7 +32,7 @@ export default function Empresas() {
         </div>
       )}
 
-      <section className="bloque">
+      <section className="panel">
         <table>
           <thead>
             <tr>
@@ -46,14 +46,14 @@ export default function Empresas() {
               <tr key={e.tenant_id}>
                 <td>
                   <Link to={`/empresa/${e.tenant_id}`}><strong>{e.empresa}</strong></Link>
-                  <div className="sub">{e.slug}.app.black-sheep.cl</div>
+                  <div className="silencio">{e.slug}.app.black-sheep.cl</div>
                 </td>
-                <td><span className={`marca-estado ${tono(e)}`}>{e.estado || 'sin plan'}</span></td>
+                <td><span className={`insignia${tono(e)}`}>{e.estado || 'sin plan'}</span></td>
                 <td className="num">{e.dias_restantes === null ? '—' : num(e.dias_restantes)}</td>
                 <td className="num">{num(e.usuarios)}</td>
                 <td className="num">{num(e.clientes)}</td>
                 <td className="num">{clp(e.venta_mtd)}</td>
-                <td className="tenue">
+                <td className="silencio">
                   {e.ultima_carga ? fechaHora(e.ultima_carga) : 'nunca cargó datos'}
                 </td>
               </tr>
@@ -61,7 +61,7 @@ export default function Empresas() {
           </tbody>
         </table>
         {!empresas.length && (
-          <p className="sub">Todavía no hay empresas. Empieza por «Dar de alta».</p>
+          <p className="silencio">Todavía no hay empresas. Empieza por «Dar de alta».</p>
         )}
       </section>
     </>
@@ -69,7 +69,7 @@ export default function Empresas() {
 }
 
 const Ficha = ({ n, r, tono }) => (
-  <div className={`ficha ${tono || ''}`}>
+  <div className={`ficha${tono || ''}`}>
     <p className="n">{n}</p>
     <p className="r">{r}</p>
   </div>

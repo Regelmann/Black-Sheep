@@ -129,9 +129,9 @@ export default function Carga() {
         <p>Sube el archivo, revisa qué cuadra y publica. Nada llega a la app hasta que publiques.</p>
       </header>
 
-      <section className="bloque">
+      <section className="panel">
         <h2>1 · Elige el archivo</h2>
-        <div className="fila">
+        <div className="fila-campos">
           <div className="campo">
             <label htmlFor="tipo">Tipo de archivo</label>
             <select id="tipo" value={tipo} onChange={(e) => { setTipo(e.target.value); reiniciar() }}>
@@ -147,7 +147,7 @@ export default function Carga() {
             </div>
           )}
         </div>
-        <p className="sub">Define {t.define}.</p>
+        <p className="silencio">Define {t.define}.</p>
 
         <div
           className={`zona-suelta${arrastrando ? ' activa' : ''}`}
@@ -162,13 +162,13 @@ export default function Carga() {
           {archivo ? (
             <>
               <p><strong>{archivo.name}</strong></p>
-              <p className="sub">{(archivo.size / 1024).toFixed(0)} KB</p>
+              <p className="silencio">{(archivo.size / 1024).toFixed(0)} KB</p>
             </>
           ) : (
-            <p className="sub">Arrastra el Excel acá, o elige uno.</p>
+            <p className="silencio">Arrastra el Excel acá, o elige uno.</p>
           )}
           <p style={{ marginTop: 'var(--e3)' }}>
-            <label className="btn" style={{ cursor: 'pointer' }}>
+            <label className="boton" style={{ cursor: 'pointer' }}>
               Elegir archivo
               <input type="file" accept=".xlsx,.xls,.csv" hidden
                      onChange={(e) => { const f = e.target.files?.[0]; if (f) { reiniciar(); setArchivo(f) } }} />
@@ -177,19 +177,19 @@ export default function Carga() {
         </div>
 
         <p style={{ marginTop: 'var(--e4)' }}>
-          <button className="btn principal" disabled={!archivo || trabajando} onClick={procesar}>
+          <button className="boton primario" disabled={!archivo || trabajando} onClick={procesar}>
             {trabajando ? 'Procesando…' : 'Procesar archivo'}
           </button>
           {archivo && !trabajando && (
-            <button className="btn" style={{ marginLeft: 'var(--e2)' }} onClick={reiniciar}>Cancelar</button>
+            <button className="boton" style={{ marginLeft: 'var(--e2)' }} onClick={reiniciar}>Cancelar</button>
           )}
         </p>
-        {progreso && <p className="sub" style={{ marginTop: 'var(--e2)' }}>{progreso}</p>}
-        {error && <p className="aviso-error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
+        {progreso && <p className="silencio" style={{ marginTop: 'var(--e2)' }}>{progreso}</p>}
+        {error && <p className="estado error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
       </section>
 
       {pasos && (
-        <section className="bloque">
+        <section className="panel">
           <h2>2 · Revisa antes de publicar</h2>
 
           <Veredicto pasos={pasos} tipo={tipo} oficial={oficial} />
@@ -206,7 +206,7 @@ export default function Carga() {
           {exclusiones.rows?.length > 0 && (
             <>
               <h2 style={{ marginTop: 'var(--e5)' }}>Filas que quedaron fuera</h2>
-              <p className="sub">Ninguna se borró. Están guardadas con su motivo.</p>
+              <p className="silencio">Ninguna se borró. Están guardadas con su motivo.</p>
               <table>
                 <thead><tr><th>Motivo</th><th className="num">Filas</th><th className="num">Primera</th></tr></thead>
                 <tbody>
@@ -214,7 +214,7 @@ export default function Carga() {
                     <tr key={e.regla}>
                       <td>{explicarRegla(e.regla)}</td>
                       <td className="num">{num(e.filas)}</td>
-                      <td className="num tenue">{num(e.primera_fila)}</td>
+                      <td className="num silencio">{num(e.primera_fila)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -223,10 +223,10 @@ export default function Carga() {
           )}
 
           <p style={{ marginTop: 'var(--e5)' }}>
-            <button className="btn principal" disabled={trabajando} onClick={() => publicar(false)}>
+            <button className="boton primario" disabled={trabajando} onClick={() => publicar(false)}>
               Publicar
             </button>
-            <button className="btn" style={{ marginLeft: 'var(--e2)' }} onClick={reiniciar}>
+            <button className="boton" style={{ marginLeft: 'var(--e2)' }} onClick={reiniciar}>
               Descartar esta carga
             </button>
           </p>
@@ -237,7 +237,7 @@ export default function Carga() {
               <strong>{publicado.resultado}</strong> · {publicado.detalle}
               {publicado.resultado === 'REQUIERE_APROBACION' && (
                 <p style={{ marginTop: 'var(--e2)' }}>
-                  <button className="btn peligro" onClick={() => publicar(true)}>
+                  <button className="boton peligro" onClick={() => publicar(true)}>
                     El archivo está completo, publicar igual
                   </button>
                 </p>
@@ -247,7 +247,7 @@ export default function Carga() {
         </section>
       )}
 
-      <section className="bloque">
+      <section className="panel">
         <h2>Cargas recientes</h2>
         <Bloque datos={cargas} que="las cargas" vacio="Todavía no se ha cargado ningún archivo.">
           <table>
@@ -263,16 +263,16 @@ export default function Carga() {
                 <tr key={c.lote_id}>
                   <td>
                     {c.nombre_original}
-                    {c.motivo_rechazo && <div className="sub">{c.motivo_rechazo}</div>}
+                    {c.motivo_rechazo && <div className="silencio">{c.motivo_rechazo}</div>}
                   </td>
                   <td>{c.tipo}</td>
-                  <td><span className={`marca-estado ${tonoEstado(c.estado)}`}>{c.estado}</span></td>
+                  <td><span className={`insignia${tonoEstado(c.estado)}`}>{c.estado}</span></td>
                   <td className="num">{num(c.filas_validas)}</td>
                   <td className="num">{num(c.filas_excluidas)}</td>
-                  <td className="tenue">{fechaHora(c.subido_en)}</td>
+                  <td className="silencio">{fechaHora(c.subido_en)}</td>
                   <td>
                     {c.estado === 'publicado' && (
-                      <button className="btn chico peligro" onClick={() => revertir(c.lote_id)}>Revertir</button>
+                      <button className="boton chico peligro" onClick={() => revertir(c.lote_id)}>Revertir</button>
                     )}
                   </td>
                 </tr>
@@ -295,7 +295,7 @@ function Veredicto({ pasos, tipo, oficial }) {
     const dif = Number(m[1])
     const cuadra = Math.abs(dif) <= 1
     return (
-      <div className={`veredicto ${cuadra ? 'cuadra' : 'no-cuadra'}`}>
+      <div className={`compuerta${cuadra ? 'cuadra' : 'no-cuadra'}`}>
         <div>
           <p className="cifra">{dif > 0 ? '+' : ''}{dif}%</p>
           <p className="glosa">{cuadra ? 'La venta cuadra con tu total oficial' : 'La venta NO cuadra'}</p>
@@ -314,7 +314,7 @@ function Veredicto({ pasos, tipo, oficial }) {
     const v = Number(variacion[1])
     const riesgo = v < -30
     return (
-      <div className={`veredicto ${riesgo ? 'no-cuadra' : 'cuadra'}`}>
+      <div className={`compuerta${riesgo ? 'no-cuadra' : 'cuadra'}`}>
         <div>
           <p className="cifra">{v > 0 ? '+' : ''}{v}%</p>
           <p className="glosa">
@@ -332,7 +332,7 @@ function Veredicto({ pasos, tipo, oficial }) {
   }
 
   return (
-    <div className="veredicto pendiente">
+    <div className="compuerta pendiente">
       <div>
         <p className="cifra">—</p>
         <p className="glosa">Sin total oficial declarado</p>

@@ -16,12 +16,29 @@
   --tinta-suave:  #7c8994;
   --linea:        #d5dce0;
 
-  --pizarra:      #232a31;
-  --pizarra-alta: #2e3740;
+  --pizarra:      #0c0a09;   /* negro de marca */
+  --pizarra-alta: #1c1917;
 
-  --ambar:        #e08a1e;
-  --ambar-hundido:#b96f12;
-  --ambar-papel:  #fdf3e2;
+  /* ─── MARCA BLACK SHEEP ──────────────────────────────────────────
+     Del manual de identidad, no inventados:
+       Negro  #0c0a09   fondo de la marca
+       Lima   #a3e635   acento de la plataforma
+
+     REGLA DE ORO: el lima da 13.1:1 sobre negro y 1.51:1 sobre blanco.
+     NUNCA lima sobre claro. Los botones lima llevan texto negro. Para
+     texto de acento sobre papel existe --lima-tinta, que es el mismo
+     tono llevado a un verde legible.
+
+     El naranja #c2410c NO es de Black Sheep: es de KeyFoods, que es un
+     tenant. Los colores de empresa entran por applyTenantBrand(), sólo
+     dentro de la app y después del login.
+     ──────────────────────────────────────────────────────────────── */
+  --negro:        #0c0a09;
+  --negro-alto:   #1c1917;
+  --lima:         #a3e635;
+  --lima-hundido: #84cc16;
+  --lima-tinta:   #4d7c0f;
+  --lima-papel:   #f4fce3;
 
   --alarma:       #b3261e;
   --alarma-papel: #fbeae9;

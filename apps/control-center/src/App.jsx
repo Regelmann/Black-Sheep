@@ -17,23 +17,23 @@ import Cobranza from './paginas/Cobranza.jsx'
 export default function App() {
   const { sesion, cargando, esSuperadmin, email, salir } = useSesion()
 
-  if (cargando) return <p className="cargando">Cargando…</p>
+  if (cargando) return <p className="estado">Cargando…</p>
   if (!sesion) return <Entrar />
 
   if (!esSuperadmin) {
     return (
       <div className="acceso">
-        <div className="bloque">
+        <div className="panel">
           <h1 style={{ fontSize: 'var(--t-medio)', marginBottom: 'var(--e3)' }}>
             Esto es el panel de Black Sheep
           </h1>
-          <p className="sub">
+          <p className="silencio">
             Tu cuenta ({email}) no opera la plataforma. Si buscas tu empresa,
             entra por la dirección que te dieron: termina en
             <b> .app.black-sheep.cl</b>
           </p>
           <p style={{ marginTop: 'var(--e4)' }}>
-            <button className="btn" onClick={salir}>Cerrar sesión</button>
+            <button className="boton" onClick={salir}>Cerrar sesión</button>
           </p>
         </div>
       </div>
@@ -41,18 +41,23 @@ export default function App() {
   }
 
   return (
-    <div className="marco plataforma">
-      <aside className="barra">
-        <div className="marca">
-          <b>Black Sheep</b>
-          <span>control</span>
+    <div className="armazon plataforma">
+      <aside className="rail">
+        <div className="rail-marca">
+          {/* El logo viene del manual de identidad. No se dibuja una
+              aproximación: ese error ya se cometió dos veces. */}
+          <img src="/logo.png" alt="Black Sheep" width="32" height="32" />
+          <span className="rail-marca-texto">
+            <b>Black Sheep</b>
+            <span>{esSuperadmin ? 'plataforma' : 'gerencia'}</span>
+          </span>
         </div>
-        <nav className="nav">
+        <nav className="nav-rail">
           <NavLink to="/" end>Empresas</NavLink>
           <NavLink to="/cobranza">Cobranza</NavLink>
           <NavLink to="/nueva">Dar de alta</NavLink>
         </nav>
-        <div className="pie-barra">
+        <div className="rail-pie">
           <p>{email}</p>
           <button onClick={salir}>Cerrar sesión</button>
         </div>

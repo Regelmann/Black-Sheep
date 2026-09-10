@@ -13,8 +13,8 @@ export default function Cobranza() {
     queryFn: () => llamar('admin_empresas'),
   })
 
-  if (isPending) return <p className="cargando">Cargando…</p>
-  if (isError) return <p className="aviso-error">{error.message}</p>
+  if (isPending) return <p className="estado">Cargando…</p>
+  if (isError) return <p className="estado error">{error.message}</p>
 
   const cortadas = data.filter((e) => !e.habilitado && e.estado)
   const morosas = data.filter((e) => e.estado === 'morosa' && e.habilitado)
@@ -47,9 +47,9 @@ export default function Cobranza() {
 
 function Grupo({ titulo, glosa, empresas, tono, vacio }) {
   return (
-    <section className="bloque">
+    <section className="panel">
       <h2>{titulo}</h2>
-      <p className="sub">{glosa}</p>
+      <p className="silencio">{glosa}</p>
       {empresas.length ? (
         <table style={{ marginTop: 'var(--e4)' }}>
           <thead>
@@ -62,7 +62,7 @@ function Grupo({ titulo, glosa, empresas, tono, vacio }) {
             {empresas.map((e) => (
               <tr key={e.tenant_id}>
                 <td><Link to={`/empresa/${e.tenant_id}`}>{e.empresa}</Link></td>
-                <td><span className={`marca-estado ${tono}`}>{e.estado}</span></td>
+                <td><span className={`insignia${tono}`}>{e.estado}</span></td>
                 <td className="num">{e.dias_restantes === null ? '—' : num(e.dias_restantes)}</td>
                 <td className="num">{num(e.usuarios)}</td>
                 <td className="num">{clp(e.venta_mtd)}</td>
@@ -70,7 +70,7 @@ function Grupo({ titulo, glosa, empresas, tono, vacio }) {
             ))}
           </tbody>
         </table>
-      ) : <p className="sub" style={{ marginTop: 'var(--e3)' }}>{vacio}</p>}
+      ) : <p className="silencio" style={{ marginTop: 'var(--e3)' }}>{vacio}</p>}
     </section>
   )
 }

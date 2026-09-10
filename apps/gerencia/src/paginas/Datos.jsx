@@ -20,10 +20,10 @@ export default function Datos({ cap }) {
         <p>Lo que corrijas aquí no se pierde con la próxima carga: queda marcado como cambio manual.</p>
       </header>
 
-      <div className="fila" style={{ marginBottom: 'var(--e5)' }}>
+      <div className="fila-campos" style={{ marginBottom: 'var(--e5)' }}>
         {['clientes', 'prospectos', 'productos'].map((p) => (
           <button key={p}
-                  className={`btn${pestana === p ? ' principal' : ''}`}
+                  className={`boton${pestana === p ? ' principal' : ''}`}
                   onClick={() => setPestana(p)}>
             {p[0].toUpperCase() + p.slice(1)}
           </button>
@@ -70,15 +70,15 @@ function Clientes() {
   }
 
   return (
-    <section className="bloque">
-      <div className="fila" style={{ marginBottom: 'var(--e4)' }}>
+    <section className="panel">
+      <div className="fila-campos" style={{ marginBottom: 'var(--e4)' }}>
         <div className="campo">
           <label htmlFor="busca">Buscar</label>
           <input id="busca" value={busca} onChange={(e) => setBusca(e.target.value)}
                  placeholder="Nombre del cliente" />
         </div>
       </div>
-      {error && <p className="aviso-error">{error}</p>}
+      {error && <p className="estado error">{error}</p>}
 
       <Bloque datos={clientes} que="los clientes" vacio="No hay clientes que coincidan.">
         <table>
@@ -93,9 +93,9 @@ function Clientes() {
               <tr key={c.cliente_key}>
                 <td>
                   {c.nombre || c.cliente_key}
-                  <div className="sub">{c.cliente_key}</div>
+                  <div className="silencio">{c.cliente_key}</div>
                 </td>
-                <td className="tenue">{c.comuna || '—'}</td>
+                <td className="silencio">{c.comuna || '—'}</td>
                 <td>{c.ejecutivo_id || '—'}</td>
                 <td>
                   <select value={c.zona_id || ''} onChange={(e) => mover(c.cliente_key, e.target.value)}>
@@ -109,7 +109,7 @@ function Clientes() {
           </tbody>
         </table>
       </Bloque>
-      <p className="sub" style={{ marginTop: 'var(--e3)' }}>
+      <p className="silencio" style={{ marginTop: 'var(--e3)' }}>
         Cambiar la zona aquí deja ese campo bajo control manual: la próxima maestra no lo modifica.
       </p>
     </section>
@@ -129,7 +129,7 @@ function Prospectos({ cap }) {
   })
 
   if (cap && !cap.tiene?.('prospectos')) {
-    return <section className="bloque"><p className="sub">Tu empresa no tiene contratada la gestión de prospectos.</p></section>
+    return <section className="panel"><p className="silencio">Tu empresa no tiene contratada la gestión de prospectos.</p></section>
   }
 
   async function crear() {
@@ -147,10 +147,10 @@ function Prospectos({ cap }) {
 
   return (
     <>
-      <section className="bloque">
+      <section className="panel">
         <h2>Agregar prospecto</h2>
-        <p className="sub">Un local que todavía no compra. No viene en la maestra y la carga no lo borra.</p>
-        <div className="fila" style={{ marginTop: 'var(--e4)' }}>
+        <p className="silencio">Un local que todavía no compra. No viene en la maestra y la carga no lo borra.</p>
+        <div className="fila-campos" style={{ marginTop: 'var(--e4)' }}>
           {[['cliente_key', 'RUT o código'], ['nombre', 'Nombre'], ['ejecutivo', 'Ejecutivo'],
             ['comuna', 'Comuna'], ['rubro', 'Rubro']].map(([k, l]) => (
             <div className="campo" key={k}>
@@ -158,25 +158,25 @@ function Prospectos({ cap }) {
               <input id={k} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />
             </div>
           ))}
-          <button className="btn principal"
+          <button className="boton primario"
                   disabled={!form.cliente_key || !form.nombre || !form.ejecutivo}
                   onClick={crear}>Agregar</button>
         </div>
-        {error && <p className="aviso-error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
+        {error && <p className="estado error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
       </section>
 
-      <section className="bloque">
+      <section className="panel">
         <Bloque datos={datos} que="los prospectos" vacio="Todavía no hay prospectos cargados.">
           <table>
             <thead><tr><th>Prospecto</th><th>Ejecutivo</th><th>Zona</th><th>Comuna</th><th>Rubro</th></tr></thead>
             <tbody>
               {datos.rows.map((p) => (
                 <tr key={p.cliente_key}>
-                  <td>{p.nombre}<div className="sub">{p.cliente_key}</div></td>
+                  <td>{p.nombre}<div className="silencio">{p.cliente_key}</div></td>
                   <td>{p.ejecutivo_id}</td>
                   <td>{p.zona_id || '—'}</td>
-                  <td className="tenue">{p.comuna || '—'}</td>
-                  <td className="tenue">{p.rubro || '—'}</td>
+                  <td className="silencio">{p.comuna || '—'}</td>
+                  <td className="silencio">{p.rubro || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -225,9 +225,9 @@ function Productos({ cap }) {
 
   return (
     <>
-      <section className="bloque">
+      <section className="panel">
         <h2>Agregar producto</h2>
-        <div className="fila" style={{ marginTop: 'var(--e4)' }}>
+        <div className="fila-campos" style={{ marginTop: 'var(--e4)' }}>
           {[['sku', 'Código'], ['nombre', 'Nombre'], ['categoria', 'Categoría'],
             ['precio', 'Precio unidad'], ...(puedeCosto ? [['costo', 'Costo']] : []), ['stock', 'Stock']]
             .map(([k, l]) => (
@@ -237,14 +237,14 @@ function Productos({ cap }) {
                        onChange={(e) => setNuevo({ ...nuevo, [k]: e.target.value })} />
               </div>
             ))}
-          <button className="btn principal" disabled={!nuevo.sku || !nuevo.nombre} onClick={crear}>
+          <button className="boton primario" disabled={!nuevo.sku || !nuevo.nombre} onClick={crear}>
             Agregar
           </button>
         </div>
-        {error && <p className="aviso-error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
+        {error && <p className="estado error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
       </section>
 
-      <section className="bloque">
+      <section className="panel">
         <Bloque datos={datos} que="los productos" vacio="Todavía no hay productos. Sube la lista de precios o agrega uno.">
           <table>
             <thead>
@@ -256,8 +256,8 @@ function Productos({ cap }) {
             <tbody>
               {datos.rows.map((p) => (
                 <tr key={p.sku}>
-                  <td>{p.nombre}<div className="sub">{p.sku}</div></td>
-                  <td className="tenue">{p.categoria || '—'}</td>
+                  <td>{p.nombre}<div className="silencio">{p.sku}</div></td>
+                  <td className="silencio">{p.categoria || '—'}</td>
                   <td className="num">
                     <input defaultValue={p.precio_unidad ?? ''} style={{ width: 100, textAlign: 'right' }}
                            onBlur={(e) => {
@@ -268,8 +268,8 @@ function Productos({ cap }) {
                   <td className="num">{num(p.stock_total)}</td>
                   <td>
                     {p.es_vendible
-                      ? <span className="marca-estado ok">vendible</span>
-                      : <span className="marca-estado aviso">{p.motivo_no_vendible === 'SIN_PRECIO_LISTA' ? 'sin precio' : 'sin stock'}</span>}
+                      ? <span className="insignia ok">vendible</span>
+                      : <span className="insignia aviso">{p.motivo_no_vendible === 'SIN_PRECIO_LISTA' ? 'sin precio' : 'sin stock'}</span>}
                   </td>
                 </tr>
               ))}
