@@ -52,7 +52,7 @@ a  { color: var(--lima-tinta); }
   height: 100vh;
 }
 .rail-marca { padding: 0 var(--e5); }
-.rail-marca strong { color: #fff; font-size: var(--t-mayor); font-weight: 700; display: block; }
+.rail-marca strong { color: var(--tinta); font-size: var(--t-mayor); font-weight: 700; display: block; }
 .rail-marca span { color: var(--tinta-suave); font-size: var(--t-menor); }
 .rail nav { display: flex; flex-direction: column; }
 .rail nav a {
@@ -62,8 +62,8 @@ a  { color: var(--lima-tinta); }
   border-left: 3px solid transparent;
   font-size: var(--t-menor);
 }
-.rail nav a:hover { background: var(--pizarra-alta); color: #fff; }
-.rail nav a.activo { border-left-color: var(--lima); color: #fff; background: var(--pizarra-alta); font-weight: 600; }
+.rail nav a:hover { background: var(--pizarra-alta); color: var(--tinta); }
+.rail nav a.activo { border-left-color: var(--lima); color: var(--tinta); background: var(--pizarra-alta); font-weight: 600; }
 .rail-pie { margin-top: auto; padding: 0 var(--e5); font-size: var(--t-micro); color: var(--tinta-suave); }
 
 .lienzo { padding: var(--e6); max-width: 1180px; }
@@ -134,7 +134,7 @@ td.derecha, th.derecha { text-align: right; }
 .boton:hover:not(:disabled) { background: var(--papel-hundido); }
 .boton:disabled { opacity: .5; cursor: not-allowed; }
 .boton.primario { background: var(--lima); border-color: var(--lima-hundido); color: var(--negro); font-weight: 600; }
-.boton.primario:hover:not(:disabled) { background: var(--lima-tinta); color: #fff; }
+.boton.primario:hover:not(:disabled) { background: var(--lima-hundido); color: var(--negro); }
 .boton.peligro { color: var(--alarma); border-color: #e5b4b1; }
 .boton.chico { padding: 2px var(--e2); font-size: var(--t-micro); }
 
@@ -190,7 +190,7 @@ input, select, textarea {
   display: grid; place-items: center; font-size: var(--t-micro);
 }
 .paso.hecho { color: var(--tinta); }
-.paso.hecho b { background: var(--logro); color: #fff; }
+.paso.hecho b { background: var(--logro); color: var(--negro); }
 .paso.aqui { border-color: var(--lima); color: var(--tinta); font-weight: 600; }
 .paso.aqui b { background: var(--lima); color: var(--negro); }
 
@@ -214,7 +214,7 @@ input, select, textarea {
 
 .cinta {
   background: var(--alarma);
-  color: #fff;
+  color: var(--tinta);
   padding: var(--e2) var(--e5);
   font-size: var(--t-menor);
   font-weight: 600;
@@ -246,11 +246,11 @@ input, select, textarea {
   font-size: var(--t-menor);
   border-left: 3px solid transparent;
 }
-.nav-rail a:hover { background: var(--pizarra-alta); color: #fff; }
+.nav-rail a:hover { background: var(--pizarra-alta); color: var(--tinta); }
 /* El acento lima sólo aparece sobre el negro del rail, nunca sobre
    papel: 13.1:1 contra 1.51:1. Es la regla de oro del manual. */
 .nav-rail a[aria-current='page'] {
-  background: var(--pizarra-alta); color: #fff; font-weight: 600;
+  background: var(--pizarra-alta); color: var(--tinta); font-weight: 600;
   border-left-color: var(--lima);
 }
 .rail-seccion {
@@ -302,7 +302,7 @@ input, select, textarea {
   display: grid; place-items: center; font-size: 12px; font-weight: 700;
   border: 1px solid var(--linea); background: var(--papel-alto);
 }
-.paso-alta.hecho .marcador { background: var(--logro); border-color: var(--logro); color: #fff; }
+.paso-alta.hecho .marcador { background: var(--logro); border-color: var(--logro); color: var(--tinta); }
 .paso-alta.pendiente .marcador { background: var(--aviso-papel); border-color: #e8d69b; color: var(--aviso); }
 .paso-alta .t { font-size: var(--t-menor); }
 
@@ -326,3 +326,82 @@ input, select, textarea {
 /* Pantalla de acceso y avisos a pantalla completa */
 .acceso { max-width: 420px; margin: 12vh auto; padding: 0 var(--e4); }
 .rail-marca-texto { display: flex; flex-direction: column; line-height: 1.2; }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   SUPERFICIE OSCURA · ajustes que los tokens solos no cubren
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* El rail se separa del lienzo por un filo lima, no por un cambio de
+   claridad: en una pantalla oscura dos negros parecidos se funden y la
+   navegación deja de leerse como una zona aparte. */
+.rail {
+  border-right: 1px solid var(--linea);
+  box-shadow: inset -1px 0 0 rgba(163, 230, 53, .12);
+}
+
+/* El logo con presencia. A 32px la oveja no se distingue: se ve una
+   mancha verde. El manual dice que el logo ES la marca; a este tamaño
+   se reconoce. */
+.rail-marca { padding: var(--e4) var(--e5) var(--e5); gap: var(--e3); align-items: center; }
+.rail-marca img {
+  width: 46px; height: 46px; border-radius: 10px;
+  background: var(--negro);
+  box-shadow: 0 0 0 1px var(--linea-alta), 0 0 24px rgba(163, 230, 53, .18);
+}
+.rail-marca b { font-size: 1.0625rem; letter-spacing: -.01em; color: var(--tinta); }
+.rail-marca span span, .rail-marca-texto > span {
+  color: var(--lima); font-size: var(--t-micro);
+  text-transform: uppercase; letter-spacing: .08em; font-weight: 600;
+}
+
+/* Los paneles se levantan del fondo con borde, no con sombra: sobre
+   negro una sombra no se ve. */
+.panel {
+  background: var(--panel-fondo);
+  border: 1px solid var(--linea);
+  box-shadow: none;
+}
+.panel:hover { border-color: var(--linea-alta); }
+
+.ficha { background: var(--panel-fondo); border-color: var(--linea); }
+.ficha .n { color: var(--tinta); }
+
+/* Campos y selectores: sobre oscuro el blanco de formulario encandila */
+.campo input, .campo select, .campo textarea, input, select, textarea {
+  background: var(--panel-alto);
+  border: 1px solid var(--linea-alta);
+  color: var(--tinta);
+  border-radius: var(--r-chico);
+  padding: var(--e2) var(--e3);
+}
+input::placeholder { color: var(--tinta-suave); }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--lima); outline-offset: 1px; border-color: transparent;
+}
+
+/* Botones secundarios */
+.boton { background: var(--panel-alto); border-color: var(--linea-alta); color: var(--tinta); }
+.boton:hover:not(:disabled) { background: var(--linea-alta); }
+
+/* Tablas legibles sobre oscuro */
+th { color: var(--tinta-media); border-bottom-color: var(--linea-alta); }
+td { border-bottom-color: var(--linea); }
+tbody tr:hover td { background: var(--panel-alto); }
+
+/* El acceso, con la marca al centro */
+.acceso .panel { background: var(--panel-fondo); }
+
+/* Barra de desplazamiento acorde, o queda un rectángulo blanco al lado */
+* { scrollbar-color: var(--linea-alta) var(--fondo); scrollbar-width: thin; }
+
+/* Chrome pinta los campos autocompletados de celeste claro, que sobre
+   una interfaz oscura se ve como un error. No hay propiedad para
+   desactivarlo: la técnica es una sombra interior del color del campo. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--tinta);
+  box-shadow: 0 0 0 1000px var(--panel-alto) inset;
+  caret-color: var(--tinta);
+}
