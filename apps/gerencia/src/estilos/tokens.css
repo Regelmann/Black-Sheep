@@ -5,19 +5,33 @@
    del mapa salen todos negros sin ningún error en consola.
    ═══════════════════════════════════════════════════════════════════ */
 :root {
-  /* Papel frío, no crema: esta pantalla se mira con tubo fluorescente
-     de oficina y de bodega, y el crema amarillea bajo esa luz. */
-  --papel:        #f2f4f5;
-  --papel-alto:   #ffffff;
-  --papel-hundido:#e7ebed;
+  /* ─── SUPERFICIE OSCURA ──────────────────────────────────────────
+     El dashboard vive en el negro de la marca, no en blanco. El lima
+     sólo se lee bien sobre oscuro (13.1:1 contra 1.51:1), así que en
+     fondo claro la marca no puede aparecer de verdad: aparecía apenas
+     en un botón.
 
-  --tinta:        #1b2026;
-  --tinta-media:  #4d5a66;
-  --tinta-suave:  #7c8994;
-  --linea:        #d5dce0;
+     Tres profundidades, no dos. Con una sola, el rail y el contenido
+     se funden y la pantalla pierde estructura:
+       --fondo   el lienzo, lo más profundo
+       --panel   las tarjetas, un escalón arriba
+       --rail    la navegación, negro puro de marca
+     ──────────────────────────────────────────────────────────────── */
+  --fondo:        #14110f;
+  --panel-fondo:  #1c1917;
+  --panel-alto:   #262220;
+  --papel:        #14110f;
+  --papel-alto:   #1c1917;
+  --papel-hundido:#262220;
 
-  --pizarra:      #0c0a09;   /* negro de marca */
-  --pizarra-alta: #1c1917;
+  --tinta:        #f5f3f1;   /* texto principal sobre oscuro */
+  --tinta-media:  #a8a29e;
+  --tinta-suave:  #78716c;
+  --linea:        #2e2a27;
+  --linea-alta:   #3f3a36;
+
+  --pizarra:      #0c0a09;   /* negro de marca · el rail */
+  --pizarra-alta: #24201d;
 
   /* ─── MARCA BLACK SHEEP ──────────────────────────────────────────
      Del manual de identidad, no inventados:
@@ -37,15 +51,15 @@
   --negro-alto:   #1c1917;
   --lima:         #a3e635;
   --lima-hundido: #84cc16;
-  --lima-tinta:   #4d7c0f;
-  --lima-papel:   #f4fce3;
+  --lima-tinta:   #bef264;   /* sobre oscuro sí se puede usar claro */
+  --lima-papel:   #1d2410;
 
-  --alarma:       #b3261e;
-  --alarma-papel: #fbeae9;
-  --logro:        #1a7a50;
-  --logro-papel:  #e6f4ee;
-  --aviso:        #8a6d1f;
-  --aviso-papel:  #fbf4de;
+  --alarma:       #f87171;
+  --alarma-papel: #2a1614;
+  --logro:        #4ade80;
+  --logro-papel:  #12241b;
+  --aviso:        #facc15;
+  --aviso-papel:  #2a2412;
 
   --r-chico: 3px;
   --r:       6px;
