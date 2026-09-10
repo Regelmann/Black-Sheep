@@ -405,3 +405,54 @@ input:-webkit-autofill:focus {
   box-shadow: 0 0 0 1000px var(--panel-alto) inset;
   caret-color: var(--tinta);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   AJUSTES DE MAQUETACIÓN
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Las capacidades: la casilla en columna fija y el texto alineado a la
+   izquierda. Con flex libre cada casilla quedaba a una altura distinta
+   según cuánto ocupara su descripción, y la lista se leía en zigzag. */
+.lista-cap label {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: var(--e3);
+  align-items: start;
+  text-align: left;
+  padding: var(--e2) 0;
+  border-bottom: 1px solid var(--linea);
+}
+.lista-cap label:last-child { border-bottom: 0; }
+.lista-cap input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--lima); }
+.lista-cap b { display: inline-block; margin-right: var(--e2); }
+.lista-cap .d { display: block; color: var(--tinta-media); margin-top: 2px; }
+
+/* Título de panel con un control al lado: que el título no se parta en
+   dos líneas por dejarle sitio a un desplegable. */
+.panel-titulo { flex-wrap: wrap; gap: var(--e3); }
+.panel-titulo h2 { min-width: 0; flex: 1 1 auto; }
+.panel-titulo select, .panel-titulo .boton { flex: 0 0 auto; }
+
+/* Los pasos de puesta en marcha: número y texto separados de verdad */
+.paso-alta { display: grid; grid-template-columns: 26px 1fr; gap: var(--e3); align-items: start; }
+.paso-alta .marcador { width: 24px; height: 24px; }
+.paso-alta .t b { display: block; margin-bottom: 2px; }
+
+/* Un botón dentro de una fila de campos se alinea abajo, con la altura
+   del campo. Estirado a toda la fila parecía otra cosa. */
+.fila-campos { align-items: end; }
+.fila-campos > .boton { align-self: end; height: 40px; padding: 0 var(--e4); }
+
+/* Tablas: aire y columnas que no bailan */
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: var(--e2) var(--e3); }
+th:first-child, td:first-child { padding-left: 0; }
+th:last-child,  td:last-child  { padding-right: 0; }
+td input, td select { width: 100%; }
+
+/* La tabla vacía no muestra encabezados de columnas sin filas */
+.tabla-vacia { color: var(--tinta-media); font-size: var(--t-menor); padding: var(--e4) 0; }
+
+/* Separación entre paneles consecutivos */
+.panel + .panel { margin-top: var(--e4); }
+.lienzo > section + section { margin-top: var(--e4); }

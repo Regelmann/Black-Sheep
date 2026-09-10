@@ -178,10 +178,11 @@ export default function Empresa() {
           Primero invítalos desde Supabase (Authentication → Invite user). Cuando acepten,
           asígnalos acá.
         </p>
+        {e.usuarios?.length ? (
         <table style={{ marginTop: 'var(--e4)' }}>
           <thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th></th></tr></thead>
           <tbody>
-            {e.usuarios?.map((u) => (
+            {e.usuarios.map((u) => (
               <tr key={u.usuario_id}>
                 <td>{u.email}</td>
                 <td className="silencio">{u.nombre || '—'}</td>
@@ -204,6 +205,12 @@ export default function Empresa() {
             ))}
           </tbody>
         </table>
+        ) : (
+          <p className="tabla-vacia">
+            Nadie tiene acceso todavía. Sus vendedores no pueden entrar hasta que
+            los invites en Supabase y los asignes acá.
+          </p>
+        )}
         <AgregarUsuario onAgregar={(email, rol) =>
           accion('admin_asignar_usuario', { p_tenant: id, p_email: email, p_rol: rol })} />
       </section>
