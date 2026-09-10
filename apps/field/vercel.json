@@ -1,7 +1,0 @@
-{
-  "framework": "vite",
-  "installCommand": "npm install --legacy-peer-deps --no-audit --no-fund",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "rewrites": [{ "source": "/((?!assets/).*)", "destination": "/index.html" }]
-}

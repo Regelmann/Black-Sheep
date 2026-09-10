@@ -18,12 +18,4 @@ dist/
 
 # Logs
 npm-debug.log*
-*.log
-
-# Temporales de deploy
-_bs_tmp/
-*.patch
-
-# Build de Next.js — NO va al repo
-.next/
-apps/web/.next/
+pnpm-debug.log*

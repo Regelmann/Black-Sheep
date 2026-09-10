@@ -1,340 +1,115 @@
-import { useEffect, useState, createContext, useContext } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { supabase, initSupabase, getActiveTenant } from './lib/supabase.js'
-import { resolveTenant, applyTenantBrand } from './lib/tenants.js'
-/* ------------------------------------------------------------------
-   CARGA POR RUTA
-   Antes las 9 páginas viajaban en un solo archivo de 738 kB. Un
-   vendedor descargaba Gerencia (2.300 líneas) y Admin (958) para
-   abrir "Hoy", en 4G de terreno.
+import { useEffect, useState } from 'react'
+import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { useSesion } from './hooks/useSesion.jsx'
+import { iniciarSincronizacion, sincronizar } from './lib/sync.js'
+import { loadActionQueue, itemsAgotados } from './lib/offline.js'
+import { onOutboxChange } from './lib/outboxDb.js'
+import Entrar from './paginas/Entrar.jsx'
+import Hoy from './paginas/Hoy.jsx'
+import Ruta from './paginas/Ruta.jsx'
+import Cartera from './paginas/Cartera.jsx'
+import Cliente from './paginas/Cliente.jsx'
+import Pedidos from './paginas/Pedidos.jsx'
 
-   CRITERIO — qué va directo y qué a demanda:
-   · Directo: lo que se usa EN LA CALLE, sin señal garantizada.
-     Login, Hoy, Ruta, Visita, Cartera. Si el vendedor entra a un
-     subterráneo y la ruta no está descargada, no puede trabajar.
-   · A demanda: lo que se abre desde una oficina con wifi.
-     Gerencia, Admin, Stock, Catálogo.
+export default function App() {
+  const { sesion, cargando, email, salir } = useSesion()
+  const [cola, setCola] = useState([])
+  const [enLinea, setEnLinea] = useState(navigator.onLine)
+  const [sincronizando, setSincronizando] = useState(false)
 
-   El catálogo público es su propio bundle: lo abre el CLIENTE, que no
-   necesita descargar nada de la app del vendedor.
-   ------------------------------------------------------------------ */
-import { lazy, Suspense } from 'react'
-import Login from './pages/Login.jsx'
-import Hoy from './pages/Hoy.jsx'
-import Ruta from './pages/Ruta.jsx'
-import Visita from './pages/Visita.jsx'
-import Cartera from './pages/Cartera.jsx'
+  useEffect(() => {
+    const refrescar = () => setCola(loadActionQueue())
+    refrescar()
+    const off = onOutboxChange(refrescar)
+    const parar = sesion ? iniciarSincronizacion(refrescar) : null
+    const red = () => setEnLinea(navigator.onLine)
+    window.addEventListener('online', red)
+    window.addEventListener('offline', red)
+    return () => {
+      off?.(); parar?.()
+      window.removeEventListener('online', red)
+      window.removeEventListener('offline', red)
+    }
+  }, [sesion])
 
-const displayNameFromEmail = (email = '') => {
-  const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim()
-  return localPart
-    ? localPart.replace(/\b\w/g, (letter) => letter.toUpperCase())
-    : 'Equipo'
-}
+  if (cargando) return <p className="cargando">Cargando…</p>
+  if (!sesion) return <Entrar />
 
-const CatalogoCliente = lazy(() => import('./pages/CatalogoCliente.jsx'))
-const Stock           = lazy(() => import('./pages/Stock.jsx'))
-const Gerencia        = lazy(() => import('./pages/Gerencia.jsx'))
-const DashboardGerencia = lazy(() => import('./pages/DashboardGerencia.jsx'))
-const Ventas            = lazy(() => import('./pages/Ventas.jsx'))
-const Admin           = lazy(() => import('./pages/Admin.jsx'))
-const PlatformAdmin   = lazy(() => import('./pages/PlatformAdmin.jsx'))
+  const pendientes = cola.length
+  const agotados = itemsAgotados().length
 
-/** Placeholder de carga. Nunca pantalla en blanco. */
-function CargandoPagina() {
   return (
-    <div className="bs-page-loading" role="status" aria-live="polite">
-      <div className="bs-skel" style={{ height: 92 }} />
-      <div className="bs-skel" style={{ height: 58 }} />
-      <div className="bs-skel" style={{ height: 58 }} />
-      <span className="bs-sr">Cargando…</span>
+    <div className="app">
+      <header className="cabecera">
+        <div>
+          <h1>Terreno</h1>
+          <p className="sub">{email}</p>
+        </div>
+        <button className="boton" style={{ minHeight: 36, padding: '0 12px' }} onClick={salir}>
+          Salir
+        </button>
+      </header>
+
+      <Franja
+        pendientes={pendientes} agotados={agotados} enLinea={enLinea}
+        sincronizando={sincronizando}
+        alSincronizar={async () => {
+          setSincronizando(true)
+          await sincronizar()
+          setCola(loadActionQueue())
+          setSincronizando(false)
+        }}
+      />
+
+      <Routes>
+        <Route path="/" element={<Hoy />} />
+        <Route path="/ruta" element={<Ruta />} />
+        <Route path="/cartera" element={<Cartera />} />
+        <Route path="/cliente/:clave" element={<Cliente />} />
+        <Route path="/pedidos" element={<Pedidos />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      <nav className="pestanas">
+        <NavLink to="/" end>Hoy</NavLink>
+        <NavLink to="/ruta">Ruta</NavLink>
+        <NavLink to="/cartera">Clientes</NavLink>
+        <NavLink to="/pedidos">Pedidos</NavLink>
+      </nav>
     </div>
   )
 }
-import { NavBar } from './components.jsx'
-import { AppShell } from './shells/AppShell.jsx'
-// V9.0 — domain components
-import { AppHeader } from './chrome/AppHeader.jsx'
-import { ErrorBoundary } from './chrome/ErrorBoundary.jsx'
-import { BandejaAgotados } from './chrome/BandejaAgotados.jsx'
-// Fuente ÚNICA del sello. Vive en su módulo para evitar el ciclo
-// App → ErrorBoundary → App.
-import { BUILD_STAMP } from './lib/buildStamp.js'
-export { BUILD_STAMP }
-import { syncHandlers } from './lib/syncHandlers.js'
-import { SyncBanner } from './chrome/SyncBanner.jsx'
-import { applyZoneCssVars, zonesFromEjecutivos } from './lib/theme/zones.js'
-import { runSyncFlush } from './lib/sync/engine.js'
-import { selectResource } from './lib/bs2Api.js'
 
-// Visible en UI — si no lo ves en el teléfono, el deploy NO subió
-
-// ── Contexto global ──────────────────────────────────────────────────────
-export const EjecutivoCtx = createContext(null)
-export function useEjecutivo() {
-  return useContext(EjecutivoCtx)
-}
-
-// Handlers reales para el sync engine — los mismos que usan Hoy/Visita
-// SyncBanner los recibe para que "Reintentar" drene de verdad la outbox
-// Handlers del outbox: fuente ÚNICA en lib/syncHandlers.js.
-// Antes vivían duplicados acá, en Hoy.jsx y en SyncBanner, y estos
-// devolvían undefined (falsy) → la cola NUNCA se drenaba.
-const SYNC_HANDLERS = syncHandlers
-
-
-export default function App() {
-  const [session, setSession] = useState(undefined)
-  const [ejecutivo, setEjecutivo] = useState(null)
-  const [todosEjecutivos, setTodosEjecutivos] = useState([])
-  const [zonaVista, setZonaVista] = useState(null)
-  const [eidVista, setEidVista] = useState(null)
-
-  useEffect(() => {
-    const t = resolveTenant()
-    if (t) {
-      initSupabase(t)
-      applyTenantBrand(t)  // aplica colores del tenant al DOM inmediatamente
-    }
-  }, [])
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    if (!session) {
-      setEjecutivo(null)
-      return
-    }
-    Promise.all([
-      selectResource('ejecutivos', '*', {
-        label: 'session_ejecutivo',
-        transform: query => query.eq('id', session.user.id).limit(1),
-      }),
-      supabase
-        .schema('platform')
-        .from('membresias')
-        .select('tenant_id, rol, activo')
-        .eq('usuario_id', session.user.id)
-        .eq('activo', true)
-        .limit(1),
-      supabase
-        .schema('platform')
-        .from('usuarios')
-        .select('nombre')
-        .eq('id', session.user.id)
-        .eq('activo', true)
-        .limit(1),
-    ]).then(([ejecutivosResult, membershipResult, usuarioResult]) => {
-      const data = ejecutivosResult.ok ? ejecutivosResult.rows[0] : null
-      const membership = membershipResult.data?.[0] || null
-      const platformUser = usuarioResult.data?.[0] || null
-      const membershipRole = String(membership?.rol || '').toLowerCase()
-      const email = String(session.user.email || '').toLowerCase()
-      const isBlackSheepOwner = email === 'sregelmann@gmail.com'
-      const rol = isBlackSheepOwner
-        ? 'platform_admin'
-        : membershipRole || String(data?.rol || 'ejecutivo').toLowerCase()
-      const esSuperAdmin =
-        isBlackSheepOwner ||
-        rol === 'superadmin' ||
-        rol === 'gerente' ||
-        rol === 'admin' ||
-        rol === 'tenant_admin' ||
-        rol === 'owner'
-
-      setEjecutivo({
-        id: session.user.id,
-        nombre: platformUser?.nombre || data?.nombre || displayNameFromEmail(session.user.email),
-        zona: data?.zona || '',
-        rol,
-        tenantId: membership?.tenant_id || null,
-        esSuperAdmin,
-      })
-    })
-  }, [session])
-
-  // Cargar lista de zonas de campo + setear vista inicial
-  useEffect(() => {
-    if (!ejecutivo) return
-
-    if (ejecutivo.esSuperAdmin) {
-      selectResource('ejecutivos', 'id, nombre, zona, rol', {
-        label: 'session_zonas',
-        transform: query => query.not('zona', 'is', null),
-      }).then(({ ok, rows }) => {
-          const lista = (ok ? rows : []).filter((e) => e.zona && String(e.zona).trim())
-          // Preferir las 3 zonas de terreno si existen
-          const orden = ['NOR-ORIENTE', 'NOR-PONIENTE', 'ZONA SUR']
-          lista.sort((a, b) => {
-            const ia = orden.indexOf(a.zona)
-            const ib = orden.indexOf(b.zona)
-            if (ia < 0 && ib < 0) return String(a.zona).localeCompare(String(b.zona))
-            if (ia < 0) return 1
-            if (ib < 0) return -1
-            return ia - ib
-          })
-          setTodosEjecutivos(lista)
-          const propia =
-            lista.find((e) => e.zona === ejecutivo.zona) ||
-            lista.find((e) => e.id === ejecutivo.id) ||
-            lista[0]
-          if (propia) {
-            setZonaVista(propia.zona)
-            setEidVista(propia.id)
-          } else {
-            setZonaVista(ejecutivo.zona || null)
-            setEidVista(ejecutivo.id)
-          }
-        })
-    } else {
-      setTodosEjecutivos([])
-      setZonaVista(ejecutivo.zona || null)
-      setEidVista(ejecutivo.id)
-    }
-  }, [ejecutivo])
-
-  function cambiarZona(zona) {
-    const ej = todosEjecutivos.find((e) => e.zona === zona)
-    if (!ej) return
-    setZonaVista(zona)
-    setEidVista(ej.id)
-    applyZoneCssVars(zona) // V9.0 — colores de zona al DOM inmediatamente
-  }
-
-  if (window.location.pathname.startsWith('/catalogo/')) {
+/**
+ * El vendedor tiene que saber SIEMPRE si su trabajo está guardado. Si
+ * no lo sabe, vuelve al cuaderno. Por eso la franja aparece mientras
+ * quede algo pendiente y desaparece sola cuando no queda nada.
+ */
+function Franja({ pendientes, agotados, enLinea, sincronizando, alSincronizar }) {
+  if (agotados > 0) {
     return (
-      <Suspense fallback={<CargandoPagina />}>
-        <Routes><Route path="/catalogo/:token" element={<CatalogoCliente />} /></Routes>
-      </Suspense>
-    )
-  }
-  if (session === undefined) {
-    return (
-      <div className="bs-boot">
-        <div className="bs-boot-logo-wrap">
-          <img src="/brand/logo-mark-192.png" alt="Black Sheep" className="bs-boot-logo-img"
-            onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }}
-          />
-          <div className="bs-boot-logo-fb" style={{display:'none'}}>BS</div>
-        </div>
-        <p className="bs-boot-name">Black Sheep Field</p>
-        <div className="bs-boot-bar"><span /></div>
-        <p>Iniciando…</p>
+      <div className="franja agotado">
+        <span>{agotados} {agotados === 1 ? 'registro no pudo subir' : 'registros no pudieron subir'}</span>
+        <button onClick={alSincronizar}>Reintentar</button>
       </div>
     )
   }
-  if (!session) {
+  if (!enLinea) {
     return (
-      <Routes>
-        <Route path="*" element={<Login />} />
-      </Routes>
-    )
-  }
-  if (!ejecutivo || !eidVista) {
-    return (
-      <div className="bs-boot">
-        <div className="bs-boot-logo-wrap">
-          <img src="/brand/logo-mark-192.png" alt="Black Sheep" className="bs-boot-logo-img"
-            onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }}
-          />
-          <div className="bs-boot-logo-fb" style={{display:'none'}}>BS</div>
-        </div>
-        <div className="bs-boot-bar"><span /></div>
-        <p>Cargando tu perfil…</p>
+      <div className="franja sin-red">
+        <span>Sin señal. Se guarda en el teléfono{pendientes ? ` · ${pendientes} por subir` : ''}.</span>
       </div>
     )
   }
-
-  const esGerente = !!ejecutivo.esSuperAdmin
-  const zonasDisponibles = zonesFromEjecutivos(todosEjecutivos)
-  const ctxValue = {
-    ...ejecutivo,
-    zonaVista,
-    eidVista,
-    todosEjecutivos,
-    cambiarZona,
+  if (pendientes > 0) {
+    return (
+      <div className="franja pendiente">
+        <span>{pendientes} {pendientes === 1 ? 'registro' : 'registros'} por subir</span>
+        <button disabled={sincronizando} onClick={alSincronizar}>
+          {sincronizando ? 'Subiendo…' : 'Subir ahora'}
+        </button>
+      </div>
+    )
   }
-
-  return (
-    <EjecutivoCtx.Provider value={ctxValue}>
-      {/* ROOT FIX V9.7: sin barra de zona global.
-          La zona vive dentro del hero de cada pantalla (ZoneChip). */}
-      {/* V9.9: header ÚNICO. Antes había franja blanca + hero de página
-          apilados (~180px sin una sola acción). El selector de zona es
-          segmented control: 3 opciones se muestran, no se esconden. */}
-      {/* Un solo saludo. Antes se pasaba `titulo` Y `nombre`, y el
-          componente renderizaba los dos: "Hola, Se…" arriba y
-          "Hola, Sebastian" abajo, con la zona en el medio. */}
-      <AppHeader
-        zonaActiva={zonaVista}
-        zonas={esGerente ? zonasDisponibles : []}
-        onZonaChange={cambiarZona}
-        titulo={ejecutivo?.nombre ? `Hola, ${String(ejecutivo.nombre).split(' ')[0]}` : 'Black Sheep'}
-      />
-      <>
-        <SyncBanner handlers={SYNC_HANDLERS} />
-      <BandejaAgotados />
-        <AppShell>
-          <div className="app-body">
-            <div className="build-stamp">
-              {BUILD_STAMP}
-              {typeof window !== 'undefined' && window.__BS_TENANT__ ? ` · ${window.__BS_TENANT__.name}` : ''}
-            </div>
-            {/* Suspense envuelve TODAS las rutas: las directas lo
-                ignoran, las lazy muestran el esqueleto mientras baja
-                su chunk. */}
-            {/* Boundary por ruta, no una sola global: si Gerencia explota,
-                el resto de la app sigue funcionando. `key` con la ruta hace
-                que el boundary se resetee al navegar. */}
-            <ErrorBoundary stamp={BUILD_STAMP} zona={window.location.pathname}>
-            <Suspense fallback={<CargandoPagina />}>
-            <Routes>
-              <Route path="/" element={<Hoy />} />
-              <Route path="/mapa" element={<Ruta session={session} />} />
-              <Route path="/visita/:id" element={<Visita session={session} />} />
-              <Route path="/cartera" element={<Cartera session={session} />} />
-              <Route path="/metas" element={<Navigate to="/" replace />} />
-              <Route path="/stock" element={<Stock session={session} />} />
-              <Route path="/gerencia" element={<Gerencia session={session} esGerente={esGerente} />} />
-              {/* /dashboard es el nombre que usa la web y el que la gente
-                  escribe. El dashboard SIEMPRE existió: es /gerencia. No
-                  había que construirlo, había que hacerlo alcanzable. */}
-              {/* Dashboard de GERENCIA para pantalla grande: todo el
-                  negocio por canal (KAM, Televenta, Corporativo y las 3
-                  zonas). NO es /gerencia, que es la vista móvil de
-                  terreno — se confundieron desde el principio. */}
-              <Route path="/dashboard" element={esGerente ? <DashboardGerencia /> : <Navigate to="/" replace />} />
-              {/* Dashboard POR EMPRESA: app.black-sheep.cl/keyfoods/dashboard
-                  Es la base de replicación — cada cliente entra por su slug
-                  y ve sólo lo suyo. El tenant se resuelve en la página. */}
-              <Route path="/:empresa/dashboard" element={esGerente ? <DashboardGerencia /> : <Navigate to="/" replace />} />
-              <Route path="/:empresa/datos" element={esGerente ? <DashboardGerencia seccion="datos" /> : <Navigate to="/" replace />} />
-              <Route path="/datos" element={esGerente ? <DashboardGerencia seccion="datos" /> : <Navigate to="/" replace />} />
-              {/* Reportes de venta con comparativos mes contra mes.
-                  La página existía en el repo desde V13.1 y NO tenía
-                  ruta: nadie podía llegar. Mismo patrón que GoalCard y
-                  el Control Center. */}
-              <Route path="/ventas" element={esGerente ? <Ventas /> : <Navigate to="/" replace />} />
-              <Route path="/admin" element={esGerente ? <Admin /> : <Navigate to="/" replace />} />
-              <Route path="/platform" element={ejecutivo?.rol === 'platform_admin' ? <PlatformAdmin /> : <Navigate to="/" replace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-            </Suspense>
-            </ErrorBoundary>
-          </div>
-        </AppShell>
-        <NavBar
-          esGerente={esGerente}
-          onLogout={async () => {
-            await supabase.auth.signOut()
-            window.location.href = '/'
-          }}
-        />
-      </>
-    </EjecutivoCtx.Provider>
-  )
+  return null
 }

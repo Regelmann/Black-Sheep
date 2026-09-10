@@ -1,0 +1,648 @@
+{
+  "version": "3.0.0",
+  "actualizado": "2026-09-06",
+  "_doc": [
+    "CONTRATO DE DATOS v3 · fuente única de verdad.",
+    "",
+    "Lo leen TRES consumidores:",
+    "  1. El validador de la app, antes de subir nada",
+    "  2. El pipeline de ingesta, al normalizar columnas",
+    "  3. El documento que se le entrega al cliente nuevo",
+    "",
+    "Los archivos se tratan como APIs: contrato versionado, obligatorias",
+    "estrictas, opcionales marcadas, y validación EN EL BORDE. Un archivo",
+    "que no cumple se rechaza con el motivo; no se carga a medias.",
+    "",
+    "NUNCA se leen columnas con SELECT *. Se declaran. Así una columna",
+    "nueva del cliente no rompe nada, y una que falta sale como error",
+    "claro en vez de como NULL silencioso.",
+    "",
+    "CAMBIOS v2 → v3 (mayor, rompe compatibilidad):",
+    "  · ventas.tipo_doc pasa a OBLIGATORIO. Sin él no se pueden restar",
+    "    las notas de crédito: 1.995 líneas sumaban positivo y",
+    "    sobreestimaban la venta ~19%. Si la empresa no lo trae, se",
+    "    declara un valor por defecto en la config del tenant y queda",
+    "    registrado como supuesto, no como dato.",
+    "  · ventas.estado_pedido documentado. Se ESCRIBE en la base: antes",
+    "    se leía y se descartaba.",
+    "  · ventas.costo_unitario opcional + archivo 'costos' opcional (D-04).",
+    "  · reglas de elegibilidad y de signo declaradas en el contrato, para",
+    "    que ningún consumidor las reinvente.",
+    "",
+    "REGLA DE EVOLUCIÓN:",
+    "  · agregar una opcional → menor (3.0.0 → 3.1.0)",
+    "  · agregar una obligatoria o quitar cualquiera → mayor (4.0.0)"
+  ],
+  "archivos": {
+    "precios": {
+      "nombre": "Lista de precios",
+      "define": "QUÉ SE VENDE — es la base del catálogo",
+      "orden": 1,
+      "sin_esto": "No hay catálogo. Un producto sin precio no se vende aunque haya stock.",
+      "campos": {
+        "sku": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "Código",
+            "CODIGO",
+            "Codigo",
+            "SKU",
+            "COD",
+            "Código Producto"
+          ],
+          "descripcion": "Llave del producto. Cruza contra stock y ventas.",
+          "validacion": {
+            "no_vacio": true,
+            "unico": true
+          }
+        },
+        "nombre": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "Descripcion",
+            "Descripción",
+            "DESCRIPCION",
+            "Producto",
+            "NOMBRE"
+          ],
+          "descripcion": "Lo que ve el cliente en el catálogo.",
+          "validacion": {
+            "no_vacio": true,
+            "largo_max": 200
+          }
+        },
+        "precio_unidad": {
+          "obligatorio": "uno_de:precio_unidad,precio_caja",
+          "tipo": "numero",
+          "alias": [
+            "Precio Unidad",
+            "PRECIO UNIDAD",
+            "Precio Un",
+            "P.Unidad"
+          ],
+          "descripcion": "Precio por unidad de venta.",
+          "validacion": {
+            "min": 0
+          }
+        },
+        "precio_caja": {
+          "obligatorio": "uno_de:precio_unidad,precio_caja",
+          "tipo": "numero",
+          "alias": [
+            "Precio Caja",
+            "PRECIO CAJA",
+            "P.Caja"
+          ],
+          "validacion": {
+            "min": 0
+          }
+        },
+        "precio_kilo": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "Precio Kilo",
+            "PRECIO KILO"
+          ],
+          "descripcion": "Permite comparar productos de distinto formato."
+        },
+        "categoria": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "Categoría",
+            "Categoria",
+            "CATEGORIA",
+            "Familia"
+          ],
+          "descripcion": "Agrupa el catálogo y habilita sugerir por rubro."
+        },
+        "marca": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "Marca",
+            "MARCA"
+          ]
+        },
+        "unidad_venta": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "Unidad de Venta",
+            "UNIDAD",
+            "Unidad"
+          ],
+          "descripcion": "BIDON, CAJA, KG. Evita pedidos mal armados."
+        },
+        "unidades_caja": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "Unidades por Caja",
+            "UN x CAJA"
+          ]
+        },
+        "kg_unidad": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "Kilogramos por Unidad",
+            "KG x UN"
+          ]
+        },
+        "kg_caja": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "Kilogramos por Caja",
+            "KG x CAJA"
+          ]
+        }
+      },
+      "avisos": [
+        "El archivo de KeyFoods trae Precio Kilo/Caja/Unidad DUPLICADOS con sufijo .1 — son dos listas en una hoja. El ciclo usa la primera. Si manejás más de una lista, ponelas en pestañas separadas."
+      ]
+    },
+    "stock": {
+      "nombre": "Stock",
+      "define": "SI HAY — disponibilidad, NO el catálogo",
+      "orden": 2,
+      "sin_esto": "El catálogo funciona, pero no se puede avisar qué no hay ni qué empujar.",
+      "campos": {
+        "sku": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "CODIGO",
+            "Código",
+            "SKU",
+            "CODIGO SKU KL",
+            "COD"
+          ],
+          "descripcion": "Cruza contra la lista de precios.",
+          "validacion": {
+            "no_vacio": true
+          }
+        },
+        "stock_total": {
+          "obligatorio": true,
+          "tipo": "numero",
+          "alias": [
+            "STOCK",
+            "STOCK TOTAL",
+            "STOCK KG",
+            "KILOS",
+            "TOTAL",
+            "Stock"
+          ],
+          "descripcion": "Cuánto hay. Puede ser 0; no puede faltar.",
+          "validacion": {
+            "permite_cero": true
+          }
+        },
+        "nombre": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "DESCRIPCION",
+            "DESCRIPCION KL",
+            "Descripcion"
+          ],
+          "descripcion": "Sirve para verificar que el SKU cruzó bien."
+        },
+        "familia": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "FAMILIA",
+            "Familia",
+            "CATEGORIA"
+          ]
+        },
+        "almacen": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "ALMACEN",
+            "Almacen",
+            "BODEGA"
+          ]
+        },
+        "stock_cajas": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "STOCK CAJAS",
+            "STOCKS CAJAS"
+          ]
+        },
+        "fecha_venc": {
+          "obligatorio": false,
+          "tipo": "fecha",
+          "alias": [
+            "VENCIMIENTO",
+            "FECHA VENC",
+            "F.VENC"
+          ],
+          "descripcion": "Habilita las alertas de corta fecha."
+        }
+      }
+    },
+    "maestra": {
+      "nombre": "Maestra de clientes",
+      "define": "DE QUIÉN ES cada cliente",
+      "orden": 3,
+      "sin_esto": "No se puede repartir la cartera. Es el archivo más importante de los cuatro.",
+      "campos": {
+        "cliente_key": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "rut",
+            "RUT",
+            "cliente_key",
+            "COD CLIENTE",
+            "CODIGO_CLIENTE",
+            "Codigo"
+          ],
+          "descripcion": "Llave del cliente en todo el sistema. RUT con verificador.",
+          "validacion": {
+            "no_vacio": true,
+            "unico": true
+          }
+        },
+        "ejecutivo": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "EJECUTIVO",
+            "Ejecutivo",
+            "VENDEDOR",
+            "ejecutivo_raw"
+          ],
+          "descripcion": "Quién atiende al cliente. LA MAESTRA MANDA: este valor gana sobre el vendedor de la factura.",
+          "validacion": {
+            "no_vacio": true
+          }
+        },
+        "zona": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "zona",
+            "ZONA",
+            "CANAL",
+            "Canal",
+            "zona_comercial"
+          ],
+          "descripcion": "Canal del cliente: una zona de terreno, KAM, TELEVENTA, CORPORATIVO.",
+          "validacion": {
+            "no_vacio": true
+          }
+        },
+        "nombre": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "RAZON SOCIAL",
+            "NOMBRE",
+            "Cliente",
+            "nombre_cliente"
+          ],
+          "descripcion": "Lo que ve el vendedor. Sin esto se muestra el RUT."
+        },
+        "comuna": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "COMUNA",
+            "Comuna"
+          ],
+          "descripcion": "SIN ESTO EL CLIENTE NO APARECE EN EL MAPA."
+        },
+        "direccion": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "DIRECCION",
+            "DOMICILIO",
+            "Direccion"
+          ],
+          "descripcion": "Se geocodifica para el mapa y la ruta."
+        },
+        "lat": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "lat",
+            "LATITUD",
+            "latitud"
+          ]
+        },
+        "lng": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "lng",
+            "LONGITUD",
+            "longitud"
+          ]
+        },
+        "rubro": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "RUBRO",
+            "GIRO",
+            "Giro"
+          ],
+          "descripcion": "Habilita sugerir productos por tipo de negocio."
+        },
+        "es_bloqueado": {
+          "obligatorio": false,
+          "tipo": "booleano",
+          "alias": [
+            "BLOQUEADO",
+            "es_bloqueado",
+            "DEUDA"
+          ],
+          "descripcion": "Cerrado o con deuda: no empujar venta."
+        }
+      },
+      "avisos": [
+        "CONTRADICCIÓN QUE HACE DESAPARECER CLIENTES: si la zona dice NOR-ORIENTE pero la comuna es de otra zona, el cliente no lo ve NADIE — la consulta lo trae por zona y el filtro lo descarta por comuna. El dashboard los lista para corregirlos."
+      ]
+    },
+    "ventas": {
+      "nombre": "Ventas",
+      "define": "QUÉ COMPRÓ cada cliente",
+      "orden": 4,
+      "sin_esto": "No hay ciclos de reposición, ni mix, ni alertas de fuga. El motor de decisión queda mudo.",
+      "campos": {
+        "cliente_key": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "COD CLIENTE",
+            "CODIGO_CLIENTE",
+            "RUT",
+            "rut",
+            "Cliente"
+          ],
+          "descripcion": "Cruza contra la maestra.",
+          "validacion": {
+            "no_vacio": true
+          }
+        },
+        "fecha": {
+          "obligatorio": true,
+          "tipo": "fecha",
+          "alias": [
+            "FECHA",
+            "Fecha",
+            "fecha_emision",
+            "F.EMISION"
+          ],
+          "descripcion": "Ciclos, días sin comprar, tendencia mensual.",
+          "validacion": {
+            "no_futura": true
+          }
+        },
+        "sku": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "CODIGO",
+            "SKU",
+            "CODIGO_PRODUCTO",
+            "Codigo"
+          ],
+          "validacion": {
+            "no_vacio": true
+          }
+        },
+        "monto": {
+          "obligatorio": true,
+          "tipo": "numero",
+          "alias": [
+            "NETO",
+            "PRECIO",
+            "MONTO",
+            "VENTA_NETA",
+            "Total"
+          ],
+          "descripcion": "Venta neta de la línea."
+        },
+        "cantidad": {
+          "obligatorio": true,
+          "tipo": "numero",
+          "alias": [
+            "CANTIDAD",
+            "Cantidad",
+            "CANT",
+            "UNIDADES"
+          ],
+          "descripcion": "Necesaria para calcular el ciclo de reposición."
+        },
+        "documento": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "NUMERO",
+            "N_DOCUMENTO",
+            "FOLIO",
+            "Documento"
+          ],
+          "descripcion": "IDEMPOTENCIA: sin esto, recargar el mismo archivo duplica ventas."
+        },
+        "producto": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "DESCRIPCION",
+            "PRODUCTO",
+            "Descripcion"
+          ]
+        },
+        "nombre": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "RAZON SOCIAL",
+            "NOMBRE",
+            "Cliente"
+          ],
+          "descripcion": "Completa clientes que faltan en la maestra."
+        },
+        "comuna": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "COMUNA"
+          ]
+        },
+        "direccion": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "DIRECCION",
+            "DOMICILIO"
+          ]
+        },
+        "vendedor_origen": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "EJECUTIVO",
+            "VENDEDOR"
+          ],
+          "descripcion": "SÓLO AUDITORÍA. Puede decir VENDEDOR_07 y no significar nada. La maestra manda."
+        },
+        "tipo_doc": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "TIPO",
+            "TIPO_DOC",
+            "TIPO DOCUMENTO",
+            "Tipo Doc"
+          ],
+          "descripcion": "Distingue factura de nota de crédito. OBLIGATORIO desde v3: define el signo del monto.",
+          "validacion": {
+            "no_vacio": true
+          }
+        },
+        "estado_pedido": {
+          "obligatorio": false,
+          "tipo": "texto",
+          "alias": [
+            "ESTADO",
+            "ESTADO_PEDIDO",
+            "Estado Pedido"
+          ],
+          "descripcion": "Sólo EXCLUYE si coincide con un estado configurado como excluido. Vacío NO excluye: en la fuente real viene vacío el 74% de las veces."
+        },
+        "costo_unitario": {
+          "obligatorio": false,
+          "tipo": "numero",
+          "alias": [
+            "COSTO",
+            "COSTO UNITARIO",
+            "COSTO_UNIT"
+          ],
+          "descripcion": "Habilita margen y ventas-bajo-costo. Si no viene acá, se carga el archivo 'costos'."
+        }
+      },
+      "avisos": [
+        "INCREMENTAL: el ciclo calcula el promedio con fecha < inicio del mes. Si subís sólo la venta de hoy sin histórico, TODOS los clientes salen como nuevos y sin promedio. La primera corrida tiene que traer el histórico completo; de ahí en adelante subir sólo el día funciona — se SUMA, no reemplaza."
+      ],
+      "reglas": {
+        "elegibilidad": "INCLUIR todo documento cuyo tipo esté configurado como venta, SALVO que su estado esté en la lista de excluidos. NUNCA usar 'estado = Cerrado' como regla de inclusión: deja fuera el 97,4% de la venta facturada.",
+        "signo": "monto_final = monto * signo_del_tipo_documento. Nota de crédito = -1.",
+        "fila_con_dos_documentos": "Una fila que trae factura Y nota de crédito genera DOS registros, cada uno con su llave.",
+        "llave": "linea_id = sha256(tenant|cliente|fecha|tipo_doc|documento|sku|monto). Incluye tipo_doc: sin eso la factura y la NC de la misma fila colisionan."
+      }
+    },
+    "costos": {
+      "nombre": "Costos",
+      "define": "CUÁNTO CUESTA — opcional",
+      "orden": 5,
+      "sin_esto": "Margen y ventas-bajo-costo se muestran como NO DISPONIBLE. Nunca como cero: un cero se lee como un dato real.",
+      "campos": {
+        "sku": {
+          "obligatorio": true,
+          "tipo": "texto",
+          "alias": [
+            "CODIGO",
+            "SKU"
+          ],
+          "validacion": {
+            "no_vacio": true
+          }
+        },
+        "costo_unitario": {
+          "obligatorio": true,
+          "tipo": "numero",
+          "alias": [
+            "COSTO",
+            "COSTO UNITARIO"
+          ],
+          "validacion": {
+            "min": 0
+          }
+        },
+        "vigente_desde": {
+          "obligatorio": false,
+          "tipo": "fecha",
+          "alias": [
+            "VIGENCIA",
+            "DESDE"
+          ]
+        }
+      }
+    }
+  },
+  "minimo_para_arrancar": {
+    "_doc": "Lo estrictamente necesario para que la app funcione. 14 columnas. tipo_doc se suma en v3; si la empresa no lo trae, se declara un valor por defecto en la config del tenant.",
+    "precios": [
+      "sku",
+      "nombre",
+      "precio_unidad|precio_caja"
+    ],
+    "stock": [
+      "sku",
+      "stock_total"
+    ],
+    "maestra": [
+      "cliente_key",
+      "ejecutivo",
+      "zona"
+    ],
+    "ventas": [
+      "cliente_key",
+      "fecha",
+      "sku",
+      "monto",
+      "cantidad",
+      "tipo_doc"
+    ],
+    "total_columnas": 14
+  },
+  "recomendado_completo": {
+    "_doc": "Lo que KeyFoods entrega hoy. Habilita mapa, ruta, sugerencias por rubro, corta fecha e idempotencia.",
+    "precios": [
+      "+categoria",
+      "+marca",
+      "+unidad_venta",
+      "+kg_unidad"
+    ],
+    "stock": [
+      "+nombre",
+      "+familia",
+      "+fecha_venc"
+    ],
+    "maestra": [
+      "+nombre",
+      "+comuna",
+      "+direccion",
+      "+rubro",
+      "+es_bloqueado"
+    ],
+    "ventas": [
+      "+documento",
+      "+producto",
+      "+nombre",
+      "+comuna"
+    ]
+  },
+  "config_tenant": {
+    "_doc": "Lo que se declara por empresa en vez de programarlo.",
+    "tipos_documento": "Códigos que cuentan como venta y con qué signo (tabla core.tipo_documento).",
+    "estados_excluidos": "Estados que anulan una venta (tabla core.estado_excluido).",
+    "fuente_costo": "ventas | lista | ninguno",
+    "tipo_doc_por_defecto": "Se usa sólo si el archivo no trae la columna. Queda registrado como supuesto."
+  }
+}

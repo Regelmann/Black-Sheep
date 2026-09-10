@@ -1,0 +1,124 @@
+# ═══════════════════════════════════════════════════════════════════
+# Verificación · corre en cada push y en cada pull request.
+#
+# Hace exactamente lo mismo que se hace a mano antes de desplegar:
+# levanta un PostgreSQL limpio, corre las 31 migraciones DOS VECES
+# (para probar que son idempotentes), ejecuta las cinco suites de
+# pruebas y exige que el diagnóstico dé 8 de 8.
+#
+# Si esto se pone rojo, no se despliega. Es la red que evita que un
+# cambio de una tarde rompa el aislamiento entre empresas sin que
+# nadie se entere hasta que un cliente ve datos de otro.
+# ═══════════════════════════════════════════════════════════════════
+name: Verificar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  base-de-datos:
+    name: Migraciones y pruebas
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bs2
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ['5432:5432']
+
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: bs2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar cliente de PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Roles locales de Supabase
+        run: psql -v ON_ERROR_STOP=1 -f db/test/00_shim_supabase.sql
+
+      - name: Migraciones
+        run: |
+          for f in db/migrations/*.sql; do
+            echo "→ $(basename "$f")"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      - name: Idempotencia · las mismas migraciones, otra vez
+        run: |
+          for f in db/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -q -f "$f" \
+              || { echo "NO IDEMPOTENTE: $f"; exit 1; }
+          done
+
+      - name: Pruebas
+        run: |
+          for t in db/test/0[1-5]_*.sql; do
+            echo "→ $(basename "$t")"
+            psql -v ON_ERROR_STOP=1 -q -f "$t"
+          done
+
+      - name: Diagnóstico de seguridad
+        run: |
+          psql -q -c 'select * from compliance.diagnostico();'
+          FALLAS=$(psql -tAq -c "select count(*) from compliance.diagnostico() where estado='FALLA'")
+          if [ "$FALLAS" != "0" ]; then
+            echo "::error::$FALLAS controles de seguridad en FALLA"
+            exit 1
+          fi
+
+  apps:
+    name: Guard y build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [control-center, gerencia, field]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar
+        working-directory: apps/${{ matrix.app }}
+        run: npm install --no-audit --no-fund
+      - name: Guard y build
+        working-directory: apps/${{ matrix.app }}
+        run: npm run verify
+
+  secretos:
+    name: Sin credenciales en el repositorio
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar JWT y service_role
+        run: |
+          # Un JWT tiene tres partes separadas por punto y empieza por eyJ.
+          # La anon key también lo es, pero no debe estar en el código:
+          # va en variables de entorno, incluso siendo pública.
+          if grep -rEn "eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}" \
+               --include='*.js' --include='*.jsx' --include='*.ts' \
+               --include='*.json' --include='*.sql' --include='*.yml' \
+               --exclude-dir=node_modules . ; then
+            echo "::error::Hay algo que parece un JWT en el repositorio"
+            exit 1
+          fi
+          if grep -rn "SERVICE_ROLE_KEY\s*=\s*[\"']eyJ" \
+               --exclude-dir=node_modules . ; then
+            echo "::error::service_role con valor literal"
+            exit 1
+          fi
+          echo "Sin credenciales en el repositorio."
