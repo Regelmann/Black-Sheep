@@ -37,7 +37,7 @@ export default function Conflictos() {
         <p>Cambios hechos aquí que el último archivo contradice. El cambio manual se mantuvo; decide si sigue así.</p>
       </header>
 
-      <section className="bloque">
+      <section className="panel">
         <Bloque datos={datos} que="los conflictos"
                 vacio="No hay conflictos. Lo que editaste y lo que trae el archivo coinciden.">
           <table>
@@ -53,17 +53,17 @@ export default function Conflictos() {
                 <tr key={c.id}>
                   <td>{c.llave}</td>
                   <td>{CAMPOS[c.campo] || c.campo}</td>
-                  <td className="tenue">{c.valor_archivo || '—'}</td>
+                  <td className="silencio">{c.valor_archivo || '—'}</td>
                   <td><strong>{c.valor_manual || '—'}</strong></td>
-                  <td className="tenue">
+                  <td className="silencio">
                     {c.archivo}
-                    <div className="sub">{fechaHora(c.creado_en)}</div>
+                    <div className="silencio">{fechaHora(c.creado_en)}</div>
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    <button className="btn chico" onClick={() => resolver(c.id, 'mantener_manual')}>
+                    <button className="boton chico" onClick={() => resolver(c.id, 'mantener_manual')}>
                       Mantener mi cambio
                     </button>{' '}
-                    <button className="btn chico" onClick={() => resolver(c.id, 'aceptar_archivo')}>
+                    <button className="boton chico" onClick={() => resolver(c.id, 'aceptar_archivo')}>
                       Usar el archivo
                     </button>
                   </td>

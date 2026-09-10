@@ -45,7 +45,7 @@ export default function Nueva() {
         <p>Queda en prueba. Después hay que configurarle los tipos de documento antes de su primera carga.</p>
       </header>
 
-      <section className="bloque" style={{ maxWidth: 560 }}>
+      <section className="panel" style={{ maxWidth: 560 }}>
         <div className="campo">
           <label htmlFor="n">Nombre de la empresa</label>
           <input id="n" value={f.nombre} onChange={(e) => nombre(e.target.value)}
@@ -55,12 +55,12 @@ export default function Nueva() {
           <label htmlFor="s">Su dirección</label>
           <input id="s" value={f.slug}
                  onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase() })} />
-          <p className="sub">
+          <p className="silencio">
             {f.slug ? `${f.slug}.app.black-sheep.cl` : 'se arma con el nombre'}
             {f.slug && !slugValido && ' · sólo minúsculas, números y guiones'}
           </p>
         </div>
-        <div className="fila">
+        <div className="fila-campos">
           <div className="campo">
             <label htmlFor="d">Días de prueba</label>
             <input id="d" type="number" value={f.dias}
@@ -73,19 +73,19 @@ export default function Nueva() {
           </div>
         </div>
 
-        {error && <p className="aviso-error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
+        {error && <p className="estado error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
 
         <p style={{ marginTop: 'var(--e5)' }}>
-          <button className="btn principal" disabled={!f.nombre || !slugValido || trabajando}
+          <button className="boton primario" disabled={!f.nombre || !slugValido || trabajando}
                   onClick={crear}>
             {trabajando ? 'Creando…' : 'Crear empresa'}
           </button>
         </p>
       </section>
 
-      <section className="bloque" style={{ maxWidth: 560 }}>
+      <section className="panel" style={{ maxWidth: 560 }}>
         <h2>Lo que pasa después</h2>
-        <p className="sub">
+        <p className="silencio">
           Se crea con las capacidades por defecto y queda en prueba. En su ficha
           configuras los tipos de documento, das acceso a sus usuarios y sigues
           la puesta en marcha paso a paso.

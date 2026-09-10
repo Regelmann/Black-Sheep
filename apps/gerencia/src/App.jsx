@@ -26,20 +26,25 @@ export default function App() {
     activa: !!sesion,
   })
 
-  if (cargando) return <p className="cargando">Cargando…</p>
+  if (cargando) return <p className="estado">Cargando…</p>
   if (!sesion) return <Entrar />
 
   const pendientes = conflictos.rows?.length || 0
 
   return (
-    <div className="marco">
-      <aside className="barra">
-        <div className="marca">
-          <b>Black Sheep</b>
-          <span>{esSuperadmin ? 'plataforma' : 'gerencia'}</span>
+    <div className="armazon">
+      <aside className="rail">
+        <div className="rail-marca">
+          {/* El logo viene del manual de identidad. No se dibuja una
+              aproximación: ese error ya se cometió dos veces. */}
+          <img src="/logo.png" alt="Black Sheep" width="32" height="32" />
+          <span className="rail-marca-texto">
+            <b>Black Sheep</b>
+            <span>{esSuperadmin ? 'plataforma' : 'gerencia'}</span>
+          </span>
         </div>
 
-        <nav className="nav">
+        <nav className="nav-rail">
           <NavLink to="/">Resumen</NavLink>
           <NavLink to="/carga">Cargar datos</NavLink>
           <NavLink to="/conflictos">
@@ -47,7 +52,7 @@ export default function App() {
             {pendientes > 0 && <span className="pin">{pendientes}</span>}
           </NavLink>
 
-          <p className="nav-titulo">Administrar</p>
+          <p className="rail-seccion">Administrar</p>
           <NavLink to="/datos">Clientes y productos</NavLink>
           <NavLink to="/equipo">Equipo y metas</NavLink>
 
@@ -55,13 +60,13 @@ export default function App() {
               otro dominio. Tenerla acá mezclaba dos productos con dos
               audiencias y dos niveles de privilegio en un mismo build. */}
           {esSuperadmin && (
-            <p className="nav-titulo">
+            <p className="rail-seccion">
               Plataforma: admin.black-sheep.cl
             </p>
           )}
         </nav>
 
-        <div className="pie-barra">
+        <div className="rail-pie">
           <p>{email}</p>
           <button onClick={salir}>Cerrar sesión</button>
         </div>

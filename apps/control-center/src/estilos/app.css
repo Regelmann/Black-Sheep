@@ -29,10 +29,10 @@ h1 { font-size: var(--t-titulo); }
 h2 { font-size: var(--t-mayor); }
 h3 { font-size: var(--t-base); }
 p  { margin: 0 0 var(--e3); max-width: 68ch; }
-a  { color: var(--ambar-hundido); }
+a  { color: var(--lima-tinta); }
 
 :focus-visible {
-  outline: 2px solid var(--ambar);
+  outline: 2px solid var(--lima);
   outline-offset: 2px;
   border-radius: var(--r-chico);
 }
@@ -63,7 +63,7 @@ a  { color: var(--ambar-hundido); }
   font-size: var(--t-menor);
 }
 .rail nav a:hover { background: var(--pizarra-alta); color: #fff; }
-.rail nav a.activo { border-left-color: var(--ambar); color: #fff; background: var(--pizarra-alta); font-weight: 600; }
+.rail nav a.activo { border-left-color: var(--lima); color: #fff; background: var(--pizarra-alta); font-weight: 600; }
 .rail-pie { margin-top: auto; padding: 0 var(--e5); font-size: var(--t-micro); color: var(--tinta-suave); }
 
 .lienzo { padding: var(--e6); max-width: 1180px; }
@@ -117,7 +117,7 @@ td.derecha, th.derecha { text-align: right; }
 .insignia.mal     { background: var(--alarma-papel); color: var(--alarma); border-color: #f0c5c2; }
 .insignia.ojo     { background: var(--aviso-papel);  color: var(--aviso);  border-color: #e8d69b; }
 .insignia.neutra  { background: var(--papel-hundido);color: var(--tinta-media); border-color: var(--linea); }
-.insignia.manual  { background: var(--ambar-papel);  color: var(--ambar-hundido); border-color: #f0d5a8; }
+.insignia.manual  { background: var(--lima-papel);  color: var(--lima-tinta); border-color: #f0d5a8; }
 
 /* ── Controles ───────────────────────────────────────────────────── */
 .boton {
@@ -133,8 +133,8 @@ td.derecha, th.derecha { text-align: right; }
 }
 .boton:hover:not(:disabled) { background: var(--papel-hundido); }
 .boton:disabled { opacity: .5; cursor: not-allowed; }
-.boton.primario { background: var(--ambar); border-color: var(--ambar-hundido); color: #241703; }
-.boton.primario:hover:not(:disabled) { background: var(--ambar-hundido); color: #fff; }
+.boton.primario { background: var(--lima); border-color: var(--lima-hundido); color: var(--negro); font-weight: 600; }
+.boton.primario:hover:not(:disabled) { background: var(--lima-tinta); color: #fff; }
 .boton.peligro { color: var(--alarma); border-color: #e5b4b1; }
 .boton.chico { padding: 2px var(--e2); font-size: var(--t-micro); }
 
@@ -191,13 +191,13 @@ input, select, textarea {
 }
 .paso.hecho { color: var(--tinta); }
 .paso.hecho b { background: var(--logro); color: #fff; }
-.paso.aqui { border-color: var(--ambar); color: var(--tinta); font-weight: 600; }
-.paso.aqui b { background: var(--ambar); color: #241703; }
+.paso.aqui { border-color: var(--lima); color: var(--tinta); font-weight: 600; }
+.paso.aqui b { background: var(--lima); color: var(--negro); }
 
 /* ── Varios ──────────────────────────────────────────────────────── */
 .barras { display: flex; flex-direction: column; gap: var(--e2); }
 .barra-fondo { background: var(--papel-hundido); border-radius: var(--r-chico); height: 8px; overflow: hidden; }
-.barra-relleno { height: 100%; background: var(--ambar); }
+.barra-relleno { height: 100%; background: var(--lima); }
 .fila { display: flex; gap: var(--e3); align-items: center; flex-wrap: wrap; }
 .fila.fin { justify-content: flex-end; }
 .entre { display: flex; justify-content: space-between; align-items: center; gap: var(--e3); }
@@ -210,7 +210,7 @@ input, select, textarea {
   text-align: center;
   background: var(--papel-alto);
 }
-.zona-suelta.encima { border-color: var(--ambar); background: var(--ambar-papel); }
+.zona-suelta.encima { border-color: var(--lima); background: var(--lima-papel); }
 
 .cinta {
   background: var(--alarma);
@@ -225,43 +225,104 @@ input, select, textarea {
   .rail { position: static; height: auto; flex-direction: row; align-items: center; overflow-x: auto; padding: var(--e3); }
   .rail nav { flex-direction: row; }
   .rail nav a { border-left: 0; border-bottom: 3px solid transparent; white-space: nowrap; }
-  .rail nav a.activo { border-left: 0; border-bottom-color: var(--ambar); }
+  .rail nav a.activo { border-left: 0; border-bottom-color: var(--lima); }
   .rail-marca, .rail-pie { display: none; }
   .lienzo { padding: var(--e4); }
 }
 
-/* ═══ Control Center ═══════════════════════════════════════════════
-   Sólo lo usa Black Sheep. La barra va en ámbar y no en pizarra: si
-   tienes las dos pestañas abiertas, tiene que ser evidente de un
-   vistazo en cuál estás antes de suspender a alguien.
-   ══════════════════════════════════════════════════════════════════ */
-.marco.plataforma .barra { background: #2b2413; border-right: 3px solid var(--ambar); }
-.marco.plataforma .marca span { color: var(--ambar); }
+/* ═══════════════════════════════════════════════════════════════════
+   Piezas del armazón y del Control Center.
+   Se suman acá, en la MISMA hoja y con los MISMOS tokens: una hoja de
+   parches aparte es exactamente cómo la 15.3 llegó a 154 !important.
+   ═══════════════════════════════════════════════════════════════════ */
 
-.tablero { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--e3); margin-bottom: var(--e5); }
-.ficha { background: #fff; border: 1px solid var(--linea); border-radius: var(--radio); padding: var(--e4); }
-.ficha .n { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.ficha .r { font-size: var(--t-chico); color: var(--tinta-suave); margin-top: 2px; }
-.ficha.alerta { border-color: #e2b4b1; background: var(--rojo-tenue); }
-.ficha.alerta .n { color: var(--rojo); }
-.ficha.atencion { border-color: #ecd3a0; background: var(--ambar-tenue); }
-
-.rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e5); align-items: start; }
-@media (max-width: 900px) { .rejilla { grid-template-columns: 1fr; } }
-
-.lista-cap { display: flex; flex-direction: column; gap: var(--e2); }
-.lista-cap label { display: flex; gap: var(--e3); align-items: flex-start; font-size: var(--t-chico); cursor: pointer; }
-.lista-cap input { margin-top: 4px; }
-.lista-cap .d { color: var(--tinta-suave); }
-
-.paso-onboarding { display: flex; gap: var(--e3); align-items: flex-start; padding: var(--e3) 0; border-bottom: 1px solid var(--papel-hundido); }
-.paso-onboarding:last-child { border-bottom: 0; }
-.paso-onboarding .marcador {
-  width: 22px; height: 22px; border-radius: 50%; flex: none;
-  display: grid; place-items: center; font-size: 12px; font-weight: 600;
-  border: 1px solid var(--linea-fuerte); background: #fff;
+/* La navegación del rail */
+.nav-rail { display: flex; flex-direction: column; }
+.nav-rail a {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--e2);
+  padding: var(--e2) var(--e5);
+  color: #a8a29e; text-decoration: none;
+  font-size: var(--t-menor);
+  border-left: 3px solid transparent;
 }
-.paso-onboarding.hecho .marcador { background: var(--verde-tenue); border-color: #b6d3c3; color: var(--verde); }
-.paso-onboarding.pendiente .marcador { background: var(--ambar-tenue); border-color: #ecd3a0; color: #8a6212; }
-.paso-onboarding .t { font-size: var(--t-chico); }
-.paso-onboarding .t b { font-weight: 600; }
+.nav-rail a:hover { background: var(--pizarra-alta); color: #fff; }
+/* El acento lima sólo aparece sobre el negro del rail, nunca sobre
+   papel: 13.1:1 contra 1.51:1. Es la regla de oro del manual. */
+.nav-rail a[aria-current='page'] {
+  background: var(--pizarra-alta); color: #fff; font-weight: 600;
+  border-left-color: var(--lima);
+}
+.rail-seccion {
+  font-size: var(--t-micro); color: #78716c;
+  padding: var(--e4) var(--e5) var(--e1);
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.pin {
+  min-width: 20px; text-align: center; padding: 0 6px;
+  background: var(--lima); color: var(--negro);
+  border-radius: 10px; font-size: var(--t-micro); font-weight: 700;
+}
+.rail-pie button {
+  background: none; border: 0; color: #a8a29e; padding: 0;
+  cursor: pointer; text-decoration: underline; font-size: var(--t-micro);
+}
+
+/* El logo de marca en el rail */
+.rail-marca { display: flex; align-items: center; gap: var(--e3); }
+.rail-marca img { width: 32px; height: 32px; border-radius: 6px; }
+
+/* Control Center · ámbar no, lima tampoco: el rail va en negro puro y
+   se distingue del dashboard del cliente por el borde lima. Si tienes
+   las dos pestañas abiertas tiene que ser evidente en cuál estás antes
+   de apretar «Suspender». */
+.armazon.plataforma .rail { border-right: 3px solid var(--lima); }
+.armazon.plataforma .rail-marca span { color: var(--lima); }
+
+/* Tablero de cifras */
+.tablero { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--e3); margin-bottom: var(--e5); }
+.ficha { background: var(--papel-alto); border: 1px solid var(--linea); border-radius: var(--r); padding: var(--e4); }
+.ficha .n { font-size: var(--t-mayor); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ficha .r { font-size: var(--t-menor); color: var(--tinta-media); margin-top: 2px; }
+.ficha.alerta { border-color: #f0c5c2; background: var(--alarma-papel); }
+.ficha.alerta .n { color: var(--alarma); }
+.ficha.atencion { border-color: #e8d69b; background: var(--aviso-papel); }
+
+/* Capacidades contratadas */
+.lista-cap { display: flex; flex-direction: column; gap: var(--e2); }
+.lista-cap label { display: flex; gap: var(--e3); align-items: flex-start; font-size: var(--t-menor); cursor: pointer; }
+.lista-cap input { margin-top: 4px; }
+.lista-cap .d { color: var(--tinta-media); }
+
+/* Puesta en marcha de una empresa */
+.paso-alta { display: flex; gap: var(--e3); align-items: flex-start; padding: var(--e3) 0; border-bottom: 1px solid var(--papel-hundido); }
+.paso-alta:last-child { border-bottom: 0; }
+.paso-alta .marcador {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  border: 1px solid var(--linea); background: var(--papel-alto);
+}
+.paso-alta.hecho .marcador { background: var(--logro); border-color: var(--logro); color: #fff; }
+.paso-alta.pendiente .marcador { background: var(--aviso-papel); border-color: #e8d69b; color: var(--aviso); }
+.paso-alta .t { font-size: var(--t-menor); }
+
+/* Detalles de texto */
+.glosa { font-size: var(--t-menor); color: var(--tinta-media); margin-top: var(--e2); }
+.paso-nombre { width: 130px; color: var(--tinta-media); flex: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.aviso { padding: var(--e3) var(--e4); border-radius: var(--r); background: var(--lima-papel); border: 1px solid #d4edaa; color: var(--lima-tinta); font-size: var(--t-menor); }
+
+@media (max-width: 900px) {
+  .armazon { grid-template-columns: 1fr; }
+  .rail { position: static; height: auto; flex-direction: row; align-items: center;
+          overflow-x: auto; gap: var(--e4); padding: var(--e3); }
+  .nav-rail { flex-direction: row; }
+  .nav-rail a { border-left: 0; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .nav-rail a[aria-current='page'] { border-left: 0; border-bottom-color: var(--lima); }
+  .rail-seccion, .rail-pie { display: none; }
+  .lienzo { padding: var(--e4); }
+}
+
+/* Pantalla de acceso y avisos a pantalla completa */
+.acceso { max-width: 420px; margin: 12vh auto; padding: 0 var(--e4); }
+.rail-marca-texto { display: flex; flex-direction: column; line-height: 1.2; }
