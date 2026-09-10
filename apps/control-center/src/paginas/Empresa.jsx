@@ -144,8 +144,16 @@ export default function Empresa() {
         </section>
 
         <section className="panel">
-          <h2>Qué tiene contratado</h2>
-          <p className="silencio">Lo que apagues aquí desaparece de su app, no queda en gris.</p>
+          <div className="panel-titulo">
+            <h2>Qué tiene contratado</h2>
+            <CambiarPlan actual={s.plan} onCambiar={(plan) =>
+              accion('admin_cambiar_plan', { p_tenant: id, p_plan: plan },
+                     `Ahora está en el plan ${plan}.`)} />
+          </div>
+          <p className="silencio">
+            Lo que trae el plan viene marcado como tal. Si prendes o apagas algo,
+            queda como excepción de esta empresa y sobrevive a un cambio de plan.
+          </p>
           <div className="lista-cap" style={{ marginTop: 'var(--e4)' }}>
             {e.capacidades?.map((c) => (
               <label key={c.codigo}>
@@ -155,6 +163,7 @@ export default function Empresa() {
                        }, `${c.nombre}: ${ev.target.checked ? 'activada' : 'desactivada'}`)} />
                 <span>
                   <b>{c.nombre}</b>
+                  {c.activa && <span className="insignia ok" style={{ marginLeft: 6 }}>activa</span>}
                   <span className="d"> · {c.descripcion}</span>
                 </span>
               </label>
@@ -224,6 +233,21 @@ export default function Empresa() {
 
       <p><Link className="boton" to="/">Volver a empresas</Link></p>
     </>
+  )
+}
+
+function CambiarPlan({ actual, onCambiar }) {
+  const { data: planes = [] } = useQuery({
+    queryKey: ['admin_planes'],
+    queryFn: () => llamar('admin_planes'),
+  })
+  if (!planes.length) return null
+  return (
+    <select value={actual || ''} onChange={(e) => onCambiar(e.target.value)}>
+      {planes.map((p) => (
+        <option key={p.codigo} value={p.codigo}>{p.nombre}</option>
+      ))}
+    </select>
   )
 }
 

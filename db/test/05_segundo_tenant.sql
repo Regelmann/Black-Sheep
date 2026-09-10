@@ -18,7 +18,7 @@
 INSERT INTO platform.tenants (id, slug, nombre, color) VALUES
  (:'B','austral-foods','Austral Foods','#c2410c');
 INSERT INTO platform.suscripcion (tenant_id, plan, estado, monto_mensual, vigente_hasta)
- VALUES (:'B','base','trial', 150000, current_date + 30);
+ VALUES (:'B','terreno','trial', 150000, current_date + 30);
 SELECT platform.sembrar_capacidades(:'B');
 
 -- Esta empresa NO mide por producto ni lleva costos.

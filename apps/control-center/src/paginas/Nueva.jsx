@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { llamar } from '../lib/rpc.js'
 
 /**
@@ -8,9 +9,13 @@ import { llamar } from '../lib/rpc.js'
  */
 export default function Nueva() {
   const ir = useNavigate()
-  const [f, setF] = useState({ nombre: '', slug: '', dias: 30, color: '#39ff14', monto: '' })
+  const [f, setF] = useState({ nombre: '', slug: '', dias: 30, color: '#a3e635', plan: '' })
   const [error, setError] = useState(null)
   const [trabajando, setTrabajando] = useState(false)
+  const { data: planes = [] } = useQuery({
+    queryKey: ['admin_planes'], queryFn: () => llamar('admin_planes'),
+  })
+  const plan = f.plan || planes[0]?.codigo || ''
 
   // El slug es la dirección: se sugiere del nombre y se puede corregir.
   function nombre(v) {
@@ -24,11 +29,8 @@ export default function Nueva() {
     try {
       const id = await llamar('admin_alta_empresa', {
         p_slug: f.slug, p_nombre: f.nombre,
-        p_dias_trial: Number(f.dias), p_color: f.color,
+        p_plan: plan, p_dias_trial: Number(f.dias), p_color: f.color,
       })
-      if (f.monto) {
-        await llamar('admin_set_suscripcion', { p_tenant: id, p_estado: 'trial' })
-      }
       ir(`/empresa/${id}`)
     } catch (e) {
       setError(e.message)
@@ -60,6 +62,15 @@ export default function Nueva() {
             {f.slug && !slugValido && ' · sólo minúsculas, números y guiones'}
           </p>
         </div>
+        <div className="campo">
+          <label htmlFor="p">Plan</label>
+          <select id="p" value={plan} onChange={(e) => setF({ ...f, plan: e.target.value })}>
+            {planes.map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
+          </select>
+          <p className="silencio">
+            {planes.find((x) => x.codigo === plan)?.descripcion}
+          </p>
+        </div>
         <div className="fila-campos">
           <div className="campo">
             <label htmlFor="d">Días de prueba</label>
@@ -76,7 +87,7 @@ export default function Nueva() {
         {error && <p className="estado error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
 
         <p style={{ marginTop: 'var(--e5)' }}>
-          <button className="boton primario" disabled={!f.nombre || !slugValido || trabajando}
+          <button className="boton primario" disabled={!f.nombre || !slugValido || !plan || trabajando}
                   onClick={crear}>
             {trabajando ? 'Creando…' : 'Crear empresa'}
           </button>
