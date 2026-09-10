@@ -132,8 +132,8 @@ SELECT count(*) AS cartera_sin_suscripcion FROM api.cartera;
 RESET ROLE;
 
 INSERT INTO platform.suscripcion (tenant_id, plan, estado, monto_mensual, vigente_hasta) VALUES
- ('11111111-1111-1111-1111-111111111111','base','activa',150000, current_date + 20),
- ('22222222-2222-2222-2222-222222222222','base','activa',150000, current_date + 20);
+ ('11111111-1111-1111-1111-111111111111','completo','activa',150000, current_date + 20),
+ ('22222222-2222-2222-2222-222222222222','completo','activa',150000, current_date + 20);
 
 SET ROLE authenticated;
 \echo '   con suscripción activa vuelve a ver su cartera:'

@@ -36,6 +36,7 @@ alimentan las pantallas.
 apps/control-center/ consola de Black Sheep · admin.black-sheep.cl
 apps/gerencia/     dashboard del cliente · <slug>.app.black-sheep.cl
 apps/field/        PWA del vendedor · cola offline
+db/INSTALAR.sql    las 31 migraciones en un archivo, para pegar en Supabase
 db/migrations/     000–030 · en orden numérico, sin saltos
 db/test/           shim + pruebas: seguridad (01), ciclo (02), dashboard (03)
 contracts/         archivos.v3.json · el contrato de los 4 archivos
@@ -52,9 +53,11 @@ docs/              arquitectura, onboarding, pantallas y consolas
 | `docs/CONSOLAS.md` | Dashboard de gerencia y consola de plataforma |
 | `docs/CICLO_DE_CARGA.md` | Cómo el cliente actualiza sus datos solo |
 | `docs/EDICION_DASHBOARD.md` | Corregir datos sin volver a subir archivos |
+| `docs/RUNBOOK_SUPABASE.md` | Levantar la base, paso a paso, con verificación |
 | `docs/SUBIR_A_GITHUB.md` | Cómo subir la 2.0 conservando la V15.3 |
 | `docs/EVALUACION_ARQUITECTURA.md` | Qué se adopta de la propuesta de adapters y qué no |
 | `docs/SUPERFICIES.md` | Las cuatro superficies, sus dominios y quién entra a cada una |
+| `docs/PLANES.md` | Cómo se empaqueta lo que se vende |
 | `docs/PLAN.md` | Qué está listo, cuándo cargar data y qué sigue |
 | `docs/PRECIO_CLIENTE.md` | Acordado, histórico y lista: qué paga cada cliente |
 | `docs/AUDITORIA_SEGURIDAD.md` | Qué se revisó, qué falta y qué sí se puede proteger |
