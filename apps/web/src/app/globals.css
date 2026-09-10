@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-space), var(--font-inter), ui-sans-serif, sans-serif;
+
+  /* Black Sheep 2026 — pure black + neon green (logo)
+     Alta contraste tipo landonorris.com / cyber-ops */
+  --color-navy: #000000;
+  --color-navy-deep: #000000;
+  --color-card: #0a0a0a;
+  --color-card-soft: #111111;
+  --color-panel: #161616;
+  --color-line: #262626;
+  --color-primary: #39ff14;
+  --color-primary-soft: #7cff5c;
+  --color-mint: #39ff14;
+  --color-rose: #f87171;
+  --color-amber: #fbbf24;
+  --color-sky: #38bdf8;
+  --color-ink: #a3a3a3;
+  --color-mist: #f5f5f5;
+
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-floaty: floaty 7s ease-in-out infinite;
+  --animate-floaty-slow: floaty 10s ease-in-out infinite;
+  --animate-spin-slow: spin 14s linear infinite;
+  --animate-beam: beam 7s linear infinite;
+  --animate-glow-pulse: glow-pulse 2.4s ease-in-out infinite;
+
+  @keyframes beam {
+    0% { left: -14rem; opacity: 0; }
+    8% { opacity: 1; }
+    92% { opacity: 1; }
+    100% { left: 104%; opacity: 0; }
+  }
+  @keyframes marquee {
+    to { transform: translateX(-50%); }
+  }
+  @keyframes floaty {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-11px); }
+  }
+  @keyframes glow-pulse {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(57, 255, 20, 0.45)); }
+    50% { filter: drop-shadow(0 0 22px rgba(57, 255, 20, 0.85)); }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+}
+
+body {
+  background-color: #000000;
+  color: var(--color-mist);
+  overflow-x: clip;
+}
+
+/* Grano cinematográfico sutil */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 34;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
+}
+
+::selection {
+  background: rgba(57, 255, 20, 0.35);
+  color: #000000;
+}
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 999px;
+  border: 2px solid #000;
+}
+::-webkit-scrollbar-thumb:hover { background: #39ff14; }
+
+/* CTAs: texto negro sobre neón (legibilidad) */
+.btn-neon,
+a.bg-primary,
+button.bg-primary {
+  color: #000000 !important;
+}
+
+/* Glow utility for hero network / logo */
+.glow-primary {
+  box-shadow: 0 0 40px rgba(57, 255, 20, 0.12), inset 0 0 40px rgba(57, 255, 20, 0.04);
+}
+
+/* Shine button */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+.btn-shine:hover::after {
+  transform: translateX(120%);
+}
