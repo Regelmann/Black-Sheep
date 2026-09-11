@@ -120,7 +120,8 @@ SELECT (SELECT count(*) FROM core.catalog_token WHERE token_hash = :'token') AS 
        (SELECT count(*) FROM core.catalog_token WHERE token_hash = api.hash_token(:'token')) AS guardado_hasheado;
 SET ROLE anon;
 \echo '   anon consulta el catálogo con el token (sólo SKU vendibles):'
-SELECT sku, nombre, precio_unidad, hay_stock FROM api.get_catalogo(:'token');
+SELECT sku, nombre, precio, precio_lista, origen_precio, hay_stock, habitual
+  FROM api.get_catalogo(:'token');
 \echo '   anon NO tiene acceso a la cartera (debe decir f):'
 SELECT has_table_privilege('anon','api.cartera','SELECT') AS anon_ve_cartera;
 RESET ROLE;

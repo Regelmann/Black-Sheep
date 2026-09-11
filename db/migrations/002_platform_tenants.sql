@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS platform.tenants (
   slug          TEXT NOT NULL UNIQUE
                 CHECK (slug ~ '^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])$'),
   nombre        TEXT NOT NULL,
-  color         TEXT NOT NULL DEFAULT '#39ff14'
+  color         TEXT NOT NULL DEFAULT '#a3e635'
                 CHECK (color ~ '^#[0-9a-fA-F]{6}$'),   -- hex literal, nunca var() (regla 4)
   logo_url      TEXT,
   zona_horaria  TEXT NOT NULL DEFAULT 'America/Santiago',

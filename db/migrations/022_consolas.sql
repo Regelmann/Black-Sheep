@@ -293,7 +293,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION api.admin_alta_empresa(
   p_slug TEXT, p_nombre TEXT, p_plan TEXT DEFAULT 'base',
-  p_dias_trial INTEGER DEFAULT 30, p_color TEXT DEFAULT '#39ff14'
+  p_dias_trial INTEGER DEFAULT 30, p_color TEXT DEFAULT '#a3e635'
 ) RETURNS UUID
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, platform AS $$
