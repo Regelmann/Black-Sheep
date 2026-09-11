@@ -7,8 +7,6 @@
     "apps/gerencia",
     "apps/control-center",
     "apps/field",
-    "apps/catalogo",
-    "apps/catalogo",
     "packages/*"
   ],
   "scripts": {
