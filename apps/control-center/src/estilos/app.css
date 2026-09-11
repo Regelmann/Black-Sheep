@@ -456,3 +456,64 @@ td input, td select { width: 100%; }
 /* Separación entre paneles consecutivos */
 .panel + .panel { margin-top: var(--e4); }
 .lienzo > section + section { margin-top: var(--e4); }
+
+/* La contraseña recién generada. Se muestra una vez y tiene que poder
+   leerse y dictarse sin equivocarse: monoespaciada y con aire. */
+.credencial {
+  margin-top: var(--e4); padding: var(--e4);
+  border: 1px solid var(--lima); border-radius: var(--r);
+  background: var(--lima-papel);
+}
+.credencial code {
+  display: block; margin: var(--e3) 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 1.375rem; letter-spacing: .08em;
+  color: var(--lima-tinta); user-select: all;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DENSIDAD · las pantallas de administración se miran de corrido
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* El lienzo de administración es más angosto: una línea de texto de
+   1100px obliga a mover la cabeza para leerla. */
+.lienzo { max-width: 980px; }
+.lienzo.ancho { max-width: 1180px; }
+
+/* Formularios de alta en dos columnas: cabe sin bajar la pantalla */
+.formulario-alta { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e3) var(--e4); }
+.formulario-alta .ancho-total { grid-column: 1 / -1; }
+@media (max-width: 700px) { .formulario-alta { grid-template-columns: 1fr; } }
+
+/* Capacidades como recuadros que se prenden, no como lista larga */
+.capacidades { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--e2); }
+.capacidades label {
+  display: block; cursor: pointer; position: relative;
+  padding: var(--e3); padding-left: 38px;
+  border: 1px solid var(--linea); border-radius: var(--r-chico);
+  background: var(--panel-alto); font-size: var(--t-menor);
+  border-bottom: 1px solid var(--linea);
+}
+.capacidades label:hover { border-color: var(--linea-alta); }
+.capacidades label.activa { border-color: var(--lima); background: var(--lima-papel); }
+.capacidades input { position: absolute; left: var(--e3); top: 14px; accent-color: var(--lima); }
+.capacidades b { display: block; color: var(--tinta); }
+.capacidades .d { display: block; color: var(--tinta-media); margin-top: 2px; font-size: var(--t-micro); }
+
+/* Colores de marca: una paleta acotada, no el selector entero */
+.paleta { display: flex; gap: var(--e2); flex-wrap: wrap; }
+.paleta button {
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent; padding: 0;
+}
+.paleta button[aria-pressed='true'] { border-color: var(--tinta); box-shadow: 0 0 0 2px var(--fondo), 0 0 0 4px var(--lima); }
+
+/* Cobranza: grupos compactos, no un panel gigante por cada uno */
+.grupo-cobranza { padding: var(--e4); }
+.grupo-cobranza h2 { font-size: var(--t-base); }
+.grupo-cobranza .vacio { color: var(--tinta-suave); font-size: var(--t-menor); margin-top: var(--e2); }
+
+/* Puesta en marcha en línea, no como lista de párrafos */
+.pasos-alta { display: grid; gap: 0; }
+.pasos-alta .paso-alta { padding: var(--e3) 0; }
+.pasos-alta .paso-alta .t b { font-weight: 600; }

@@ -47,7 +47,7 @@ export default function Cobranza() {
 
 function Grupo({ titulo, glosa, empresas, tono, vacio }) {
   return (
-    <section className="panel">
+    <section className="panel grupo-cobranza">
       <h2>{titulo}</h2>
       <p className="silencio">{glosa}</p>
       {empresas.length ? (
@@ -70,7 +70,7 @@ function Grupo({ titulo, glosa, empresas, tono, vacio }) {
             ))}
           </tbody>
         </table>
-      ) : <p className="silencio" style={{ marginTop: 'var(--e3)' }}>{vacio}</p>}
+      ) : <p className="vacio">{vacio}</p>}
     </section>
   )
 }
