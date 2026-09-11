@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useSesion } from './hooks/useSesion.jsx'
+import { VERSION, selloCorto } from '../../../packages/datos/version.js'
 import { useCapacidades } from './hooks/useCapacidades.js'
 import { useDatos } from './hooks/useDatos.js'
 import { supabase } from '../../../packages/datos/supabase.js'
@@ -69,6 +70,11 @@ export default function App() {
         <div className="rail-pie">
           <p>{email}</p>
           <button onClick={salir}>Cerrar sesión</button>
+          {/* Qué versión estás mirando. Sin esto, "no se ve el cambio"
+              y "el cambio no se subió" son indistinguibles. */}
+          <p className="sello" title={`${VERSION.rama} · ${VERSION.fecha}`}>
+            {selloCorto()}
+          </p>
         </div>
       </aside>
 

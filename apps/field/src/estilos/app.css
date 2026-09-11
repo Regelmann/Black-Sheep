@@ -1,8 +1,36 @@
 /* ═══════════════════════════════════════════════════════════════════
-   TERRENO · una hoja. Sin !important (salvo reduced-motion en tokens).
-   Se usa de pie, con una mano, con sol de frente y guantes. Todo lo
-   tocable mide 48px o más y el contraste es alto a propósito.
+   TERRENO · capa Extendida
+   Hereda packages/marca (tokens + base).
+
+   SUPERFICIE CLARA a propósito: el vendedor la usa de pie, en la calle,
+   con sol de frente. El negro de la marca no se lee ahí. Por eso esta
+   hoja redefine la superficie sobre los mismos tokens de marca, en vez
+   de inventar colores nuevos.
    ═══════════════════════════════════════════════════════════════════ */
+:root {
+  /* Superficie clara */
+  --fondo:         #f4f4f2;
+  --papel:         #ffffff;
+  --papel-alto:    #ffffff;
+  --papel-hundido: #f4f4f2;
+  --tinta:         #1c1917;
+  --tinta-media:   #6b6560;
+  --tinta-suave:   #9a938c;
+  --linea:         #e4e1dd;
+  --linea-alta:    #cfcac4;
+  --linea-fuerte:  #cfcac4;
+
+  /* Semántica sobre claro. El lima no se lee sobre blanco (1.51:1):
+     acá el acento es el verde legible de la marca. */
+  --lana:          var(--negro);
+  --ambar:         #b45309;
+  --ambar-tenue:   #fff7ed;
+  --rojo:          #b91c1c;
+  --rojo-tenue:    #fdf2f2;
+  --verde:         #15803d;
+  --verde-tenue:   #f0fdf4;
+}
+
 body {
   margin: 0;
   font-family: Archivo, ui-sans-serif, system-ui, sans-serif;

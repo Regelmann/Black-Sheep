@@ -164,8 +164,10 @@ export default function Empresa() {
                        onChange={(ev) => accion('admin_set_capacidad', {
                          p_tenant: id, p_capacidad: c.codigo, p_activa: ev.target.checked,
                        }, `${c.nombre}: ${ev.target.checked ? 'activada' : 'desactivada'}`)} />
-                <b>{c.nombre}</b>
-                <span className="d">{c.descripcion}</span>
+                <span>
+                  <b>{c.nombre}</b>
+                  <span className="d">{c.descripcion}</span>
+                </span>
               </label>
             ))}
           </div>
