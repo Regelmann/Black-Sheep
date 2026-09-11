@@ -12,7 +12,7 @@
  * que conserva el `code` de PostgREST y el texto ya traducido.
  */
 import { useQuery } from '@tanstack/react-query'
-import { safeSelect, DATA_STATE } from '../lib/query.js'
+import { safeSelect, DATA_STATE } from '../../../../packages/datos/query.js'
 
 export class ErrorDeDatos extends Error {
   constructor(info, label) {

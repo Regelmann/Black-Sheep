@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase.js'
-import { llamar } from '../lib/rpc.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
-import { clp, num } from '../lib/formato.js'
+import { clp, num } from '../../../../packages/datos/formato.js'
 
 /**
  * Corregir sin volver a subir archivos. Cada campo que se edita queda

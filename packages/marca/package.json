@@ -1,0 +1,6 @@
+{
+  "name": "@blacksheep/marca",
+  "version": "2.0.0",
+  "private": true,
+  "files": ["tokens.css", "base.css"]
+}

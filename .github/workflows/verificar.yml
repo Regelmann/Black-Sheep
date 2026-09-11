@@ -92,8 +92,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      # Monorepo con workspaces: la instalación va en la RAÍZ, o los
+      # paquetes compartidos de packages/ no resuelven sus dependencias.
       - name: Instalar
-        working-directory: apps/${{ matrix.app }}
         run: npm install --no-audit --no-fund
       - name: Guard y build
         working-directory: apps/${{ matrix.app }}

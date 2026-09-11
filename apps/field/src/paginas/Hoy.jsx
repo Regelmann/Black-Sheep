@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
 import { ClienteFila } from '../componentes/Piezas.jsx'
-import { clp, pct } from '../lib/formato.js'
+import { clp, pct } from '../../../../packages/datos/formato.js'
 
 /**
  * Lo primero que ve el vendedor antes de salir. Una sola cifra grande:

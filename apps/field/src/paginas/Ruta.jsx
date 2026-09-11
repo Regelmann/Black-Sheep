@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
-import { clp } from '../lib/formato.js'
+import { clp } from '../../../../packages/datos/formato.js'
 
 /**
  * Las paradas de hoy. Sólo aparecen clientes con coordenadas; los que

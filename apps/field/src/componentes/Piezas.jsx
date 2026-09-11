@@ -1,4 +1,4 @@
-import { clp } from '../lib/formato.js'
+import { clp } from '../../../../packages/datos/formato.js'
 
 /** Una fila de cliente. El color del borde ES el estado: se lee de reojo. */
 export function ClienteFila({ c, pie }) {

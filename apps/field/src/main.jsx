@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ProveedorSesion } from './hooks/useSesion.jsx'
 import { initOutbox } from './lib/outboxDb.js'
 import App from './App.jsx'
-import './estilos/tokens.css'
+import '../../../packages/marca/tokens.css'
+import '../../../packages/marca/base.css'
 import './estilos/app.css'
 
 const qc = new QueryClient({

@@ -1,8 +1,8 @@
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
 import { loadActionQueue } from '../lib/offline.js'
-import { clp, fechaHora } from '../lib/formato.js'
+import { clp, fechaHora } from '../../../../packages/datos/formato.js'
 
 /**
  * Lo que el vendedor registró. Primero lo que todavía está en el

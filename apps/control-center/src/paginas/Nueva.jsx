@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { llamar } from '../lib/rpc.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
 
 /**
  * Dar de alta una empresa. Queda en prueba y con las capacidades por
@@ -47,59 +47,65 @@ export default function Nueva() {
         <p>Queda en prueba. Después hay que configurarle los tipos de documento antes de su primera carga.</p>
       </header>
 
-      <section className="panel" style={{ maxWidth: 560 }}>
-        <div className="campo">
-          <label htmlFor="n">Nombre de la empresa</label>
-          <input id="n" value={f.nombre} onChange={(e) => nombre(e.target.value)}
-                 placeholder="Distribuidora KeyFoods" autoFocus />
-        </div>
-        <div className="campo">
-          <label htmlFor="s">Su dirección</label>
-          <input id="s" value={f.slug}
-                 onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase() })} />
-          <p className="silencio">
-            {f.slug ? `${f.slug}.app.black-sheep.cl` : 'se arma con el nombre'}
-            {f.slug && !slugValido && ' · sólo minúsculas, números y guiones'}
-          </p>
-        </div>
-        <div className="campo">
-          <label htmlFor="p">Plan</label>
-          <select id="p" value={plan} onChange={(e) => setF({ ...f, plan: e.target.value })}>
-            {planes.map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
-          </select>
-          <p className="silencio">
-            {planes.find((x) => x.codigo === plan)?.descripcion}
-          </p>
-        </div>
-        <div className="fila-campos">
+      <section className="panel">
+        <div className="formulario-alta">
+          <div className="campo ancho-total">
+            <label htmlFor="n">Nombre de la empresa</label>
+            <input id="n" value={f.nombre} onChange={(e) => nombre(e.target.value)}
+                   placeholder="Distribuidora KeyFoods" autoFocus />
+          </div>
+
+          <div className="campo ancho-total">
+            <label htmlFor="s">Su dirección</label>
+            <input id="s" value={f.slug}
+                   onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase() })} />
+            <p className="silencio">
+              {f.slug ? `${f.slug}.app.black-sheep.cl` : 'se arma con el nombre'}
+              {f.slug && !slugValido && ' · sólo minúsculas, números y guiones'}
+            </p>
+          </div>
+
+          <div className="campo">
+            <label htmlFor="p">Plan</label>
+            <select id="p" value={plan} onChange={(e) => setF({ ...f, plan: e.target.value })}>
+              {planes.map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
+            </select>
+            <p className="silencio">{planes.find((x) => x.codigo === plan)?.descripcion}</p>
+          </div>
+
           <div className="campo">
             <label htmlFor="d">Días de prueba</label>
             <input id="d" type="number" value={f.dias}
                    onChange={(e) => setF({ ...f, dias: e.target.value })} />
           </div>
-          <div className="campo">
-            <label htmlFor="c">Color de su marca</label>
-            <input id="c" type="color" value={f.color}
-                   onChange={(e) => setF({ ...f, color: e.target.value })} />
+
+          <div className="campo ancho-total">
+            <label>Color de su marca</label>
+            {/* Una paleta acotada y no el selector entero: el color del
+                tenant tiene que contrastar sobre el negro de la app, y
+                dejar elegir cualquiera garantiza que alguien elija uno
+                ilegible. */}
+            <div className="paleta">
+              {['#a3e635','#c2410c','#0ea5e9','#e11d48','#8b5cf6','#f59e0b','#14b8a6','#64748b'].map((c) => (
+                <button key={c} type="button" style={{ background: c }}
+                        aria-pressed={f.color === c} aria-label={c}
+                        onClick={() => setF({ ...f, color: c })} />
+              ))}
+            </div>
           </div>
         </div>
 
         {error && <p className="estado error" style={{ marginTop: 'var(--e3)' }}>{error}</p>}
 
-        <p style={{ marginTop: 'var(--e5)' }}>
-          <button className="boton primario" disabled={!f.nombre || !slugValido || !plan || trabajando}
+        <p style={{ marginTop: 'var(--e4)' }}>
+          <button className="boton primario"
+                  disabled={!f.nombre || !slugValido || !plan || trabajando}
                   onClick={crear}>
             {trabajando ? 'Creando…' : 'Crear empresa'}
           </button>
-        </p>
-      </section>
-
-      <section className="panel" style={{ maxWidth: 560 }}>
-        <h2>Lo que pasa después</h2>
-        <p className="silencio">
-          Se crea con las capacidades por defecto y queda en prueba. En su ficha
-          configuras los tipos de documento, das acceso a sus usuarios y sigues
-          la puesta en marcha paso a paso.
+          <span className="silencio" style={{ marginLeft: 'var(--e3)' }}>
+            Después: tipos de documento, usuarios y su primera carga.
+          </span>
         </p>
       </section>
     </>

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { llamar } from '../lib/rpc.js'
-import { clp, fecha, fechaHora, num } from '../lib/formato.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
+import { llamarFuncion } from '../lib/funciones.js'
+import { clp, fecha, fechaHora, num } from '../../../../packages/datos/formato.js'
 
 const ROLES = ['tenant_admin', 'gerencia', 'ejecutivo', 'solo_lectura']
 
@@ -56,6 +57,7 @@ export default function Empresa() {
       <section className="panel">
         <h2>Puesta en marcha</h2>
         <p className="silencio">Los cuatro pasos para que esta empresa opere.</p>
+        <div className="pasos-alta">
         <Paso n="1" hecho={listo.documentos}
               titulo="Tipos de documento configurados"
               detalle={listo.documentos
@@ -74,6 +76,7 @@ export default function Empresa() {
               detalle={listo.ventas
                 ? `${num(e.datos.ventas)} líneas · ${clp(e.datos.venta_mtd)} este mes`
                 : 'Sin histórico no hay ciclos ni promedios: todos los clientes salen como nuevos.'} />
+        </div>
       </section>
 
       <div className="rejilla">
@@ -154,66 +157,22 @@ export default function Empresa() {
             Lo que trae el plan viene marcado como tal. Si prendes o apagas algo,
             queda como excepción de esta empresa y sobrevive a un cambio de plan.
           </p>
-          <div className="lista-cap" style={{ marginTop: 'var(--e4)' }}>
+          <div className="capacidades">
             {e.capacidades?.map((c) => (
-              <label key={c.codigo}>
+              <label key={c.codigo} className={c.activa ? 'activa' : undefined}>
                 <input type="checkbox" checked={c.activa}
                        onChange={(ev) => accion('admin_set_capacidad', {
                          p_tenant: id, p_capacidad: c.codigo, p_activa: ev.target.checked,
                        }, `${c.nombre}: ${ev.target.checked ? 'activada' : 'desactivada'}`)} />
-                <span>
-                  <b>{c.nombre}</b>
-                  {c.activa && <span className="insignia ok" style={{ marginLeft: 6 }}>activa</span>}
-                  <span className="d"> · {c.descripcion}</span>
-                </span>
+                <b>{c.nombre}</b>
+                <span className="d">{c.descripcion}</span>
               </label>
             ))}
           </div>
         </section>
       </div>
 
-      <section className="panel">
-        <h2>Usuarios</h2>
-        <p className="silencio">
-          Primero invítalos desde Supabase (Authentication → Invite user). Cuando acepten,
-          asígnalos acá.
-        </p>
-        {e.usuarios?.length ? (
-        <table style={{ marginTop: 'var(--e4)' }}>
-          <thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th></th></tr></thead>
-          <tbody>
-            {e.usuarios.map((u) => (
-              <tr key={u.usuario_id}>
-                <td>{u.email}</td>
-                <td className="silencio">{u.nombre || '—'}</td>
-                <td>
-                  <select value={u.rol}
-                          onChange={(ev) => accion('admin_asignar_usuario', {
-                            p_tenant: id, p_email: u.email, p_rol: ev.target.value,
-                          })}>
-                    {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </td>
-                <td>
-                  {u.activo
-                    ? <button className="boton chico peligro"
-                              onClick={() => accion('admin_quitar_usuario',
-                                { p_tenant: id, p_usuario: u.usuario_id })}>Quitar acceso</button>
-                    : <span className="insignia mal">sin acceso</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        ) : (
-          <p className="tabla-vacia">
-            Nadie tiene acceso todavía. Sus vendedores no pueden entrar hasta que
-            los invites en Supabase y los asignes acá.
-          </p>
-        )}
-        <AgregarUsuario onAgregar={(email, rol) =>
-          accion('admin_asignar_usuario', { p_tenant: id, p_email: email, p_rol: rol })} />
-      </section>
+      <Usuarios empresa={e} tenantId={id} onCambio={() => qc.invalidateQueries()} />
 
       <Documentos empresa={e} onGuardar={(docs) =>
         accion('admin_configurar_documentos', { p_tenant: id, p_documentos: docs },
@@ -267,27 +226,145 @@ function Paso({ n, hecho, titulo, detalle }) {
   )
 }
 
-function AgregarUsuario({ onAgregar }) {
-  const [email, setEmail] = useState('')
-  const [rol, setRol] = useState('gerencia')
+/**
+ * Alta y administración de usuarios.
+ *
+ * La contraseña la genera el servidor y se muestra UNA vez. No se
+ * guarda en ningún lado: si se pierde, se genera otra. Guardarla "por
+ * si acaso" es exactamente cómo se filtran las credenciales.
+ */
+function Usuarios({ empresa, tenantId, onCambio }) {
+  const [nuevo, setNuevo] = useState({ email: '', nombre: '', rol: 'ejecutivo' })
+  const [clave, setClave] = useState(null)
+  const [error, setError] = useState(null)
+  const [ocupado, setOcupado] = useState(false)
+
+  async function accion(cuerpo, alTerminar) {
+    setError(null); setOcupado(true)
+    try {
+      const r = await llamarFuncion('admin-usuarios', { tenant_id: tenantId, ...cuerpo })
+      alTerminar?.(r)
+      onCambio()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+
   return (
-    <div className="fila-campos" style={{ marginTop: 'var(--e4)' }}>
-      <div className="campo">
-        <label htmlFor="ue">Correo</label>
-        <input id="ue" value={email} onChange={(e) => setEmail(e.target.value)}
-               placeholder="persona@empresa.cl" />
+    <section className="panel">
+      <div className="panel-titulo">
+        <h2>Usuarios</h2>
+        <span className="silencio">{empresa.usuarios?.length || 0} con acceso</span>
       </div>
-      <div className="campo">
-        <label htmlFor="ur">Rol</label>
-        <select id="ur" value={rol} onChange={(e) => setRol(e.target.value)}>
-          {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
+
+      {clave && (
+        <div className="clave-nueva">
+          <p><b>{clave.email}</b> ya puede entrar.</p>
+          <p className="clave">{clave.valor}</p>
+          <p className="silencio">
+            Esta contraseña se muestra una sola vez y no queda guardada.
+            Cópiala y mándasela ahora; si se pierde, se genera otra.
+          </p>
+          <button className="boton chico" onClick={() => {
+            navigator.clipboard?.writeText(clave.valor); }}>Copiar</button>{' '}
+          <button className="boton chico" onClick={() => setClave(null)}>Listo</button>
+        </div>
+      )}
+
+      {error && <p className="estado error" style={{ marginBottom: 'var(--e3)' }}>{error}</p>}
+
+      {empresa.usuarios?.length ? (
+        <table>
+          <thead>
+            <tr><th>Correo</th><th>Rol</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            {empresa.usuarios.map((u) => (
+              <tr key={u.usuario_id}>
+                <td>
+                  {u.email}
+                  {u.nombre && <div className="silencio">{u.nombre}</div>}
+                </td>
+                <td>
+                  <select value={u.rol} disabled={ocupado}
+                          onChange={(ev) => accion({
+                            accion: 'crear', email: u.email, rol: ev.target.value,
+                          })}>
+                    {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </td>
+                <td>
+                  <span className={`insignia ${u.activo ? 'ok' : 'mal'}`}>
+                    {u.activo ? 'activo' : 'bloqueado'}
+                  </span>
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button className="boton chico" disabled={ocupado}
+                          onClick={() => {
+                            if (!confirm(`Generar una contraseña nueva para ${u.email}? La anterior deja de servir.`)) return
+                            accion({ accion: 'resetear', usuario_id: u.usuario_id },
+                                   (r) => setClave({ email: u.email, valor: r.clave }))
+                          }}>
+                    Nueva contraseña
+                  </button>{' '}
+                  {u.activo ? (
+                    <button className="boton chico peligro" disabled={ocupado}
+                            onClick={() => accion({ accion: 'bloquear', usuario_id: u.usuario_id })}>
+                      Bloquear
+                    </button>
+                  ) : (
+                    <button className="boton chico" disabled={ocupado}
+                            onClick={() => accion({ accion: 'desbloquear', usuario_id: u.usuario_id })}>
+                      Desbloquear
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="tabla-vacia">
+          Nadie tiene acceso todavía. Sus vendedores no pueden entrar hasta que
+          crees su usuario acá.
+        </p>
+      )}
+
+      <div className="fila-campos" style={{ marginTop: 'var(--e4)' }}>
+        <div className="campo">
+          <label htmlFor="ue">Correo</label>
+          <input id="ue" value={nuevo.email} placeholder="persona@empresa.cl"
+                 onChange={(ev) => setNuevo({ ...nuevo, email: ev.target.value })} />
+        </div>
+        <div className="campo">
+          <label htmlFor="un">Nombre</label>
+          <input id="un" value={nuevo.nombre}
+                 onChange={(ev) => setNuevo({ ...nuevo, nombre: ev.target.value })} />
+        </div>
+        <div className="campo">
+          <label htmlFor="ur">Rol</label>
+          <select id="ur" value={nuevo.rol}
+                  onChange={(ev) => setNuevo({ ...nuevo, rol: ev.target.value })}>
+            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        <button className="boton primario" disabled={!nuevo.email.includes('@') || ocupado}
+                onClick={() => accion(
+                  { accion: 'crear', email: nuevo.email, nombre: nuevo.nombre, rol: nuevo.rol },
+                  (r) => {
+                    if (r.clave) setClave({ email: nuevo.email, valor: r.clave })
+                    setNuevo({ email: '', nombre: '', rol: 'ejecutivo' })
+                  })}>
+          {ocupado ? 'Creando…' : 'Crear usuario'}
+        </button>
       </div>
-      <button className="boton primario" disabled={!email.includes('@')}
-              onClick={() => { onAgregar(email, rol); setEmail('') }}>
-        Dar acceso
-      </button>
-    </div>
+      <p className="silencio" style={{ marginTop: 'var(--e2)' }}>
+        Se crea con una contraseña generada que se muestra una vez. El usuario
+        puede cambiarla después desde su propia app.
+      </p>
+    </section>
   )
 }
 
