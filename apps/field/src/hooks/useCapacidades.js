@@ -1,5 +1,5 @@
 import { useDatos } from './useDatos.js'
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
 
 /**
  * Qué tiene contratado esta empresa. El dashboard DIBUJA según esto: una

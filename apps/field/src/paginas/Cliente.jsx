@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { registrar } from '../lib/sync.js'
 import { Bloque } from '../componentes/Estado.jsx'
-import { clp, fecha } from '../lib/formato.js'
+import { clp, fecha } from '../../../../packages/datos/formato.js'
 
 /**
  * La pantalla donde el vendedor está parado frente al local.

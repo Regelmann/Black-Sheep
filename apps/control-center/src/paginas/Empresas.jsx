@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { llamar } from '../lib/rpc.js'
-import { clp, fechaHora, num } from '../lib/formato.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
+import { clp, fechaHora, num } from '../../../../packages/datos/formato.js'
 
 export default function Empresas() {
   const resumen = useQuery({ queryKey: ['admin_resumen'], queryFn: () => llamar('admin_resumen') })

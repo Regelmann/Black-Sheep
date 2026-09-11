@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { llamar } from '../lib/rpc.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
 import { llamarFuncion } from '../lib/funciones.js'
-import { clp, fecha, fechaHora, num } from '../lib/formato.js'
+import { clp, fecha, fechaHora, num } from '../../../../packages/datos/formato.js'
 
 const ROLES = ['tenant_admin', 'gerencia', 'ejecutivo', 'solo_lectura']
 

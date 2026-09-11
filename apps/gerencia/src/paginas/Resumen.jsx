@@ -1,9 +1,9 @@
-import { supabase } from '../lib/supabase.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { useCapacidades } from '../hooks/useCapacidades.js'
 import { Bloque } from '../componentes/Estado.jsx'
 import { Dato, Panel, Insignia, Moneda } from '../componentes/Piezas.jsx'
-import { corto, num, pct, fechaHora } from '../lib/formato.js'
+import { corto, num, pct, fechaHora } from '../../../../packages/datos/formato.js'
 import { Link } from 'react-router-dom'
 
 export default function Resumen() {

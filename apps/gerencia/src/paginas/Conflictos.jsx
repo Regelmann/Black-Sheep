@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase.js'
-import { llamar } from '../lib/rpc.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
-import { fechaHora } from '../lib/formato.js'
+import { fechaHora } from '../../../../packages/datos/formato.js'
 
 const CAMPOS = {
   zona_id: 'Zona', ejecutivo_id: 'Ejecutivo', comuna: 'Comuna',

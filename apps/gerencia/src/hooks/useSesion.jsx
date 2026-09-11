@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, contextoDeSesion } from '../lib/supabase.js'
+import { supabase, contextoDeSesion } from '../../../../packages/datos/supabase.js'
 
 const Ctx = createContext(null)
 

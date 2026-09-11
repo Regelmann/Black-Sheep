@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { llamar } from '../lib/rpc.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
 
 /**
  * Dar de alta una empresa. Queda en prueba y con las capacidades por

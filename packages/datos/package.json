@@ -1,0 +1,10 @@
+{
+  "name": "@blacksheep/datos",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "main": "supabase.js",
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

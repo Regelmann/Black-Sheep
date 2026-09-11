@@ -1,0 +1,16 @@
+{
+  "name": "black-sheep",
+  "private": true,
+  "version": "2.0.0",
+  "_comentario_workspaces": "apps/web queda FUERA a propósito: es Next.js, tiene su propio lockfile y su propio despliegue. Incluirla mezclaría dos árboles de dependencias sin ganar nada.",
+  "workspaces": [
+    "apps/gerencia",
+    "apps/control-center",
+    "apps/field",
+    "packages/*"
+  ],
+  "scripts": {
+    "verify": "npm run verify --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  }
+}

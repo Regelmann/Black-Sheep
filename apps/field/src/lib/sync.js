@@ -15,7 +15,7 @@
  * durable en IndexedDB) se hereda de la 15.3 sin tocar: está probada en
  * producción y es el código más crítico del producto.
  */
-import { llamar } from './rpc.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
 import { enqueueAction, flushActionQueue, loadActionQueue } from './offline.js'
 
 /**

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { llamar } from '../lib/rpc.js'
-import { clp, num } from '../lib/formato.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
+import { clp, num } from '../../../../packages/datos/formato.js'
 
 /**
  * A quién hay que llamar por plata. Ordenado por urgencia real: primero

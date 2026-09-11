@@ -6,6 +6,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const raiz = new URL('../src', import.meta.url).pathname
+// La capa Core también se revisa: un select('*') o un secreto en
+// packages/ afectaría a las cuatro superficies a la vez.
+const core = new URL('../../../packages', import.meta.url).pathname
 const fallas = []
 
 function archivos(dir) {
@@ -15,9 +18,9 @@ function archivos(dir) {
   })
 }
 
-for (const f of archivos(raiz)) {
+for (const f of [...archivos(raiz), ...archivos(core)]) {
   const bruto = readFileSync(f, 'utf8')
-  const rel = f.replace(raiz, 'src')
+  const rel = f.replace(raiz, 'src').replace(core, 'packages')
   // Los comentarios no son código: mencionar una regla no es violarla.
   const txt = bruto.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
@@ -54,4 +57,4 @@ if (fallas.length) {
   console.error('\nGuard: no se puede construir\n' + fallas.map((f) => '  · ' + f).join('\n') + '\n')
   process.exit(1)
 }
-console.log(`Guard: ${archivos(raiz).length} archivos revisados, sin hallazgos.`)
+console.log(`Guard: ${archivos(raiz).length + archivos(core).length} archivos revisados, sin hallazgos.`)

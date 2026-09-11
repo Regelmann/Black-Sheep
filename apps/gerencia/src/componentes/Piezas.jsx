@@ -1,4 +1,4 @@
-import { clp, corto, pct } from '../lib/formato.js'
+import { clp, corto, pct } from '../../../../packages/datos/formato.js'
 
 export function Dato({ etiqueta, valor, pie, tono }) {
   const nd = valor === null || valor === undefined

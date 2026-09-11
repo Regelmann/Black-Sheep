@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase.js'
-import { llamar } from '../lib/rpc.js'
+import { supabase } from '../../../../packages/datos/supabase.js'
+import { llamar } from '../../../../packages/datos/rpc.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
-import { clp, mesActual, num, pct } from '../lib/formato.js'
+import { clp, mesActual, num, pct } from '../../../../packages/datos/formato.js'
 
 /**
  * Ejecutivos, metas y focos. Los focos SÓLO existen si la empresa mide

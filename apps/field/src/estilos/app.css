@@ -3,8 +3,6 @@
    Se usa de pie, con una mano, con sol de frente y guantes. Todo lo
    tocable mide 48px o más y el contraste es alto a propósito.
    ═══════════════════════════════════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; }
-html, body, #root { height: 100%; }
 body {
   margin: 0;
   font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
