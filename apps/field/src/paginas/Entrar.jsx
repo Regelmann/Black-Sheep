@@ -18,7 +18,9 @@ export default function Entrar() {
   return (
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 'var(--e4)' }}>
       <div className="panel" style={{ width: 'min(400px, 100%)' }}>
-        <h1 style={{ marginBottom: 'var(--e1)' }}>Black Sheep</h1>
+        <img src="/logo.png" alt="Black Sheep" width="52" height="52"
+               style={{ borderRadius: 11, marginBottom: 14 }} />
+          <h1 style={{ marginBottom: 'var(--e1)' }}>Black Sheep</h1>
         <p className="silencio" style={{ marginBottom: 'var(--e5)' }}>Panel de gerencia</p>
 
         <div className="campo">

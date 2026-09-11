@@ -70,6 +70,19 @@
 
   --tipo: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
+  /* ─── TIPOGRAFÍA ─────────────────────────────────────────────────
+     UNA familia para las cuatro superficies. La jerarquía la hacen el
+     peso y el tamaño, no cinco tipografías distintas.
+
+     Esta variable FALTABA y base.css ya la usaba: el navegador caía a
+     su tipografía por defecto y todo salía en serif. Un token que se
+     usa y no existe no da error, sólo se ve mal — por eso el
+     diagnóstico de abajo.
+     ──────────────────────────────────────────────────────────────── */
+  --fuente: Archivo, ui-sans-serif, system-ui, -apple-system,
+            "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --fuente-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
   --t-micro: 12px;
   --t-menor: 14px;
   --t-base:  16px;

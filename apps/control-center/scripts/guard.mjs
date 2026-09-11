@@ -53,6 +53,34 @@ for (const f of [...archivos(raiz), ...archivos(core)]) {
     fallas.push(`${rel}: manda p_tenant a una función que no es de superadmin`)
 }
 
+
+// ─────────────────────────────────────────────────────────────────
+// R9 · Un token que se usa y no existe.
+// CSS no da error cuando var(--x) no está definida: simplemente no
+// aplica y el navegador cae a su valor por defecto. Así `--fuente`
+// faltó en tokens.css mientras base.css ya la usaba, y las cuatro
+// apps salieron en serif sin una sola advertencia en consola.
+// ─────────────────────────────────────────────────────────────────
+{
+  const cssTokens = readFileSync(
+    new URL('../../../packages/marca/tokens.css', import.meta.url).pathname, 'utf8')
+  const definidas = new Set([...cssTokens.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
+  const hojas = [...archivos(raiz), ...archivos(core)].filter((f) => f.endsWith('.css'))
+  for (const f of hojas) {
+    const txt = readFileSync(f, 'utf8')
+    // Las que se definen en la propia hoja también valen.
+    for (const m of txt.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)) definidas.add(m[1])
+  }
+  for (const f of hojas) {
+    const txt = readFileSync(f, 'utf8')
+    for (const m of txt.matchAll(/var\((--[a-z0-9-]+)/g)) {
+      if (!definidas.has(m[1])) {
+        fallas.push(`${f.replace(raiz, 'src').replace(core, 'packages')}: usa ${m[1]}, que no está definida en tokens.css`)
+      }
+    }
+  }
+}
+
 if (fallas.length) {
   console.error('\nGuard: no se puede construir\n' + fallas.map((f) => '  · ' + f).join('\n') + '\n')
   process.exit(1)
