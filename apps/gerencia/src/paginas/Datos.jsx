@@ -85,7 +85,7 @@ function Clientes() {
           <thead>
             <tr>
               <th>Cliente</th><th>Comuna</th><th>Ejecutivo</th>
-              <th>Zona</th><th className="num">Venta del mes</th>
+              <th>Zona</th><th className="num">Venta del mes</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -104,6 +104,7 @@ function Clientes() {
                   </select>
                 </td>
                 <td className="num">{clp(c.venta_mtd)}</td>
+                <td><EnviarCatalogo cliente={c} /></td>
               </tr>
             ))}
           </tbody>
@@ -113,6 +114,49 @@ function Clientes() {
         Cambiar la zona aquí deja ese campo bajo control manual: la próxima maestra no lo modifica.
       </p>
     </section>
+  )
+}
+
+/**
+ * Genera el enlace del catálogo de UN cliente y lo deja listo para
+ * mandar por WhatsApp, que es como se manda de verdad.
+ *
+ * El token se muestra una sola vez: en la base sólo queda su hash. Si
+ * se pierde, se genera otro y el anterior se puede revocar.
+ */
+function EnviarCatalogo({ cliente }) {
+  const [enlace, setEnlace] = useState(null)
+  const [error, setError] = useState(null)
+  const [trabajando, setTrabajando] = useState(false)
+
+  async function generar() {
+    setTrabajando(true); setError(null)
+    try {
+      const token = await llamar('emitir_token_catalogo', { p_cliente_key: cliente.cliente_key })
+      const base = import.meta.env.VITE_URL_CATALOGO || 'https://pedido.black-sheep.cl'
+      setEnlace(`${base}/?t=${token}`)
+    } catch (e) { setError(e.message) } finally { setTrabajando(false) }
+  }
+
+  if (error) return <span className="estado error">{error}</span>
+
+  if (enlace) {
+    const texto = encodeURIComponent(
+      `Hola ${cliente.nombre || ''}, acá está tu catálogo con tus precios: ${enlace}`)
+    return (
+      <span style={{ display: 'inline-flex', gap: 'var(--e2)', whiteSpace: 'nowrap' }}>
+        <a className="boton chico" target="_blank" rel="noopener noreferrer"
+           href={`https://wa.me/?text=${texto}`}>WhatsApp</a>
+        <button className="boton chico"
+                onClick={() => navigator.clipboard?.writeText(enlace)}>Copiar</button>
+      </span>
+    )
+  }
+
+  return (
+    <button className="boton chico" disabled={trabajando} onClick={generar}>
+      {trabajando ? '…' : 'Catálogo'}
+    </button>
   )
 }
 

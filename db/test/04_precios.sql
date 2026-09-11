@@ -66,3 +66,58 @@ SELECT total_estimado FROM core.pedido WHERE id = :'pedido'::uuid;
 SELECT api.quitar_precio_cliente('76000010-1','SKUP1') AS r;
 SELECT * FROM core.precio_para_cliente(:'T','76000010-1','SKUP1');
 RESET ROLE;
+
+\echo ''
+\echo '── P6 · EL CATÁLOGO DEL CLIENTE, en una llamada'
+INSERT INTO core.catalog_token (tenant_id, token_hash, cliente_key, expira_en)
+VALUES (:'T', encode(digest(convert_to('TOKENdePRUEBA1234567890','UTF8'),'sha256'),'hex'),
+        '76000010-1', now() + interval '30 days')
+ON CONFLICT DO NOTHING;
+SET ROLE anon;
+\echo '   empresa y cliente:'
+SELECT api.catalogo('TOKENdePRUEBA1234567890') -> 'empresa' AS empresa,
+       api.catalogo('TOKENdePRUEBA1234567890') -> 'cliente' AS cliente;
+\echo '   lo que compra siempre (del histórico, no de una lista):'
+SELECT jsonb_pretty(api.catalogo('TOKENdePRUEBA1234567890') -> 'habituales') AS habituales;
+\echo '   su precio, no el de lista (SKUP1: 800 histórico vs 1000 lista):'
+SELECT p->>'sku' AS sku, p->>'precio' AS precio, p->>'precio_lista' AS lista, p->>'origen_precio' AS origen
+  FROM jsonb_array_elements(api.catalogo('TOKENdePRUEBA1234567890') -> 'productos') p
+ WHERE p->>'sku' LIKE 'SKUP%' ORDER BY 1;
+\echo '   un token inventado no abre nada:'
+DO $$ BEGIN
+  PERFORM api.catalogo('estoNOesUnTokenValido123');
+  RAISE NOTICE 'FALLA DE SEGURIDAD: abrió con un token falso';
+EXCEPTION WHEN sqlstate '28000' THEN RAISE NOTICE 'OK · rechazado: token_invalido';
+END $$;
+RESET ROLE;
+
+\echo ''
+\echo '── P7 · OFERTAS · nunca pueden subirle el precio a nadie'
+SET request.jwt.claims = '{"sub":"bbbbbbbb-0000-0000-0000-000000000001","app_metadata":{"tenant_id":"11111111-1111-1111-1111-111111111111"}}';
+SET ROLE authenticated;
+\echo '   este cliente tiene SKUP1 a 800 por histórico. Oferta general a 900:'
+SELECT api.guardar_oferta('SKUP1', 900, 'stock', 'Liquidación de bodega') AS r;
+\echo '   su precio NO sube: sigue en 800'
+SELECT * FROM core.precio_para_cliente(:'T','76000010-1','SKUP1');
+\echo '   ahora una oferta a 700, que SÍ lo mejora:'
+SELECT api.guardar_oferta('SKUP1', 700, 'vencimiento', 'Vence este mes',
+                          p_fecha_venc => current_date + 20) AS r;
+SELECT * FROM core.precio_para_cliente(:'T','76000010-1','SKUP1');
+\echo '   y el pedido cobra lo mismo que muestra (10 × 700 = 7.000):'
+SELECT api.crear_pedido(gen_random_uuid(), '76000010-1',
+  '[{"sku":"SKUP1","cantidad":10}]'::jsonb) AS ped \gset
+SELECT total_estimado FROM core.pedido WHERE id = :'ped'::uuid;
+
+\echo ''
+\echo '── P8 · OFERTA POR RUBRO · no le llega a quien no corresponde'
+RESET ROLE;
+UPDATE core.cliente SET rubro = 'PIZZERIA' WHERE tenant_id = :'T' AND cliente_key = '76000010-1';
+UPDATE core.cliente SET rubro = 'FERRETERIA' WHERE tenant_id = :'T' AND cliente_key = '76000011-2';
+SET ROLE authenticated;
+SELECT api.guardar_oferta('SKUP2', 1200, 'precio', 'Promoción pizzerías',
+                          p_rubros => ARRAY['PIZZERIA']) AS r;
+\echo '   la pizzería la recibe (1200):'
+SELECT precio, origen FROM core.precio_para_cliente(:'T','76000010-1','SKUP2');
+\echo '   la ferretería NO (se queda en lista, 2500):'
+SELECT precio, origen FROM core.precio_para_cliente(:'T','76000011-2','SKUP2');
+RESET ROLE;

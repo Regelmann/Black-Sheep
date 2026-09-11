@@ -1,0 +1,162 @@
+/* ═══════════════════════════════════════════════════════════════════
+   CATÁLOGO · la única superficie que ve el cliente final.
+   Capa Extendida sobre packages/marca.
+   Fondo CLARO a propósito: lo abre alguien que no conoce Black Sheep y
+   tiene que parecer el catálogo de SU proveedor, no un sistema interno.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --papel:   #ffffff;
+  --fondo:   #f6f6f4;
+  --tarjeta: #ffffff;
+  --tinta:        #16130f;
+  --tinta-media:  #56504a;
+  --tinta-suave:  #8a837b;
+  --linea:        #e6e3de;
+  --linea-alta:   #cfcac2;
+  /* El acento lo pone la empresa (--acento) al cargar la cabecera. */
+  --acento:       #16130f;
+  --acento-tinta: #ffffff;
+  --ahorro:       #1a7a50;
+  --ahorro-papel: #ecf6f1;
+  --agotado:      #9a3f36;
+}
+body { background: var(--fondo); }
+
+/* ─── Encabezado ─────────────────────────────────────────────────── */
+.tope {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--papel); border-bottom: 1px solid var(--linea);
+  padding: calc(env(safe-area-inset-top) + 12px) 16px 0;
+}
+.tope-fila { display: flex; align-items: center; gap: 12px; max-width: 1100px; margin: 0 auto; }
+.tope img { height: 34px; width: auto; border-radius: 6px; }
+.tope h1 { font-size: 1.0625rem; font-weight: 700; letter-spacing: -.01em; }
+.tope .para { font-size: .8125rem; color: var(--tinta-media); }
+
+.buscador { max-width: 1100px; margin: 12px auto 0; position: relative; }
+.buscador input {
+  width: 100%; min-height: 46px; padding: 0 40px 0 14px;
+  border: 1px solid var(--linea-alta); border-radius: 10px;
+  background: var(--fondo); font-size: 16px;   /* 16px o iOS hace zoom */
+}
+.buscador input:focus { outline: 2px solid var(--acento); outline-offset: 1px; background: var(--papel); }
+.buscador .limpiar {
+  position: absolute; right: 6px; top: 6px; width: 34px; height: 34px;
+  border: 0; background: none; color: var(--tinta-suave); cursor: pointer; font-size: 18px;
+}
+
+.filtros { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0;
+           max-width: 1100px; margin: 0 auto; scrollbar-width: none; }
+.filtros::-webkit-scrollbar { display: none; }
+.filtros button {
+  flex: none; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--linea-alta); background: var(--papel);
+  font-size: .8125rem; white-space: nowrap; color: var(--tinta-media);
+}
+.filtros button[aria-pressed='true'] {
+  background: var(--acento); border-color: var(--acento); color: var(--acento-tinta); font-weight: 600;
+}
+
+/* ─── Productos ──────────────────────────────────────────────────── */
+.lista { max-width: 1100px; margin: 0 auto; padding: 16px 16px 120px; }
+.grupo-titulo {
+  font-size: .75rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--tinta-suave);
+  margin: 20px 0 10px;
+}
+.grupo-titulo:first-child { margin-top: 0; }
+.productos { display: grid; gap: 10px; }
+@media (min-width: 720px) { .productos { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1000px) { .productos { grid-template-columns: 1fr 1fr 1fr; } }
+
+.producto {
+  display: grid; grid-template-columns: 1fr auto; gap: 12px;
+  background: var(--tarjeta); border: 1px solid var(--linea);
+  border-radius: 12px; padding: 14px;
+}
+.producto.en-carro { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento); }
+.producto.agotado { opacity: .65; }
+.producto .nombre { font-weight: 600; font-size: .9375rem; line-height: 1.3; }
+.producto .meta { font-size: .75rem; color: var(--tinta-suave); margin-top: 3px; }
+.producto .precio { font-size: 1.25rem; font-weight: 700; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.producto .unidad { font-size: .75rem; font-weight: 400; color: var(--tinta-suave); }
+.producto .antes { font-size: .8125rem; color: var(--tinta-suave); text-decoration: line-through; margin-left: 6px; }
+
+.senal {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: .6875rem; font-weight: 600; margin-right: 6px;
+}
+.senal.tuyo   { background: var(--ahorro-papel); color: var(--ahorro); }
+.senal.repone { background: #f2f0ec; color: var(--tinta-media); }
+.senal.falta  { background: #fbeceb; color: var(--agotado); }
+
+/* Cantidad · el control más usado de toda la pantalla */
+.cantidad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.cantidad .fila { display: flex; align-items: center; gap: 4px; }
+.cantidad button {
+  width: 44px; height: 44px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--linea-alta); background: var(--papel);
+  font-size: 20px; line-height: 1; color: var(--tinta);
+}
+.cantidad button:active { background: var(--fondo); }
+.cantidad input {
+  width: 56px; height: 44px; text-align: center; font-size: 16px; font-weight: 600;
+  border: 1px solid var(--linea-alta); border-radius: 10px; background: var(--papel);
+  font-variant-numeric: tabular-nums;
+}
+.cantidad .agregar {
+  width: auto; padding: 0 16px; height: 44px; font-size: .875rem; font-weight: 600;
+  background: var(--acento); color: var(--acento-tinta); border-color: var(--acento);
+}
+
+/* ─── Barra del pedido ───────────────────────────────────────────── */
+.barra-pedido {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: var(--papel); border-top: 1px solid var(--linea);
+  padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px);
+  box-shadow: 0 -6px 20px rgba(22, 19, 15, .08);
+}
+.barra-pedido .dentro {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; align-items: center; gap: 14px;
+}
+.barra-pedido .cuenta { flex: 1; }
+.barra-pedido .total { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.barra-pedido .detalle { font-size: .75rem; color: var(--tinta-suave); }
+.barra-pedido .enviar {
+  min-height: 50px; padding: 0 24px; border-radius: 10px; cursor: pointer;
+  background: var(--acento); color: var(--acento-tinta); border: 0;
+  font-size: 1rem; font-weight: 700;
+}
+.barra-pedido .enviar:disabled { opacity: .5; }
+
+/* ─── Hoja de revisión ───────────────────────────────────────────── */
+.sobre { position: fixed; inset: 0; background: rgba(22,19,15,.45); z-index: 40; display: flex; align-items: flex-end; }
+.hoja {
+  background: var(--fondo); width: 100%; max-height: 90vh; overflow-y: auto;
+  border-radius: 16px 16px 0 0; padding: 20px 16px calc(env(safe-area-inset-bottom) + 20px);
+}
+.hoja h2 { font-size: 1.125rem; font-weight: 700; margin-bottom: 4px; }
+.hoja .linea { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--linea); font-size: .9375rem; }
+.hoja .linea .sub { font-size: .75rem; color: var(--tinta-suave); }
+.hoja .total-final { display: flex; justify-content: space-between; padding: 14px 0; font-size: 1.125rem; font-weight: 700; }
+.hoja textarea {
+  width: 100%; min-height: 76px; padding: 12px; font-size: 16px;
+  border: 1px solid var(--linea-alta); border-radius: 10px; background: var(--papel); resize: vertical;
+}
+.hoja .boton-hoja {
+  width: 100%; min-height: 52px; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 700;
+  background: var(--acento); color: var(--acento-tinta); border: 0; margin-top: 12px;
+}
+.hoja .secundario { background: none; color: var(--tinta-media); border: 1px solid var(--linea-alta); font-weight: 500; }
+
+/* ─── Estados de pantalla completa ───────────────────────────────── */
+.pantalla { max-width: 460px; margin: 14vh auto; padding: 0 24px; text-align: center; }
+.pantalla h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; }
+.pantalla p { color: var(--tinta-media); font-size: .9375rem; }
+.listo-marca {
+  width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 30px;
+  background: var(--ahorro-papel); color: var(--ahorro);
+}
+.esqueleto { height: 92px; border-radius: 12px; background: var(--papel); border: 1px solid var(--linea); }
