@@ -194,7 +194,67 @@ al revisar, o ves la versión cacheada.
 
 ---
 
-## 6 · Lo que sigue pendiente en el producto
+## 5.bis · Desplegar el Edge Function de usuarios
+
+Se hace **una vez**. Después sólo se repite si cambia
+`supabase/functions/admin-usuarios/index.ts`.
+
+```bash
+# 1 · Instalar y entrar (abre el navegador, autoriza y vuelve)
+npx supabase login
+
+# 2 · Vincular el repositorio con tu proyecto
+#     El ref sale de la URL: en https://abcdefgh.supabase.co es "abcdefgh"
+npx supabase link --project-ref TU_REF
+#     Va a pedir la contraseña de la base de datos, la que guardaste al crearla
+
+# 3 · Desplegar
+npx supabase functions deploy admin-usuarios
+```
+
+**Verificación:** Supabase → Edge Functions. Tiene que aparecer
+`admin-usuarios` como Deployed. Después, en el Control Center, crear un
+usuario de prueba en KeyFoods: si devuelve una contraseña, funcionó.
+
+No hay que darle la `service_role`: Supabase la inyecta sola en sus Edge
+Functions. Por eso esta vía y no una función en Vercel, donde habría que
+copiar la llave a mano.
+
+---
+
+## 6 · Cada vez que cambia algo
+
+Este es el orden, siempre. Lo que no aplique se salta, pero el orden no
+cambia.
+
+| Si el cambio toca… | Hay que… |
+|---|---|
+| `db/migrations/` | Correr `db/INSTALAR.sql` completo en el SQL Editor |
+| `supabase/functions/` | `npx supabase functions deploy <nombre>` |
+| `apps/` o `packages/` | Nada: Vercel redespliega solo al mergear |
+| Variables de entorno | Cambiarlas en Vercel **y** redesplegar a mano |
+| `.github/workflows/` | Nada: corre solo en el próximo push |
+
+Y siempre, en este orden:
+
+```bash
+git checkout main && git pull
+# aplicar el parche
+npm install                      # en la RAÍZ
+git checkout -b <nombre-corto>
+git add -A && git status --short
+git commit -m "..."
+git push -u origin <nombre-corto>
+```
+
+PR → cuatro checks en verde → merge → `git checkout main && git pull`.
+
+Al revisar en el navegador: **Ctrl+Shift+R**. Sin eso ves la versión
+cacheada y crees que no funcionó.
+
+---
+
+## 7 · Lo que sigue pendiente en el producto
 
 | | Qué |
 |---|---|

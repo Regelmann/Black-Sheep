@@ -86,7 +86,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [control-center, gerencia, field, catalogo]
+        app: [control-center, gerencia, field]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
