@@ -81,6 +81,23 @@ for (const f of [...archivos(raiz), ...archivos(core)]) {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────────
+// R10 · Más de cuatro tarjetas de KPI en una pantalla.
+// Con cinco o seis nadie sabe cuál mirar primero, y en una fila de
+// cuatro columnas la quinta queda huérfana abajo. El límite no es
+// estético: es la razón por la que la pantalla se entiende de un
+// vistazo o no.
+// ─────────────────────────────────────────────────────────────────
+for (const f of archivos(raiz)) {
+  if (!f.endsWith('.jsx')) continue
+  const txt = readFileSync(f, 'utf8')
+  const tarjetas = (txt.match(/<Ficha\s/g) || []).length
+  if (tarjetas > 4) {
+    fallas.push(`${f.replace(raiz, 'src')}: ${tarjetas} tarjetas de KPI, el máximo es 4`)
+  }
+}
+
 if (fallas.length) {
   console.error('\nGuard: no se puede construir\n' + fallas.map((f) => '  · ' + f).join('\n') + '\n')
   process.exit(1)
