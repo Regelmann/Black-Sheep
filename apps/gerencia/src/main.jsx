@@ -6,6 +6,7 @@ import { ProveedorSesion } from './hooks/useSesion.jsx'
 import App from './App.jsx'
 import '../../../packages/marca/tokens.css'
 import '../../../packages/marca/base.css'
+import '../../../packages/ui/ui.css'
 import '../../../packages/marca/admin.css'
 
 const qc = new QueryClient({

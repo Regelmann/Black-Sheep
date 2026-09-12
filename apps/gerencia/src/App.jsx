@@ -1,4 +1,5 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { Armazon } from '../../../packages/ui/Armazon.jsx'
 import { useSesion } from './hooks/useSesion.jsx'
 import { VERSION, selloCorto } from '../../../packages/datos/version.js'
 import { useCapacidades } from './hooks/useCapacidades.js'
@@ -32,62 +33,31 @@ export default function App() {
 
   const pendientes = conflictos.rows?.length || 0
 
+  // Misma estructura que el Control Center, distintos módulos. El
+  // componente es uno solo: si mañana cambia la barra, cambia en las dos.
+  const secciones = [
+    { to: '/', texto: 'Resumen', icono: 'hoy', fin: true },
+    { grupo: 'Operación', items: [
+      { to: '/carga', texto: 'Cargar datos', icono: 'carga' },
+      { to: '/conflictos', texto: 'Conflictos', icono: 'alerta', pin: pendientes },
+    ] },
+    { grupo: 'Administrar', items: [
+      { to: '/datos', texto: 'Clientes y productos', icono: 'clientes' },
+      { to: '/equipo', texto: 'Equipo y metas', icono: 'usuarios' },
+    ] },
+  ]
+
   return (
-    <div className="armazon">
-      <aside className="rail">
-        <div className="rail-marca">
-          {/* El logo viene del manual de identidad. No se dibuja una
-              aproximación: ese error ya se cometió dos veces. */}
-          <img src="/logo.png" alt="Black Sheep" width="32" height="32" />
-          <span className="rail-marca-texto">
-            <b>Black Sheep</b>
-            <span>{esSuperadmin ? 'plataforma' : 'gerencia'}</span>
-          </span>
-        </div>
-
-        <nav className="nav-rail">
-          <NavLink to="/">Resumen</NavLink>
-          <NavLink to="/carga">Cargar datos</NavLink>
-          <NavLink to="/conflictos">
-            Conflictos
-            {pendientes > 0 && <span className="pin">{pendientes}</span>}
-          </NavLink>
-
-          <p className="rail-seccion">Administrar</p>
-          <NavLink to="/datos">Clientes y productos</NavLink>
-          <NavLink to="/equipo">Equipo y metas</NavLink>
-
-          {/* La consola de plataforma vive en apps/control-center, en
-              otro dominio. Tenerla acá mezclaba dos productos con dos
-              audiencias y dos niveles de privilegio en un mismo build. */}
-          {esSuperadmin && (
-            <p className="rail-seccion">
-              Plataforma: admin.black-sheep.cl
-            </p>
-          )}
-        </nav>
-
-        <div className="rail-pie">
-          <p>{email}</p>
-          <button onClick={salir}>Cerrar sesión</button>
-          {/* Qué versión estás mirando. Sin esto, "no se ve el cambio"
-              y "el cambio no se subió" son indistinguibles. */}
-          <p className="sello" title={`${VERSION.rama} · ${VERSION.fecha}`}>
-            {selloCorto()}
-          </p>
-        </div>
-      </aside>
-
-      <main className="lienzo">
-        <Routes>
-          <Route path="/" element={<Resumen />} />
-          <Route path="/carga" element={<Carga />} />
-          <Route path="/conflictos" element={<Conflictos />} />
-          <Route path="/datos" element={<Datos cap={cap} />} />
-          <Route path="/equipo" element={<Equipo cap={cap} />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-    </div>
+    <Armazon marca="gerencia" secciones={secciones} usuario={email}
+             onSalir={salir} sello={selloCorto()}>
+      <Routes>
+        <Route path="/" element={<Resumen />} />
+        <Route path="/carga" element={<Carga />} />
+        <Route path="/conflictos" element={<Conflictos />} />
+        <Route path="/datos" element={<Datos cap={cap} />} />
+        <Route path="/equipo" element={<Equipo cap={cap} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Armazon>
   )
 }
