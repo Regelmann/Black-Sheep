@@ -1,7 +1,9 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { Armazon } from '../../../packages/ui/Armazon.jsx'
 import { useSesion } from './hooks/useSesion.jsx'
 import { VERSION, selloCorto } from '../../../packages/datos/version.js'
 import Entrar from './paginas/Entrar.jsx'
+import Hoy from './paginas/Hoy.jsx'
 import Empresas from './paginas/Empresas.jsx'
 import Empresa from './paginas/Empresa.jsx'
 import Nueva from './paginas/Nueva.jsx'
@@ -41,43 +43,30 @@ export default function App() {
     )
   }
 
-  return (
-    <div className="armazon plataforma">
-      <aside className="rail">
-        <div className="rail-marca">
-          {/* El logo viene del manual de identidad. No se dibuja una
-              aproximación: ese error ya se cometió dos veces. */}
-          <img src="/logo.png" alt="Black Sheep" width="32" height="32" />
-          <span className="rail-marca-texto">
-            <b>Black Sheep</b>
-            <span>{esSuperadmin ? 'plataforma' : 'gerencia'}</span>
-          </span>
-        </div>
-        <nav className="nav-rail">
-          <NavLink to="/" end>Empresas</NavLink>
-          <NavLink to="/cobranza">Cobranza</NavLink>
-          <NavLink to="/nueva">Dar de alta</NavLink>
-        </nav>
-        <div className="rail-pie">
-          <p>{email}</p>
-          <button onClick={salir}>Cerrar sesión</button>
-          {/* Qué versión estás mirando. Sin esto, "no se ve el cambio"
-              y "el cambio no se subió" son indistinguibles. */}
-          <p className="sello" title={`${VERSION.rama} · ${VERSION.fecha}`}>
-            {selloCorto()}
-          </p>
-        </div>
-      </aside>
+  // La navegación es CONFIGURACIÓN, no marcado copiado. Gerencia pasa
+  // otra lista al mismo componente.
+  const secciones = [
+    { to: '/', texto: 'Hoy', icono: 'hoy', fin: true },
+    { grupo: 'Plataforma', items: [
+      { to: '/empresas', texto: 'Empresas', icono: 'empresas' },
+      { to: '/nueva', texto: 'Dar de alta', icono: 'carga' },
+    ] },
+    { grupo: 'Negocio', items: [
+      { to: '/cobranza', texto: 'Cobranza', icono: 'dinero' },
+    ] },
+  ]
 
-      <main className="lienzo">
-        <Routes>
-          <Route path="/" element={<Empresas />} />
-          <Route path="/empresa/:id" element={<Empresa />} />
-          <Route path="/cobranza" element={<Cobranza />} />
-          <Route path="/nueva" element={<Nueva />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-    </div>
+  return (
+    <Armazon marca="plataforma" tono="plataforma" secciones={secciones}
+             usuario={email} onSalir={salir} sello={selloCorto()}>
+      <Routes>
+        <Route path="/" element={<Hoy />} />
+        <Route path="/empresas" element={<Empresas />} />
+        <Route path="/empresa/:id" element={<Empresa />} />
+        <Route path="/cobranza" element={<Cobranza />} />
+        <Route path="/nueva" element={<Nueva />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Armazon>
   )
 }

@@ -1,5 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
    packages/marca/admin.css
+   Lo PROPIO de las pantallas de administración. El armazón, las
+   tarjetas de KPI y las tablas viven en packages/ui/ui.css: acá sólo
+   queda lo que no es un componente compartido.
    LA hoja de las superficies de administración: Control Center y
    Gerencia. UNA sola, compartida de verdad — no una copia por app.
 
@@ -23,59 +26,6 @@
        mirar primero.
      · Lo más importante arriba a la izquierda: así se escanea.
    ═══════════════════════════════════════════════════════════════════ */
-
-/* ─── 1 · ARMAZÓN ────────────────────────────────────────────────── */
-.armazon { display: grid; grid-template-columns: 248px 1fr; min-height: 100%; }
-
-.rail {
-  background: var(--pizarra);
-  color: #d6d3d1;
-  display: flex; flex-direction: column;
-  position: sticky; top: 0; height: 100vh;
-  border-right: 1px solid var(--linea);
-}
-.armazon.plataforma .rail { box-shadow: inset -3px 0 0 var(--lima); }
-
-.rail-marca { display: flex; align-items: center; gap: 12px; padding: 20px 20px 22px; }
-.rail-marca img {
-  width: 40px; height: 40px; border-radius: 9px; background: var(--negro);
-  box-shadow: 0 0 0 1px var(--linea-alta);
-}
-.rail-marca-texto { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-.rail-marca b { font-size: 1rem; font-weight: 700; color: #fafaf9; letter-spacing: -.01em; }
-.rail-marca-texto > span {
-  font-size: .625rem; font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--lima); margin-top: 2px;
-}
-
-.nav-rail { display: flex; flex-direction: column; }
-.nav-rail a {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 9px 20px; color: #a8a29e; text-decoration: none;
-  font-size: .875rem; border-left: 3px solid transparent;
-}
-.nav-rail a:hover { background: var(--pizarra-alta); color: #fafaf9; }
-.nav-rail a[aria-current='page'] {
-  background: var(--pizarra-alta); color: #fafaf9;
-  font-weight: 600; border-left-color: var(--lima);
-}
-.rail-seccion {
-  font-size: .625rem; font-weight: 600; letter-spacing: .1em;
-  text-transform: uppercase; color: #57534e; padding: 20px 20px 6px;
-}
-.pin {
-  min-width: 20px; text-align: center; padding: 1px 7px;
-  background: var(--lima); color: var(--negro);
-  border-radius: 10px; font-size: .6875rem; font-weight: 700;
-}
-.rail-pie { margin-top: auto; padding: 16px 20px; font-size: .75rem; color: #78716c; }
-.rail-pie p { overflow: hidden; text-overflow: ellipsis; }
-.rail-pie button {
-  background: none; border: 0; color: #a8a29e; padding: 4px 0 0;
-  cursor: pointer; text-decoration: underline; font-size: .75rem;
-}
-
-.lienzo { padding: 28px 32px 64px; max-width: 1120px; }
 
 /* ─── 2 · ENCABEZADO DE PÁGINA ───────────────────────────────────── */
 .encabezado { margin-bottom: 22px; }
@@ -103,46 +53,6 @@
 .rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
 .pila { display: flex; flex-direction: column; gap: 10px; }
 .entre { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-
-/* ─── 4 · TABLAS · la interfaz principal ─────────────────────────── */
-table { width: 100%; border-collapse: collapse; font-size: .8125rem; margin-top: 12px; }
-thead th {
-  position: sticky; top: 0; z-index: 1;
-  background: var(--panel-fondo);
-  text-align: left; font-weight: 600; color: var(--tinta-media);
-  font-size: .6875rem; letter-spacing: .06em; text-transform: uppercase;
-  padding: 8px 12px; border-bottom: 1px solid var(--linea-alta); white-space: nowrap;
-}
-td { padding: 9px 12px; border-bottom: 1px solid var(--linea); vertical-align: middle; }
-tbody tr:last-child td { border-bottom: 0; }
-tbody tr:hover td { background: var(--panel-alto); }
-th:first-child, td:first-child { padding-left: 0; }
-th:last-child,  td:last-child  { padding-right: 0; }
-/* Las cifras a la derecha: los decimales se apilan y se comparan de un
-   vistazo. Es la diferencia entre escanear y leer. */
-.num, th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
-td .silencio { font-size: .75rem; margin-top: 1px; }
-.tabla-vacia { color: var(--tinta-media); font-size: .8125rem; padding: 16px 0 4px; }
-
-/* ─── 5 · TARJETAS DE KPI · cuatro, arriba ───────────────────────── */
-.tablero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-.ficha {
-  background: var(--panel-fondo);
-  border: 1px solid var(--linea);
-  border-radius: 10px;
-  padding: 16px 18px;
-}
-.ficha .n {
-  font-size: 1.75rem; font-weight: 700; letter-spacing: -.025em;
-  line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--tinta);
-}
-.ficha .r { font-size: .75rem; color: var(--tinta-media); margin-top: 4px; }
-/* El color dice ESTADO, no decora. Una tarjeta en rojo es algo que hay
-   que hacer hoy. */
-.ficha.alerta   { border-color: #5b2b28; background: #241412; }
-.ficha.alerta   .n { color: var(--alarma); }
-.ficha.atencion { border-color: #5c4c1e; background: #211c0f; }
-.ficha.atencion .n { color: var(--aviso); }
 
 /* ─── 6 · FORMULARIOS ────────────────────────────────────────────── */
 .campo { display: flex; flex-direction: column; gap: 5px; }
