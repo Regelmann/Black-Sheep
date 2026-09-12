@@ -62,7 +62,7 @@ function Grupo({ titulo, glosa, empresas, tono, vacio }) {
             {empresas.map((e) => (
               <tr key={e.tenant_id}>
                 <td><Link to={`/empresa/${e.tenant_id}`}>{e.empresa}</Link></td>
-                <td><span className={`insignia${tono}`}>{e.estado}</span></td>
+                <td><span className={`insignia ${tono}`}>{e.estado}</span></td>
                 <td className="num">{e.dias_restantes === null ? '—' : num(e.dias_restantes)}</td>
                 <td className="num">{num(e.usuarios)}</td>
                 <td className="num">{clp(e.venta_mtd)}</td>

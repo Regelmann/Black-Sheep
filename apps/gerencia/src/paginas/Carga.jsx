@@ -266,7 +266,7 @@ export default function Carga() {
                     {c.motivo_rechazo && <div className="silencio">{c.motivo_rechazo}</div>}
                   </td>
                   <td>{c.tipo}</td>
-                  <td><span className={`insignia${tonoEstado(c.estado)}`}>{c.estado}</span></td>
+                  <td><span className={`insignia ${tonoEstado(c.estado)}`}>{c.estado}</span></td>
                   <td className="num">{num(c.filas_validas)}</td>
                   <td className="num">{num(c.filas_excluidas)}</td>
                   <td className="silencio">{fechaHora(c.subido_en)}</td>
