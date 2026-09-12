@@ -45,7 +45,7 @@ export default function Empresa() {
         <h1>{e.nombre}</h1>
         <p>
           {e.slug}.app.black-sheep.cl · creada el {fecha(e.creado_en)} ·{' '}
-          <span className={`insignia${e.habilitado ? 'ok' : 'mal'}`}>
+          <span className={`insignia ${e.habilitado ? 'ok' : 'mal'}`}>
             {e.habilitado ? 'operando' : 'sin acceso'}
           </span>
         </p>
