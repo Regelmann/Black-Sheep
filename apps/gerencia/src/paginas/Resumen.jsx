@@ -2,7 +2,7 @@ import { supabase } from '../../../../packages/datos/supabase.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { useCapacidades } from '../hooks/useCapacidades.js'
 import { Bloque } from '../componentes/Estado.jsx'
-import { Dato, Panel, Insignia, Moneda } from '../componentes/Piezas.jsx'
+import { Titular, Kpi, Rejilla, Panel, Insignia, Foco, Vacio } from '../../../../packages/ui/Piezas.jsx'
 import { corto, num, pct, fechaHora } from '../../../../packages/datos/formato.js'
 import { Link } from 'react-router-dom'
 
@@ -47,18 +47,15 @@ export default function Resumen() {
 
   return (
     <div className="pila">
-      <header className="encabezado">
-        <h1>Cómo va el mes</h1>
-        <p>Venta acumulada, salud de la cartera y lo que hay que corregir en los datos.</p>
-      </header>
+      <Titular titulo="Cómo va el mes" bajada="Venta acumulada, salud de la cartera y lo que hay que corregir en los datos." />
 
       <div className="rejilla rejilla-4">
-        <Dato etiqueta="Venta del mes" valor={corto(total)} pie={`${zonas.rows.length} zonas`} />
-        <Dato etiqueta="Clientes activos" valor={num(activos)} pie={`de ${num(clientes)} en cartera`} />
-        <Dato etiqueta="Cobertura" valor={clientes ? pct((activos / clientes) * 100, 0) : null}
-              pie="compraron este mes" />
-        <Dato etiqueta="Cayendo" valor={num(cayendo)} tono={cayendo ? 'neg' : ''}
-              pie="compran menos que su promedio" />
+        <Kpi etiqueta="Venta del mes" valor={corto(total)} nota={`${zonas.rows.length} zonas`} />
+        <Kpi etiqueta="Clientes activos" valor={num(activos)} nota={`de ${num(clientes)} en cartera`} />
+        <Kpi etiqueta="Cobertura" valor={clientes ? pct((activos / clientes) * 100, 0) : null}
+              nota="compraron este mes" />
+        <Kpi etiqueta="Cayendo" valor={num(cayendo)} tono={cayendo ? 'neg' : ''}
+              nota="compran menos que su promedio" />
       </div>
 
       <Panel titulo="Venta por zona">
@@ -75,7 +72,7 @@ export default function Resumen() {
               {zonas.rows.map((z) => (
                 <tr key={z.zona_id}>
                   <td>{z.zona_id || <span className="silencio">Sin zona</span>}</td>
-                  <td className="derecha"><Moneda n={z.venta_mtd} /></td>
+                  <td className="derecha">{clp(z.venta_mtd)}</td>
                   <td className="derecha">{num(z.clientes)}</td>
                   <td className="derecha">{num(z.activos)}</td>
                   <td className="derecha">{num(z.cayendo)}</td>
@@ -105,7 +102,7 @@ export default function Resumen() {
                   return (
                     <tr key={e.ejecutivo_id}>
                       <td>{e.ejecutivo}<br /><span className="silencio">{e.zona_id}</span></td>
-                      <td className="derecha"><Moneda n={e.venta_mtd} /></td>
+                      <td className="derecha">{clp(e.venta_mtd)}</td>
                       {tiene('metas_ejecutivo') ? (
                         <td className="derecha">
                           {avance === null
@@ -132,7 +129,7 @@ export default function Resumen() {
                 {Object.entries(porHallazgo).map(([h, n]) => (
                   <tr key={h}>
                     <td>{TEXTO_HALLAZGO[h] || h}</td>
-                    <td className="derecha"><Insignia tono="ojo">{n}</Insignia></td>
+                    <td className="derecha"><Insignia estado="ojo" texto="{n}" /></td>
                   </tr>
                 ))}
               </tbody>

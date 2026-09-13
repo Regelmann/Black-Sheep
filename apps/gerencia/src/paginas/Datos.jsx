@@ -5,6 +5,7 @@ import { llamar } from '../../../../packages/datos/rpc.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
 import { clp, num } from '../../../../packages/datos/formato.js'
+import { Titular } from '../../../../packages/ui/Piezas.jsx'
 
 /**
  * Corregir sin volver a subir archivos. Cada campo que se edita queda
@@ -15,10 +16,7 @@ export default function Datos({ cap }) {
   const [pestana, setPestana] = useState('clientes')
   return (
     <>
-      <header className="encabezado">
-        <h1>Clientes y productos</h1>
-        <p>Lo que corrijas aquí no se pierde con la próxima carga: queda marcado como cambio manual.</p>
-      </header>
+      <Titular titulo="Clientes y productos" bajada="Lo que corrijas aquí no se pierde con la próxima carga: queda marcado como cambio manual." />
 
       <div className="fila-campos" style={{ marginBottom: 'var(--e5)' }}>
         {['clientes', 'prospectos', 'productos'].map((p) => (
