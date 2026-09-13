@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { llamar } from '../../../../packages/datos/rpc.js'
+import { Titular, Panel } from '../../../../packages/ui/Piezas.jsx'
 
 /**
  * Dar de alta una empresa. Queda en prueba y con las capacidades por
@@ -42,12 +43,9 @@ export default function Nueva() {
 
   return (
     <>
-      <header className="encabezado">
-        <h1>Dar de alta una empresa</h1>
-        <p>Queda en prueba. Después hay que configurarle los tipos de documento antes de su primera carga.</p>
-      </header>
+      <Titular titulo="Dar de alta una empresa" bajada="Queda en prueba. Después hay que configurarle los tipos de documento antes de su primera carga." />
 
-      <section className="panel">
+      <Panel>
         <div className="formulario-alta">
           <div className="campo ancho-total">
             <label htmlFor="n">Nombre de la empresa</label>
@@ -107,7 +105,7 @@ export default function Nueva() {
             Después: tipos de documento, usuarios y su primera carga.
           </span>
         </p>
-      </section>
+      </Panel>
     </>
   )
 }

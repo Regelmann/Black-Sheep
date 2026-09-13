@@ -4,6 +4,7 @@ import { llamar } from '../../../../packages/datos/rpc.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
 import { fechaHora } from '../../../../packages/datos/formato.js'
+import { Titular } from '../../../../packages/ui/Piezas.jsx'
 
 const CAMPOS = {
   zona_id: 'Zona', ejecutivo_id: 'Ejecutivo', comuna: 'Comuna',
@@ -32,10 +33,7 @@ export default function Conflictos() {
 
   return (
     <>
-      <header className="encabezado">
-        <h1>Conflictos</h1>
-        <p>Cambios hechos aquí que el último archivo contradice. El cambio manual se mantuvo; decide si sigue así.</p>
-      </header>
+      <Titular titulo="Conflictos" bajada="Cambios hechos aquí que el último archivo contradice. El cambio manual se mantuvo; decide si sigue así." />
 
       <section className="panel">
         <Bloque datos={datos} que="los conflictos"

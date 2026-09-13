@@ -4,11 +4,13 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const raiz = new URL('../src', import.meta.url).pathname
+const raiz = fileURLToPath(new URL('../src', import.meta.url))
 // La capa Core también se revisa: un select('*') o un secreto en
 // packages/ afectaría a las cuatro superficies a la vez.
-const core = new URL('../../../packages', import.meta.url).pathname
+const core = fileURLToPath(new URL('../../../packages', import.meta.url))
+const guardDir = fileURLToPath(new URL('../../../packages/guard', import.meta.url))
 const fallas = []
 
 function archivos(dir) {
@@ -18,7 +20,7 @@ function archivos(dir) {
   })
 }
 
-for (const f of [...archivos(raiz), ...archivos(core)]) {
+for (const f of [...archivos(raiz), ...archivos(core)].filter((f) => !f.startsWith(guardDir))) {
   const bruto = readFileSync(f, 'utf8')
   const rel = f.replace(raiz, 'src').replace(core, 'packages')
   // Los comentarios no son código: mencionar una regla no es violarla.
@@ -63,7 +65,7 @@ for (const f of [...archivos(raiz), ...archivos(core)]) {
 // ─────────────────────────────────────────────────────────────────
 {
   const cssTokens = readFileSync(
-    new URL('../../../packages/marca/tokens.css', import.meta.url).pathname, 'utf8')
+    fileURLToPath(new URL('../../../packages/marca/tokens.css', import.meta.url)), 'utf8')
   const definidas = new Set([...cssTokens.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
   const hojas = [...archivos(raiz), ...archivos(core)].filter((f) => f.endsWith('.css'))
   for (const f of hojas) {

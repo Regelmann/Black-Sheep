@@ -59,12 +59,32 @@ SELECT c.tenant_id, c.cliente_key, c.nombre, c.comuna, c.direccion,
  WHERE c.activo;
 
 -- ─── CARTERA ───────────────────────────────────────────────────────
-CREATE OR REPLACE VIEW api.cartera
-WITH (security_invoker = true) AS
-SELECT tenant_id, cliente_key, nombre, comuna, direccion, lat, lng, rubro,
-       zona_id, ejecutivo_id, estado, es_bloqueado,
-       ultima_compra, dias_sin_comprar, venta_mtd, promedio_3m, brecha, skus_90d
-  FROM core.v_cliente_metricas;
+-- La definición final de api.cartera vive en 034_metricas_decision.sql.
+-- Acá solo se crea la versión base si todavía no existe.
+--
+-- Esto es necesario porque 034 amplía posteriormente la vista con:
+-- ciclo_dias, venta_mensual, compras_12m, atraso_ciclos y estado_fuga.
+-- En la segunda pasada de las migraciones, api.cartera ya contiene esas
+-- columnas y CREATE OR REPLACE VIEW no puede eliminarlas.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_views
+     WHERE schemaname = 'api'
+       AND viewname = 'cartera'
+  ) THEN
+    EXECUTE $view$
+      CREATE VIEW api.cartera
+      WITH (security_invoker = true) AS
+      SELECT tenant_id, cliente_key, nombre, comuna, direccion, lat, lng, rubro,
+             zona_id, ejecutivo_id, estado, es_bloqueado,
+             ultima_compra, dias_sin_comprar, venta_mtd, promedio_3m,
+             brecha, skus_90d
+        FROM core.v_cliente_metricas
+    $view$;
+  END IF;
+END $$;
 
 -- ─── STOCK VENDIBLE ────────────────────────────────────────────────
 -- Vendible = tiene precio Y stock > 0. Un SKU con stock y sin precio

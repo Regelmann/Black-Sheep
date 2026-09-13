@@ -5,6 +5,7 @@ import { llamar } from '../../../../packages/datos/rpc.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
 import { clp, mesActual, num, pct } from '../../../../packages/datos/formato.js'
+import { Titular } from '../../../../packages/ui/Piezas.jsx'
 
 /**
  * Ejecutivos, metas y focos. Los focos SÓLO existen si la empresa mide
@@ -49,10 +50,7 @@ export default function Equipo({ cap }) {
 
   return (
     <>
-      <header className="encabezado">
-        <h1>Equipo y metas</h1>
-        <p>Quién atiende qué zona y cuánto tiene que vender este mes.</p>
-      </header>
+      <Titular titulo="Equipo y metas" bajada="Quién atiende qué zona y cuánto tiene que vender este mes." />
 
       {error && <p className="estado error" style={{ marginBottom: 'var(--e4)' }}>{error}</p>}
 

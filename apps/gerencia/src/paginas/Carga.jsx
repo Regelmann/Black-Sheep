@@ -6,6 +6,7 @@ import { leerExcel, sha256 } from '../lib/excel.js'
 import { useDatos } from '../hooks/useDatos.js'
 import { Bloque } from '../componentes/Estado.jsx'
 import { clp, fechaHora, num } from '../../../../packages/datos/formato.js'
+import { Titular } from '../../../../packages/ui/Piezas.jsx'
 
 const TIPOS = [
   { id: 'precios', nombre: 'Lista de precios', define: 'qué se vende' },
@@ -124,10 +125,7 @@ export default function Carga() {
 
   return (
     <>
-      <header className="encabezado">
-        <h1>Cargar datos</h1>
-        <p>Sube el archivo, revisa qué cuadra y publica. Nada llega a la app hasta que publiques.</p>
-      </header>
+      <Titular titulo="Cargar datos" bajada="Sube el archivo, revisa qué cuadra y publica. Nada llega a la app hasta que publiques." />
 
       <section className="panel">
         <h2>1 · Elige el archivo</h2>
@@ -232,7 +230,7 @@ export default function Carga() {
           </p>
 
           {publicado && (
-            <div className={`aviso-${publicado.resultado === 'PUBLICADO' ? 'vacio' : 'error'}`}
+            <div className={publicado.resultado === 'PUBLICADO' ? 'estado' : 'estado error'}
                  style={{ marginTop: 'var(--e3)' }}>
               <strong>{publicado.resultado}</strong> · {publicado.detalle}
               {publicado.resultado === 'REQUIERE_APROBACION' && (
@@ -266,7 +264,7 @@ export default function Carga() {
                     {c.motivo_rechazo && <div className="silencio">{c.motivo_rechazo}</div>}
                   </td>
                   <td>{c.tipo}</td>
-                  <td><span className={`insignia ${tonoEstado(c.estado)}`}>{c.estado}</span></td>
+                  <td><span className={`insignia${tonoEstado(c.estado)}`}>{c.estado}</span></td>
                   <td className="num">{num(c.filas_validas)}</td>
                   <td className="num">{num(c.filas_excluidas)}</td>
                   <td className="silencio">{fechaHora(c.subido_en)}</td>

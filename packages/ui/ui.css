@@ -181,3 +181,163 @@ td .silencio { font-size: .75rem; margin-top: 2px; }
   .foco { grid-template-columns: 34px 1fr; }
   .foco .boton-foco { grid-column: 2; justify-self: start; }
 }
+
+/* ─── Primitivas · botones, campos, estados ──────────────────────── */
+/* Viven acá y NO en admin.css: las usan las cuatro superficies. Estaban
+   definidas en las dos hojas y por eso se pisaban entre sí. */
+.boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 38px; padding: 0 15px;
+  border: 1px solid var(--linea-alta); border-radius: 9px;
+  background: var(--panel-alto); color: var(--tinta);
+  font-size: .8125rem; font-weight: 500; cursor: pointer;
+}
+.boton:hover:not(:disabled) { background: var(--linea-alta); }
+.boton:disabled { opacity: .45; cursor: not-allowed; }
+.boton.primario { background: var(--lima); border-color: var(--lima); color: var(--negro); font-weight: 700; }
+.boton.primario:hover:not(:disabled) { background: var(--lima-hundido); }
+.boton.peligro { color: var(--alarma); border-color: #5b2b28; background: transparent; }
+.boton.peligro:hover:not(:disabled) { background: #241412; }
+.boton.chico { min-height: 30px; padding: 0 10px; font-size: .75rem; }
+
+.campo { display: flex; flex-direction: column; gap: 5px; }
+.campo label { font-size: .75rem; color: var(--tinta-media); font-weight: 500; }
+.campo input, .campo select, .campo textarea,
+td input, td select, .panel > input, .panel > select {
+  background: var(--panel-alto); border: 1px solid var(--linea);
+  color: var(--tinta); border-radius: 8px; padding: 9px 11px;
+  font-size: .875rem; min-height: 38px; width: 100%;
+}
+td input, td select { min-height: 32px; padding: 5px 9px; font-size: .8125rem; }
+input::placeholder { color: var(--tinta-suave); }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--lima); outline-offset: 1px; border-color: transparent; }
+input:-webkit-autofill { -webkit-text-fill-color: var(--tinta); box-shadow: 0 0 0 1000px var(--panel-alto) inset; caret-color: var(--tinta); }
+input[type=checkbox] { width: 17px; height: 17px; min-height: 0; accent-color: var(--lima); }
+
+.fila-campos { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 12px; }
+.fila-campos > .campo { flex: 1 1 170px; }
+
+.estado { padding: 14px 16px; border: 1px solid var(--linea); border-radius: 9px; font-size: .8125rem; color: var(--tinta-media); background: var(--panel-fondo); }
+.estado.error { border-color: #5b2b28; background: #241412; color: var(--alarma); }
+.cargando { padding: 34px; color: var(--tinta-media); font-size: .875rem; }
+.aviso { padding: 12px 14px; border-radius: 9px; font-size: .8125rem; background: var(--lima-papel); border: 1px solid #33420f; color: var(--lima-tinta); }
+
+.rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.pila { display: flex; flex-direction: column; gap: 10px; }
+.entre { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.acciones-panel { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.tabla-vacia { color: var(--tinta-media); font-size: .8125rem; padding: 16px 0 4px; }
+@media (max-width: 1000px) { .rejilla { grid-template-columns: 1fr; } }
+
+/* ─── Barra sobre una tabla · buscar y filtrar ───────────────────── */
+.barra-tabla { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.buscador {
+  flex: 1 1 220px; max-width: 300px; min-height: 36px; padding: 0 12px;
+  background: var(--panel-alto); border: 1px solid var(--linea);
+  border-radius: 9px; color: var(--tinta); font-size: .875rem;
+}
+.pestanas { display: flex; gap: 6px; flex-wrap: wrap; }
+.pestanas button {
+  border: 1px solid var(--linea); background: var(--panel-alto);
+  border-radius: 999px; padding: 6px 13px; font-size: .8125rem;
+  color: var(--tinta-media); cursor: pointer;
+}
+.pestanas button:hover { border-color: var(--linea-alta); }
+.pestanas button[aria-pressed='true'] {
+  background: var(--lima); border-color: var(--lima); color: var(--negro); font-weight: 600;
+}
+
+/* ─── Solapas de página ──────────────────────────────────────────── */
+.pestanas-pagina { margin: 4px 0 14px; }
+.pestanas-pagina button { padding: 8px 16px; font-size: .875rem; display: inline-flex; align-items: center; gap: 8px; }
+
+/* Dos columnas para fichas largas: evita la página de cuatro metros */
+.dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.dos-columnas > .panel { margin-top: 0; }
+@media (max-width: 1000px) { .dos-columnas { grid-template-columns: 1fr; } }
+
+.acciones-panel { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+/* Tabla de tipos de documento: campos chicos, no un formulario de
+   página completa. Es el paso que bloquea el onboarding y tiene que
+   resolverse sin desplazarse. */
+.tabla-docs td { padding: 6px 12px; }
+.tabla-docs input[type="text"], .tabla-docs input:not([type]) { min-height: 32px; }
+.tabla-docs input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--lima); }
+.campo-codigo { max-width: 74px; text-transform: uppercase; }
+
+.volver { margin-top: 18px; }
+
+/* ─── Pasos de puesta en marcha ──────────────────────────────────── */
+.pasos-alta { list-style: none; padding: 0; margin: 12px 0 0; }
+.paso-alta {
+  display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start;
+  padding: 11px 0; border-bottom: 1px solid var(--linea);
+}
+.paso-alta:last-child { border-bottom: 0; }
+.paso-alta .marcador {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; font-size: .6875rem; font-weight: 700;
+  border: 1px solid var(--linea-alta); background: var(--panel-alto); color: var(--tinta-media);
+}
+.paso-alta.hecho .marcador { background: var(--logro); border-color: var(--logro); color: var(--negro); }
+.paso-alta.pendiente .marcador { background: #211c0f; border-color: #5c4c1e; color: var(--aviso); }
+.paso-texto { display: flex; flex-direction: column; gap: 2px; font-size: .8125rem; }
+.paso-texto b { font-weight: 600; color: var(--tinta); }
+
+/* ─── Pares etiqueta/valor ───────────────────────────────────────── */
+.datos-lista { margin: 10px 0 0; }
+.datos-lista > div {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding: 9px 0; border-bottom: 1px solid var(--linea); font-size: .8125rem;
+}
+.datos-lista > div:last-child { border-bottom: 0; }
+.datos-lista dt { color: var(--tinta-media); }
+.datos-lista dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; }
+.datos-lista dd.mal { color: var(--alarma); }
+.datos-lista dd.aviso { color: var(--aviso); }
+.datos-lista dd.ok { color: var(--logro); }
+
+.acciones-panel { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+/* ─── Dos columnas que se estiran igual ──────────────────────────── */
+.par { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+@media (max-width: 1000px) { .par { grid-template-columns: 1fr; } }
+
+/* ─── Tablas editables · celdas compactas ────────────────────────── */
+.tabla-edicion td { padding: 7px 10px; }
+.tabla-edicion input[type="text"], .tabla-edicion input:not([type]), .tabla-edicion select {
+  min-height: 32px; padding: 5px 9px; font-size: .8125rem;
+  background: var(--panel-alto); border: 1px solid var(--linea-alta);
+  color: var(--tinta); border-radius: 6px; width: 100%;
+}
+.tabla-edicion input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--lima); }
+.tabla-edicion td.centro { text-align: center; }
+.tabla-edicion .celda-codigo input { width: 76px; text-transform: uppercase; }
+
+/* ─── Control segmentado · filtros que caben en una línea ────────── */
+.segmentado { display: inline-flex; border: 1px solid var(--linea); border-radius: 9px; overflow: hidden; }
+.segmentado button {
+  background: transparent; border: 0; border-right: 1px solid var(--linea);
+  padding: 7px 13px; font-size: .75rem; color: var(--tinta-media); cursor: pointer;
+}
+.segmentado button:last-child { border-right: 0; }
+.segmentado button:hover { background: var(--panel-alto); color: var(--tinta); }
+.segmentado button[aria-pressed='true'] { background: #1a2010; color: var(--lima); font-weight: 600; }
+
+/* ─── Utilidades de rejilla ──────────────────────────────────────── */
+.rejilla-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.rejilla-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.derecha { text-align: right; }
+@media (max-width: 1000px) {
+  .rejilla-2 { grid-template-columns: 1fr; }
+  .rejilla-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ─── Barra de avance ────────────────────────────────────────────── */
+.barra-etiqueta { font-size: .75rem; color: var(--tinta-media); margin-bottom: 5px; }
+.barra-fondo { display: block; height: 6px; border-radius: 999px; background: var(--panel-alto); overflow: hidden; }
+.barra-fondo i { display: block; height: 100%; }
+.barra-fondo i.ok { background: var(--logro); }
+.barra-fondo i.aviso { background: var(--aviso); }
+.barra-fondo i.mal { background: var(--alarma); }

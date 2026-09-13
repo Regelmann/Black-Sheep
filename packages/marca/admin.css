@@ -28,45 +28,11 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ─── 2 · ENCABEZADO DE PÁGINA ───────────────────────────────────── */
-.encabezado { margin-bottom: 22px; }
-.encabezado h1 { font-size: 1.375rem; font-weight: 700; letter-spacing: -.02em; }
-.encabezado p { color: var(--tinta-media); font-size: .875rem; margin-top: 4px; }
 
 /* ─── 3 · PANELES · cromo callado ────────────────────────────────── */
-.panel {
-  background: var(--panel-fondo);
-  border: 1px solid var(--linea);
-  border-radius: 10px;
-  padding: 18px 20px;
-}
-.panel + .panel, .lienzo > section + section { margin-top: 14px; }
-.panel > h2 { font-size: .9375rem; font-weight: 600; }
-.panel > h2 + .silencio { margin-top: 4px; }
-.panel-titulo {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 14px; flex-wrap: wrap; margin-bottom: 4px;
-}
-.panel-titulo h2 { font-size: .9375rem; font-weight: 600; flex: 1 1 auto; min-width: 0; }
-.panel-titulo select, .panel-titulo .boton { flex: 0 0 auto; }
 
-.silencio { color: var(--tinta-media); font-size: .8125rem; }
-.rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-.pila { display: flex; flex-direction: column; gap: 10px; }
-.entre { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 /* ─── 6 · FORMULARIOS ────────────────────────────────────────────── */
-.campo { display: flex; flex-direction: column; gap: 5px; }
-.campo label { font-size: .75rem; color: var(--tinta-media); font-weight: 500; }
-.campo input, .campo select, .campo textarea,
-td input, td select, .panel input, .panel select {
-  background: var(--panel-alto);
-  border: 1px solid var(--linea-alta);
-  color: var(--tinta);
-  border-radius: 7px;
-  padding: 8px 10px;
-  font-size: .875rem;
-  min-height: 36px;
-}
 td input, td select { min-height: 32px; padding: 4px 8px; width: 100%; }
 input::placeholder { color: var(--tinta-suave); }
 input:focus, select:focus, textarea:focus {
@@ -77,51 +43,13 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
   box-shadow: 0 0 0 1000px var(--panel-alto) inset;
   caret-color: var(--tinta);
 }
-.fila-campos { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 12px; }
-.fila-campos > .campo { flex: 1 1 170px; }
-.fila-campos > .boton { align-self: flex-end; }
 .formulario-alta { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
 .formulario-alta .ancho-total { grid-column: 1 / -1; }
 
 /* ─── 7 · BOTONES ────────────────────────────────────────────────── */
-.boton {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: 36px; padding: 0 14px;
-  border: 1px solid var(--linea-alta); border-radius: 7px;
-  background: var(--panel-alto); color: var(--tinta);
-  font-size: .8125rem; font-weight: 500; cursor: pointer;
-}
-.boton:hover:not(:disabled) { background: var(--linea-alta); }
-.boton:disabled { opacity: .45; cursor: not-allowed; }
-.boton.primario {
-  background: var(--lima); border-color: var(--lima); color: var(--negro); font-weight: 700;
-}
-.boton.primario:hover:not(:disabled) { background: var(--lima-hundido); }
-.boton.peligro { color: var(--alarma); border-color: #5b2b28; background: transparent; }
-.boton.peligro:hover:not(:disabled) { background: #241412; }
-.boton.chico { min-height: 28px; padding: 0 9px; font-size: .75rem; }
 
 /* ─── 8 · ESTADOS E INSIGNIAS ────────────────────────────────────── */
-.insignia {
-  display: inline-block; padding: 2px 8px; border-radius: 999px;
-  font-size: .6875rem; font-weight: 600;
-  border: 1px solid var(--linea-alta); background: var(--panel-alto); color: var(--tinta-media);
-}
-.insignia.ok    { background: var(--logro-papel); border-color: #1f4a33; color: var(--logro); }
-.insignia.mal   { background: #241412; border-color: #5b2b28; color: var(--alarma); }
-.insignia.aviso { background: #211c0f; border-color: #5c4c1e; color: var(--aviso); }
 
-.estado {
-  padding: 14px 16px; border: 1px solid var(--linea); border-radius: 8px;
-  font-size: .8125rem; color: var(--tinta-media); background: var(--panel-fondo);
-}
-.estado.error { border-color: #5b2b28; background: #241412; color: var(--alarma); }
-.estado code { font-size: .6875rem; opacity: .85; }
-.aviso {
-  padding: 12px 14px; border-radius: 8px; font-size: .8125rem;
-  background: var(--lima-papel); border: 1px solid #33420f; color: var(--lima-tinta);
-}
-.cargando { padding: 32px; color: var(--tinta-media); font-size: .875rem; }
 
 /* ─── 9 · PIEZAS PROPIAS ─────────────────────────────────────────── */
 
@@ -236,7 +164,108 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
 
 /* Sello de compilación. Deliberadamente discreto: sirve para
    verificar, no para mirar. */
-.sello {
-  margin-top: 8px; font-family: var(--fuente-mono);
-  font-size: .625rem; color: #57534e; letter-spacing: .04em;
+
+
+/* ═══ Pestañas de la ficha ═══════════════════════════════════════════
+   La ficha completa medía tres pantallas: al llegar a los tipos de
+   documento ya no se recordaba el estado de la suscripción. Cada
+   pestaña responde una pregunta y entra en una pantalla. */
+.pestanas { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.pestanas button {
+  border: 1px solid var(--linea); background: var(--panel-fondo); color: var(--tinta-media);
+  border-radius: 999px; padding: 8px 16px; font-size: .8125rem; cursor: pointer;
 }
+.pestanas button:hover { border-color: var(--linea-alta); color: var(--tinta); }
+.pestanas button[aria-pressed='true'] {
+  background: #1a2010; border-color: var(--lima); color: var(--lima); font-weight: 600;
+}
+.pestanas .volver { margin-left: auto; border-style: dashed; }
+
+/* Lista de verificación · el número NUNCA pegado al texto */
+.checklist { list-style: none; padding: 0; margin: 14px 0 0; }
+.checklist li { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--linea); }
+.checklist li:last-child { border-bottom: 0; }
+.checklist .marca {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: .6875rem; font-weight: 700;
+  border: 1px solid var(--linea-alta); background: var(--panel-alto); color: var(--tinta-media);
+}
+.checklist li.hecho .marca { background: var(--logro); border-color: var(--logro); color: var(--negro); }
+.checklist b { display: block; font-size: .8125rem; font-weight: 600; }
+.checklist .silencio { display: block; margin-top: 2px; }
+
+/* Buscador y orden dentro del título de un panel */
+.barra-tabla { display: flex; gap: 8px; flex-wrap: wrap; }
+.barra-tabla input, .barra-tabla select {
+  background: var(--panel-alto); border: 1px solid var(--linea-alta); color: var(--tinta);
+  border-radius: 8px; padding: 8px 11px; font-size: .8125rem; min-height: 36px;
+}
+.barra-tabla input { min-width: 190px; }
+
+
+/* Capacidades · la descripción va en la MISMA columna que el título */
+.capacidades { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 9px; margin-top: 12px; }
+.capacidades label {
+  display: grid; grid-template-columns: 16px 1fr; gap: 10px; align-items: start;
+  padding: 11px 13px; cursor: pointer;
+  border: 1px solid var(--linea); border-radius: 9px; background: var(--panel-alto);
+}
+.capacidades label.activa { border-color: #3f5216; background: #191d10; }
+.capacidades input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--lima); }
+.capacidades b { font-size: .8125rem; font-weight: 600; }
+.capacidades .d { display: block; color: var(--tinta-media); font-size: .75rem; margin-top: 3px; }
+.capacidades label > span { min-width: 0; }
+
+/* ─── Barra de tabla: búsqueda y filtros en una línea ─────────────── */
+.barra-tabla { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.barra-tabla input { min-width: 220px; max-width: 280px; }
+.pestanas { display: flex; gap: 6px; flex-wrap: wrap; }
+.pestanas button {
+  border: 1px solid var(--linea); background: var(--panel-alto);
+  color: var(--tinta-media); border-radius: 999px;
+  padding: 6px 12px; font-size: .75rem; cursor: pointer; white-space: nowrap;
+}
+.pestanas button[aria-pressed='true'] {
+  background: #1a2010; border-color: var(--lima); color: var(--lima); font-weight: 600;
+}
+
+/* ─── Puesta en marcha ────────────────────────────────────────────── */
+/* El número necesita su propia columna: pegado al texto se leía
+   "2Usuarios" y parecía un conteo. */
+.pasos-alta { margin-top: 14px; }
+.paso-alta {
+  display: grid; grid-template-columns: 26px 1fr; gap: 14px; align-items: start;
+  padding: 12px 0; border-bottom: 1px solid var(--linea);
+}
+.paso-alta:last-child { border-bottom: 0; }
+.paso-alta .marcador {
+  width: 24px; height: 24px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; font-size: .6875rem; font-weight: 700;
+  border: 1px solid var(--linea-alta); background: var(--panel-alto); color: var(--tinta-media);
+}
+.paso-alta.hecho .marcador { background: var(--logro); border-color: var(--logro); color: var(--negro); }
+.paso-alta.pendiente .marcador { background: #211c0f; border-color: #5c4c1e; color: var(--aviso); }
+.paso-alta .t { font-size: .8125rem; }
+.paso-alta .t b { display: block; font-weight: 600; margin-bottom: 3px; color: var(--tinta); }
+
+/* ─── Tipos de documento · compacto, no campos gigantes ──────────── */
+.tabla-documentos td { padding: 7px 12px; }
+.tabla-documentos input[type=text], .tabla-documentos input:not([type]) { min-height: 32px; }
+.tabla-documentos td:first-child input { max-width: 90px; text-transform: uppercase; }
+.tabla-documentos select { min-height: 32px; max-width: 130px; }
+.tabla-documentos td:nth-child(3) { text-align: center; }
+
+/* ─── Contraseña recién generada ─────────────────────────────────── */
+/* Se muestra UNA vez: tiene que poder leerse y dictarse por teléfono
+   sin equivocarse. */
+.clave-nueva { margin-top: 14px; padding: 16px; border: 1px solid var(--lima); border-radius: 9px; background: var(--lima-papel); }
+.clave {
+  display: block; margin: 10px 0;
+  font-family: var(--fuente-mono); font-size: 1.25rem;
+  letter-spacing: .1em; color: var(--lima-tinta); user-select: all;
+}
+
+/* ─── Alta de empresa: dos columnas, cabe sin bajar la pantalla ──── */
+.formulario-alta { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.formulario-alta .ancho-total { grid-column: 1 / -1; }
+@media (max-width: 760px) { .formulario-alta { grid-template-columns: 1fr; } }
