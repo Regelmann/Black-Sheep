@@ -6,5 +6,8 @@
   "main": "supabase.js",
   "peerDependencies": {
     "@supabase/supabase-js": "^2.45.0"
+  },
+  "scripts": {
+    "verify": "node --test test/contexto.test.mjs"
   }
 }
