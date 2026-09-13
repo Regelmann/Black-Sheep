@@ -158,19 +158,34 @@ BEGIN
            'no configurado como venta: ' || coalesce(fn.datos->>'tipo_doc','(vacío)')
       FROM ingest.fila_norm fn
      WHERE fn.lote_id = p_lote
-       AND NOT EXISTS (SELECT 1 FROM core.tipo_documento td
-                        WHERE td.tenant_id = v_tenant
-                          AND td.codigo = upper(trim(coalesce(fn.datos->>'tipo_doc','')))
-                          AND td.cuenta_como_venta)
+       AND NOT core.venta_elegible(
+             v_tenant,
+             fn.datos->>'tipo_doc',
+             NULL
+           )
+       AND NOT EXISTS (
+             SELECT 1
+               FROM core.tipo_documento td
+              WHERE td.tenant_id = v_tenant
+                AND td.codigo = upper(trim(coalesce(fn.datos->>'tipo_doc','')))
+           )
     ON CONFLICT DO NOTHING;
 
     INSERT INTO ingest.exclusion (lote_id, nro_fila, regla, detalle)
     SELECT fn.lote_id, fn.nro_fila, 'ESTADO_EXCLUIDO', fn.datos->>'estado_pedido'
       FROM ingest.fila_norm fn
      WHERE fn.lote_id = p_lote
-       AND EXISTS (SELECT 1 FROM core.estado_excluido ee
-                    WHERE ee.tenant_id = v_tenant
-                      AND ee.estado = upper(trim(coalesce(fn.datos->>'estado_pedido',''))))
+       AND NOT core.venta_elegible(
+             v_tenant,
+             fn.datos->>'tipo_doc',
+             fn.datos->>'estado_pedido'
+           )
+       AND EXISTS (
+             SELECT 1
+               FROM core.estado_excluido ee
+              WHERE ee.tenant_id = v_tenant
+                AND ee.estado = upper(trim(coalesce(fn.datos->>'estado_pedido','')))
+           )
     ON CONFLICT DO NOTHING;
 
     -- Aviso, no exclusión: la venta cuenta igual. El cliente se crea y
