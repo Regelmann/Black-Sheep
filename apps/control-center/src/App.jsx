@@ -3,6 +3,7 @@ import { Armazon } from '../../../packages/ui/Armazon.jsx'
 import { useSesion } from './hooks/useSesion.jsx'
 import { VERSION, selloCorto } from '../../../packages/datos/version.js'
 import Entrar from './paginas/Entrar.jsx'
+import SegundoFactor from './paginas/SegundoFactor.jsx'
 import Hoy from './paginas/Hoy.jsx'
 import Empresas from './paginas/Empresas.jsx'
 import Empresa from './paginas/Empresa.jsx'
@@ -12,16 +13,30 @@ import Cobranza from './paginas/Cobranza.jsx'
 /**
  * Control Center · sólo Black Sheep.
  *
- * El servidor verifica es_superadmin() en cada función. Esta pantalla
- * de "sin acceso" es cortesía: si alguien llega acá con una sesión de
- * gerencia, no vería datos igual, sólo errores. Decirle por qué es
- * mejor que dejarlo mirando una tabla vacía.
+ * El servidor verifica es_superadmin() en cada función, y desde
+ * 035_mfa_superadmin.sql esa verificación exige además que la sesión
+ * esté en aal2 (segundo factor verificado). Por eso, antes de mostrar
+ * el panel, si la sesión es de superadmin y no llegó a aal2, se corta
+ * acá con la inscripción o el desafío del segundo factor — entrar sin
+ * pasar por esto significaría llegar a un panel donde todo devuelve
+ * sin_permiso.
+ *
+ * Esta pantalla de "sin acceso" es cortesía: si alguien llega acá con
+ * una sesión de gerencia, no vería datos igual, sólo errores. Decirle
+ * por qué es mejor que dejarlo mirando una tabla vacía.
  */
 export default function App() {
-  const { sesion, cargando, esSuperadmin, email, salir } = useSesion()
+  const { sesion, cargando, esSuperadmin, email, salir, nivelMfa, revisarNivelMfa } = useSesion()
 
   if (cargando) return <p className="estado">Cargando…</p>
   if (!sesion) return <Entrar />
+
+  if (esSuperadmin) {
+    if (!nivelMfa) return <p className="estado">Cargando…</p>
+    if (!nivelMfa.listo) {
+      return <SegundoFactor factores={nivelMfa.factores} onListo={revisarNivelMfa} />
+    }
+  }
 
   if (!esSuperadmin) {
     return (
