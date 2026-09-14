@@ -35,17 +35,23 @@ export default function SegundoFactor({ factores, onListo }) {
       setError(null)
 
       // Un intento anterior (o un reintento) puede haber dejado un factor
-      // sin verificar a medio camino — Supabase no deja inscribir uno nuevo
-      // mientras exista, y lo bloquea con "a factor with the friendly name
-      // already exists". Se limpia cualquier resto antes de pedir un QR nuevo.
+      // sin verificar a medio camino — se intenta limpiar, pero sin
+      // bloquear si falla (por ejemplo, por permisos): el nombre único de
+      // abajo es la garantía real de que no choca.
       const { data: listado } = await supabase.auth.mfa.listFactors()
       const sinVerificar = (listado?.totp || []).filter((f) => f.status !== 'verified')
       for (const factor of sinVerificar) {
-        await supabase.auth.mfa.unenroll({ factorId: factor.id })
+        const { error: errorLimpieza } = await supabase.auth.mfa.unenroll({ factorId: factor.id })
+        if (errorLimpieza) console.warn('[SegundoFactor] no se pudo limpiar factor suelto:', errorLimpieza.message)
       }
       if (cancelado) return
 
-      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
+      // friendlyName único: aunque quede algún factor suelto sin borrar,
+      // Supabase sólo rechaza un nombre repetido, nunca uno nuevo.
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: `superadmin-${Date.now()}`,
+      })
       if (cancelado) return
       if (error) {
         // Se muestra el mensaje real de Supabase — otra causa común es que
