@@ -24,19 +24,25 @@ export default function SegundoFactor({ factores, onListo }) {
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const [preparando, setPreparando] = useState(modo === 'inscribir')
+  const [intento, setIntento] = useState(0)
 
   useEffect(() => {
     if (modo !== 'inscribir') return
+    setPreparando(true)
+    setError(null)
     supabase.auth.mfa.enroll({ factorType: 'totp' }).then(({ data, error }) => {
       if (error) {
-        setError('No se pudo generar el código QR. Recarga la página e intenta de nuevo.')
+        // Se muestra el mensaje real de Supabase — la causa más común es que
+        // TOTP no está habilitado todavía en Authentication → Sign In / Providers
+        // → Multi-Factor Authentication del proyecto.
+        setError(`No se pudo generar el código QR: ${error.message || 'error desconocido'}`)
         setPreparando(false)
         return
       }
       setInscripcion({ id: data.id, qr: data.totp.qr_code, secreto: data.totp.secret })
       setPreparando(false)
     })
-  }, [modo])
+  }, [modo, intento])
 
   async function confirmar() {
     setEnviando(true)
@@ -119,14 +125,20 @@ export default function SegundoFactor({ factores, onListo }) {
           </div>
         ) : null}
 
-        <button
-          className="boton primario"
-          style={{ width: '100%' }}
-          onClick={confirmar}
-          disabled={enviando || codigo.length !== 6}
-        >
-          {enviando ? 'Verificando…' : 'Confirmar'}
-        </button>
+        {modo === 'inscribir' && !inscripcion ? (
+          <button className="boton" style={{ width: '100%' }} onClick={() => setIntento((n) => n + 1)}>
+            Reintentar
+          </button>
+        ) : (
+          <button
+            className="boton primario"
+            style={{ width: '100%' }}
+            onClick={confirmar}
+            disabled={enviando || codigo.length !== 6}
+          >
+            {enviando ? 'Verificando…' : 'Confirmar'}
+          </button>
+        )}
       </div>
     </div>
   )
