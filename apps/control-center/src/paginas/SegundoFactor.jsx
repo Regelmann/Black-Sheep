@@ -28,11 +28,27 @@ export default function SegundoFactor({ factores, onListo }) {
 
   useEffect(() => {
     if (modo !== 'inscribir') return
-    setPreparando(true)
-    setError(null)
-    supabase.auth.mfa.enroll({ factorType: 'totp' }).then(({ data, error }) => {
+    let cancelado = false
+
+    async function prepararInscripcion() {
+      setPreparando(true)
+      setError(null)
+
+      // Un intento anterior (o un reintento) puede haber dejado un factor
+      // sin verificar a medio camino — Supabase no deja inscribir uno nuevo
+      // mientras exista, y lo bloquea con "a factor with the friendly name
+      // already exists". Se limpia cualquier resto antes de pedir un QR nuevo.
+      const { data: listado } = await supabase.auth.mfa.listFactors()
+      const sinVerificar = (listado?.totp || []).filter((f) => f.status !== 'verified')
+      for (const factor of sinVerificar) {
+        await supabase.auth.mfa.unenroll({ factorId: factor.id })
+      }
+      if (cancelado) return
+
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
+      if (cancelado) return
       if (error) {
-        // Se muestra el mensaje real de Supabase — la causa más común es que
+        // Se muestra el mensaje real de Supabase — otra causa común es que
         // TOTP no está habilitado todavía en Authentication → Sign In / Providers
         // → Multi-Factor Authentication del proyecto.
         setError(`No se pudo generar el código QR: ${error.message || 'error desconocido'}`)
@@ -41,7 +57,10 @@ export default function SegundoFactor({ factores, onListo }) {
       }
       setInscripcion({ id: data.id, qr: data.totp.qr_code, secreto: data.totp.secret })
       setPreparando(false)
-    })
+    }
+
+    prepararInscripcion()
+    return () => { cancelado = true }
   }, [modo, intento])
 
   async function confirmar() {
