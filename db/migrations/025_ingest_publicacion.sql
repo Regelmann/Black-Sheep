@@ -432,12 +432,38 @@ BEGIN
                         WHERE r.lote_id = p_lote AND r.objeto='core.producto' AND r.llave = p.sku);
     GET DIAGNOSTICS v_n = ROW_COUNT;
   ELSIF v_tipo = 'stock' THEN
-    UPDATE core.stock s SET
-      stock_total = (r.fila->>'stock_total')::numeric,
-      stock_cajas = (r.fila->>'stock_cajas')::numeric
+
+    -- Eliminar filas creadas por este lote que no existían
+    -- antes de la publicación.
+    DELETE FROM core.stock s
+     WHERE s.tenant_id = v_tenant
+       AND s.lote_id = p_lote
+       AND NOT EXISTS (
+         SELECT 1
+           FROM ingest.respaldo r
+          WHERE r.lote_id = p_lote
+            AND r.objeto = 'core.stock'
+            AND r.llave = s.sku || '|' || s.almacen
+       );
+
+    -- Restaurar completamente las filas que existían
+    -- antes de la publicación.
+    UPDATE core.stock s
+       SET stock_total     = (r.fila->>'stock_total')::numeric,
+           stock_cajas     = (r.fila->>'stock_cajas')::numeric,
+           fecha_venc      = (r.fila->>'fecha_venc')::date,
+           es_foco_mes     = (r.fila->>'es_foco_mes')::boolean,
+           lote_id         = (r.fila->>'lote_id')::uuid,
+           campos_manuales = ARRAY(
+             SELECT jsonb_array_elements_text(r.fila->'campos_manuales')
+           ),
+           actualizado_en  = (r.fila->>'actualizado_en')::timestamptz
       FROM ingest.respaldo r
-     WHERE r.lote_id = p_lote AND r.objeto = 'core.stock'
-       AND s.tenant_id = v_tenant AND s.sku || '|' || s.almacen = r.llave;
+     WHERE r.lote_id = p_lote
+       AND r.objeto = 'core.stock'
+       AND s.tenant_id = v_tenant
+       AND s.sku || '|' || s.almacen = r.llave;
+
     GET DIAGNOSTICS v_n = ROW_COUNT;
   ELSIF v_tipo = 'costos' THEN
     DELETE FROM core.costo WHERE tenant_id = v_tenant AND lote_id = p_lote;
